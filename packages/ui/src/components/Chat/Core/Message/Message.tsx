@@ -2,6 +2,7 @@ import { forwardRef, createContext, useContext, memo, useMemo } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../../../lib/utils';
 import { Avatar, type AvatarProps } from '../../../Avatar';
+import { Tooltip } from '../../../Tooltip';
 import type { MessageRole } from '../../../../types/chat';
 
 const messageVariants = cva(
@@ -88,15 +89,24 @@ interface MessageAvatarProps extends Omit<AvatarProps, 'size'> {
 const MessageAvatar = memo(
   forwardRef<HTMLDivElement, MessageAvatarProps>(
     ({ className, tooltip, ...props }, ref) => {
-      return (
+      const avatar = (
         <Avatar
           ref={ref}
           size="md"
           className={cn('flex-shrink-0', className)}
-          title={tooltip}
           {...props}
         />
       );
+
+      if (tooltip) {
+        return (
+          <Tooltip content={tooltip} side="top">
+            {avatar}
+          </Tooltip>
+        );
+      }
+
+      return avatar;
     }
   )
 );

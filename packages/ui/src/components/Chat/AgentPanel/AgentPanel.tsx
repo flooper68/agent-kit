@@ -385,7 +385,7 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
 
         {/* Input area (only when not in empty state) */}
         {!showEmptyState && (
-          <div className="p-4">
+          <div className="px-4 pb-4 pt-2">
             <ChatInput isSubmitting={isSubmitting} onSubmit={handleSubmit}>
               <ChatInput.Textarea
                 ref={inputRef}

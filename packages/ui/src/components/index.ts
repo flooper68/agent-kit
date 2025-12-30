@@ -33,5 +33,8 @@ export type {
   DialogFooterProps,
 } from './Dialog';
 
+export { Tooltip } from './Tooltip';
+export type { TooltipProps } from './Tooltip';
+
 // Chat components
 export * from './Chat';
