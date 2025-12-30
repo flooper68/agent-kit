@@ -2,6 +2,7 @@ import { forwardRef, useState } from 'react';
 import { cn } from '../../../../lib/utils';
 import type { ModelOption } from '../../../../types/chat';
 import { ProviderIcon } from '../../ProviderIcons';
+import { Text } from '../../../Typography';
 
 export interface ModelSwitcherProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
@@ -77,9 +78,9 @@ export const ModelSwitcher = forwardRef<HTMLDivElement, ModelSwitcherProps>(
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">{model.name}</div>
                       {model.description && (
-                        <div className="text-xs text-muted-foreground truncate">
+                        <Text as="div" size="13" variant="muted" className="truncate">
                           {model.description}
-                        </div>
+                        </Text>
                       )}
                     </div>
                   </div>
