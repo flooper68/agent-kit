@@ -1,5 +1,6 @@
 import type { Preview } from '@storybook/react';
 import { withThemeByClassName } from '@storybook/addon-themes';
+import { ThemeProvider } from '../src/theme';
 import '../src/styles/globals.css';
 
 const preview: Preview = {
@@ -22,6 +23,12 @@ const preview: Preview = {
       },
       defaultTheme: 'light',
     }),
+    // ThemeProvider for useTheme hook
+    (Story) => (
+      <ThemeProvider>
+        <Story />
+      </ThemeProvider>
+    ),
     // Wrapper to ensure background color is applied
     (Story) => (
       <div className="bg-background text-foreground min-h-screen p-4">
