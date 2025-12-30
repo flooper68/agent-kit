@@ -26,14 +26,13 @@ RUN addgroup --system --gid 1001 nodejs && \
 
 WORKDIR /app
 
-# Copy only the built artifact and necessary files
+# Copy built artifact and necessary files
 COPY --from=builder --chown=bunjs:nodejs /app/apps/server/dist ./dist
 COPY --from=builder --chown=bunjs:nodejs /app/apps/server/package.json ./
 COPY --from=builder --chown=bunjs:nodejs /app/apps/server/src/db/migrations ./src/db/migrations
 
-# Install production dependencies only
-COPY --from=builder /app/bun.lock ./
-RUN bun install --frozen-lockfile --production
+# Copy node_modules from builder (already installed)
+COPY --from=builder --chown=bunjs:nodejs /app/node_modules ./node_modules
 
 # Switch to non-root user
 USER bunjs
