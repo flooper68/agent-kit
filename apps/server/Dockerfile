@@ -51,6 +51,7 @@ WORKDIR /app
 # Copy only the built artifact and production dependencies
 COPY --from=builder --chown=bunjs:nodejs /app/apps/server/dist ./dist
 COPY --from=builder --chown=bunjs:nodejs /app/apps/server/package.json ./
+COPY --from=builder --chown=bunjs:nodejs /app/apps/server/src/db/migrations ./src/db/migrations
 COPY --from=deps --chown=bunjs:nodejs /app/node_modules ./node_modules
 
 # Switch to non-root user
