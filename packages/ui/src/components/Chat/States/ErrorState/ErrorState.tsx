@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { cn } from '../../../../lib/utils';
 import { Button } from '../../../Button';
+import { Heading, Text } from '../../../Typography';
 
 /**
  * ErrorState - Full-container centered error display
@@ -51,10 +52,12 @@ export const ErrorState = forwardRef<HTMLDivElement, ErrorStateProps>(
             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
           />
         </svg>
-        <h3 className="text-lg font-semibold text-destructive mb-1">{title}</h3>
-        <p className="text-sm text-muted-foreground mb-4 text-center">
+        <Heading size="20" className="text-destructive mb-1">
+          {title}
+        </Heading>
+        <Text size="14" variant="muted" className="mb-4 text-center">
           {message}
-        </p>
+        </Text>
         {onRetry && (
           <Button variant="outline" size="sm" onClick={onRetry}>
             {retryLabel}

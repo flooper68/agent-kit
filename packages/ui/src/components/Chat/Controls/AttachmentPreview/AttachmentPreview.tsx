@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { cn } from '../../../../lib/utils';
 import { IconButton } from '../../../IconButton';
+import { Text } from '../../../Typography';
 import type { Attachment } from '../../../../types/chat';
 
 export interface AttachmentPreviewProps
@@ -52,12 +53,17 @@ export const AttachmentPreview = forwardRef<
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              <span className="text-xs text-muted-foreground truncate w-full text-center mt-1">
+              <Text
+                as="span"
+                size="13"
+                variant="muted"
+                className="truncate w-full text-center mt-1"
+              >
                 {attachment.name}
-              </span>
-              <span className="text-xs text-muted-foreground/75">
+              </Text>
+              <Text as="span" size="13" variant="muted" className="opacity-75">
                 {formatSize(attachment.size)}
-              </span>
+              </Text>
             </div>
           )}
 

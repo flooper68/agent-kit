@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { cn } from '../../../../lib/utils';
 import { Collapsible } from '../../../Collapsible';
+import { Text } from '../../../Typography';
 
 export interface ReasoningDisplayProps
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -40,7 +41,7 @@ export const ReasoningDisplay = forwardRef<
                 d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
               />
             </svg>
-            <span className="text-xs font-medium">{label}</span>
+            <span className="text-label-12">{label}</span>
             <svg
               className="h-3 w-3 ml-auto transition-transform [[data-state=open]_&]:rotate-180"
               fill="none"
@@ -58,9 +59,9 @@ export const ReasoningDisplay = forwardRef<
 
           <Collapsible.Content>
             <div className="px-3 py-2 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20">
-              <p className="text-xs text-muted-foreground whitespace-pre-wrap italic">
+              <Text size="13" variant="muted" className="whitespace-pre-wrap italic">
                 {content}
-              </p>
+              </Text>
             </div>
           </Collapsible.Content>
         </div>

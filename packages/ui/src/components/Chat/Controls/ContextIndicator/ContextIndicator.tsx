@@ -29,13 +29,13 @@ export const ContextIndicator = forwardRef<
 
     const getColor = () => {
       if (percentage >= dangerThreshold) return 'text-destructive';
-      if (percentage >= warningThreshold) return 'text-yellow-500';
+      if (percentage >= warningThreshold) return 'text-warning';
       return 'text-muted-foreground';
     };
 
     const getBarColor = () => {
       if (percentage >= dangerThreshold) return 'bg-destructive';
-      if (percentage >= warningThreshold) return 'bg-yellow-500';
+      if (percentage >= warningThreshold) return 'bg-warning';
       return 'bg-primary';
     };
 

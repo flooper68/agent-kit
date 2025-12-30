@@ -3,6 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../../../lib/utils';
 import { Dialog } from '../../../Dialog';
 import { Button } from '../../../Button';
+import { Text } from '../../../Typography';
 import type { ToolResultPart } from '../../../../types/chat';
 
 type ToolState = 'pending' | 'running' | 'completed' | 'error';
@@ -16,8 +17,8 @@ const toolBadgeVariants = cva(
     variants: {
       state: {
         pending: 'bg-muted text-muted-foreground',
-        running: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-        completed: 'bg-green-500/10 text-green-600 dark:text-green-400',
+        running: 'bg-info/10 text-info',
+        completed: 'bg-success/10 text-success',
         error: 'bg-destructive/10 text-destructive',
       },
       interactive: {
@@ -229,7 +230,9 @@ export const ToolBadge = forwardRef<HTMLButtonElement, ToolBadgeProps>(
             <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
               {/* Input Section */}
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-foreground">Input</h4>
+                <Text size="14" variant="strong">
+                  Input
+                </Text>
                 <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
                   {JSON.stringify(args, null, 2)}
                 </pre>
@@ -238,14 +241,13 @@ export const ToolBadge = forwardRef<HTMLButtonElement, ToolBadgeProps>(
               {/* Output Section */}
               {result && (
                 <div className="space-y-2">
-                  <h4
-                    className={cn(
-                      'text-sm font-medium',
-                      isError ? 'text-destructive' : 'text-foreground'
-                    )}
+                  <Text
+                    size="14"
+                    variant="strong"
+                    className={isError ? 'text-destructive' : undefined}
                   >
                     {isError ? 'Error' : 'Output'}
-                  </h4>
+                  </Text>
                   <ResultDisplay
                     result={result.result}
                     isError={isError ?? false}
@@ -255,11 +257,11 @@ export const ToolBadge = forwardRef<HTMLButtonElement, ToolBadgeProps>(
 
               {/* No result yet */}
               {!result && state !== 'completed' && (
-                <div className="text-sm text-muted-foreground italic">
+                <Text size="14" variant="muted" className="italic">
                   {state === 'running'
                     ? 'Tool is currently executing...'
                     : 'Waiting for execution...'}
-                </div>
+                </Text>
               )}
             </div>
 
