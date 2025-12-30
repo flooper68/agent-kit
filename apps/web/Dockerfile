@@ -16,7 +16,6 @@ RUN bun install --frozen-lockfile
 COPY packages/ui packages/ui
 COPY apps/web apps/web
 COPY tsconfig.json tsconfig.base.json ./
-COPY tailwind.config.ts postcss.config.js ./
 
 # Build UI first, then web
 RUN bun run build:ui && bun run build:web
