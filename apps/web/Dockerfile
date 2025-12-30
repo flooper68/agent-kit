@@ -4,10 +4,11 @@ FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files (all packages needed for lockfile integrity)
 COPY package.json bun.lock ./
 COPY packages/ui/package.json packages/ui/
 COPY apps/web/package.json apps/web/
+COPY apps/server/package.json apps/server/
 
 # Install dependencies
 RUN bun install --frozen-lockfile
