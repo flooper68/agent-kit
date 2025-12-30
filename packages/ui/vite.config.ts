@@ -10,6 +10,9 @@ export default defineConfig({
       insertTypesEntry: true,
     }),
   ],
+  css: {
+    postcss: './postcss.config.js',
+  },
   build: {
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
@@ -24,6 +27,7 @@ export default defineConfig({
           react: 'React',
           'react-dom': 'ReactDOM',
         },
+        assetFileNames: 'styles[extname]',
       },
     },
   },

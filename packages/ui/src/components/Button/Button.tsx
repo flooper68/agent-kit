@@ -1,59 +1,79 @@
-import React from 'react';
+import { forwardRef } from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '../../lib/utils';
 
-export interface ButtonProps {
-  children: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'outline';
-  size?: 'small' | 'medium' | 'large';
-  disabled?: boolean;
-  onClick?: () => void;
+const buttonVariants = cva(
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  {
+    variants: {
+      variant: {
+        primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        secondary:
+          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        outline:
+          'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+        ghost: 'hover:bg-accent hover:text-accent-foreground',
+        destructive:
+          'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        link: 'text-primary underline-offset-4 hover:underline',
+      },
+      size: {
+        sm: 'h-8 px-3 text-xs',
+        md: 'h-9 px-4',
+        lg: 'h-10 px-6',
+        icon: 'h-9 w-9',
+      },
+    },
+    defaultVariants: {
+      variant: 'primary',
+      size: 'md',
+    },
+  }
+);
+
+export interface ButtonProps
+  extends
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  isLoading?: boolean;
 }
 
-const variantStyles: Record<string, React.CSSProperties> = {
-  primary: {
-    backgroundColor: '#3b82f6',
-    color: 'white',
-    border: 'none',
-  },
-  secondary: {
-    backgroundColor: '#6b7280',
-    color: 'white',
-    border: 'none',
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    color: '#3b82f6',
-    border: '2px solid #3b82f6',
-  },
-};
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    { className, variant, size, isLoading, disabled, children, ...props },
+    ref
+  ) => {
+    return (
+      <button
+        className={cn(buttonVariants({ variant, size }), className)}
+        ref={ref}
+        disabled={disabled || isLoading}
+        {...props}
+      >
+        {isLoading && (
+          <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+              fill="none"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+        )}
+        {children}
+      </button>
+    );
+  }
+);
 
-const sizeStyles: Record<string, React.CSSProperties> = {
-  small: { padding: '6px 12px', fontSize: '14px' },
-  medium: { padding: '10px 20px', fontSize: '16px' },
-  large: { padding: '14px 28px', fontSize: '18px' },
-};
+Button.displayName = 'Button';
 
-export const Button: React.FC<ButtonProps> = ({
-  children,
-  variant = 'primary',
-  size = 'medium',
-  disabled = false,
-  onClick,
-}) => {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        ...variantStyles[variant],
-        ...sizeStyles[size],
-        borderRadius: '6px',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.6 : 1,
-        fontWeight: 500,
-        transition: 'all 0.2s ease',
-      }}
-    >
-      {children}
-    </button>
-  );
-};
+export { buttonVariants };

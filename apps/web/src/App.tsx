@@ -26,9 +26,9 @@ function App() {
 
         <h2>Button Sizes</h2>
         <div className="button-row">
-          <Button size="small">Small</Button>
-          <Button size="medium">Medium</Button>
-          <Button size="large">Large</Button>
+          <Button size="sm">Small</Button>
+          <Button size="md">Medium</Button>
+          <Button size="lg">Large</Button>
         </div>
 
         <h2>Disabled State</h2>
