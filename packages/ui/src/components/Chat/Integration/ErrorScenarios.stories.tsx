@@ -57,11 +57,7 @@ export const APIError: Story = {
         />
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -88,11 +84,7 @@ export const NetworkError: Story = {
         />
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -119,11 +111,7 @@ export const RateLimitError: Story = {
         />
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -184,11 +172,7 @@ export const PartialStreamError: Story = {
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -231,11 +215,7 @@ export const ToolExecutionError: Story = {
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -278,11 +258,7 @@ export const SearchToolError: Story = {
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -378,11 +354,7 @@ const RecoverableErrorComponent = () => {
         onSubmit={(v) => console.log('Submit:', v)}
         isSubmitting={isRetrying}
       >
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   );
@@ -467,11 +439,7 @@ export const MessageLevelError: Story = {
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),

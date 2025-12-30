@@ -50,10 +50,6 @@ export const InitialLoading: Story = {
       </div>
       <ChatInput isSubmitting onSubmit={() => {}}>
         <ChatInput.Textarea placeholder="Loading..." disabled />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton disabled />
-        </ChatInput.Actions>
       </ChatInput>
     </ChatContainer>
   ),
@@ -85,11 +81,7 @@ export const ThinkingAfterSubmit: Story = {
         </Message>
       </MessageList>
       <ChatInput isSubmitting onSubmit={() => {}}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -125,11 +117,7 @@ export const ThinkingWithDetail: Story = {
         </Message>
       </MessageList>
       <ChatInput isSubmitting onSubmit={() => {}}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -201,11 +189,7 @@ Lazy load images and use modern formats like WebP.`;
         )}
       </div>
       <ChatInput isSubmitting={isStreaming} onSubmit={() => {}}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   );
@@ -303,11 +287,7 @@ const StreamingWithToolCallComponent = () => {
         </Message>
       </MessageList>
       <ChatInput isSubmitting={phase !== 'complete'} onSubmit={() => {}}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   );
@@ -405,11 +385,7 @@ A robust testing strategy is essential:
       )}
 
       <ChatInput isSubmitting={isStreaming} onSubmit={() => {}}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   );

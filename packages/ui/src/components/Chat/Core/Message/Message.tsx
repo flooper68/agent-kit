@@ -4,18 +4,21 @@ import { cn } from '../../../../lib/utils';
 import { Avatar, type AvatarProps } from '../../../Avatar';
 import type { MessageRole } from '../../../../types/chat';
 
-const messageVariants = cva('flex gap-3 w-full animate-fade-in group', {
-  variants: {
-    role: {
-      user: 'flex-row-reverse',
-      assistant: 'flex-row',
-      system: 'flex-row justify-center',
+const messageVariants = cva(
+  'flex flex-col gap-1 w-full animate-fade-in group',
+  {
+    variants: {
+      role: {
+        user: 'items-end',
+        assistant: 'items-start',
+        system: 'items-center',
+      },
     },
-  },
-  defaultVariants: {
-    role: 'assistant',
-  },
-});
+    defaultVariants: {
+      role: 'assistant',
+    },
+  }
+);
 
 const bubbleVariants = cva('max-w-[85%] text-sm', {
   variants: {

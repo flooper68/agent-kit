@@ -1,7 +1,6 @@
 import { forwardRef, createContext, useContext, useState } from 'react';
 import { cn } from '../../../../lib/utils';
 import { Textarea } from '../../../Textarea';
-import { Button } from '../../../Button';
 
 interface ChatInputContextValue {
   value: string;
@@ -141,43 +140,10 @@ const ChatInputActions = forwardRef<HTMLDivElement, ChatInputActionsProps>(
 
 ChatInputActions.displayName = 'ChatInputActions';
 
-// Send button
-type ChatInputSendButtonProps = Omit<
-  React.ComponentProps<typeof Button>,
-  'type'
->;
-
-const ChatInputSendButton = forwardRef<
-  HTMLButtonElement,
-  ChatInputSendButtonProps
->(({ className, children, disabled, ...props }, ref) => {
-  const { canSubmit, isSubmitting } = useChatInput();
-
-  return (
-    <Button
-      ref={ref}
-      type="submit"
-      disabled={disabled ?? !canSubmit}
-      isLoading={isSubmitting}
-      className={className}
-      {...props}
-    >
-      {children ?? 'Send'}
-    </Button>
-  );
-});
-
-ChatInputSendButton.displayName = 'ChatInputSendButton';
-
 export const ChatInput = Object.assign(ChatInputRoot, {
   Textarea: ChatInputTextarea,
   Actions: ChatInputActions,
-  SendButton: ChatInputSendButton,
 });
 
 export { useChatInput };
-export type {
-  ChatInputTextareaProps,
-  ChatInputActionsProps,
-  ChatInputSendButtonProps,
-};
+export type { ChatInputTextareaProps, ChatInputActionsProps };

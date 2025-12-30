@@ -73,11 +73,7 @@ export const ToolPending: Story = {
         </Message>
       </MessageList>
       <ChatInput isSubmitting onSubmit={() => {}}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -113,11 +109,7 @@ export const ToolRunning: Story = {
         </Message>
       </MessageList>
       <ChatInput isSubmitting onSubmit={() => {}}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -165,11 +157,7 @@ export const ToolCompleted: Story = {
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -213,11 +201,7 @@ export const ToolError: Story = {
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -286,11 +270,7 @@ export const MultipleToolCalls: Story = {
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -373,11 +353,7 @@ const ToolCallLifecycleComponent = () => {
         </Message>
       </MessageList>
       <ChatInput isSubmitting={state !== 'completed'} onSubmit={() => {}}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   );
@@ -449,11 +425,7 @@ export const NestedToolCalls: Story = {
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),

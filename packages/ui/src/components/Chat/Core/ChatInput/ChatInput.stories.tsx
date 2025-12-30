@@ -17,11 +17,7 @@ type Story = StoryObj<typeof ChatInput>;
 export const Default: Story = {
   render: () => (
     <ChatInput onSubmit={(value) => console.log('Submitted:', value)}>
-      <ChatInput.Textarea placeholder="Type a message..." />
-      <ChatInput.Actions>
-        <div />
-        <ChatInput.SendButton />
-      </ChatInput.Actions>
+      <ChatInput.Textarea placeholder="Type a message... (Press Enter to send)" />
     </ChatInput>
   ),
 };
@@ -29,10 +25,9 @@ export const Default: Story = {
 export const WithAttachments: Story = {
   render: () => (
     <ChatInput onSubmit={(value) => console.log('Submitted:', value)}>
-      <ChatInput.Textarea placeholder="Type a message..." />
+      <ChatInput.Textarea placeholder="Type a message... (Press Enter to send)" />
       <ChatInput.Actions>
         <AttachmentButton onAttach={(files) => console.log('Files:', files)} />
-        <ChatInput.SendButton />
       </ChatInput.Actions>
     </ChatInput>
   ),
@@ -44,11 +39,7 @@ export const Submitting: Story = {
       isSubmitting
       onSubmit={(value) => console.log('Submitted:', value)}
     >
-      <ChatInput.Textarea placeholder="Type a message..." />
-      <ChatInput.Actions>
-        <div />
-        <ChatInput.SendButton />
-      </ChatInput.Actions>
+      <ChatInput.Textarea placeholder="Type a message... (Press Enter to send)" />
     </ChatInput>
   ),
 };
@@ -59,11 +50,7 @@ export const WithDefaultValue: Story = {
       value="Hello, how can you help me today?"
       onSubmit={(value) => console.log('Submitted:', value)}
     >
-      <ChatInput.Textarea placeholder="Type a message..." />
-      <ChatInput.Actions>
-        <div />
-        <ChatInput.SendButton />
-      </ChatInput.Actions>
+      <ChatInput.Textarea placeholder="Type a message... (Press Enter to send)" />
     </ChatInput>
   ),
 };

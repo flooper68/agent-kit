@@ -78,11 +78,7 @@ export const EmptyChat: Story = {
         onSuggestionClick={(s) => console.log('Suggestion clicked:', s.text)}
       />
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask Lovable..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask Lovable... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -119,11 +115,7 @@ export const SimpleConversation: Story = {
         ))}
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -162,11 +154,7 @@ export const ConversationWithCode: Story = {
         ))}
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -271,11 +259,7 @@ I should create a clean, modern design with good typography."
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -335,11 +319,7 @@ export const ConversationWithReasoning: Story = {
         ))}
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -445,11 +425,7 @@ I'll create a simple but functional implementation."
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -468,11 +444,7 @@ export const InteractiveTyping: Story = {
         onSuggestionClick={(s) => console.log('Suggestion clicked:', s.text)}
       />
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask Lovable..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask Lovable... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -480,7 +452,9 @@ export const InteractiveTyping: Story = {
     const canvas = within(canvasElement);
 
     await step('User types a message', async () => {
-      const textarea = canvas.getByPlaceholderText('Ask Lovable...');
+      const textarea = canvas.getByPlaceholderText(
+        'Ask Lovable... (Press Enter to send)'
+      );
       await userEvent.click(textarea);
       await userEvent.type(textarea, 'Create a landing page for my portfolio', {
         delay: 50,

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { ToolDetailDialog } from './ToolDetailDialog';
-import { Button } from '../../Button';
+import { ToolBadge } from '../ToolDisplay/ToolBadge';
 import type { ToolInvocationPart, ToolResultPart } from '../../../types/chat';
 
 const createInvocation = (
@@ -48,7 +48,11 @@ const DialogWrapper = ({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button onClick={() => setOpen(true)}>View Tool Details</Button>
+      <ToolBadge
+        toolName={invocation.toolName}
+        state={invocation.state}
+        onClick={() => setOpen(true)}
+      />
       <ToolDetailDialog
         open={open}
         onOpenChange={setOpen}
