@@ -7,7 +7,6 @@ import {
   ChatInput,
   ErrorState,
   ToolBadge,
-  StreamingText,
   RetryButton,
 } from '../';
 import { searchWebTool, executeCodeTool } from './mocks';
@@ -139,10 +138,13 @@ export const PartialStreamError: Story = {
           />
           <Message.Bubble>
             <div className="space-y-3">
-              <StreamingText
-                text="A microservices architecture is a design approach where an application is composed of loosely coupled, independently deployable services. Each service is responsible for a specific business capability and communicates with other services through..."
-                isStreaming={false}
-              />
+              <p>
+                A microservices architecture is a design approach where an
+                application is composed of loosely coupled, independently
+                deployable services. Each service is responsible for a specific
+                business capability and communicates with other services
+                through...
+              </p>
               <div className="p-3 rounded-lg border border-destructive/50 bg-destructive/10">
                 <div className="flex items-center gap-2 text-destructive text-sm">
                   <svg
