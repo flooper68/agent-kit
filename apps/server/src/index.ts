@@ -1,8 +1,13 @@
 import Fastify from 'fastify';
+import redisPlugin from './plugins/redis';
+import pubsubTestRoutes from './routes/pubsub-test';
 
 const fastify = Fastify({
   logger: true,
 });
+
+fastify.register(redisPlugin);
+fastify.register(pubsubTestRoutes, { prefix: '/api' });
 
 fastify.get('/', async () => {
   return { message: 'Hello World!' };
