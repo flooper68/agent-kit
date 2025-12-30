@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+
+# Dependencies (installed fresh in container)
+node_modules
+**/node_modules
+
+# Build outputs (built fresh in container)
+dist
+**/dist
+build
+**/build
+out
+storybook-static
+*.tsbuildinfo
+
+# Development files
+.env
+.env.*
+*.log
+coverage
+test-results
+playwright-report
+
+# IDE and OS files
+.idea
+.vscode
+*.swp
+.DS_Store
+
+# Other apps and packages (source not needed, but keep package.json for lockfile)
+apps/web/src
+apps/web/public
+apps/web/index.html
+apps/web/*.config.*
+packages/ui/src
+packages/ui/.storybook
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Misc
+.cache
+.turbo
+.eslintcache
+.prettiercache
+.claude
+
+# Docker files
+Dockerfile*
+docker-compose*
+.dockerignore
