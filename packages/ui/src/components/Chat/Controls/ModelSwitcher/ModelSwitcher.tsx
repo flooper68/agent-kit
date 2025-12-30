@@ -3,10 +3,8 @@ import { cn } from '../../../../lib/utils';
 import type { ModelOption } from '../../../../types/chat';
 import { ProviderIcon } from '../../ProviderIcons';
 
-export interface ModelSwitcherProps extends Omit<
-  React.HTMLAttributes<HTMLDivElement>,
-  'onChange'
-> {
+export interface ModelSwitcherProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
   models: ModelOption[];
   value?: string;
   onChange?: (modelId: string) => void;

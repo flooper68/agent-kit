@@ -2,7 +2,8 @@ import { forwardRef, useState } from 'react';
 import { cn } from '../../../lib/utils';
 import { IconButton } from '../../IconButton';
 
-export interface CopyButtonProps extends React.HTMLAttributes<HTMLButtonElement> {
+export interface CopyButtonProps
+  extends React.HTMLAttributes<HTMLButtonElement> {
   content: string;
   onCopy?: () => void;
   feedbackDuration?: number;

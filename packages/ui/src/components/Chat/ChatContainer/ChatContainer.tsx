@@ -1,7 +1,8 @@
 import { forwardRef } from 'react';
 import { cn } from '../../../lib/utils';
 
-export interface ChatContainerProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ChatContainerProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 

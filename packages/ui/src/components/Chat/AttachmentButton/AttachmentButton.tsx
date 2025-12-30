@@ -4,7 +4,8 @@ import { IconButton } from '../../IconButton';
 
 export type AttachmentType = 'image' | 'file' | 'screenshot';
 
-export interface AttachmentButtonProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface AttachmentButtonProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   onAttach?: (files: File[], type: AttachmentType) => void;
   accept?: string;
   multiple?: boolean;

@@ -2,7 +2,8 @@ import { forwardRef, memo } from 'react';
 import { cn } from '../../../lib/utils';
 import type { MessagePart } from '../../../types/chat';
 
-export interface MessageContentProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface MessageContentProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   parts: MessagePart[];
   renderPart?: (part: MessagePart) => React.ReactNode;
 }

@@ -3,7 +3,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '../../../../lib/utils';
 
-export interface MarkdownRendererProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface MarkdownRendererProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   content: string;
 }
 

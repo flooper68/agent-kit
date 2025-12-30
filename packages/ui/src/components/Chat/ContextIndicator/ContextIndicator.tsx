@@ -2,7 +2,8 @@ import { forwardRef } from 'react';
 import { cn } from '../../../lib/utils';
 import type { ContextUsage } from '../../../types/chat';
 
-export interface ContextIndicatorProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ContextIndicatorProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   usage: ContextUsage;
   showBar?: boolean;
   warningThreshold?: number;

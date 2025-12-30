@@ -1,9 +1,153 @@
+/* Geist Font Faces */
+@font-face {
+  font-family: 'Geist';
+  src: url('../fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('../fonts/GeistMono-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
+    /* Font Families */
+    --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo,
+      Consolas, monospace;
+
+    /* ===== TYPOGRAPHY TOKENS ===== */
+
+    /* Heading Typography */
+    --heading-72-size: 4.5rem;
+    --heading-72-line: 1.1;
+    --heading-72-tracking: -0.04em;
+    --heading-72-weight: 700;
+
+    --heading-64-size: 4rem;
+    --heading-64-line: 1.1;
+    --heading-64-tracking: -0.04em;
+    --heading-64-weight: 700;
+
+    --heading-56-size: 3.5rem;
+    --heading-56-line: 1.1;
+    --heading-56-tracking: -0.03em;
+    --heading-56-weight: 700;
+
+    --heading-48-size: 3rem;
+    --heading-48-line: 1.1;
+    --heading-48-tracking: -0.03em;
+    --heading-48-weight: 700;
+
+    --heading-40-size: 2.5rem;
+    --heading-40-line: 1.15;
+    --heading-40-tracking: -0.02em;
+    --heading-40-weight: 600;
+
+    --heading-32-size: 2rem;
+    --heading-32-line: 1.2;
+    --heading-32-tracking: -0.02em;
+    --heading-32-weight: 600;
+
+    --heading-24-size: 1.5rem;
+    --heading-24-line: 1.25;
+    --heading-24-tracking: -0.015em;
+    --heading-24-weight: 600;
+
+    --heading-20-size: 1.25rem;
+    --heading-20-line: 1.3;
+    --heading-20-tracking: -0.01em;
+    --heading-20-weight: 600;
+
+    --heading-16-size: 1rem;
+    --heading-16-line: 1.4;
+    --heading-16-tracking: -0.01em;
+    --heading-16-weight: 600;
+
+    --heading-14-size: 0.875rem;
+    --heading-14-line: 1.4;
+    --heading-14-tracking: 0;
+    --heading-14-weight: 600;
+
+    /* Label Typography */
+    --label-20-size: 1.25rem;
+    --label-20-line: 1.5;
+    --label-20-tracking: 0;
+    --label-20-weight: 500;
+
+    --label-16-size: 1rem;
+    --label-16-line: 1.5;
+    --label-16-tracking: 0;
+    --label-16-weight: 500;
+
+    --label-14-size: 0.875rem;
+    --label-14-line: 1.5;
+    --label-14-tracking: 0;
+    --label-14-weight: 500;
+
+    --label-13-size: 0.8125rem;
+    --label-13-line: 1.5;
+    --label-13-tracking: 0;
+    --label-13-weight: 500;
+
+    --label-12-size: 0.75rem;
+    --label-12-line: 1.5;
+    --label-12-tracking: 0;
+    --label-12-weight: 500;
+
+    /* Copy (Body) Typography */
+    --copy-24-size: 1.5rem;
+    --copy-24-line: 1.6;
+    --copy-24-tracking: 0;
+    --copy-24-weight: 400;
+
+    --copy-20-size: 1.25rem;
+    --copy-20-line: 1.6;
+    --copy-20-tracking: 0;
+    --copy-20-weight: 400;
+
+    --copy-16-size: 1rem;
+    --copy-16-line: 1.6;
+    --copy-16-tracking: 0;
+    --copy-16-weight: 400;
+
+    --copy-14-size: 0.875rem;
+    --copy-14-line: 1.6;
+    --copy-14-tracking: 0;
+    --copy-14-weight: 400;
+
+    --copy-13-size: 0.8125rem;
+    --copy-13-line: 1.6;
+    --copy-13-tracking: 0;
+    --copy-13-weight: 400;
+
+    /* Button Typography */
+    --button-16-size: 1rem;
+    --button-16-line: 1.25;
+    --button-16-tracking: 0;
+    --button-16-weight: 500;
+
+    --button-14-size: 0.875rem;
+    --button-14-line: 1.25;
+    --button-14-tracking: 0;
+    --button-14-weight: 500;
+
+    --button-12-size: 0.75rem;
+    --button-12-line: 1.25;
+    --button-12-tracking: 0;
+    --button-12-weight: 500;
+
     /* Light theme */
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
