@@ -1,0 +1,232 @@
+import { Meta, ColorPalette, ColorItem } from '@storybook/blocks';
+
+<Meta title="Design System/Theme" />
+
+# Theme System
+
+Agent Kit UI uses a CSS variable-based theme system with support for light and dark modes.
+The theme supports light and dark modes with automatic system preference detection.
+
+## Theme Provider
+
+Wrap your application with `ThemeProvider` to enable theme support:
+
+```tsx
+import { ThemeProvider } from '@agent-kit/ui';
+
+function App() {
+  return (
+    <ThemeProvider defaultTheme="system">
+      <YourApp />
+    </ThemeProvider>
+  );
+}
+```
+
+### Available Themes
+
+- `light` - Light mode
+- `dark` - Dark mode
+- `system` - Follows OS preference (default)
+
+## Using the Theme
+
+### ThemeToggle Component
+
+Use the `ThemeToggle` component to allow users to switch themes:
+
+```tsx
+import { ThemeToggle } from '@agent-kit/ui';
+
+<ThemeToggle />;
+```
+
+The toggle cycles through: light → dark → system → light
+
+### useTheme Hook
+
+Access theme state programmatically:
+
+```tsx
+import { useTheme } from '@agent-kit/ui';
+
+function MyComponent() {
+  const { theme, resolvedTheme, setTheme } = useTheme();
+
+  return (
+    <div>
+      <p>Current setting: {theme}</p>
+      <p>Active theme: {resolvedTheme}</p>
+      <button onClick={() => setTheme('dark')}>Use Dark Mode</button>
+    </div>
+  );
+}
+```
+
+## Color Palette
+
+### Core Colors
+
+<ColorPalette>
+  <ColorItem
+    title="Background"
+    subtitle="--background"
+    colors={{ Light: 'hsl(0, 0%, 100%)', Dark: 'hsl(0, 0%, 3.9%)' }}
+  />
+  <ColorItem
+    title="Foreground"
+    subtitle="--foreground"
+    colors={{ Light: 'hsl(0, 0%, 3.9%)', Dark: 'hsl(0, 0%, 98%)' }}
+  />
+  <ColorItem
+    title="Primary"
+    subtitle="--primary"
+    colors={{
+      Light: 'hsl(0, 0%, 9%)',
+      Dark: 'hsl(0, 0%, 98%)',
+    }}
+  />
+  <ColorItem
+    title="Secondary"
+    subtitle="--secondary"
+    colors={{ Light: 'hsl(0, 0%, 96.1%)', Dark: 'hsl(0, 0%, 14.9%)' }}
+  />
+  <ColorItem
+    title="Muted"
+    subtitle="--muted"
+    colors={{ Light: 'hsl(0, 0%, 96.1%)', Dark: 'hsl(0, 0%, 14.9%)' }}
+  />
+  <ColorItem
+    title="Accent"
+    subtitle="--accent"
+    colors={{ Light: 'hsl(0, 0%, 96.1%)', Dark: 'hsl(0, 0%, 14.9%)' }}
+  />
+  <ColorItem
+    title="Destructive"
+    subtitle="--destructive"
+    colors={{ Light: 'hsl(0, 84.2%, 60.2%)', Dark: 'hsl(0, 62.8%, 30.6%)' }}
+  />
+  <ColorItem
+    title="Border"
+    subtitle="--border"
+    colors={{
+      Light: 'hsl(0, 0%, 89.8%)',
+      Dark: 'hsl(0, 0%, 14.9%)',
+    }}
+  />
+</ColorPalette>
+
+### Code Block Colors
+
+<ColorPalette>
+  <ColorItem
+    title="Code Background"
+    subtitle="--code-background"
+    colors={{ Light: 'hsl(0, 0%, 97%)', Dark: 'hsl(0, 0%, 7%)' }}
+  />
+  <ColorItem
+    title="Code Header"
+    subtitle="--code-header"
+    colors={{ Light: 'hsl(0, 0%, 94%)', Dark: 'hsl(0, 0%, 11%)' }}
+  />
+  <ColorItem
+    title="Code Border"
+    subtitle="--code-border"
+    colors={{
+      Light: 'hsl(0, 0%, 89.8%)',
+      Dark: 'hsl(0, 0%, 14.9%)',
+    }}
+  />
+  <ColorItem
+    title="Code Foreground"
+    subtitle="--code-foreground"
+    colors={{ Light: 'hsl(0, 0%, 9%)', Dark: 'hsl(0, 0%, 98%)' }}
+  />
+  <ColorItem
+    title="Code Line Number"
+    subtitle="--code-line-number"
+    colors={{ Light: 'hsl(0, 0%, 55%)', Dark: 'hsl(0, 0%, 50%)' }}
+  />
+</ColorPalette>
+
+## Design Principles
+
+Design principles:
+
+1. **Clean & Minimal** - Use subtle backgrounds and clear typography
+2. **Good Contrast** - Ensure WCAG AA compliance for text
+3. **Semantic Colors** - Use CSS variables for consistent theming
+4. **Smooth Transitions** - Theme changes should feel natural
+
+## Preventing Flash of Unstyled Content
+
+Add the `ThemeScript` to your HTML `<head>` to prevent FOUC:
+
+```tsx
+import { ThemeScript } from '@agent-kit/ui';
+
+// In your HTML template or _document.tsx
+<head>
+  <ThemeScript />
+</head>;
+```
+
+This inline script runs before React hydration to set the correct theme class immediately.
+
+## CSS Variables Reference
+
+All theme colors are defined as CSS variables in HSL format. Import the global styles:
+
+```tsx
+import '@agent-kit/ui/styles/globals.css';
+```
+
+### Light Theme (`:root`)
+
+```css
+--background: 0 0% 100%;
+--foreground: 0 0% 3.9%;
+--primary: 0 0% 9%;
+--secondary: 0 0% 96.1%;
+--muted: 0 0% 96.1%;
+--accent: 0 0% 96.1%;
+--destructive: 0 84.2% 60.2%;
+--border: 0 0% 89.8%;
+--code-background: 0 0% 97%;
+--code-header: 0 0% 94%;
+```
+
+### Dark Theme (`.dark`)
+
+```css
+--background: 0 0% 3.9%;
+--foreground: 0 0% 98%;
+--primary: 0 0% 98%;
+--secondary: 0 0% 14.9%;
+--muted: 0 0% 14.9%;
+--accent: 0 0% 14.9%;
+--destructive: 0 62.8% 30.6%;
+--border: 0 0% 14.9%;
+--code-background: 0 0% 7%;
+--code-header: 0 0% 11%;
+```
+
+## Tailwind Integration
+
+The theme colors are available as Tailwind classes:
+
+```tsx
+// Background colors
+<div className="bg-background" />
+<div className="bg-primary" />
+<div className="bg-code" />
+
+// Text colors
+<span className="text-foreground" />
+<span className="text-muted-foreground" />
+<span className="text-code-foreground" />
+
+// Border colors
+<div className="border border-border" />
+<div className="border border-code-border" />
+```

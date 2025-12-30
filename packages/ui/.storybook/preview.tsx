@@ -10,6 +10,9 @@ const preview: Preview = {
         date: /Date$/i,
       },
     },
+    backgrounds: {
+      disable: true,
+    },
   },
   decorators: [
     withThemeByClassName({
@@ -19,6 +22,12 @@ const preview: Preview = {
       },
       defaultTheme: 'light',
     }),
+    // Wrapper to ensure background color is applied
+    (Story) => (
+      <div className="bg-background text-foreground min-h-screen p-4">
+        <Story />
+      </div>
+    ),
   ],
 };
 
