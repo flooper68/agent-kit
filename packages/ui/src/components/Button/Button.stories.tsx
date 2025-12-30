@@ -2,17 +2,30 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from './Button';
 
 const meta: Meta<typeof Button> = {
-  title: 'Components/Button',
+  title: 'Primitives/Button',
   component: Button,
   tags: ['autodocs'],
   argTypes: {
     variant: {
       control: 'select',
-      options: ['primary', 'secondary', 'outline'],
+      options: [
+        'primary',
+        'secondary',
+        'outline',
+        'ghost',
+        'destructive',
+        'link',
+      ],
     },
     size: {
       control: 'select',
-      options: ['small', 'medium', 'large'],
+      options: ['sm', 'md', 'lg', 'icon'],
+    },
+    isLoading: {
+      control: 'boolean',
+    },
+    disabled: {
+      control: 'boolean',
     },
   },
 };
@@ -41,17 +54,45 @@ export const Outline: Story = {
   },
 };
 
+export const Ghost: Story = {
+  args: {
+    children: 'Ghost Button',
+    variant: 'ghost',
+  },
+};
+
+export const Destructive: Story = {
+  args: {
+    children: 'Destructive Button',
+    variant: 'destructive',
+  },
+};
+
+export const Link: Story = {
+  args: {
+    children: 'Link Button',
+    variant: 'link',
+  },
+};
+
 export const Small: Story = {
   args: {
     children: 'Small Button',
-    size: 'small',
+    size: 'sm',
   },
 };
 
 export const Large: Story = {
   args: {
     children: 'Large Button',
-    size: 'large',
+    size: 'lg',
+  },
+};
+
+export const Loading: Story = {
+  args: {
+    children: 'Loading...',
+    isLoading: true,
   },
 };
 
