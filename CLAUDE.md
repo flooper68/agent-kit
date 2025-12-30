@@ -69,17 +69,6 @@ bun run --cwd packages/ui build
 
 **IMPORTANT**: Always follow this workflow when making code changes.
 
-### Session Start - Create Worktree
-
-At the start of each task, create a new worktree:
-
-```bash
-# From main repo, create worktree with new branch
-git worktree add .worktrees/feat-<description> -b feat/<description>
-cd .worktrees/feat-<description>
-bun install
-```
-
 ### Branch Naming
 
 - **Branch**: `feat/<description>` (e.g., `feat/add-login`)
@@ -114,19 +103,6 @@ Always use **squash merge** for PRs:
 
 ```bash
 gh pr merge --squash
-```
-
-### Cleanup (After PR Merged)
-
-After the PR is merged, ask the user if they want to clean up:
-
-```bash
-# Return to main repo
-cd /path/to/agent-kit
-
-# Remove worktree and branch
-git worktree remove .worktrees/feat-<description>
-git branch -d feat/<description>
 ```
 
 ### Commit Messages
