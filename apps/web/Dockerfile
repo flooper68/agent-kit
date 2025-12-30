@@ -1,5 +1,5 @@
 # Build context should be the repo root
-# Build stage
+# Build stage - v2
 FROM oven/bun:1 AS builder
 
 WORKDIR /app
