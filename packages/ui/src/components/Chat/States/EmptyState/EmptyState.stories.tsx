@@ -1,5 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { useState } from 'react';
 import { EmptyState } from './EmptyState';
+import { ChatInput } from '../../Core/ChatInput';
+import { AttachmentButton } from '../../Controls/AttachmentButton';
+import { SettingsButton } from '../../Controls/SettingsButton';
+import { ModelSwitcher } from '../../Controls/ModelSwitcher';
+import type { ModelOption } from '../../../../types/chat';
 
 const meta: Meta<typeof EmptyState> = {
   title: 'Chat/States/EmptyState',
@@ -13,53 +19,98 @@ const meta: Meta<typeof EmptyState> = {
 export default meta;
 type Story = StoryObj<typeof EmptyState>;
 
+const sampleModels: ModelOption[] = [
+  {
+    id: 'gpt-4',
+    name: 'GPT-4',
+    provider: 'openai',
+    description: 'Most capable model',
+  },
+  {
+    id: 'claude-3',
+    name: 'Claude 3',
+    provider: 'anthropic',
+    description: 'Latest Claude model',
+  },
+];
+
 export const Default: Story = {
   args: {},
 };
 
-export const WithDescription: Story = {
-  args: {
-    title: 'Welcome to AI Assistant',
-    description:
-      'I can help you with coding, writing, analysis, and much more. Just ask me anything!',
+export const WithInput: Story = {
+  render: function WithInputStory() {
+    const [model, setModel] = useState('gpt-4');
+
+    return (
+      <EmptyState
+        title="How can I help you today?"
+        inputElement={
+          <ChatInput onSubmit={(value) => console.log('Submitted:', value)}>
+            <ChatInput.Textarea placeholder="Ask the agent..." />
+            <ChatInput.Actions>
+              <div className="flex items-center gap-1">
+                <AttachmentButton
+                  onAttach={(files) => console.log('Files:', files)}
+                  showMenu={false}
+                />
+                <SettingsButton
+                  onClick={() => console.log('Settings clicked')}
+                />
+                <ModelSwitcher
+                  models={sampleModels}
+                  value={model}
+                  onChange={setModel}
+                />
+              </div>
+            </ChatInput.Actions>
+          </ChatInput>
+        }
+      />
+    );
   },
 };
 
 export const WithSuggestions: Story = {
-  args: {
-    title: 'How can I help you today?',
-    suggestions: [
-      {
-        id: '1',
-        text: 'Help me write code',
-        prompt: 'Write a function that...',
-      },
-      { id: '2', text: 'Explain a concept', prompt: 'Explain how...' },
-      { id: '3', text: 'Debug my code', prompt: 'Fix the bug in...' },
-      { id: '4', text: 'Generate content', prompt: 'Create a...' },
-    ],
-    onSuggestionClick: (suggestion) => console.log('Clicked:', suggestion),
-  },
-};
+  render: function WithSuggestionsStory() {
+    const [model, setModel] = useState('gpt-4');
 
-export const WithIcon: Story = {
-  args: {
-    title: 'Start a conversation',
-    description: 'Ask me anything and I will do my best to help.',
-    icon: (
-      <svg
-        className="h-16 w-16"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-        />
-      </svg>
-    ),
+    return (
+      <EmptyState
+        title="How can I help you today?"
+        suggestions={[
+          {
+            id: '1',
+            text: 'Help me write code',
+            prompt: 'Write a function that...',
+          },
+          { id: '2', text: 'Explain a concept', prompt: 'Explain how...' },
+          { id: '3', text: 'Debug my code', prompt: 'Fix the bug in...' },
+          { id: '4', text: 'Generate content', prompt: 'Create a...' },
+        ]}
+        onSuggestionClick={(suggestion) => console.log('Clicked:', suggestion)}
+        inputElement={
+          <ChatInput onSubmit={(value) => console.log('Submitted:', value)}>
+            <ChatInput.Textarea placeholder="Ask the agent..." />
+            <ChatInput.Actions>
+              <div className="flex items-center gap-1">
+                <AttachmentButton
+                  onAttach={(files) => console.log('Files:', files)}
+                  showMenu={false}
+                />
+                <SettingsButton
+                  onClick={() => console.log('Settings clicked')}
+                />
+                <ModelSwitcher
+                  models={sampleModels}
+                  value={model}
+                  onChange={setModel}
+                />
+              </div>
+            </ChatInput.Actions>
+          </ChatInput>
+        }
+      />
+    );
   },
 };

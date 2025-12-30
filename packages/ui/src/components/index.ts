@@ -33,6 +33,9 @@ export type {
   DialogFooterProps,
 } from './Dialog';
 
+export { Tooltip } from './Tooltip';
+export type { TooltipProps } from './Tooltip';
+
 // Theme
 export { ThemeToggle } from './ThemeToggle';
 export type { ThemeToggleProps } from './ThemeToggle';

@@ -8,11 +8,11 @@ export interface ThinkingIndicatorProps extends React.HTMLAttributes<HTMLDivElem
 }
 
 const ThinkingDots = () => (
-  <div className="flex items-center gap-1">
+  <div className="flex items-center gap-0.5">
     {[0, 1, 2].map((i) => (
       <div
         key={i}
-        className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse-dot"
+        className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse-dot"
         style={{ animationDelay: `${i * 0.2}s` }}
       />
     ))}
@@ -53,7 +53,7 @@ export const ThinkingIndicator = forwardRef<
       <div
         ref={ref}
         className={cn(
-          'flex items-center gap-3 text-sm text-muted-foreground animate-fade-in',
+          'flex items-center gap-2 text-xs text-muted-foreground animate-fade-in',
           className
         )}
         {...props}

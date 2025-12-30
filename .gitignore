@@ -60,3 +60,6 @@ debug.log
 
 # Git Worktrees
 .worktrees/
+
+# Playwright MCP screenshots
+.playwright-mcp/

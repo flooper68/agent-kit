@@ -20,5 +20,4 @@ export type {
   ChatInputProps,
   ChatInputTextareaProps,
   ChatInputActionsProps,
-  ChatInputSendButtonProps,
 } from './ChatInput';

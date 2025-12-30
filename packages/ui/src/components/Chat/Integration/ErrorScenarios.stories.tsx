@@ -6,7 +6,7 @@ import {
   Message,
   ChatInput,
   ErrorState,
-  ToolCallDisplay,
+  ToolBadge,
   StreamingText,
   RetryButton,
 } from '../';
@@ -57,11 +57,7 @@ export const APIError: Story = {
         />
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -88,11 +84,7 @@ export const NetworkError: Story = {
         />
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -119,11 +111,7 @@ export const RateLimitError: Story = {
         />
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -184,11 +172,7 @@ export const PartialStreamError: Story = {
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -215,10 +199,9 @@ export const ToolExecutionError: Story = {
           <Message.Bubble>
             <div className="space-y-3">
               <p>I will run the test suite for you.</p>
-              <ToolCallDisplay
-                invocation={executeCodeTool.error}
-                result={executeCodeTool.errorResult}
-                defaultExpanded
+              <ToolBadge
+                toolName={executeCodeTool.error.toolName}
+                state={executeCodeTool.error.state}
               />
               <p className="text-destructive">
                 The test execution failed with an error. Would you like me to
@@ -232,11 +215,7 @@ export const ToolExecutionError: Story = {
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -265,10 +244,9 @@ export const SearchToolError: Story = {
           <Message.Bubble>
             <div className="space-y-3">
               <p>Let me search for that information.</p>
-              <ToolCallDisplay
-                invocation={searchWebTool.error}
-                result={searchWebTool.errorResult}
-                defaultExpanded
+              <ToolBadge
+                toolName={searchWebTool.error.toolName}
+                state={searchWebTool.error.state}
               />
               <p>
                 I was not able to search the web due to a network error.
@@ -280,11 +258,7 @@ export const SearchToolError: Story = {
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -380,11 +354,7 @@ const RecoverableErrorComponent = () => {
         onSubmit={(v) => console.log('Submit:', v)}
         isSubmitting={isRetrying}
       >
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   );
@@ -469,11 +439,7 @@ export const MessageLevelError: Story = {
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),

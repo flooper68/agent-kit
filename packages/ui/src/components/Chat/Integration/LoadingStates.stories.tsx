@@ -6,10 +6,10 @@ import {
   Message,
   ChatInput,
   ThinkingIndicator,
-  StreamingText,
   LoadingState,
   InterruptButton,
-  ToolCallDisplay,
+  ToolBadge,
+  MarkdownRenderer,
 } from '../';
 import { searchWebTool } from './mocks';
 
@@ -50,10 +50,6 @@ export const InitialLoading: Story = {
       </div>
       <ChatInput isSubmitting onSubmit={() => {}}>
         <ChatInput.Textarea placeholder="Loading..." disabled />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton disabled />
-        </ChatInput.Actions>
       </ChatInput>
     </ChatContainer>
   ),
@@ -85,11 +81,7 @@ export const ThinkingAfterSubmit: Story = {
         </Message>
       </MessageList>
       <ChatInput isSubmitting onSubmit={() => {}}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -125,11 +117,7 @@ export const ThinkingWithDetail: Story = {
         </Message>
       </MessageList>
       <ChatInput isSubmitting onSubmit={() => {}}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -188,7 +176,7 @@ Lazy load images and use modern formats like WebP.`;
             src="https://api.dicebear.com/7.x/bottts/svg?seed=ai"
           />
           <Message.Bubble>
-            <StreamingText text={displayedText} isStreaming={isStreaming} />
+            <MarkdownRenderer content={displayedText} />
           </Message.Bubble>
         </Message>
       </MessageList>
@@ -201,11 +189,7 @@ Lazy load images and use modern formats like WebP.`;
         )}
       </div>
       <ChatInput isSubmitting={isStreaming} onSubmit={() => {}}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   );
@@ -281,18 +265,11 @@ const StreamingWithToolCallComponent = () => {
           />
           <Message.Bubble>
             <div className="space-y-3">
-              <StreamingText
-                text={streamedText}
-                isStreaming={phase === 'streaming'}
-              />
+              <MarkdownRenderer content={streamedText} />
               {phase !== 'streaming' && (
-                <ToolCallDisplay
-                  invocation={toolInvocation}
-                  result={
-                    toolState === 'completed'
-                      ? searchWebTool.completedResult
-                      : undefined
-                  }
+                <ToolBadge
+                  toolName={toolInvocation.toolName}
+                  state={toolInvocation.state}
                 />
               )}
               {phase === 'complete' && (
@@ -307,11 +284,7 @@ const StreamingWithToolCallComponent = () => {
         </Message>
       </MessageList>
       <ChatInput isSubmitting={phase !== 'complete'} onSubmit={() => {}}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   );
@@ -393,11 +366,7 @@ A robust testing strategy is essential:
             src="https://api.dicebear.com/7.x/bottts/svg?seed=ai"
           />
           <Message.Bubble>
-            <StreamingText
-              text={displayedText}
-              isStreaming={isStreaming}
-              showCursor={isStreaming}
-            />
+            <MarkdownRenderer content={displayedText} />
           </Message.Bubble>
         </Message>
       </MessageList>
@@ -409,11 +378,7 @@ A robust testing strategy is essential:
       )}
 
       <ChatInput isSubmitting={isStreaming} onSubmit={() => {}}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   );

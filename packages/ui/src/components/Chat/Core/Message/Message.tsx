@@ -1,29 +1,33 @@
-import { forwardRef, createContext, useContext } from 'react';
+import { forwardRef, createContext, useContext, memo, useMemo } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../../../lib/utils';
 import { Avatar, type AvatarProps } from '../../../Avatar';
+import { Tooltip } from '../../../Tooltip';
 import type { MessageRole } from '../../../../types/chat';
 
-const messageVariants = cva('flex gap-3 w-full animate-fade-in group', {
-  variants: {
-    role: {
-      user: 'flex-row-reverse',
-      assistant: 'flex-row',
-      system: 'flex-row justify-center',
+const messageVariants = cva(
+  'flex flex-col gap-1 w-full animate-fade-in group',
+  {
+    variants: {
+      role: {
+        user: 'items-end',
+        assistant: 'items-start',
+        system: 'items-center',
+      },
     },
-  },
-  defaultVariants: {
-    role: 'assistant',
-  },
-});
+    defaultVariants: {
+      role: 'assistant',
+    },
+  }
+);
 
-const bubbleVariants = cva('max-w-[85%] text-sm', {
+const bubbleVariants = cva('text-sm', {
   variants: {
     role: {
-      user: 'bg-primary text-primary-foreground rounded-2xl rounded-br-sm px-4 py-3',
-      assistant: 'text-foreground',
+      user: 'bg-muted text-foreground rounded-2xl rounded-br-sm px-3 py-0.5',
+      assistant: 'text-foreground max-w-[85%]',
       system:
-        'bg-muted/50 text-muted-foreground text-center italic rounded-2xl px-4 py-3',
+        'bg-muted/50 text-muted-foreground text-center italic rounded-2xl px-4 py-3 max-w-[85%]',
     },
   },
   defaultVariants: {
@@ -54,38 +58,57 @@ export interface MessageProps
   role: MessageRole;
 }
 
-const MessageRoot = forwardRef<HTMLDivElement, MessageProps>(
-  ({ role, className, children, ...props }, ref) => {
-    return (
-      <MessageContext.Provider value={{ role }}>
-        <div
-          ref={ref}
-          className={cn(messageVariants({ role }), className)}
-          {...props}
-        >
-          {children}
-        </div>
-      </MessageContext.Provider>
-    );
-  }
+const MessageRoot = memo(
+  forwardRef<HTMLDivElement, MessageProps>(
+    ({ role, className, children, ...props }, ref) => {
+      // Memoize context value to prevent unnecessary re-renders
+      const contextValue = useMemo(() => ({ role }), [role]);
+
+      return (
+        <MessageContext.Provider value={contextValue}>
+          <div
+            ref={ref}
+            className={cn(messageVariants({ role }), className)}
+            {...props}
+          >
+            {children}
+          </div>
+        </MessageContext.Provider>
+      );
+    }
+  )
 );
 
 MessageRoot.displayName = 'Message';
 
 // Message Avatar
-type MessageAvatarProps = Omit<AvatarProps, 'size'>;
+interface MessageAvatarProps extends Omit<AvatarProps, 'size'> {
+  tooltip?: string;
+}
 
-const MessageAvatar = forwardRef<HTMLDivElement, MessageAvatarProps>(
-  ({ className, ...props }, ref) => {
-    return (
-      <Avatar
-        ref={ref}
-        size="md"
-        className={cn('flex-shrink-0', className)}
-        {...props}
-      />
-    );
-  }
+const MessageAvatar = memo(
+  forwardRef<HTMLDivElement, MessageAvatarProps>(
+    ({ className, tooltip, ...props }, ref) => {
+      const avatar = (
+        <Avatar
+          ref={ref}
+          size="md"
+          className={cn('flex-shrink-0', className)}
+          {...props}
+        />
+      );
+
+      if (tooltip) {
+        return (
+          <Tooltip content={tooltip} side="top">
+            {avatar}
+          </Tooltip>
+        );
+      }
+
+      return avatar;
+    }
+  )
 );
 
 MessageAvatar.displayName = 'MessageAvatar';
@@ -93,19 +116,21 @@ MessageAvatar.displayName = 'MessageAvatar';
 // Message Bubble
 type MessageBubbleProps = React.HTMLAttributes<HTMLDivElement>;
 
-const MessageBubble = forwardRef<HTMLDivElement, MessageBubbleProps>(
-  ({ className, children, ...props }, ref) => {
-    const { role } = useMessage();
-    return (
-      <div
-        ref={ref}
-        className={cn(bubbleVariants({ role }), className)}
-        {...props}
-      >
-        {children}
-      </div>
-    );
-  }
+const MessageBubble = memo(
+  forwardRef<HTMLDivElement, MessageBubbleProps>(
+    ({ className, children, ...props }, ref) => {
+      const { role } = useMessage();
+      return (
+        <div
+          ref={ref}
+          className={cn(bubbleVariants({ role }), className)}
+          {...props}
+        >
+          {children}
+        </div>
+      );
+    }
+  )
 );
 
 MessageBubble.displayName = 'MessageBubble';
@@ -113,21 +138,20 @@ MessageBubble.displayName = 'MessageBubble';
 // Message Actions
 type MessageActionsProps = React.HTMLAttributes<HTMLDivElement>;
 
-const MessageActions = forwardRef<HTMLDivElement, MessageActionsProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          'flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </div>
-    );
-  }
+const MessageActions = memo(
+  forwardRef<HTMLDivElement, MessageActionsProps>(
+    ({ className, children, ...props }, ref) => {
+      return (
+        <div
+          ref={ref}
+          className={cn('flex items-center gap-1', className)}
+          {...props}
+        >
+          {children}
+        </div>
+      );
+    }
+  )
 );
 
 MessageActions.displayName = 'MessageActions';

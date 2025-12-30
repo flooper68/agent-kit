@@ -1,7 +1,14 @@
-import { forwardRef, createContext, useContext, useState } from 'react';
+import {
+  forwardRef,
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+  useCallback,
+  memo,
+} from 'react';
 import { cn } from '../../../../lib/utils';
 import { Textarea } from '../../../Textarea';
-import { Button } from '../../../Button';
 
 interface ChatInputContextValue {
   value: string;
@@ -33,54 +40,66 @@ export interface ChatInputProps extends Omit<
   placeholder?: string;
 }
 
-const ChatInputRoot = forwardRef<HTMLFormElement, ChatInputProps>(
-  (
-    {
-      value: controlledValue,
-      onValueChange,
-      onSubmit,
-      isSubmitting = false,
-      className,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    const [uncontrolledValue, setUncontrolledValue] = useState('');
-    const value = controlledValue ?? uncontrolledValue;
-    const canSubmit = value.trim().length > 0 && !isSubmitting;
+const ChatInputRoot = memo(
+  forwardRef<HTMLFormElement, ChatInputProps>(
+    (
+      {
+        value: controlledValue,
+        onValueChange,
+        onSubmit,
+        isSubmitting = false,
+        className,
+        children,
+        ...props
+      },
+      ref
+    ) => {
+      const [uncontrolledValue, setUncontrolledValue] = useState('');
+      const value = controlledValue ?? uncontrolledValue;
+      const canSubmit = value.trim().length > 0 && !isSubmitting;
 
-    const setValue = (newValue: string) => {
-      setUncontrolledValue(newValue);
-      onValueChange?.(newValue);
-    };
+      const setValue = useCallback(
+        (newValue: string) => {
+          setUncontrolledValue(newValue);
+          onValueChange?.(newValue);
+        },
+        [onValueChange]
+      );
 
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (canSubmit) {
-        onSubmit?.(value);
-        setValue('');
-      }
-    };
+      const handleSubmit = useCallback(
+        (e: React.FormEvent) => {
+          e.preventDefault();
+          if (canSubmit) {
+            onSubmit?.(value);
+            setValue('');
+          }
+        },
+        [canSubmit, onSubmit, value, setValue]
+      );
 
-    return (
-      <ChatInputContext.Provider
-        value={{ value, setValue, isSubmitting, canSubmit }}
-      >
-        <form
-          ref={ref}
-          className={cn(
-            'flex flex-col gap-2 p-4 border-t bg-background',
-            className
-          )}
-          onSubmit={handleSubmit}
-          {...props}
-        >
-          {children}
-        </form>
-      </ChatInputContext.Provider>
-    );
-  }
+      // Memoize context value to prevent unnecessary re-renders
+      const contextValue = useMemo(
+        () => ({ value, setValue, isSubmitting, canSubmit }),
+        [value, setValue, isSubmitting, canSubmit]
+      );
+
+      return (
+        <ChatInputContext.Provider value={contextValue}>
+          <form
+            ref={ref}
+            className={cn(
+              'flex flex-col gap-2 p-4 border rounded-xl bg-background shadow-md',
+              className
+            )}
+            onSubmit={handleSubmit}
+            {...props}
+          >
+            {children}
+          </form>
+        </ChatInputContext.Provider>
+      );
+    }
+  )
 );
 
 ChatInputRoot.displayName = 'ChatInput';
@@ -91,93 +110,76 @@ type ChatInputTextareaProps = Omit<
   'value' | 'onChange'
 >;
 
-const ChatInputTextarea = forwardRef<
-  HTMLTextAreaElement,
-  ChatInputTextareaProps
->(({ className, onKeyDown, ...props }, ref) => {
-  const { value, setValue, canSubmit, isSubmitting } = useChatInput();
+const ChatInputTextarea = memo(
+  forwardRef<HTMLTextAreaElement, ChatInputTextareaProps>(
+    ({ className, onKeyDown, ...props }, ref) => {
+      const { value, setValue, canSubmit, isSubmitting } = useChatInput();
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && canSubmit) {
-      e.preventDefault();
-      e.currentTarget.form?.requestSubmit();
+      const handleKeyDown = useCallback(
+        (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+          if (e.key === 'Enter' && !e.shiftKey && canSubmit) {
+            e.preventDefault();
+            e.currentTarget.form?.requestSubmit();
+          }
+          onKeyDown?.(e);
+        },
+        [canSubmit, onKeyDown]
+      );
+
+      const handleChange = useCallback(
+        (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+          setValue(e.target.value);
+        },
+        [setValue]
+      );
+
+      return (
+        <Textarea
+          ref={ref}
+          value={value}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          disabled={isSubmitting}
+          autoResize
+          maxHeight={200}
+          className={cn(
+            'min-h-[44px] border-0 shadow-none focus-visible:ring-0 px-0',
+            className
+          )}
+          {...props}
+        />
+      );
     }
-    onKeyDown?.(e);
-  };
-
-  return (
-    <Textarea
-      ref={ref}
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onKeyDown={handleKeyDown}
-      disabled={isSubmitting}
-      autoResize
-      maxHeight={200}
-      className={cn('min-h-[44px]', className)}
-      {...props}
-    />
-  );
-});
+  )
+);
 
 ChatInputTextarea.displayName = 'ChatInputTextarea';
 
 // Actions container
 type ChatInputActionsProps = React.HTMLAttributes<HTMLDivElement>;
 
-const ChatInputActions = forwardRef<HTMLDivElement, ChatInputActionsProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        className={cn('flex items-center justify-between', className)}
-        {...props}
-      >
-        {children}
-      </div>
-    );
-  }
+const ChatInputActions = memo(
+  forwardRef<HTMLDivElement, ChatInputActionsProps>(
+    ({ className, children, ...props }, ref) => {
+      return (
+        <div
+          ref={ref}
+          className={cn('flex items-center justify-between', className)}
+          {...props}
+        >
+          {children}
+        </div>
+      );
+    }
+  )
 );
 
 ChatInputActions.displayName = 'ChatInputActions';
 
-// Send button
-type ChatInputSendButtonProps = Omit<
-  React.ComponentProps<typeof Button>,
-  'type'
->;
-
-const ChatInputSendButton = forwardRef<
-  HTMLButtonElement,
-  ChatInputSendButtonProps
->(({ className, children, disabled, ...props }, ref) => {
-  const { canSubmit, isSubmitting } = useChatInput();
-
-  return (
-    <Button
-      ref={ref}
-      type="submit"
-      disabled={disabled ?? !canSubmit}
-      isLoading={isSubmitting}
-      className={className}
-      {...props}
-    >
-      {children ?? 'Send'}
-    </Button>
-  );
-});
-
-ChatInputSendButton.displayName = 'ChatInputSendButton';
-
 export const ChatInput = Object.assign(ChatInputRoot, {
   Textarea: ChatInputTextarea,
   Actions: ChatInputActions,
-  SendButton: ChatInputSendButton,
 });
 
 export { useChatInput };
-export type {
-  ChatInputTextareaProps,
-  ChatInputActionsProps,
-  ChatInputSendButtonProps,
-};
+export type { ChatInputTextareaProps, ChatInputActionsProps };

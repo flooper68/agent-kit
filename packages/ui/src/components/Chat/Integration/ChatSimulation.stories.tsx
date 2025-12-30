@@ -6,7 +6,7 @@ import {
   Message,
   ChatInput,
   EmptyState,
-  ToolCallDisplay,
+  ToolBadge,
   ReasoningDisplay,
   CopyButton,
   RegenerateButton,
@@ -78,11 +78,7 @@ export const EmptyChat: Story = {
         onSuggestionClick={(s) => console.log('Suggestion clicked:', s.text)}
       />
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask Lovable..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask Lovable... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -119,11 +115,7 @@ export const SimpleConversation: Story = {
         ))}
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -162,11 +154,7 @@ export const ConversationWithCode: Story = {
         ))}
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -224,9 +212,9 @@ I should create a clean, modern design with good typography."
                 file yet. Let me create a simple page so you can see the color
                 changes in the preview:
               </p>
-              <ToolCallDisplay
-                invocation={createFileTool.completed}
-                result={createFileTool.completedResult}
+              <ToolBadge
+                toolName={createFileTool.completed.toolName}
+                state={createFileTool.completed.state}
               />
             </div>
           </Message.Bubble>
@@ -271,11 +259,7 @@ I should create a clean, modern design with good typography."
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -335,11 +319,7 @@ export const ConversationWithReasoning: Story = {
         ))}
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -392,38 +372,8 @@ I'll create a simple but functional implementation."
               <p>
                 I will create the todo app for you. Let me set up the files:
               </p>
-              <ToolCallDisplay
-                invocation={{
-                  id: '1',
-                  type: 'tool_invocation',
-                  toolName: 'create_file',
-                  toolCallId: 'call_1',
-                  args: { path: 'src/components/TodoApp.tsx' },
-                  state: 'completed',
-                }}
-                result={{
-                  id: '2',
-                  type: 'tool_result',
-                  toolCallId: 'call_1',
-                  result: { success: true, path: 'src/components/TodoApp.tsx' },
-                }}
-              />
-              <ToolCallDisplay
-                invocation={{
-                  id: '3',
-                  type: 'tool_invocation',
-                  toolName: 'create_file',
-                  toolCallId: 'call_2',
-                  args: { path: 'src/types/todo.ts' },
-                  state: 'completed',
-                }}
-                result={{
-                  id: '4',
-                  type: 'tool_result',
-                  toolCallId: 'call_2',
-                  result: { success: true, path: 'src/types/todo.ts' },
-                }}
-              />
+              <ToolBadge toolName="create_file" state="completed" />
+              <ToolBadge toolName="create_file" state="completed" />
             </div>
           </Message.Bubble>
         </Message>
@@ -436,9 +386,9 @@ I'll create a simple but functional implementation."
           />
           <Message.Bubble>
             <div className="space-y-3">
-              <ToolCallDisplay
-                invocation={reviewWorkTool.completed}
-                result={reviewWorkTool.completedResult}
+              <ToolBadge
+                toolName={reviewWorkTool.completed.toolName}
+                state={reviewWorkTool.completed.state}
               />
               <p>
                 Done! I have created a simple todo app with the following
@@ -475,11 +425,7 @@ I'll create a simple but functional implementation."
         </Message>
       </MessageList>
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask a follow-up..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask a follow-up... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -498,11 +444,7 @@ export const InteractiveTyping: Story = {
         onSuggestionClick={(s) => console.log('Suggestion clicked:', s.text)}
       />
       <ChatInput onSubmit={(v) => console.log('Submit:', v)}>
-        <ChatInput.Textarea placeholder="Ask Lovable..." />
-        <ChatInput.Actions>
-          <div />
-          <ChatInput.SendButton />
-        </ChatInput.Actions>
+        <ChatInput.Textarea placeholder="Ask Lovable... (Press Enter to send)" />
       </ChatInput>
     </ChatContainer>
   ),
@@ -510,7 +452,9 @@ export const InteractiveTyping: Story = {
     const canvas = within(canvasElement);
 
     await step('User types a message', async () => {
-      const textarea = canvas.getByPlaceholderText('Ask Lovable...');
+      const textarea = canvas.getByPlaceholderText(
+        'Ask Lovable... (Press Enter to send)'
+      );
       await userEvent.click(textarea);
       await userEvent.type(textarea, 'Create a landing page for my portfolio', {
         delay: 50,
