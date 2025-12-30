@@ -21,7 +21,11 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --build",
-    "clean": "rm -rf node_modules packages/*/node_modules apps/*/node_modules packages/*/dist apps/*/dist"
+    "clean": "rm -rf node_modules packages/*/node_modules apps/*/node_modules packages/*/dist apps/*/dist",
+    "db:generate": "bun run --cwd apps/server db:generate",
+    "db:migrate": "bun run --cwd apps/server db:migrate",
+    "db:push": "bun run --cwd apps/server db:push",
+    "db:studio": "bun run --cwd apps/server db:studio"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
