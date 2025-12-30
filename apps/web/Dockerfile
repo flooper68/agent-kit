@@ -15,7 +15,7 @@ RUN bun install --frozen-lockfile
 # Copy source code
 COPY packages/ui packages/ui
 COPY apps/web apps/web
-COPY tsconfig.json ./
+COPY tsconfig.json tsconfig.base.json ./
 COPY tailwind.config.ts postcss.config.js ./
 
 # Build UI first, then web
