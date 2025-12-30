@@ -14,9 +14,15 @@ const fastify = Fastify({
 });
 
 // Register CORS first (before other plugins)
-const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [
-  'http://localhost:5173',
-];
+const allowedOrigins = (
+  process.env.CORS_ORIGINS?.split(',') || ['http://localhost:5173']
+).map((origin) => {
+  const trimmed = origin.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+});
 fastify.register(corsPlugin, { allowedOrigins });
 
 fastify.register(redisPlugin);
