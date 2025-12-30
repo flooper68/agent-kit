@@ -33,5 +33,9 @@ export type {
   DialogFooterProps,
 } from './Dialog';
 
+// Theme
+export { ThemeToggle } from './ThemeToggle';
+export type { ThemeToggleProps } from './ThemeToggle';
+
 // Chat components
 export * from './Chat';
