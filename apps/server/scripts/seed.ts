@@ -1,5 +1,5 @@
-import { db } from './index';
-import { sessions } from './schema';
+import { db } from '../src/db';
+import { sessions } from '../src/db/schema';
 
 async function seed() {
   console.log('Seeding database...');

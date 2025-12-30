@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { runMigrations } from './migrate';
+import { runMigrations } from '../src/db/migrate';
 
 async function reset() {
   const connectionString = process.env.DATABASE_URL;

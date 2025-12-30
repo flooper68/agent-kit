@@ -10,8 +10,8 @@
     "db:migrate": "bun --env-file ../../.env drizzle-kit migrate",
     "db:push": "bun --env-file ../../.env drizzle-kit push",
     "db:studio": "bun --env-file ../../.env drizzle-kit studio",
-    "db:reset": "bun --env-file ../../.env src/db/reset.ts",
-    "db:seed": "bun --env-file ../../.env src/db/seed.ts"
+    "db:reset": "bun --env-file ../../.env scripts/reset.ts",
+    "db:seed": "bun --env-file ../../.env scripts/seed.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.1",
