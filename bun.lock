@@ -39,6 +39,34 @@
         "typescript": "5.7.2",
       },
     },
+    "apps/storybook": {
+      "name": "@agent-kit/storybook",
+      "version": "0.0.1",
+      "dependencies": {
+        "@agent-kit/ui": "workspace:*",
+        "react": "18.3.1",
+        "react-dom": "18.3.1",
+      },
+      "devDependencies": {
+        "@storybook/addon-essentials": "8.4.7",
+        "@storybook/addon-interactions": "8.4.7",
+        "@storybook/addon-links": "8.4.7",
+        "@storybook/addon-themes": "8.4.7",
+        "@storybook/blocks": "8.4.7",
+        "@storybook/react": "8.4.7",
+        "@storybook/react-vite": "8.4.7",
+        "@tailwindcss/typography": "0.5.19",
+        "@types/react": "18.3.18",
+        "@types/react-dom": "18.3.5",
+        "@vitejs/plugin-react": "4.3.4",
+        "autoprefixer": "10.4.23",
+        "postcss": "8.5.6",
+        "storybook": "8.4.7",
+        "tailwindcss": "3.4.17",
+        "typescript": "5.7.2",
+        "vite": "5.4.0",
+      },
+    },
     "apps/web": {
       "name": "@agent-kit/web",
       "version": "0.0.1",
@@ -70,13 +98,6 @@
         "tailwind-merge": "3.4.0",
       },
       "devDependencies": {
-        "@storybook/addon-essentials": "8.4.7",
-        "@storybook/addon-interactions": "8.4.7",
-        "@storybook/addon-links": "8.4.7",
-        "@storybook/addon-themes": "8.4.7",
-        "@storybook/blocks": "8.4.7",
-        "@storybook/react": "8.4.7",
-        "@storybook/react-vite": "8.4.7",
         "@tailwindcss/typography": "0.5.19",
         "@types/react": "18.3.18",
         "@types/react-dom": "18.3.5",
@@ -86,7 +107,6 @@
         "postcss": "8.5.6",
         "react": "18.3.1",
         "react-dom": "18.3.1",
-        "storybook": "8.4.7",
         "tailwindcss": "3.4.17",
         "typescript": "5.7.2",
         "vite": "5.4.0",
@@ -102,6 +122,8 @@
     "@adobe/css-tools": ["@adobe/css-tools@4.4.4", "", {}, "sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg=="],
 
     "@agent-kit/server": ["@agent-kit/server@workspace:apps/server"],
+
+    "@agent-kit/storybook": ["@agent-kit/storybook@workspace:apps/storybook"],
 
     "@agent-kit/ui": ["@agent-kit/ui@workspace:packages/ui"],
 

@@ -78,7 +78,12 @@ export const ModelSwitcher = forwardRef<HTMLDivElement, ModelSwitcherProps>(
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">{model.name}</div>
                       {model.description && (
-                        <Text as="div" size="13" variant="muted" className="truncate">
+                        <Text
+                          as="div"
+                          size="13"
+                          variant="muted"
+                          className="truncate"
+                        >
                           {model.description}
                         </Text>
                       )}

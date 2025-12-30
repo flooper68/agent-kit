@@ -72,11 +72,8 @@ bun run --cwd packages/ui build
 ### Branch Naming
 
 - **Branch**: `feat/<description>` (e.g., `feat/add-login`)
-- **Worktree path**: `.worktrees/feat-<description>`
 
 ### Development
-
-Work entirely within the worktree directory. Main repo stays on `main`.
 
 ### Before Pushing
 

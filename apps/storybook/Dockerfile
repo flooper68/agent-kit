@@ -1,0 +1,34 @@
+# Build context should be the repo root
+# Build stage
+FROM oven/bun:1 AS builder
+
+WORKDIR /app
+
+# Copy everything (respects .dockerignore)
+COPY . .
+
+# Install dependencies
+RUN bun install --frozen-lockfile
+
+# Build UI first, then storybook
+RUN bun run build:ui && bun run build:storybook
+
+# Production stage - serve static files
+FROM nginx:alpine
+
+# Copy built files to nginx
+COPY --from=builder /app/apps/storybook/dist /usr/share/nginx/html
+
+# Configure nginx for SPA routing
+RUN echo 'server { \
+    listen 80; \
+    location / { \
+        root /usr/share/nginx/html; \
+        index index.html; \
+        try_files $uri $uri/ /index.html; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
