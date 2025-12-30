@@ -17,6 +17,7 @@ coverage/
 test-results/
 playwright-report/
 playwright/.cache/
+.playwright-mcp/
 
 # IDE
 .idea/
@@ -56,9 +57,6 @@ debug.log
 *.local
 *.tmp
 *.temp
-
-# Claude Code
-.claude/
 
 # Git Worktrees
 .worktrees/

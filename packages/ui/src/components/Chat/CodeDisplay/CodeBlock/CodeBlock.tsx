@@ -31,14 +31,14 @@ export const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(
       <div
         ref={ref}
         className={cn(
-          'rounded-lg border bg-zinc-950 text-zinc-50 overflow-hidden',
+          'rounded-lg border border-code-border bg-code text-code-foreground overflow-hidden',
           className
         )}
         {...props}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900">
-          <div className="flex items-center gap-2 text-sm text-zinc-400">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-code-border bg-code-header">
+          <div className="flex items-center gap-2 text-sm text-code-line-number">
             {filename && <span className="font-mono">{filename}</span>}
             {!filename && language !== 'plaintext' && (
               <span className="font-mono">{language}</span>
@@ -46,7 +46,7 @@ export const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(
           </div>
           <CopyButton
             content={code}
-            className="text-zinc-400 hover:text-zinc-100"
+            className="text-code-copy-button hover:text-code-copy-button-hover"
           />
         </div>
 
@@ -58,7 +58,7 @@ export const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(
                 <tbody>
                   {lines.map((line, i) => (
                     <tr key={i}>
-                      <td className="pr-4 text-zinc-500 select-none text-right w-8">
+                      <td className="pr-4 text-code-line-number select-none text-right w-8">
                         {i + 1}
                       </td>
                       <td className="whitespace-pre">{line || ' '}</td>

@@ -40,6 +40,15 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        code: {
+          DEFAULT: 'hsl(var(--code-background))',
+          foreground: 'hsl(var(--code-foreground))',
+          header: 'hsl(var(--code-header))',
+          border: 'hsl(var(--code-border))',
+          'line-number': 'hsl(var(--code-line-number))',
+          'copy-button': 'hsl(var(--code-copy-button))',
+          'copy-button-hover': 'hsl(var(--code-copy-button-hover))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',
