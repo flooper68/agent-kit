@@ -59,7 +59,11 @@ export const ReasoningDisplay = forwardRef<
 
           <Collapsible.Content>
             <div className="px-3 py-2 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20">
-              <Text size="13" variant="muted" className="whitespace-pre-wrap italic">
+              <Text
+                size="13"
+                variant="muted"
+                className="whitespace-pre-wrap italic"
+              >
                 {content}
               </Text>
             </div>
