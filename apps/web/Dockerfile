@@ -4,19 +4,11 @@ FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
-# Copy package files (all packages needed for lockfile integrity)
-COPY package.json bun.lock ./
-COPY packages/ui/package.json packages/ui/
-COPY apps/web/package.json apps/web/
-COPY apps/server/package.json apps/server/
+# Copy everything (respects .dockerignore)
+COPY . .
 
 # Install dependencies
 RUN bun install --frozen-lockfile
-
-# Copy source code
-COPY packages/ui packages/ui
-COPY apps/web apps/web
-COPY tsconfig.json tsconfig.base.json ./
 
 # Build UI first, then web
 RUN bun run build:ui && bun run build:web
