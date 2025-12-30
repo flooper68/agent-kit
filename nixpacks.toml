@@ -1,3 +1,6 @@
+# Disable providers to prevent auto-detection overriding our commands
+providers = []
+
 [phases.setup]
 nixPkgs = ["nodejs_22", "bun"]
 
