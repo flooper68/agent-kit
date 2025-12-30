@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+storybook-static/
+*.tsbuildinfo
+
+# Bun
+bun.lockb
+
+# Test & Coverage
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+.directory
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+debug.log
+
+# Cache
+.cache/
+.parcel-cache/
+.turbo/
+.eslintcache
+.prettiercache
+
+# Misc
+*.local
+*.tmp
+*.temp
+
+# Claude Code
+.claude/
