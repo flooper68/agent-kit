@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import { cn } from '../../../lib/utils';
 import { Dialog } from '../../Dialog';
-import { ToolBadge } from '../ToolBadge';
+import { ToolBadge } from '../ToolDisplay/ToolBadge';
 import { Button } from '../../Button';
 import type { ToolInvocationPart, ToolResultPart } from '../../../types/chat';
 
