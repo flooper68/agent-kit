@@ -19,7 +19,7 @@ import { Tooltip } from '../Tooltip';
 import { AgentPanel } from '../Chat/AgentPanel';
 import type { AgentPanelRef } from '../Chat/AgentPanel/types';
 import { MockChatService } from '../Chat/AgentPanel/mocks/MockChatService';
-import { TaskHistorySidebar } from '../Chat/Sidebar/ChatHistorySidebar';
+import { TaskHistorySidebar } from '../Chat/Sidebar/TaskHistorySidebar';
 import type {
   TaskMessage,
   TaskStatus,
