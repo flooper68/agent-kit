@@ -2,7 +2,8 @@ import { forwardRef, memo } from 'react';
 import { cn } from '../../../lib/utils';
 
 // This is a base wrapper - consumers should integrate with react-markdown
-export interface MarkdownRendererProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface MarkdownRendererProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   content: string;
 }
 

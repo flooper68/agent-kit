@@ -131,9 +131,8 @@ const contentVariants = cva(
   }
 );
 
-export interface DialogContentProps extends VariantProps<
-  typeof contentVariants
-> {
+export interface DialogContentProps
+  extends VariantProps<typeof contentVariants> {
   children: React.ReactNode;
   showOverlay?: boolean;
   onEscapeKeyDown?: (event: KeyboardEvent) => void;

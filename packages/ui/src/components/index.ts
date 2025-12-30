@@ -40,5 +40,23 @@ export type { TooltipProps } from './Tooltip';
 export { ThemeToggle } from './ThemeToggle';
 export type { ThemeToggleProps } from './ThemeToggle';
 
+// Typography
+export {
+  Heading,
+  headingVariants,
+  Text,
+  textVariants,
+  Label,
+  labelVariants,
+  Code,
+  codeVariants,
+} from './Typography';
+export type {
+  HeadingProps,
+  TextProps,
+  LabelProps,
+  CodeProps,
+} from './Typography';
+
 // Chat components
 export * from './Chat';

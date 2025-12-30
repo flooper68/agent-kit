@@ -4,10 +4,8 @@ import { cn } from '../../lib/utils';
 import { useTheme, type Theme } from '../../theme';
 import { IconButton, type IconButtonProps } from '../IconButton';
 
-export interface ThemeToggleProps extends Omit<
-  IconButtonProps,
-  'icon' | 'label'
-> {
+export interface ThemeToggleProps
+  extends Omit<IconButtonProps, 'icon' | 'label'> {
   showSystemOption?: boolean;
 }
 
