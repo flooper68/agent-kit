@@ -36,6 +36,12 @@ export type {
 export { Tooltip } from './Tooltip';
 export type { TooltipProps } from './Tooltip';
 
+export { StatusIndicator } from './StatusIndicator';
+export type { StatusIndicatorProps, StatusType } from './StatusIndicator';
+
+export { NavigationTabs } from './NavigationTabs';
+export type { NavigationTabsProps, NavigationTab } from './NavigationTabs';
+
 // Theme
 export { ThemeToggle } from './ThemeToggle';
 export type { ThemeToggleProps } from './ThemeToggle';
@@ -60,3 +66,17 @@ export type {
 
 // Chat components
 export * from './Chat';
+
+// Layout
+export { AppLayout, useAppLayout } from './AppLayout';
+export type {
+  AppLayoutProps,
+  AppLayoutRef,
+  AppLayoutContextValue,
+  HeaderSlots,
+  MainMenuConfig,
+  MoreMenuConfig,
+  PanelConfig,
+  MenuItem,
+  MenuSection,
+} from './AppLayout';
