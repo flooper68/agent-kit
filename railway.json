@@ -2,7 +2,14 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "bun run build:ui && bun run build:web"
+    "buildCommand": "bun run build:ui && bun run build:web",
+    "nixpacksPlan": {
+      "phases": {
+        "setup": {
+          "nixPkgs": ["nodejs_22", "bun"]
+        }
+      }
+    }
   },
   "deploy": {
     "startCommand": "bunx serve apps/web/dist -s -l 3000",
