@@ -1,3 +1,4 @@
+# Build context should be the repo root
 # Build stage
 FROM oven/bun:1 AS builder
 
