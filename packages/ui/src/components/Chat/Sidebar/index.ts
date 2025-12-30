@@ -1,8 +1,8 @@
 export {
-  ChatHistorySidebar,
-  ChatHistoryItemComponent,
-} from './ChatHistorySidebar';
+  TaskHistorySidebar,
+  TaskHistoryItemComponent,
+} from './TaskHistorySidebar';
 export type {
-  ChatHistorySidebarProps,
-  ChatHistoryItemProps,
-} from './ChatHistorySidebar';
+  TaskHistorySidebarProps,
+  TaskHistoryItemProps,
+} from './TaskHistorySidebar';

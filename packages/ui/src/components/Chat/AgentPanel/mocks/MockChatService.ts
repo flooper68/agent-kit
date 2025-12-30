@@ -1,6 +1,6 @@
 import type {
-  ChatMessage,
-  ChatStatus,
+  TaskMessage,
+  TaskStatus,
   ThinkingStatus,
   MessagePart,
   TextPart,
@@ -13,7 +13,7 @@ import {
   createReasoningPart,
   createToolInvocationPart,
 } from '../../Integration/mocks/messages';
-import type { ChatError } from '../types';
+import type { TaskError } from '../types';
 import {
   type MockScenario,
   type MockToolConfig,
@@ -38,11 +38,11 @@ export interface MockChatServiceConfig {
  * Event callbacks for the mock service
  */
 export interface MockChatServiceCallbacks {
-  onStatusChange: (status: ChatStatus) => void;
-  onMessageAdd: (message: ChatMessage) => void;
-  onMessageUpdate: (messageId: string, updates: Partial<ChatMessage>) => void;
+  onStatusChange: (status: TaskStatus) => void;
+  onMessageAdd: (message: TaskMessage) => void;
+  onMessageUpdate: (messageId: string, updates: Partial<TaskMessage>) => void;
   onThinkingStatusChange: (status: ThinkingStatus) => void;
-  onError: (error: ChatError) => void;
+  onError: (error: TaskError) => void;
 }
 
 /**
@@ -59,7 +59,7 @@ export class MockChatService {
   private callbacks: MockChatServiceCallbacks;
   private scenarios: MockScenario[];
   private abortController: AbortController | null = null;
-  private messages: ChatMessage[] = [];
+  private messages: TaskMessage[] = [];
 
   constructor(
     callbacks: MockChatServiceCallbacks,
@@ -111,7 +111,7 @@ export class MockChatService {
     // Handle error scenarios
     if (scenario?.error) {
       this.callbacks.onError({
-        type: scenario.error.type as ChatError['type'],
+        type: scenario.error.type as TaskError['type'],
         message: scenario.error.message,
         retryable: true,
       });
@@ -197,7 +197,7 @@ export class MockChatService {
   /**
    * Get current messages
    */
-  getMessages(): ChatMessage[] {
+  getMessages(): TaskMessage[] {
     return [...this.messages];
   }
 

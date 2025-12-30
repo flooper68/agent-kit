@@ -1,15 +1,17 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
+import { Bot, Code } from 'lucide-react';
 import { AgentPanel } from './AgentPanel';
 import type { AgentPanelRef } from './types';
 import { MockChatService } from './mocks/MockChatService';
 import type {
-  ChatMessage,
-  ChatStatus,
+  AgentType,
+  TaskMessage,
+  TaskStatus,
   SuggestionChip,
   ThinkingStatus,
 } from '../../../types/chat';
-import type { ChatError } from './types';
+import type { TaskError } from './types';
 import {
   createMessage,
   createTextPart,
@@ -113,9 +115,9 @@ export const Empty: Story = {
 // ============================================
 
 const InteractiveDemoComponent = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [status, setStatus] = useState<ChatStatus>('ready');
-  const [error, setError] = useState<ChatError | null>(null);
+  const [messages, setMessages] = useState<TaskMessage[]>([]);
+  const [status, setStatus] = useState<TaskStatus>('ready');
+  const [error, setError] = useState<TaskError | null>(null);
   const [thinkingStatus, setThinkingStatus] = useState<ThinkingStatus>({
     isThinking: false,
   });
@@ -216,7 +218,7 @@ const LiveUpdatesComponent = () => {
     'This is a response that appears word by word to simulate real AI generation. Each word is revealed sequentially to create a natural typing effect.';
 
   // Track messages with live updates
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
+  const [messages, setMessages] = useState<TaskMessage[]>(() => [
     createMessage('user', [createTextPart('Hello!')]),
     createMessage('assistant', [createTextPart('')]),
   ]);
@@ -658,4 +660,106 @@ export const Thinking: Story = {
       onSend={() => {}}
     />
   ),
+};
+
+// ============================================
+// 9. Agent Selection
+// ============================================
+
+const defaultAgentTypes: AgentType[] = [
+  {
+    id: 'general',
+    name: 'General Assistant',
+    description: 'Helpful for everyday tasks and questions',
+    icon: <Bot className="h-5 w-5" />,
+  },
+  {
+    id: 'code',
+    name: 'Code Expert',
+    description: 'Specialized in programming and debugging',
+    icon: <Code className="h-5 w-5" />,
+  },
+];
+
+const WithAgentSelectionComponent = () => {
+  const [selectedAgent, setSelectedAgent] = useState<AgentType | undefined>(
+    defaultAgentTypes[0]
+  );
+
+  return (
+    <AgentPanel
+      messages={[]}
+      status="ready"
+      suggestions={defaultSuggestions}
+      emptyStateConfig={{
+        title: 'Choose an agent to get started',
+        description: 'Select the type of assistant that best fits your needs',
+      }}
+      avatars={defaultAvatars}
+      models={defaultModels}
+      agents={defaultAgentTypes}
+      selectedAgent={selectedAgent}
+      onAgentSelect={(agent) => {
+        console.log('Agent selected:', agent);
+        setSelectedAgent(agent);
+      }}
+      onSend={(msg) => console.log('Send:', msg)}
+    />
+  );
+};
+
+export const WithAgentSelection: Story = {
+  render: () => <WithAgentSelectionComponent />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Shows agent type selection in the empty state. Users can choose between different agent types before starting a conversation.',
+      },
+    },
+  },
+};
+
+// ============================================
+// 10. With Messages + Agent Info Badge
+// ============================================
+
+const WithAgentInfoBadgeComponent = () => {
+  const [selectedAgent] = useState<AgentType>(defaultAgentTypes[1]!); // Code Expert
+
+  return (
+    <AgentPanel
+      messages={[
+        createMessage('user', [
+          createTextPart('Help me refactor this function'),
+        ]),
+        createMessage('assistant', [
+          createReasoningPart(
+            'Looking at the function, I can see several opportunities for improvement...',
+            true
+          ),
+          createTextPart(
+            "I've analyzed your function. Here are my suggestions for refactoring:\n\n1. Extract common logic into a helper\n2. Use more descriptive variable names\n3. Add proper TypeScript types"
+          ),
+        ]),
+      ]}
+      status="ready"
+      avatars={defaultAvatars}
+      models={defaultModels}
+      selectedAgent={selectedAgent}
+      onSend={(msg) => console.log('Send:', msg)}
+    />
+  );
+};
+
+export const WithAgentInfoBadge: Story = {
+  render: () => <WithAgentInfoBadgeComponent />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Shows the agent info badge above the message list when a conversation is active. Click the info button to see agent details.',
+      },
+    },
+  },
 };

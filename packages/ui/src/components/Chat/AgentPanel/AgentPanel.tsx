@@ -7,7 +7,7 @@ import {
 } from 'react';
 import { cn } from '../../../lib/utils';
 import type {
-  ChatMessage,
+  TaskMessage,
   MessagePart,
   TextPart,
   ToolInvocationPart,
@@ -31,12 +31,14 @@ import { CopyButton, RegenerateButton } from '../Controls';
 import { AttachmentButton } from '../Controls/AttachmentButton';
 import { ModelSwitcher } from '../Controls/ModelSwitcher';
 import { ContextIndicator } from '../Controls/ContextIndicator';
+import { AgentSelector } from '../Controls/AgentSelector';
+import { AgentInfoBadge } from '../Controls/AgentInfoBadge';
 import type { AgentPanelProps, AgentPanelRef } from './types';
 
 /**
  * Get text content from a message for copying
  */
-function getTextContent(message: ChatMessage): string {
+function getTextContent(message: TaskMessage): string {
   return message.parts
     .filter((p): p is TextPart => p.type === 'text')
     .map((p) => p.content)
@@ -95,6 +97,9 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
       onErrorDismiss,
       onModelChange,
       onAttach,
+      onAgentSelect,
+      agents,
+      selectedAgent,
     },
     ref
   ) => {
@@ -142,7 +147,7 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
     // Find matching tool result for a tool invocation
     const findToolResult = useCallback(
       (
-        message: ChatMessage,
+        message: TaskMessage,
         toolCallId: string
       ): ToolResultPart | undefined => {
         return message.parts.find(
@@ -155,7 +160,7 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
 
     // Render individual message part (memoized)
     const renderPart = useCallback(
-      (part: MessagePart, index: number, message: ChatMessage) => {
+      (part: MessagePart, index: number, message: TaskMessage) => {
         switch (part.type) {
           case 'text': {
             const textPart = part as TextPart;
@@ -211,7 +216,7 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
 
     // Render message content (memoized)
     const renderMessageContent = useCallback(
-      (message: ChatMessage) => {
+      (message: TaskMessage) => {
         return (
           <div className="space-y-2">
             {message.parts.map((part, index) =>
@@ -225,7 +230,7 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
 
     // Render a single message (memoized)
     const renderMessage = useCallback(
-      (message: ChatMessage) => {
+      (message: TaskMessage) => {
         const avatar = getAvatar(message.role as 'user' | 'assistant');
         const isUser = message.role === 'user';
 
@@ -329,13 +334,24 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
             suggestions={suggestions}
             onSuggestionClick={onSuggestionClick}
             inputElement={
-              <ChatInput isSubmitting={isSubmitting} onSubmit={handleSubmit}>
-                <ChatInput.Textarea
-                  ref={inputRef}
-                  placeholder={inputPlaceholder}
-                />
-                <ChatInput.Actions>{renderInputActions()}</ChatInput.Actions>
-              </ChatInput>
+              <div className="space-y-4">
+                <div className="flex justify-center">
+                  <AgentSelector
+                    agents={agents ?? []}
+                    selectedAgent={selectedAgent}
+                    onSelect={onAgentSelect}
+                    placeholder="Select an agent..."
+                    className="w-full max-w-md"
+                  />
+                </div>
+                <ChatInput isSubmitting={isSubmitting} onSubmit={handleSubmit}>
+                  <ChatInput.Textarea
+                    ref={inputRef}
+                    placeholder={inputPlaceholder}
+                  />
+                  <ChatInput.Actions>{renderInputActions()}</ChatInput.Actions>
+                </ChatInput>
+              </div>
             }
           />
         ) : (
@@ -391,7 +407,10 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
                 ref={inputRef}
                 placeholder={inputPlaceholder}
               />
-              <ChatInput.Actions>{renderInputActions()}</ChatInput.Actions>
+              <ChatInput.Actions>
+                {renderInputActions()}
+                {selectedAgent && <AgentInfoBadge agent={selectedAgent} />}
+              </ChatInput.Actions>
             </ChatInput>
           </div>
         )}

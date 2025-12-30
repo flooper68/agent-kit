@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 // Message roles
 export type MessageRole = 'user' | 'assistant' | 'system';
 
@@ -11,8 +13,8 @@ export type AIProvider =
   | 'meta'
   | 'unknown';
 
-// Chat status states
-export type ChatStatus = 'ready' | 'submitted' | 'streaming' | 'error';
+// Task status states
+export type TaskStatus = 'ready' | 'submitted' | 'streaming' | 'error';
 
 // Message part types (following AI SDK patterns)
 export type MessagePartType =
@@ -87,7 +89,7 @@ export type MessagePart =
   | FilePart;
 
 // Main message interface
-export interface ChatMessage {
+export interface TaskMessage {
   id: string;
   role: MessageRole;
   parts: MessagePart[];
@@ -141,11 +143,19 @@ export interface SuggestionChip {
   prompt?: string;
 }
 
-// Chat history item for sidebar
-export interface ChatHistoryItem {
+// Task history item for sidebar
+export interface TaskHistoryItem {
   id: string;
   title: string;
   preview?: string;
   createdAt: Date;
   updatedAt?: Date;
+}
+
+// Agent type for selection
+export interface AgentType {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: ReactNode;
 }

@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { ChatHistorySidebar } from './ChatHistorySidebar';
+import { TaskHistorySidebar } from './TaskHistorySidebar';
 import { Button } from '../../../Button';
-import type { ChatHistoryItem } from '../../../../types/chat';
+import type { TaskHistoryItem } from '../../../../types/chat';
 
-const createChat = (
+const createTask = (
   id: string,
   title: string,
   daysAgo: number,
   preview?: string
-): ChatHistoryItem => {
+): TaskHistoryItem => {
   const date = new Date();
   date.setDate(date.getDate() - daysAgo);
   return {
@@ -21,32 +21,32 @@ const createChat = (
   };
 };
 
-const sampleChats: ChatHistoryItem[] = [
-  createChat(
+const sampleTasks: TaskHistoryItem[] = [
+  createTask(
     '1',
     'Help with React hooks',
     0,
     'Can you explain useEffect cleanup functions?'
   ),
-  createChat(
+  createTask(
     '2',
     'TypeScript generics',
     1,
     'I need help understanding generic constraints'
   ),
-  createChat(
+  createTask(
     '3',
     'API design patterns',
     2,
     'What are best practices for REST API design?'
   ),
-  createChat(
+  createTask(
     '4',
     'Database optimization',
     5,
     'How can I improve my PostgreSQL query performance?'
   ),
-  createChat(
+  createTask(
     '5',
     'Testing strategies',
     8,
@@ -54,9 +54,9 @@ const sampleChats: ChatHistoryItem[] = [
   ),
 ];
 
-const meta: Meta<typeof ChatHistorySidebar> = {
-  title: 'Chat/ChatHistorySidebar',
-  component: ChatHistorySidebar,
+const meta: Meta<typeof TaskHistorySidebar> = {
+  title: 'Chat/TaskHistorySidebar',
+  component: TaskHistorySidebar,
   tags: ['autodocs'],
   parameters: {
     layout: 'centered',
@@ -64,33 +64,33 @@ const meta: Meta<typeof ChatHistorySidebar> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof ChatHistorySidebar>;
+type Story = StoryObj<typeof TaskHistorySidebar>;
 
 // Interactive wrapper
 const SidebarWrapper = ({
-  chats = sampleChats,
-  selectedChatId,
+  tasks = sampleTasks,
+  selectedTaskId,
 }: {
-  chats?: ChatHistoryItem[];
-  selectedChatId?: string;
+  tasks?: TaskHistoryItem[];
+  selectedTaskId?: string;
 }) => {
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState(selectedChatId);
+  const [selected, setSelected] = useState(selectedTaskId);
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>Open Chat History</Button>
-      <ChatHistorySidebar
+      <Button onClick={() => setOpen(true)}>Open Task History</Button>
+      <TaskHistorySidebar
         open={open}
         onOpenChange={setOpen}
-        chats={chats}
-        selectedChatId={selected}
-        onChatSelect={(id) => {
+        tasks={tasks}
+        selectedTaskId={selected}
+        onTaskSelect={(id) => {
           setSelected(id);
           console.log('Selected:', id);
         }}
-        onChatDelete={(id) => console.log('Delete:', id)}
-        onNewChat={() => console.log('New chat')}
+        onTaskDelete={(id) => console.log('Delete:', id)}
+        onNewTask={() => console.log('New task')}
       />
     </>
   );
@@ -101,22 +101,22 @@ export const Default: Story = {
 };
 
 export const WithSelection: Story = {
-  render: () => <SidebarWrapper selectedChatId="2" />,
+  render: () => <SidebarWrapper selectedTaskId="2" />,
 };
 
 export const Empty: Story = {
-  render: () => <SidebarWrapper chats={[]} />,
+  render: () => <SidebarWrapper tasks={[]} />,
 };
 
-export const ManyChats: Story = {
+export const ManyTasks: Story = {
   render: () => (
     <SidebarWrapper
-      chats={Array.from({ length: 20 }, (_, i) =>
-        createChat(
-          `chat-${i + 1}`,
-          `Chat conversation ${i + 1}`,
+      tasks={Array.from({ length: 20 }, (_, i) =>
+        createTask(
+          `task-${i + 1}`,
+          `Task conversation ${i + 1}`,
           i,
-          `This is a preview of chat ${i + 1} with some sample content...`
+          `This is a preview of task ${i + 1} with some sample content...`
         )
       )}
     />
@@ -126,16 +126,16 @@ export const ManyChats: Story = {
 export const LongTitles: Story = {
   render: () => (
     <SidebarWrapper
-      chats={[
-        createChat(
+      tasks={[
+        createTask(
           '1',
-          'This is a very long chat title that should be truncated properly',
+          'This is a very long task title that should be truncated properly',
           0,
           'Preview text'
         ),
-        createChat(
+        createTask(
           '2',
-          'Another extremely long title for a chat conversation',
+          'Another extremely long title for a task conversation',
           1,
           'More preview text here'
         ),
