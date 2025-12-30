@@ -9,7 +9,8 @@ ARG VITE_SERVER_URL
 ENV VITE_SERVER_URL=$VITE_SERVER_URL
 
 # Validate required environment variables
-RUN if [ -z "$VITE_SERVER_URL" ]; then echo "Error: VITE_SERVER_URL is required" && exit 1; fi
+RUN if [ -z "$VITE_SERVER_URL" ]; then echo "Error: VITE_SERVER_URL is required" && exit 1; fi && \
+    if ! echo "$VITE_SERVER_URL" | grep -qE "^https?://"; then echo "Error: VITE_SERVER_URL must start with http:// or https://" && exit 1; fi
 
 # Copy everything (respects .dockerignore)
 COPY . .
