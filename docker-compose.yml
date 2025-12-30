@@ -1,0 +1,26 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    ports:
+      - '${PORT:-3000}:${PORT:-3000}'
+    environment:
+      - PORT=${PORT:-3000}
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--no-verbose',
+          '--tries=1',
+          '--spider',
+          'http://localhost:${PORT:-3000}/health',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
