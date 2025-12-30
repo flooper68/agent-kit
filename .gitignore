@@ -59,3 +59,6 @@ debug.log
 
 # Claude Code
 .claude/
+
+# Git Worktrees
+.worktrees/

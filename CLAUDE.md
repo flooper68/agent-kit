@@ -69,60 +69,57 @@ bun run --cwd packages/ui build
 
 **IMPORTANT**: Always follow this workflow when making code changes.
 
-### Branch Strategy
+### Session Start - Create Worktree
 
-- **Never commit directly to main** - Always create a feature branch
-- **Branch naming**: `feat/<description>` (e.g., `feat/add-login`, `feat/improve-performance`)
+At the start of each task, create a new worktree:
+
+```bash
+# From main repo, create worktree with new branch
+git worktree add .worktrees/feat-<description> -b feat/<description>
+cd .worktrees/feat-<description>
+bun install
+```
+
+### Branch Naming
+
+- **Branch**: `feat/<description>` (e.g., `feat/add-login`)
+- **Worktree path**: `.worktrees/feat-<description>`
+
+### Development
+
+Work entirely within the worktree directory. Main repo stays on `main`.
 
 ### Before Pushing
 
-Run all quality checks before pushing to ensure clean PRs:
+Run all quality checks:
 
 ```bash
-bun run lint          # Check for lint errors
-bun run format:check  # Verify formatting
-bun run typecheck     # TypeScript type checking
-bun run build         # Build all packages
+bun run lint && bun run format:check && bun run typecheck && bun run build
 ```
 
 All checks must pass before pushing.
 
-### Creating/Updating PRs
+### Commit, Push, and PR
 
-When a logical unit of work is complete:
+```bash
+git add .
+git commit -m "feat: description of changes"
+git push -u origin feat/<description>
+gh pr create --fill
+```
 
-1. **Create branch** (if not already on a feature branch):
+### Cleanup (After PR Merged)
 
-   ```bash
-   git checkout -b feat/<description>
-   ```
+After the PR is merged, ask the user if they want to clean up:
 
-2. **Run quality checks** (all must pass):
+```bash
+# Return to main repo
+cd /path/to/agent-kit
 
-   ```bash
-   bun run lint && bun run format:check && bun run typecheck && bun run build
-   ```
-
-3. **Commit and push**:
-
-   ```bash
-   git add .
-   git commit -m "feat: description of changes"
-   git push -u origin feat/<description>
-   ```
-
-4. **Create or update PR**:
-
-   ```bash
-   # Check if PR exists
-   gh pr view
-
-   # If no PR exists, create one
-   gh pr create --fill
-
-   # If PR exists, push updates (PR auto-updates)
-   git push
-   ```
+# Remove worktree and branch
+git worktree remove .worktrees/feat-<description>
+git branch -d feat/<description>
+```
 
 ### Commit Messages
 
@@ -137,5 +134,4 @@ Use conventional commit format:
 
 **Do NOT include**:
 
-- "🤖 Generated with Claude Code" or similar footers
-- "Co-Authored-By: Claude" or any AI co-author attribution
+- AI attribution footers or co-author lines
