@@ -108,6 +108,14 @@ git push -u origin feat/<description>
 gh pr create --fill
 ```
 
+### Merging PRs
+
+Always use **squash merge** for PRs:
+
+```bash
+gh pr merge --squash
+```
+
 ### Cleanup (After PR Merged)
 
 After the PR is merged, ask the user if they want to clean up:

@@ -1,8 +1,14 @@
 import Fastify from 'fastify';
+import { runMigrations } from './db/migrate';
+import redisPlugin from './plugins/redis';
+import pubsubTestRoutes from './routes/pubsub-test';
 
 const fastify = Fastify({
   logger: true,
 });
+
+fastify.register(redisPlugin);
+fastify.register(pubsubTestRoutes, { prefix: '/api' });
 
 fastify.get('/', async () => {
   return { message: 'Hello World!' };
@@ -14,6 +20,9 @@ fastify.get('/health', async () => {
 
 const start = async () => {
   try {
+    // Run database migrations
+    await runMigrations();
+
     const port = Number(process.env.PORT) || 3000;
     const host = process.env.HOST || '0.0.0.0';
 
