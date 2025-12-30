@@ -13,17 +13,8 @@ const fastify = Fastify({
   logger: true,
 });
 
-// Register CORS first (before other plugins)
-const allowedOrigins = (
-  process.env.CORS_ORIGINS?.split(',') || ['http://localhost:5173']
-).map((origin) => {
-  const trimmed = origin.trim();
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    return trimmed;
-  }
-  return `https://${trimmed}`;
-});
-fastify.register(corsPlugin, { allowedOrigins });
+// Register CORS
+fastify.register(corsPlugin);
 
 fastify.register(redisPlugin);
 fastify.register(pubsubTestRoutes, { prefix: '/api' });

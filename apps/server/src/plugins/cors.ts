@@ -2,16 +2,29 @@ import fp from 'fastify-plugin';
 import cors from '@fastify/cors';
 import type { FastifyPluginAsync } from 'fastify';
 
-export interface CorsPluginOptions {
-  allowedOrigins?: string[];
+function isAllowedOrigin(origin: string): boolean {
+  // Allow localhost for development
+  if (origin === 'http://localhost:5173') {
+    return true;
+  }
+
+  // Allow Railway origins matching agent-kit*.up.railway.app
+  try {
+    const url = new URL(origin);
+    if (
+      url.hostname.endsWith('.up.railway.app') &&
+      url.hostname.startsWith('agent-kit')
+    ) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
 }
 
-const corsPlugin: FastifyPluginAsync<CorsPluginOptions> = async (
-  fastify,
-  options
-) => {
-  const allowedOrigins = options.allowedOrigins || ['http://localhost:5173'];
-
+const corsPlugin: FastifyPluginAsync = async (fastify) => {
   await fastify.register(cors, {
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl requests)
@@ -20,7 +33,7 @@ const corsPlugin: FastifyPluginAsync<CorsPluginOptions> = async (
         return;
       }
 
-      if (allowedOrigins.includes(origin)) {
+      if (isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'), false);
