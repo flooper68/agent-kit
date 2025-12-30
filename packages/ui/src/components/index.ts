@@ -36,6 +36,12 @@ export type {
 export { Tooltip } from './Tooltip';
 export type { TooltipProps } from './Tooltip';
 
+export { StatusIndicator } from './StatusIndicator';
+export type { StatusIndicatorProps, StatusType } from './StatusIndicator';
+
+export { NavigationTabs } from './NavigationTabs';
+export type { NavigationTabsProps, NavigationTab } from './NavigationTabs';
+
 // Theme
 export { ThemeToggle } from './ThemeToggle';
 export type { ThemeToggleProps } from './ThemeToggle';
