@@ -18,3 +18,12 @@ export type { RetryButtonProps, RegenerateButtonProps } from './ActionButtons';
 
 export { SettingsButton } from './SettingsButton';
 export type { SettingsButtonProps } from './SettingsButton';
+
+export { AgentSelector } from './AgentSelector';
+export type { AgentSelectorProps } from './AgentSelector';
+
+export { AgentInfoBadge, AgentInfoDialog } from './AgentInfoBadge';
+export type {
+  AgentInfoBadgeProps,
+  AgentInfoDialogProps,
+} from './AgentInfoBadge';

@@ -3,7 +3,7 @@ export type {
   AgentPanelProps,
   AgentPanelRef,
   AgentPanelCallbacks,
-  ChatError,
+  TaskError,
   EmptyStateConfig,
   AvatarConfig,
 } from './types';

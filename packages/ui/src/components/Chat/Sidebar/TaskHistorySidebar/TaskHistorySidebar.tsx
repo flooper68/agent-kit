@@ -1,20 +1,20 @@
 import { forwardRef } from 'react';
 import { Dialog } from '../../../Dialog';
 import { Button } from '../../../Button';
-import { ChatHistoryItemComponent } from './ChatHistoryItem';
-import type { ChatHistoryItem } from '../../../../types/chat';
+import { TaskHistoryItemComponent } from './TaskHistoryItem';
+import type { TaskHistoryItem } from '../../../../types/chat';
 
-export interface ChatHistorySidebarProps {
+export interface TaskHistorySidebarProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  chats: ChatHistoryItem[];
-  selectedChatId?: string;
-  onChatSelect?: (chatId: string) => void;
-  onChatDelete?: (chatId: string) => void;
-  onNewChat?: () => void;
+  tasks: TaskHistoryItem[];
+  selectedTaskId?: string;
+  onTaskSelect?: (taskId: string) => void;
+  onTaskDelete?: (taskId: string) => void;
+  onNewTask?: () => void;
 }
 
-// Plus icon for new chat
+// Plus icon for new task
 const PlusIcon = () => (
   <svg
     className="h-4 w-4"
@@ -44,24 +44,24 @@ const CloseIcon = () => (
   </svg>
 );
 
-export const ChatHistorySidebar = forwardRef<
+export const TaskHistorySidebar = forwardRef<
   HTMLDivElement,
-  ChatHistorySidebarProps
+  TaskHistorySidebarProps
 >(
   (
     {
       open,
       onOpenChange,
-      chats,
-      selectedChatId,
-      onChatSelect,
-      onChatDelete,
-      onNewChat,
+      tasks,
+      selectedTaskId,
+      onTaskSelect,
+      onTaskDelete,
+      onNewTask,
     },
     _ref
   ) => {
-    const handleChatSelect = (chatId: string) => {
-      onChatSelect?.(chatId);
+    const handleTaskSelect = (taskId: string) => {
+      onTaskSelect?.(taskId);
       onOpenChange(false);
     };
 
@@ -70,8 +70,8 @@ export const ChatHistorySidebar = forwardRef<
         <Dialog.Content position="left" size="md" showOverlay>
           <div className="flex flex-col h-full">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-lg font-semibold">Chat History</h2>
+            <div className="flex items-center justify-between p-4">
+              <h2 className="text-lg font-semibold">Task History</h2>
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
@@ -82,43 +82,43 @@ export const ChatHistorySidebar = forwardRef<
               </button>
             </div>
 
-            {/* New Chat Button */}
-            {onNewChat && (
-              <div className="p-4 border-b">
+            {/* New Task Button */}
+            {onNewTask && (
+              <div className="px-4 pb-4">
                 <Button
                   variant="outline"
                   onClick={() => {
-                    onNewChat();
+                    onNewTask();
                     onOpenChange(false);
                   }}
                 >
                   <PlusIcon />
-                  New Chat
+                  New Task
                 </Button>
               </div>
             )}
 
-            {/* Chat List */}
+            {/* Task List */}
             <div className="flex-1 overflow-y-auto p-2">
-              {chats.length === 0 ? (
+              {tasks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <p className="text-sm text-muted-foreground">
-                    No chat history yet.
+                    No task history yet.
                   </p>
                   <p className="text-xs text-muted-foreground/60 mt-1">
-                    Start a new conversation to see it here.
+                    Start a new task to see it here.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {chats.map((chat) => (
-                    <ChatHistoryItemComponent
-                      key={chat.id}
-                      chat={chat}
-                      isSelected={chat.id === selectedChatId}
-                      onSelect={() => handleChatSelect(chat.id)}
+                  {tasks.map((task) => (
+                    <TaskHistoryItemComponent
+                      key={task.id}
+                      task={task}
+                      isSelected={task.id === selectedTaskId}
+                      onSelect={() => handleTaskSelect(task.id)}
                       onDelete={
-                        onChatDelete ? () => onChatDelete(chat.id) : undefined
+                        onTaskDelete ? () => onTaskDelete(task.id) : undefined
                       }
                     />
                   ))}
@@ -132,4 +132,4 @@ export const ChatHistorySidebar = forwardRef<
   }
 );
 
-ChatHistorySidebar.displayName = 'ChatHistorySidebar';
+TaskHistorySidebar.displayName = 'TaskHistorySidebar';

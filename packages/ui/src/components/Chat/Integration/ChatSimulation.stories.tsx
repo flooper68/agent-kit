@@ -13,7 +13,7 @@ import {
 } from '../';
 import type {
   SuggestionChip,
-  ChatMessage,
+  TaskMessage,
   TextPart,
 } from '../../../types/chat';
 import {
@@ -50,7 +50,7 @@ export default meta;
 type Story = StoryObj<typeof ChatContainer>;
 
 // Helper to extract text content from a message
-const getTextContent = (msg: ChatMessage): string => {
+const getTextContent = (msg: TaskMessage): string => {
   return msg.parts
     .filter((p): p is TextPart => p.type === 'text')
     .map((p) => p.content)

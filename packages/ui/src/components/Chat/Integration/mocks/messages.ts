@@ -1,5 +1,5 @@
 import type {
-  ChatMessage,
+  TaskMessage,
   TextPart,
   ToolInvocationPart,
   ToolResultPart,
@@ -63,10 +63,10 @@ export const createImagePart = (url: string, alt?: string): ImagePart => ({
 
 // Helper to create a message
 export const createMessage = (
-  role: ChatMessage['role'],
+  role: TaskMessage['role'],
   parts: MessagePart[],
-  metadata?: ChatMessage['metadata']
-): ChatMessage => ({
+  metadata?: TaskMessage['metadata']
+): TaskMessage => ({
   id: generateId(),
   role,
   parts,
@@ -75,7 +75,7 @@ export const createMessage = (
 });
 
 // Helper to get text content from a message
-export const getTextContent = (message: ChatMessage): string => {
+export const getTextContent = (message: TaskMessage): string => {
   return message.parts
     .filter((p): p is TextPart => p.type === 'text')
     .map((p) => p.content)
@@ -86,7 +86,7 @@ export const getTextContent = (message: ChatMessage): string => {
 // Predefined Conversations
 // ============================================
 
-export const simpleConversation: ChatMessage[] = [
+export const simpleConversation: TaskMessage[] = [
   createMessage('user', [createTextPart('What is TypeScript?')]),
   createMessage(
     'assistant',
@@ -109,7 +109,7 @@ export const simpleConversation: ChatMessage[] = [
   ),
 ];
 
-export const conversationWithCode: ChatMessage[] = [
+export const conversationWithCode: TaskMessage[] = [
   createMessage('user', [createTextPart('Create a React button component')]),
   createMessage(
     'assistant',
@@ -122,7 +122,7 @@ export const conversationWithCode: ChatMessage[] = [
   ),
 ];
 
-export const conversationWithToolCalls: ChatMessage[] = [
+export const conversationWithToolCalls: TaskMessage[] = [
   createMessage('user', [createTextPart("developer's landing page / blog")]),
   createMessage('assistant', [
     createReasoningPart(
@@ -150,7 +150,7 @@ export const conversationWithToolCalls: ChatMessage[] = [
   ]),
 ];
 
-export const conversationWithReasoning: ChatMessage[] = [
+export const conversationWithReasoning: TaskMessage[] = [
   createMessage('user', [
     createTextPart('Help me optimize this database query'),
   ]),
@@ -165,12 +165,12 @@ export const conversationWithReasoning: ChatMessage[] = [
   ]),
 ];
 
-export const streamingMessage: ChatMessage = createMessage('assistant', [
+export const streamingMessage: TaskMessage = createMessage('assistant', [
   createTextPart(
     "I'm analyzing your request and preparing a detailed response..."
   ),
 ]);
 
-export const emptyAssistantMessage: ChatMessage = createMessage('assistant', [
+export const emptyAssistantMessage: TaskMessage = createMessage('assistant', [
   createTextPart(''),
 ]);

@@ -1,16 +1,18 @@
 import type {
-  ChatMessage,
-  ChatStatus,
+  TaskMessage,
+  TaskStatus,
   SuggestionChip,
   ModelOption,
   ContextUsage,
   ThinkingStatus,
+  AgentType,
+  TaskHistoryItem,
 } from '../../../types/chat';
 
 /**
- * Error information for the chat
+ * Error information for the task
  */
-export interface ChatError {
+export interface TaskError {
   type: 'api' | 'network' | 'rate_limit' | 'stream_interrupted' | 'tool_error';
   message: string;
   retryable: boolean;
@@ -70,20 +72,29 @@ export interface AgentPanelCallbacks {
 
   /** Called when files are attached */
   onAttach?: (files: File[]) => void;
+
+  /** Called when an agent type is selected */
+  onAgentSelect?: (agent: AgentType) => void;
+
+  /** Called when a task is selected from the task selector */
+  onTaskSelect?: (taskId: string) => void;
+
+  /** Called when user wants to create a new task */
+  onCreateNewTask?: () => void;
 }
 
 /**
  * Main AgentPanel component props
  */
 export interface AgentPanelProps extends AgentPanelCallbacks {
-  /** Array of chat messages to display */
-  messages: ChatMessage[];
+  /** Array of task messages to display */
+  messages: TaskMessage[];
 
-  /** Current status of the chat */
-  status: ChatStatus;
+  /** Current status of the task */
+  status: TaskStatus;
 
   /** Error information if status is 'error' */
-  error?: ChatError | null;
+  error?: TaskError | null;
 
   /** Configuration for suggestions in empty state */
   suggestions?: SuggestionChip[];
@@ -117,6 +128,18 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
 
   /** Custom class name */
   className?: string;
+
+  /** Available agent types for selection (shown in empty state) */
+  agents?: AgentType[];
+
+  /** Currently selected agent */
+  selectedAgent?: AgentType;
+
+  /** Available tasks for the task selector (shown in empty state) */
+  tasks?: TaskHistoryItem[];
+
+  /** Currently selected task ID */
+  selectedTaskId?: string;
 }
 
 /**

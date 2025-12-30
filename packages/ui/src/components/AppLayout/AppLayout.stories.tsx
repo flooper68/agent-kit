@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Code,
   Sparkles,
+  History,
 } from 'lucide-react';
 import { AppLayout } from './AppLayout';
 import { Button } from '../Button';
@@ -18,13 +19,15 @@ import { Tooltip } from '../Tooltip';
 import { AgentPanel } from '../Chat/AgentPanel';
 import type { AgentPanelRef } from '../Chat/AgentPanel/types';
 import { MockChatService } from '../Chat/AgentPanel/mocks/MockChatService';
+import { TaskHistorySidebar } from '../Chat/Sidebar/ChatHistorySidebar';
 import type {
-  ChatMessage,
-  ChatStatus,
+  TaskMessage,
+  TaskStatus,
   SuggestionChip,
   ThinkingStatus,
+  TaskHistoryItem,
 } from '../../types/chat';
-import type { ChatError } from '../Chat/AgentPanel/types';
+import type { TaskError } from '../Chat/AgentPanel/types';
 import type { MainMenuConfig, MoreMenuConfig } from './types';
 
 const meta: Meta<typeof AppLayout> = {
@@ -64,9 +67,9 @@ type Story = StoryObj<typeof AppLayout>;
 
 const FullFeaturedComponent = () => {
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [status, setStatus] = useState<ChatStatus>('ready');
-  const [error, setError] = useState<ChatError | null>(null);
+  const [messages, setMessages] = useState<TaskMessage[]>([]);
+  const [status, setStatus] = useState<TaskStatus>('ready');
+  const [error, setError] = useState<TaskError | null>(null);
   const [thinkingStatus, setThinkingStatus] = useState<ThinkingStatus>({
     isThinking: false,
   });
@@ -349,6 +352,172 @@ Complete AppLayout with all features:
 - \`search\` - Triggers web search tool
 - \`analyze\` - Triggers multiple tools with reasoning
 - \`error\` - Simulates API error
+        `,
+      },
+    },
+  },
+};
+
+// ============================================
+// With Task History Sidebar
+// ============================================
+
+const mockTaskHistory: TaskHistoryItem[] = [
+  {
+    id: '1',
+    title: 'Building a landing page',
+    preview: 'Help me create a responsive landing page with...',
+    createdAt: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
+  },
+  {
+    id: '2',
+    title: 'Debugging React hooks',
+    preview: 'I have an issue with useEffect not cleaning up...',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+  },
+  {
+    id: '3',
+    title: 'TypeScript generics',
+    preview: 'Can you explain how to use conditional types...',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+  },
+  {
+    id: '4',
+    title: 'API integration',
+    preview: 'How do I properly handle errors with fetch...',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48), // 2 days ago
+  },
+];
+
+const WithTaskHistoryComponent = () => {
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>();
+  const [tasks, setTasks] = useState<TaskHistoryItem[]>(mockTaskHistory);
+  const [messages, setMessages] = useState<TaskMessage[]>([]);
+  const [status] = useState<TaskStatus>('ready');
+
+  const mainMenu: MainMenuConfig = {
+    appName: 'Agent Kit',
+    appIcon: <Sparkles className="h-4 w-4" />,
+    branding: {
+      logo: <Sparkles className="h-5 w-5 text-primary" />,
+      name: 'Agent Kit',
+    },
+    showThemeToggle: true,
+    sections: [],
+  };
+
+  const models = [
+    {
+      id: 'claude-3-opus',
+      name: 'Claude 3 Opus',
+      provider: 'anthropic' as const,
+    },
+  ];
+
+  const avatars = {
+    assistant: { fallback: 'AI' },
+    user: { fallback: 'U' },
+  };
+
+  const handleTaskSelect = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    const task = tasks.find((t) => t.id === taskId);
+    console.log('Selected task:', task?.title);
+    // In a real app, you would load the messages for this task
+  };
+
+  const handleTaskDelete = (taskId: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    if (selectedTaskId === taskId) {
+      setSelectedTaskId(undefined);
+    }
+  };
+
+  const handleNewTask = () => {
+    setSelectedTaskId(undefined);
+    setMessages([]);
+    console.log('Starting new task');
+  };
+
+  return (
+    <>
+      <AppLayout
+        mainMenu={mainMenu}
+        headerSlots={{
+          toolButtons: (
+            <Tooltip content="Task history">
+              <IconButton
+                icon={<History className="h-4 w-4" />}
+                label="Task history"
+                variant="ghost"
+                size="sm"
+                onClick={() => setHistoryOpen(true)}
+              />
+            </Tooltip>
+          ),
+        }}
+        panelConfig={{
+          defaultWidth: 400,
+          minWidth: 280,
+          maxWidth: 600,
+        }}
+        assistantPanel={
+          <AgentPanel
+            messages={messages}
+            status={status}
+            emptyStateConfig={{
+              title: 'How can I help?',
+              description: 'Start a new conversation or select from history',
+            }}
+            avatars={avatars}
+            models={models}
+            onSend={(msg) => console.log('Send:', msg)}
+          />
+        }
+      >
+        <div className="h-full flex items-center justify-center bg-muted/30">
+          <div className="text-center">
+            <History className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+            <h2 className="text-xl font-semibold mb-2">
+              {selectedTaskId
+                ? `Viewing: ${tasks.find((t) => t.id === selectedTaskId)?.title}`
+                : 'No task selected'}
+            </h2>
+            <p className="text-muted-foreground">
+              Click the history button in the header to view past tasks
+            </p>
+          </div>
+        </div>
+      </AppLayout>
+
+      <TaskHistorySidebar
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        tasks={tasks}
+        selectedTaskId={selectedTaskId}
+        onTaskSelect={handleTaskSelect}
+        onTaskDelete={handleTaskDelete}
+        onNewTask={handleNewTask}
+      />
+    </>
+  );
+};
+
+export const WithTaskHistory: Story = {
+  render: () => <WithTaskHistoryComponent />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+AppLayout with task history sidebar integration.
+
+**Features:**
+- History button in the header (next to panel toggle)
+- Clicking the button opens a left-side overlay panel
+- Shows list of past tasks with timestamps
+- Supports selecting, deleting, and creating new tasks
+- Sidebar closes automatically when a task is selected
         `,
       },
     },
