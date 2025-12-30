@@ -55,34 +55,13 @@ export const AgentInfoDialog = memo(
 
             {/* Description */}
             {agent.description && (
-              <div className="mb-4">
+              <div>
                 <Text variant="muted" size="14" className="font-medium mb-1">
                   About
                 </Text>
                 <Text size="14">{agent.description}</Text>
               </div>
             )}
-
-            {/* Capabilities placeholder - for future use */}
-            <div>
-              <Text variant="muted" size="14" className="font-medium mb-2">
-                Capabilities
-              </Text>
-              <ul className="space-y-1">
-                <li className="flex items-center gap-2 text-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  <span>Text generation and conversation</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  <span>Code assistance and debugging</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  <span>Task planning and execution</span>
-                </li>
-              </ul>
-            </div>
           </div>
         </Dialog.Content>
       </Dialog>

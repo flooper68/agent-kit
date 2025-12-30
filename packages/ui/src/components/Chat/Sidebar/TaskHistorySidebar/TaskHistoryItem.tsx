@@ -1,4 +1,5 @@
 import { forwardRef } from 'react';
+import { Trash2 } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
 import type { TaskHistoryItem as TaskHistoryItemType } from '../../../../types/chat';
 
@@ -8,23 +9,6 @@ export interface TaskHistoryItemProps {
   onSelect?: () => void;
   onDelete?: () => void;
 }
-
-// Trash icon
-const TrashIcon = () => (
-  <svg
-    className="h-4 w-4"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-    />
-  </svg>
-);
 
 const formatDate = (date: Date): string => {
   const now = new Date();
@@ -83,7 +67,7 @@ export const TaskHistoryItemComponent = forwardRef<
             className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
             aria-label="Delete task"
           >
-            <TrashIcon />
+            <Trash2 className="h-4 w-4" />
           </button>
         )}
       </div>

@@ -1,4 +1,4 @@
-import { forwardRef, memo, useState } from 'react';
+import { forwardRef, memo, useState, useEffect, useCallback } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
 import type { AgentType } from '../../../../types/chat';
@@ -32,6 +32,24 @@ export const AgentSelector = memo(
       ref
     ) => {
       const [isOpen, setIsOpen] = useState(false);
+
+      const handleClose = useCallback(() => {
+        setIsOpen(false);
+      }, []);
+
+      // Close dropdown on Escape key
+      useEffect(() => {
+        if (!isOpen) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+          if (e.key === 'Escape') {
+            handleClose();
+          }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+      }, [isOpen, handleClose]);
 
       const handleSelect = (agent: AgentType) => {
         onSelect?.(agent);
