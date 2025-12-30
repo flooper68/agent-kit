@@ -24,15 +24,8 @@ export const ReasoningDisplay = forwardRef<
   ) => {
     return (
       <Collapsible defaultOpen={defaultExpanded}>
-        <div
-          ref={ref}
-          className={cn(
-            'rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20 text-sm',
-            className
-          )}
-          {...props}
-        >
-          <Collapsible.Trigger className="w-full px-3 py-2 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+        <div ref={ref} className={cn('text-sm', className)} {...props}>
+          <Collapsible.Trigger className="px-3 py-2 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
             <svg
               className="h-4 w-4"
               fill="none"
@@ -63,7 +56,7 @@ export const ReasoningDisplay = forwardRef<
           </Collapsible.Trigger>
 
           <Collapsible.Content>
-            <div className="px-3 py-2 border-t border-dashed border-muted-foreground/30">
+            <div className="px-3 py-2 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20">
               <p className="text-xs text-muted-foreground whitespace-pre-wrap italic">
                 {content}
               </p>

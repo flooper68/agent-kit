@@ -6,10 +6,10 @@ import {
   Message,
   ChatInput,
   ThinkingIndicator,
-  StreamingText,
   LoadingState,
   InterruptButton,
   ToolBadge,
+  MarkdownRenderer,
 } from '../';
 import { searchWebTool } from './mocks';
 
@@ -176,7 +176,7 @@ Lazy load images and use modern formats like WebP.`;
             src="https://api.dicebear.com/7.x/bottts/svg?seed=ai"
           />
           <Message.Bubble>
-            <StreamingText text={displayedText} isStreaming={isStreaming} />
+            <MarkdownRenderer content={displayedText} />
           </Message.Bubble>
         </Message>
       </MessageList>
@@ -265,10 +265,7 @@ const StreamingWithToolCallComponent = () => {
           />
           <Message.Bubble>
             <div className="space-y-3">
-              <StreamingText
-                text={streamedText}
-                isStreaming={phase === 'streaming'}
-              />
+              <MarkdownRenderer content={streamedText} />
               {phase !== 'streaming' && (
                 <ToolBadge
                   toolName={toolInvocation.toolName}
@@ -369,11 +366,7 @@ A robust testing strategy is essential:
             src="https://api.dicebear.com/7.x/bottts/svg?seed=ai"
           />
           <Message.Bubble>
-            <StreamingText
-              text={displayedText}
-              isStreaming={isStreaming}
-              showCursor={isStreaming}
-            />
+            <MarkdownRenderer content={displayedText} />
           </Message.Bubble>
         </Message>
       </MessageList>

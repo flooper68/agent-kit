@@ -14,11 +14,10 @@ interface ToolItem {
 export interface ToolBadgeGroupProps {
   tools: ToolItem[];
   maxVisible?: number;
-  onToolClick?: (toolCallId: string) => void;
 }
 
 export const ToolBadgeGroup = forwardRef<HTMLDivElement, ToolBadgeGroupProps>(
-  ({ tools, maxVisible = 2, onToolClick }, ref) => {
+  ({ tools, maxVisible = 2 }, ref) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     if (tools.length === 0) {
@@ -45,11 +44,9 @@ export const ToolBadgeGroup = forwardRef<HTMLDivElement, ToolBadgeGroupProps>(
             key={tool.invocation.toolCallId}
             toolName={tool.invocation.toolName}
             state={tool.invocation.state}
-            onClick={
-              onToolClick
-                ? () => onToolClick(tool.invocation.toolCallId)
-                : undefined
-            }
+            args={tool.invocation.args}
+            toolCallId={tool.invocation.toolCallId}
+            result={tool.result}
           />
         ))}
 

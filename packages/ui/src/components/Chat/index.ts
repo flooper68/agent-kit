@@ -28,3 +28,6 @@ export * from './Suggestions';
 // Provider Icons
 export { ProviderIcon } from './ProviderIcons';
 export type { ProviderIconProps } from './ProviderIcons';
+
+// AgentPanel
+export * from './AgentPanel';

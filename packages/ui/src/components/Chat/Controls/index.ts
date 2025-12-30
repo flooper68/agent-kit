@@ -15,3 +15,6 @@ export type { CopyButtonProps } from './CopyButton';
 
 export { RetryButton, RegenerateButton } from './ActionButtons';
 export type { RetryButtonProps, RegenerateButtonProps } from './ActionButtons';
+
+export { SettingsButton } from './SettingsButton';
+export type { SettingsButtonProps } from './SettingsButton';

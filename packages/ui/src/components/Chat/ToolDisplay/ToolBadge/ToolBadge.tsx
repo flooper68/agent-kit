@@ -1,6 +1,9 @@
-import { forwardRef } from 'react';
+import { forwardRef, useState } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../../../lib/utils';
+import { Dialog } from '../../../Dialog';
+import { Button } from '../../../Button';
+import type { ToolResultPart } from '../../../../types/chat';
 
 type ToolState = 'pending' | 'running' | 'completed' | 'error';
 
@@ -111,18 +114,63 @@ const ToolIcon = () => (
   </svg>
 );
 
+// Result display component for dialog
+const ResultDisplay = ({
+  result,
+  isError,
+}: {
+  result: unknown;
+  isError: boolean;
+}) => {
+  // Handle string results
+  if (typeof result === 'string') {
+    return (
+      <pre
+        className={cn(
+          'text-xs p-3 rounded-md overflow-x-auto whitespace-pre-wrap break-words',
+          isError ? 'bg-destructive/10 text-destructive' : 'bg-muted'
+        )}
+      >
+        {result}
+      </pre>
+    );
+  }
+
+  // Handle object/array results
+  const formatted = JSON.stringify(result, null, 2);
+  return (
+    <pre
+      className={cn(
+        'text-xs p-3 rounded-md overflow-x-auto',
+        isError ? 'bg-destructive/10 text-destructive' : 'bg-muted'
+      )}
+    >
+      {formatted}
+    </pre>
+  );
+};
+
 export interface ToolBadgeProps extends Omit<
   VariantProps<typeof toolBadgeVariants>,
   'interactive'
 > {
   toolName: string;
   state: ToolState;
-  onClick?: () => void;
+  /** Tool arguments - when provided, clicking the badge opens a detail dialog */
+  args?: Record<string, unknown>;
+  /** Tool call ID for tracking */
+  toolCallId?: string;
+  /** Tool result - displayed in the detail dialog */
+  result?: ToolResultPart;
 }
 
 export const ToolBadge = forwardRef<HTMLButtonElement, ToolBadgeProps>(
-  ({ toolName, state, onClick }, ref) => {
-    const isInteractive = !!onClick;
+  ({ toolName, state, args, toolCallId: _toolCallId, result }, ref) => {
+    const [dialogOpen, setDialogOpen] = useState(false);
+
+    // Badge is interactive (clickable) when args are provided
+    const hasDialogData = args !== undefined;
+    const isError = state === 'error' || result?.isError;
 
     const content = (
       <>
@@ -132,23 +180,99 @@ export const ToolBadge = forwardRef<HTMLButtonElement, ToolBadgeProps>(
       </>
     );
 
-    if (isInteractive) {
-      return (
-        <button
-          ref={ref}
-          type="button"
-          onClick={onClick}
-          className={cn(toolBadgeVariants({ state, interactive: true }))}
-        >
-          {content}
-        </button>
-      );
-    }
-
-    return (
+    const badge = hasDialogData ? (
+      <button
+        ref={ref}
+        type="button"
+        onClick={() => setDialogOpen(true)}
+        className={cn(toolBadgeVariants({ state, interactive: true }))}
+      >
+        {content}
+      </button>
+    ) : (
       <span className={cn(toolBadgeVariants({ state, interactive: false }))}>
         {content}
       </span>
+    );
+
+    // If no dialog data, just render the badge
+    if (!hasDialogData) {
+      return badge;
+    }
+
+    // Render badge with dialog
+    return (
+      <>
+        {badge}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog.Content size="lg">
+            <Dialog.Header>
+              <Dialog.Title>
+                <div className="flex items-center gap-3">
+                  <span>Tool Execution</span>
+                  <span
+                    className={cn(
+                      toolBadgeVariants({ state, interactive: false })
+                    )}
+                  >
+                    <ToolIcon />
+                    <span className="font-mono truncate max-w-[120px]">
+                      {toolName}
+                    </span>
+                    <StateIcon state={state} />
+                  </span>
+                </div>
+              </Dialog.Title>
+              <Dialog.Description>
+                Details of the tool invocation and its result
+              </Dialog.Description>
+            </Dialog.Header>
+
+            <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+              {/* Input Section */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-foreground">Input</h4>
+                <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
+                  {JSON.stringify(args, null, 2)}
+                </pre>
+              </div>
+
+              {/* Output Section */}
+              {result && (
+                <div className="space-y-2">
+                  <h4
+                    className={cn(
+                      'text-sm font-medium',
+                      isError ? 'text-destructive' : 'text-foreground'
+                    )}
+                  >
+                    {isError ? 'Error' : 'Output'}
+                  </h4>
+                  <ResultDisplay
+                    result={result.result}
+                    isError={isError ?? false}
+                  />
+                </div>
+              )}
+
+              {/* No result yet */}
+              {!result && state !== 'completed' && (
+                <div className="text-sm text-muted-foreground italic">
+                  {state === 'running'
+                    ? 'Tool is currently executing...'
+                    : 'Waiting for execution...'}
+                </div>
+              )}
+            </div>
+
+            <Dialog.Footer>
+              <Dialog.Close asChild>
+                <Button variant="outline">Close</Button>
+              </Dialog.Close>
+            </Dialog.Footer>
+          </Dialog.Content>
+        </Dialog>
+      </>
     );
   }
 );

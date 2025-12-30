@@ -25,7 +25,7 @@ export const ModelSwitcher = forwardRef<HTMLDivElement, ModelSwitcherProps>(
           onClick={() => !disabled && setIsOpen(!isOpen)}
           disabled={disabled}
           className={cn(
-            'flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border bg-background hover:bg-accent transition-colors',
+            'flex items-center gap-2 px-2 py-1 text-sm rounded-md hover:bg-accent transition-colors',
             disabled && 'opacity-50 cursor-not-allowed'
           )}
         >
@@ -60,7 +60,7 @@ export const ModelSwitcher = forwardRef<HTMLDivElement, ModelSwitcherProps>(
               className="fixed inset-0 z-10"
               onClick={() => setIsOpen(false)}
             />
-            <div className="absolute top-full left-0 mt-1 w-64 z-20 rounded-md border bg-popover shadow-md">
+            <div className="absolute bottom-full left-0 mb-1 w-64 z-20 rounded-md border bg-popover shadow-md">
               {models.map((model) => (
                 <button
                   key={model.id}
