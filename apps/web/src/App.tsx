@@ -1,6 +1,9 @@
 import { Button } from '@agent-kit/ui';
+import { trpc } from './lib/trpc';
 
 function App() {
+  const greeting = trpc.greeting.hello.useQuery({ name: 'World' });
+
   const handleClick = () => {
     alert('Button clicked!');
   };
@@ -8,6 +11,18 @@ function App() {
   return (
     <div className="app">
       <h1>Agent Kit Web Application</h1>
+
+      <div className="trpc-demo">
+        <h2>tRPC Demo</h2>
+        {greeting.isLoading && <p>Loading...</p>}
+        {greeting.error && <p>Error: {greeting.error.message}</p>}
+        {greeting.data && (
+          <p>
+            {greeting.data.greeting} (at {greeting.data.timestamp})
+          </p>
+        )}
+      </div>
+
       <p>This application uses components from the @agent-kit/ui library:</p>
 
       <div className="button-showcase">
