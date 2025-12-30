@@ -5,7 +5,7 @@ import {
   MessageList,
   Message,
   ChatInput,
-  ToolCallDisplay,
+  ToolBadge,
   CopyButton,
   RegenerateButton,
 } from '../';
@@ -64,7 +64,10 @@ export const ToolPending: Story = {
           <Message.Bubble>
             <div className="space-y-3">
               <p>I will create that component for you.</p>
-              <ToolCallDisplay invocation={createFileTool.pending} />
+              <ToolBadge
+                toolName={createFileTool.pending.toolName}
+                state={createFileTool.pending.state}
+              />
             </div>
           </Message.Bubble>
         </Message>
@@ -101,7 +104,10 @@ export const ToolRunning: Story = {
           <Message.Bubble>
             <div className="space-y-3">
               <p>Let me search for that information.</p>
-              <ToolCallDisplay invocation={searchWebTool.running} />
+              <ToolBadge
+                toolName={searchWebTool.running.toolName}
+                state={searchWebTool.running.state}
+              />
             </div>
           </Message.Bubble>
         </Message>
@@ -138,10 +144,9 @@ export const ToolCompleted: Story = {
           <Message.Bubble>
             <div className="space-y-3">
               <p>I will create that component for you.</p>
-              <ToolCallDisplay
-                invocation={createFileTool.completed}
-                result={createFileTool.completedResult}
-                defaultExpanded
+              <ToolBadge
+                toolName={createFileTool.completed.toolName}
+                state={createFileTool.completed.state}
               />
               <p>
                 Done! I have created the component at{' '}
@@ -191,10 +196,9 @@ export const ToolError: Story = {
           <Message.Bubble>
             <div className="space-y-3">
               <p>I will execute that code for you.</p>
-              <ToolCallDisplay
-                invocation={executeCodeTool.error}
-                result={executeCodeTool.errorResult}
-                defaultExpanded
+              <ToolBadge
+                toolName={executeCodeTool.error.toolName}
+                state={executeCodeTool.error.state}
               />
               <p className="text-destructive">
                 The code execution failed. It looks like there is an error being
@@ -245,17 +249,17 @@ export const MultipleToolCalls: Story = {
                 I will read the current file, make the changes, and run the
                 tests for you.
               </p>
-              <ToolCallDisplay
-                invocation={multipleToolCalls.readFile.invocation}
-                result={multipleToolCalls.readFile.result}
+              <ToolBadge
+                toolName={multipleToolCalls.readFile.invocation.toolName}
+                state={multipleToolCalls.readFile.invocation.state}
               />
-              <ToolCallDisplay
-                invocation={multipleToolCalls.editFile.invocation}
-                result={multipleToolCalls.editFile.result}
+              <ToolBadge
+                toolName={multipleToolCalls.editFile.invocation.toolName}
+                state={multipleToolCalls.editFile.invocation.state}
               />
-              <ToolCallDisplay
-                invocation={multipleToolCalls.runTests.invocation}
-                result={multipleToolCalls.runTests.result}
+              <ToolBadge
+                toolName={multipleToolCalls.runTests.invocation.toolName}
+                state={multipleToolCalls.runTests.invocation.state}
               />
               <div className="flex items-center gap-2 text-sm text-green-600">
                 <svg
@@ -300,7 +304,6 @@ const ToolCallLifecycleComponent = () => {
   const [state, setState] = useState<'pending' | 'running' | 'completed'>(
     'pending'
   );
-  const [showResult, setShowResult] = useState(false);
   const [showFollowUp, setShowFollowUp] = useState(false);
 
   useEffect(() => {
@@ -308,7 +311,6 @@ const ToolCallLifecycleComponent = () => {
       setTimeout(() => setState('running'), 1000),
       setTimeout(() => {
         setState('completed');
-        setShowResult(true);
       }, 3000),
       setTimeout(() => setShowFollowUp(true), 3500),
     ];
@@ -339,9 +341,9 @@ const ToolCallLifecycleComponent = () => {
           <Message.Bubble>
             <div className="space-y-3">
               <p>Let me search for the latest React 19 features.</p>
-              <ToolCallDisplay
-                invocation={toolInvocation}
-                result={showResult ? searchWebTool.completedResult : undefined}
+              <ToolBadge
+                toolName={toolInvocation.toolName}
+                state={toolInvocation.state}
               />
               {showFollowUp && (
                 <p>
@@ -416,33 +418,14 @@ export const NestedToolCalls: Story = {
           <Message.Bubble>
             <div className="space-y-3">
               <p>Let me read the package.json first.</p>
-              <ToolCallDisplay
-                invocation={readFileTool.completed}
-                result={readFileTool.completedResult}
+              <ToolBadge
+                toolName={readFileTool.completed.toolName}
+                state={readFileTool.completed.state}
               />
               <p>
                 Now let me search for the latest versions of the dependencies.
               </p>
-              <ToolCallDisplay
-                invocation={{
-                  id: 'search_1',
-                  type: 'tool_invocation',
-                  toolName: 'search_npm',
-                  toolCallId: 'call_npm_1',
-                  args: { packages: ['react', 'typescript', 'vite'] },
-                  state: 'completed',
-                }}
-                result={{
-                  id: 'result_1',
-                  type: 'tool_result',
-                  toolCallId: 'call_npm_1',
-                  result: {
-                    react: { current: '18.2.0', latest: '19.0.0' },
-                    typescript: { current: '5.2.0', latest: '5.3.0' },
-                    vite: { current: '5.0.0', latest: '5.1.0' },
-                  },
-                }}
-              />
+              <ToolBadge toolName="search_npm" state="completed" />
               <p>Here are my recommendations:</p>
               <ul className="list-disc list-inside space-y-1 text-sm">
                 <li>

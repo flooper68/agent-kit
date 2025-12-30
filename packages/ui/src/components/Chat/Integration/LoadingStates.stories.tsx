@@ -9,7 +9,7 @@ import {
   StreamingText,
   LoadingState,
   InterruptButton,
-  ToolCallDisplay,
+  ToolBadge,
 } from '../';
 import { searchWebTool } from './mocks';
 
@@ -286,13 +286,9 @@ const StreamingWithToolCallComponent = () => {
                 isStreaming={phase === 'streaming'}
               />
               {phase !== 'streaming' && (
-                <ToolCallDisplay
-                  invocation={toolInvocation}
-                  result={
-                    toolState === 'completed'
-                      ? searchWebTool.completedResult
-                      : undefined
-                  }
+                <ToolBadge
+                  toolName={toolInvocation.toolName}
+                  state={toolInvocation.state}
                 />
               )}
               {phase === 'complete' && (

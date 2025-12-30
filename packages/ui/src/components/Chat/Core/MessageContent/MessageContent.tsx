@@ -20,7 +20,7 @@ export const MessageContent = memo(
           case 'text':
             return <DefaultTextContent key={part.id} content={part.content} />;
           case 'tool_invocation':
-            // Placeholder - use ToolCallDisplay component
+            // Placeholder - use ToolBadge component
             return (
               <div
                 key={part.id}
