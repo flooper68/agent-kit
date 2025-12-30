@@ -43,7 +43,9 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(
     return (
       <div
         ref={containerRef}
-        className={cn('flex-1 overflow-y-auto px-4 py-6 space-y-4')}
+        className={cn(
+          'flex-1 min-h-0 overflow-y-auto px-4 py-6 space-y-4 scrollbar-thin'
+        )}
       >
         {children}
         <div ref={bottomRef} aria-hidden="true" />
