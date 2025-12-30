@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { cn } from '../../../../lib/utils';
 import { Button } from '../../../Button';
+import { Heading, Text } from '../../../Typography';
 import type { SuggestionChip } from '../../../../types/chat';
 
 export interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -38,10 +39,14 @@ export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(
       >
         {icon && <div className="mb-4 text-muted-foreground">{icon}</div>}
 
-        <h2 className="text-3xl tracking-tight font-semibold mb-2">{title}</h2>
+        <Heading size="32" className="tracking-tight mb-2">
+          {title}
+        </Heading>
 
         {description && (
-          <p className="text-muted-foreground max-w-md mb-8">{description}</p>
+          <Text variant="muted" className="max-w-md mb-8">
+            {description}
+          </Text>
         )}
 
         {inputElement && (

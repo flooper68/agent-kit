@@ -30,7 +30,7 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
         icon={
           copied ? (
             <svg
-              className="h-4 w-4 text-green-500"
+              className="h-4 w-4 text-success"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

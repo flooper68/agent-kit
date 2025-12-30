@@ -15,6 +15,10 @@ const textVariants = cva('font-sans text-foreground', {
       default: '',
       strong: 'font-semibold',
       muted: 'text-muted-foreground',
+      success: 'text-success',
+      warning: 'text-warning',
+      destructive: 'text-destructive',
+      info: 'text-info',
     },
     mono: {
       true: 'font-mono',
