@@ -134,3 +134,8 @@ Use conventional commit format:
 - `docs:` - Documentation changes
 - `test:` - Test additions/changes
 - `chore:` - Maintenance tasks
+
+**Do NOT include**:
+
+- "🤖 Generated with Claude Code" or similar footers
+- "Co-Authored-By: Claude" or any AI co-author attribution
