@@ -1,8 +1,15 @@
 # Build context should be the repo root
-# Build stage
+# Build stage - v2
 FROM oven/bun:1 AS builder
 
 WORKDIR /app
+
+# Build arguments for Vite environment variables
+ARG VITE_SERVER_URL
+ENV VITE_SERVER_URL=$VITE_SERVER_URL
+
+# Validate required environment variables
+RUN if [ -z "$VITE_SERVER_URL" ]; then echo "Error: VITE_SERVER_URL is required" && exit 1; fi
 
 # Copy everything (respects .dockerignore)
 COPY . .
