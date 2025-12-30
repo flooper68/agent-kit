@@ -1,6 +1,16 @@
 // Message roles
 export type MessageRole = 'user' | 'assistant' | 'system';
 
+// AI Provider types
+export type AIProvider =
+  | 'anthropic'
+  | 'openai'
+  | 'google'
+  | 'mistral'
+  | 'cohere'
+  | 'meta'
+  | 'unknown';
+
 // Chat status states
 export type ChatStatus = 'ready' | 'submitted' | 'streaming' | 'error';
 
@@ -104,7 +114,7 @@ export interface Attachment {
 export interface ModelOption {
   id: string;
   name: string;
-  provider: string;
+  provider: AIProvider;
   description?: string;
   contextWindow?: number;
   maxOutput?: number;
