@@ -6,10 +6,13 @@ WORKDIR /app
 
 # Build arguments for Vite environment variables
 ARG VITE_SERVER_URL
+ARG VITE_CLERK_PUBLISHABLE_KEY
 ENV VITE_SERVER_URL=$VITE_SERVER_URL
+ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 
 # Validate required environment variables
 RUN if [ -z "$VITE_SERVER_URL" ]; then echo "Error: VITE_SERVER_URL is required" && exit 1; fi
+RUN if [ -z "$VITE_CLERK_PUBLISHABLE_KEY" ]; then echo "Error: VITE_CLERK_PUBLISHABLE_KEY is required" && exit 1; fi
 
 # Copy everything (respects .dockerignore)
 COPY . .
