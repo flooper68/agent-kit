@@ -93,7 +93,7 @@ const DialogOverlay = forwardRef<
     ref={ref}
     className={cn(
       'fixed inset-0 z-50 bg-black/50',
-      'data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out'
+      'data-[state=open]:animate-fade-in-fast data-[state=closed]:animate-fade-out-fast'
     )}
     {...props}
   />
@@ -107,7 +107,7 @@ const contentVariants = cva(
     'fixed z-50 bg-background rounded-lg shadow-lg',
     'border border-border',
     'focus:outline-none',
-    'data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out',
+    'data-[state=open]:animate-fade-in-fast data-[state=closed]:animate-fade-out-fast',
   ],
   {
     variants: {

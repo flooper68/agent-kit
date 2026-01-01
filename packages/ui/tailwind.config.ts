@@ -304,6 +304,7 @@ const config: Config = {
         },
       },
       animation: {
+        // Landing/marketing page animations (slower, more dramatic)
         'fade-in': 'fade-in 0.6s ease-out',
         'fade-out': 'fade-out 0.6s ease-out',
         'slide-up': 'slide-up 0.7s ease-out',
@@ -312,6 +313,12 @@ const config: Config = {
         'slide-in-right': 'slide-in-right 0.7s ease-out',
         'slide-out-left': 'slide-out-left 0.7s ease-out',
         'slide-out-right': 'slide-out-right 0.7s ease-out',
+        // App UI animations (faster, snappier)
+        'fade-in-fast': 'fade-in 0.15s ease-out',
+        'fade-out-fast': 'fade-out 0.1s ease-out',
+        'slide-up-fast': 'slide-up 0.15s ease-out',
+        'slide-down-fast': 'slide-down 0.15s ease-out',
+        // Utility animations
         'pulse-dot': 'pulse-dot 1.4s ease-in-out infinite',
         blink: 'blink 1s step-end infinite',
       },
