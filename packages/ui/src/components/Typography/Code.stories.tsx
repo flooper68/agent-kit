@@ -3,7 +3,7 @@ import { Code } from './Code';
 import { Text } from './Text';
 
 const meta: Meta<typeof Code> = {
-  title: 'Typography/Code',
+  title: 'Design System/Typography/Code',
   component: Code,
   tags: ['autodocs'],
   argTypes: {

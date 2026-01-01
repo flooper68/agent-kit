@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useAuth } from '@clerk/clerk-react';
 import { trpc, getTRPCClient } from '../lib/trpc';
 
 interface TRPCProviderProps {
@@ -7,8 +8,12 @@ interface TRPCProviderProps {
 }
 
 export function TRPCProvider({ children }: TRPCProviderProps) {
+  const { getToken } = useAuth();
   const [queryClient] = useState(() => new QueryClient());
-  const [trpcClient] = useState(() => getTRPCClient());
+
+  // Use useMemo to recreate client when getToken reference changes
+  // This ensures fresh tokens are used after auth state changes
+  const trpcClient = useMemo(() => getTRPCClient(getToken), [getToken]);
 
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>

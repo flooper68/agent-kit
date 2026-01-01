@@ -93,7 +93,7 @@ const DialogOverlay = forwardRef<
     ref={ref}
     className={cn(
       'fixed inset-0 z-50 bg-black/50',
-      'data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out'
+      'data-[state=open]:animate-fade-in-fast data-[state=closed]:animate-fade-out-fast'
     )}
     {...props}
   />
@@ -107,7 +107,7 @@ const contentVariants = cva(
     'fixed z-50 bg-background rounded-lg shadow-lg',
     'border border-border',
     'focus:outline-none',
-    'data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out',
+    'data-[state=open]:animate-fade-in-fast data-[state=closed]:animate-fade-out-fast',
   ],
   {
     variants: {
@@ -121,6 +121,8 @@ const contentVariants = cva(
         md: 'w-full max-w-md p-6',
         lg: 'w-full max-w-lg p-6',
         xl: 'w-full max-w-xl p-6',
+        '2xl': 'w-full max-w-4xl p-6',
+        viewport: 'w-[90vw] h-[90vh] max-w-none p-6 flex flex-col',
         full: 'w-full h-full max-w-none rounded-none',
       },
     },

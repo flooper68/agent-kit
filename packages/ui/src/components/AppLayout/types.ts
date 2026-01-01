@@ -63,6 +63,8 @@ export interface PanelConfig {
 
 // Header slot props
 export interface HeaderSlots {
+  /** Slot for project/workspace switcher (after main menu) */
+  projectSwitcher?: ReactNode;
   /** Slot after panel toggle, for tool buttons */
   toolButtons?: ReactNode;
   /** Slot for navigation/tabs (center-left) */
@@ -111,6 +113,7 @@ export interface AppLayoutContextValue {
   panelConfig: Required<PanelConfig>;
   isResizing: boolean;
   setIsResizing: (resizing: boolean) => void;
+  hasPanel: boolean;
 }
 
 // Ref handle

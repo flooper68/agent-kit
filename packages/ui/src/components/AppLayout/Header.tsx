@@ -8,7 +8,7 @@ import { useAppLayout } from './AppLayout';
 import type { HeaderProps } from './types';
 
 export const Header = ({ mainMenu, moreMenu, slots }: HeaderProps) => {
-  const { panelCollapsed, panelWidth, togglePanel, isResizing } =
+  const { panelCollapsed, panelWidth, togglePanel, isResizing, hasPanel } =
     useAppLayout();
 
   return (
@@ -18,16 +18,27 @@ export const Header = ({ mainMenu, moreMenu, slots }: HeaderProps) => {
         'flex items-center'
       )}
     >
-      {/* Left Zone: Main Menu + Tool Buttons + Panel Toggle */}
-      {/* Width aligns with assistant panel below */}
+      {/* Left Zone: Main Menu + Project Switcher + Tool Buttons + Panel Toggle */}
+      {/* Width aligns with assistant panel below (when panel exists) */}
       <div
         className={cn(
           'flex items-center gap-1 px-2 h-full',
-          !isResizing && 'transition-[width] duration-300 ease-in-out'
+          hasPanel &&
+            !isResizing &&
+            'transition-[width] duration-300 ease-in-out'
         )}
-        style={{ width: panelCollapsed ? 'auto' : panelWidth }}
+        style={{
+          width: !hasPanel || panelCollapsed ? 'auto' : panelWidth,
+        }}
       >
         <MainMenu config={mainMenu} />
+
+        {slots?.projectSwitcher && (
+          <>
+            <span className="text-muted-foreground/50 text-lg">/</span>
+            {slots.projectSwitcher}
+          </>
+        )}
 
         {/* Spacer to push tool buttons and toggle to right edge */}
         <div className="flex-1" />
@@ -36,16 +47,18 @@ export const Header = ({ mainMenu, moreMenu, slots }: HeaderProps) => {
           <div className="flex items-center gap-1">{slots.toolButtons}</div>
         )}
 
-        <Tooltip content={panelCollapsed ? 'Show panel' : 'Hide panel'}>
-          <IconButton
-            icon={<PanelLeft className="h-4 w-4" />}
-            label={panelCollapsed ? 'Show panel' : 'Hide panel'}
-            onClick={togglePanel}
-            variant="ghost"
-            size="sm"
-            aria-expanded={!panelCollapsed}
-          />
-        </Tooltip>
+        {hasPanel && (
+          <Tooltip content={panelCollapsed ? 'Show panel' : 'Hide panel'}>
+            <IconButton
+              icon={<PanelLeft className="h-4 w-4" />}
+              label={panelCollapsed ? 'Show panel' : 'Hide panel'}
+              onClick={togglePanel}
+              variant="ghost"
+              size="sm"
+              aria-expanded={!panelCollapsed}
+            />
+          </Tooltip>
+        )}
       </div>
 
       {/* Main Content Header Area - status centered within this */}

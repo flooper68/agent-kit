@@ -4,7 +4,7 @@ import { CopyButton } from '../../Controls/CopyButton';
 import { RegenerateButton } from '../../Controls/ActionButtons';
 
 const meta: Meta<typeof Message> = {
-  title: 'Chat/Core/Message',
+  title: 'Chat/Chat Components/Message',
   component: Message,
   tags: ['autodocs'],
   parameters: {

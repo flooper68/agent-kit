@@ -3,7 +3,7 @@ import { ModelSwitcher } from './ModelSwitcher';
 import type { ModelOption } from '../../../../types/chat';
 
 const meta: Meta<typeof ModelSwitcher> = {
-  title: 'Chat/Controls/ModelSwitcher',
+  title: 'Chat/Chat Components/ModelSwitcher',
   component: ModelSwitcher,
   tags: ['autodocs'],
   parameters: {

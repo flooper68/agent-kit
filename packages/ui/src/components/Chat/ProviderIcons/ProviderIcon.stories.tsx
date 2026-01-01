@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { ProviderIcon } from './ProviderIcon';
 
 const meta: Meta<typeof ProviderIcon> = {
-  title: 'Chat/ProviderIcons/ProviderIcon',
+  title: 'Chat/Chat Components/ProviderIcon',
   component: ProviderIcon,
   tags: ['autodocs'],
   parameters: {

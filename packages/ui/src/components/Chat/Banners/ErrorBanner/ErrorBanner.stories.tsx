@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { ErrorBanner } from './ErrorBanner';
 
 const meta: Meta<typeof ErrorBanner> = {
-  title: 'Chat/ErrorBanner',
+  title: 'Chat/Chat Components/ErrorBanner',
   component: ErrorBanner,
   tags: ['autodocs'],
   parameters: {

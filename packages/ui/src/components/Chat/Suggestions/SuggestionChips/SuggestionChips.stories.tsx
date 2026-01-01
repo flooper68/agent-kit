@@ -26,7 +26,7 @@ const defaultSuggestions: SuggestionChip[] = [
 ];
 
 const meta: Meta<typeof SuggestionChips> = {
-  title: 'Chat/SuggestionChips',
+  title: 'Chat/Chat Components/SuggestionChips',
   component: SuggestionChips,
   tags: ['autodocs'],
   parameters: {

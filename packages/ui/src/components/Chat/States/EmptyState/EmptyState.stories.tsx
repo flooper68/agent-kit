@@ -8,7 +8,7 @@ import { ModelSwitcher } from '../../Controls/ModelSwitcher';
 import type { ModelOption } from '../../../../types/chat';
 
 const meta: Meta<typeof EmptyState> = {
-  title: 'Chat/States/EmptyState',
+  title: 'Chat/Chat Components/EmptyState',
   component: EmptyState,
   tags: ['autodocs'],
   parameters: {

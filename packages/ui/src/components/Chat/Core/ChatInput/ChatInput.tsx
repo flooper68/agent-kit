@@ -141,7 +141,7 @@ const ChatInputTextarea = memo(
           autoResize
           maxHeight={200}
           className={cn(
-            'min-h-[44px] border-0 shadow-none focus-visible:ring-0 px-0',
+            'min-h-[66px] border-0 shadow-none focus-visible:ring-0 px-0',
             className
           )}
           {...props}

@@ -12,11 +12,15 @@ function getServerUrl(): string {
   return `https://${url}`;
 }
 
-export function getTRPCClient() {
+export function getTRPCClient(getToken: () => Promise<string | null>) {
   return trpc.createClient({
     links: [
       httpBatchLink({
         url: `${getServerUrl()}/trpc`,
+        async headers() {
+          const token = await getToken();
+          return token ? { Authorization: `Bearer ${token}` } : {};
+        },
       }),
     ],
   });

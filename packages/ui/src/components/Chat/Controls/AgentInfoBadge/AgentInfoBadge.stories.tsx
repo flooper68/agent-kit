@@ -4,7 +4,7 @@ import { AgentInfoBadge } from './AgentInfoBadge';
 import type { AgentType } from '../../../../types/chat';
 
 const meta: Meta<typeof AgentInfoBadge> = {
-  title: 'Chat/Controls/AgentInfoBadge',
+  title: 'Chat/Chat Components/AgentInfoBadge',
   component: AgentInfoBadge,
   tags: ['autodocs'],
   parameters: {

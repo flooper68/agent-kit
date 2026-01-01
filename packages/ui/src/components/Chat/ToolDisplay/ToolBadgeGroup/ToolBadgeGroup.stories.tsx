@@ -16,7 +16,7 @@ const createToolInvocation = (
 });
 
 const meta: Meta<typeof ToolBadgeGroup> = {
-  title: 'Chat/ToolBadgeGroup',
+  title: 'Chat/Chat Components/ToolBadgeGroup',
   component: ToolBadgeGroup,
   tags: ['autodocs'],
   parameters: {

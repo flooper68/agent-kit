@@ -14,6 +14,19 @@ const preview: Preview = {
     backgrounds: {
       disable: true,
     },
+    options: {
+      storySort: {
+        order: [
+          'Design System',
+          ['Theme', 'Typography'],
+          'Primitives',
+          'Components',
+          'Chat',
+          ['AgentPanel', 'TaskHistorySidebar', 'Components'],
+          'Layout',
+        ],
+      },
+    },
   },
   decorators: [
     withThemeByClassName({

@@ -100,7 +100,7 @@ const CollapsibleContent = forwardRef<HTMLDivElement, CollapsibleContentProps>(
     return (
       <div
         ref={ref}
-        className={cn('overflow-hidden animate-slide-up', className)}
+        className={cn('overflow-hidden animate-slide-up-fast', className)}
         {...props}
       >
         {children}

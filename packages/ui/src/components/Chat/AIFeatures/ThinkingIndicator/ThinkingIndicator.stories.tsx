@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { ThinkingIndicator } from './ThinkingIndicator';
 
 const meta: Meta<typeof ThinkingIndicator> = {
-  title: 'Chat/AI Features/ThinkingIndicator',
+  title: 'Chat/Chat Components/ThinkingIndicator',
   component: ThinkingIndicator,
   tags: ['autodocs'],
   parameters: {

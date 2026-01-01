@@ -1,7 +1,7 @@
 import fp from 'fastify-plugin';
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import type Redis from 'ioredis';
-import { createPubSubClients, getRedisUrl } from '../lib/redis/client';
+import { createPubSubClients } from '../lib/redis/client';
 import { PubSubManager } from '../lib/redis/pubsub';
 import type { RedisConfig } from '../lib/redis/types';
 
@@ -16,15 +16,14 @@ declare module 'fastify' {
 }
 
 export interface RedisPluginOptions {
-  url?: string;
+  url: string;
 }
 
 const redisPlugin: FastifyPluginAsync<RedisPluginOptions> = async (
   fastify: FastifyInstance,
   options: RedisPluginOptions
 ) => {
-  const url = options.url || getRedisUrl();
-  const config: RedisConfig = { url };
+  const config: RedisConfig = { url: options.url };
 
   const { publisher, subscriber } = createPubSubClients(config);
   const pubsub = new PubSubManager(publisher, subscriber);
