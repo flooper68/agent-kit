@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     port: 5173,
   },
-  optimizeDeps: {
-    include: ['@agent-kit/ui'],
+  css: {
+    postcss: './postcss.config.js',
   },
 });

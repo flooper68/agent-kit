@@ -108,6 +108,8 @@ export const AppLayout = forwardRef<AppLayoutRef, AppLayoutProps>(
       [setPanelCollapsed, togglePanel, setPanelWidth]
     );
 
+    const hasPanel = Boolean(assistantPanel);
+
     const contextValue = useMemo<AppLayoutContextValue>(
       () => ({
         panelCollapsed: isCollapsed,
@@ -118,6 +120,7 @@ export const AppLayout = forwardRef<AppLayoutRef, AppLayoutProps>(
         panelConfig,
         isResizing,
         setIsResizing,
+        hasPanel,
       }),
       [
         isCollapsed,
@@ -127,6 +130,7 @@ export const AppLayout = forwardRef<AppLayoutRef, AppLayoutProps>(
         setPanelWidth,
         panelConfig,
         isResizing,
+        hasPanel,
       ]
     );
 

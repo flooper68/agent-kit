@@ -109,7 +109,7 @@ export const MainMenu = ({ config }: MainMenuProps) => {
         >
           {/* Branding Section */}
           {config?.branding && (
-            <div className="px-2 py-2 border-b border-border">
+            <div className="px-2 py-2">
               <div className="flex items-center gap-2">
                 {config.branding.logo && (
                   <span className="h-6 w-6 flex items-center justify-center">
@@ -134,10 +134,7 @@ export const MainMenu = ({ config }: MainMenuProps) => {
 
           {/* Custom Sections */}
           {config?.sections?.map((section) => (
-            <div
-              key={section.id}
-              className="px-1 py-1 border-b border-border last:border-b-0"
-            >
+            <div key={section.id} className="px-1 py-1">
               {section.label && (
                 <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">
                   {section.label}
@@ -152,36 +149,6 @@ export const MainMenu = ({ config }: MainMenuProps) => {
               ))}
             </div>
           ))}
-
-          {/* Theme Toggle */}
-          {config?.showThemeToggle && (
-            <div className="px-1 py-1 border-b border-border">
-              <div className="flex items-center justify-between px-2 py-1">
-                <span className="text-sm">Theme</span>
-                <ThemeToggle size="sm" />
-              </div>
-            </div>
-          )}
-
-          {/* Sign Out */}
-          {config?.onSignOut && (
-            <div className="px-1 py-1 border-b border-border">
-              <button
-                type="button"
-                className={cn(
-                  'w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded',
-                  'hover:bg-destructive/10 text-destructive transition-colors'
-                )}
-                onClick={() => {
-                  config.onSignOut?.();
-                  handleClose();
-                }}
-              >
-                <LogOut className="h-4 w-4" />
-                <span>Sign out</span>
-              </button>
-            </div>
-          )}
 
           {/* Profile Section */}
           {config?.profile && (
@@ -208,6 +175,36 @@ export const MainMenu = ({ config }: MainMenuProps) => {
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Theme Toggle */}
+          {config?.showThemeToggle && (
+            <div className="px-1 py-1">
+              <div className="flex items-center justify-between px-2 py-1">
+                <span className="text-sm">Theme</span>
+                <ThemeToggle size="sm" />
+              </div>
+            </div>
+          )}
+
+          {/* Sign Out */}
+          {config?.onSignOut && (
+            <div className="px-1 py-1">
+              <button
+                type="button"
+                className={cn(
+                  'w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded',
+                  'hover:bg-destructive/10 text-destructive transition-colors'
+                )}
+                onClick={() => {
+                  config.onSignOut?.();
+                  handleClose();
+                }}
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign out</span>
+              </button>
             </div>
           )}
         </div>
