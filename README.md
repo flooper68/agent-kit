@@ -1,7 +1,5 @@
 # Agent Kit Monorepo
 
-Test
-
 A Bun monorepo containing a React UI library, Fastify server, and Vite React application.
 
 ## Structure
