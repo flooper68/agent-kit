@@ -11,7 +11,7 @@ const sampleProjects: Project[] = [
 ];
 
 const meta: Meta<typeof ProjectSwitcher> = {
-  title: 'Components/ProjectSwitcher',
+  title: 'Layout/ProjectSwitcher',
   component: ProjectSwitcher,
   tags: ['autodocs'],
   parameters: {

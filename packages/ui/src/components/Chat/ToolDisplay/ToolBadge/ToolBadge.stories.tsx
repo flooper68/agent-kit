@@ -11,7 +11,7 @@ const createResult = (result: unknown, isError = false): ToolResultPart => ({
 });
 
 const meta: Meta<typeof ToolBadge> = {
-  title: 'Chat/ToolBadge',
+  title: 'Chat/Chat Components/ToolBadge',
   component: ToolBadge,
   tags: ['autodocs'],
   parameters: {

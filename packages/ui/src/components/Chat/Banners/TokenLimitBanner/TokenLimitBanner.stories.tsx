@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { TokenLimitBanner } from './TokenLimitBanner';
 
 const meta: Meta<typeof TokenLimitBanner> = {
-  title: 'Chat/TokenLimitBanner',
+  title: 'Chat/Chat Components/TokenLimitBanner',
   component: TokenLimitBanner,
   tags: ['autodocs'],
   parameters: {

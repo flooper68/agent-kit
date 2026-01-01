@@ -12,9 +12,6 @@ export type {
   MessageActionsProps,
 } from './Message';
 
-export { MessageContent } from './MessageContent';
-export type { MessageContentProps } from './MessageContent';
-
 export { ChatInput, useChatInput } from './ChatInput';
 export type {
   ChatInputProps,

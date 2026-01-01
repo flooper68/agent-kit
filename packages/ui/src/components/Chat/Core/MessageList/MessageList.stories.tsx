@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { MessageList } from './MessageList';
 
 const meta: Meta<typeof MessageList> = {
-  title: 'Chat/Core/MessageList',
+  title: 'Chat/Chat Components/MessageList',
   component: MessageList,
   tags: ['autodocs'],
   parameters: {

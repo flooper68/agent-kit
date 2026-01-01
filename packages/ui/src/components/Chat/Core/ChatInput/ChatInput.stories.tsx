@@ -7,7 +7,7 @@ import { ModelSwitcher } from '../../Controls/ModelSwitcher';
 import type { ModelOption } from '../../../../types/chat';
 
 const meta: Meta<typeof ChatInput> = {
-  title: 'Chat/Core/ChatInput',
+  title: 'Chat/Chat Components/ChatInput',
   component: ChatInput,
   tags: ['autodocs'],
   parameters: {

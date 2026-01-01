@@ -108,7 +108,10 @@ function MemberRow({ member }: { member: Member }) {
           <Text className="truncate font-medium">
             {displayName}
             {isCurrentUser && (
-              <Text as="span" className="ml-1.5 font-normal text-muted-foreground">
+              <Text
+                as="span"
+                className="ml-1.5 font-normal text-muted-foreground"
+              >
                 (you)
               </Text>
             )}
