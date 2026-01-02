@@ -1,5 +1,4 @@
 import { forwardRef, memo, useState, useEffect, useCallback } from 'react';
-import { ChevronDown, Check } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
 import type { AgentType } from '../../../../types/chat';
 
@@ -24,7 +23,7 @@ export const AgentSelector = memo(
         agents,
         selectedAgent,
         onSelect,
-        placeholder = 'Select an agent...',
+        placeholder = 'Select agent',
         disabled,
         className,
         ...props
@@ -57,92 +56,82 @@ export const AgentSelector = memo(
       };
 
       return (
-        <div ref={ref} className={cn('relative w-full', className)} {...props}>
-          {/* Trigger button */}
+        <div ref={ref} className={cn('relative', className)} {...props}>
           <button
             type="button"
             onClick={() => !disabled && setIsOpen(!isOpen)}
             disabled={disabled}
             className={cn(
-              'w-full flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-lg border transition-colors',
-              'bg-background hover:bg-accent/50',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-              disabled && 'opacity-50 cursor-not-allowed',
-              isOpen && 'ring-2 ring-ring ring-offset-2'
+              'flex items-center gap-2 px-2 py-1 text-sm rounded-md hover:bg-accent transition-colors',
+              disabled && 'opacity-50 cursor-not-allowed'
             )}
           >
-            <div className="flex items-center gap-2 min-w-0">
-              {selectedAgent?.icon && (
-                <span className="text-muted-foreground flex-shrink-0 [&>svg]:h-4 [&>svg]:w-4">
-                  {selectedAgent.icon}
-                </span>
-              )}
-              <span
-                className={cn(
-                  'truncate',
-                  !selectedAgent && 'text-muted-foreground'
-                )}
-              >
-                {selectedAgent?.name ?? placeholder}
+            {selectedAgent?.icon && (
+              <span className="text-muted-foreground flex-shrink-0 [&>svg]:h-4 [&>svg]:w-4">
+                {selectedAgent.icon}
               </span>
-            </div>
-            <ChevronDown
+            )}
+            <span className="font-medium">
+              {selectedAgent?.name ?? placeholder}
+            </span>
+            <svg
               className={cn(
-                'h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform',
+                'h-4 w-4 transition-transform',
                 isOpen && 'rotate-180'
               )}
-            />
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
           </button>
 
-          {/* Dropdown */}
           {isOpen && (
             <>
-              {/* Backdrop */}
               <div
                 className="fixed inset-0 z-10"
                 onClick={() => setIsOpen(false)}
               />
-
-              {/* Dropdown panel */}
-              <div className="absolute top-full left-0 right-0 mt-1 z-20 rounded-lg border bg-popover shadow-lg overflow-hidden">
-                <div className="max-h-64 overflow-y-auto py-1">
-                  {agents.length === 0 ? (
-                    <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-                      No agents available
-                    </div>
-                  ) : (
-                    agents.map((agent) => (
-                      <button
-                        key={agent.id}
-                        type="button"
-                        onClick={() => handleSelect(agent)}
-                        className={cn(
-                          'w-full px-3 py-2 text-left hover:bg-accent transition-colors flex items-center gap-3',
-                          agent.id === selectedAgent?.id && 'bg-accent'
-                        )}
-                      >
+              <div className="absolute bottom-full left-0 mb-1 w-64 z-20 rounded-md border bg-popover shadow-md">
+                {agents.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    No agents available
+                  </div>
+                ) : (
+                  agents.map((agent) => (
+                    <button
+                      key={agent.id}
+                      type="button"
+                      onClick={() => handleSelect(agent)}
+                      className={cn(
+                        'w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors',
+                        agent.id === selectedAgent?.id && 'bg-accent'
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
                         {agent.icon && (
                           <span className="text-muted-foreground flex-shrink-0 [&>svg]:h-4 [&>svg]:w-4">
                             {agent.icon}
                           </span>
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm">
-                            {agent.name}
-                          </div>
+                          <div className="font-medium">{agent.name}</div>
                           {agent.description && (
                             <div className="text-xs text-muted-foreground truncate">
                               {agent.description}
                             </div>
                           )}
                         </div>
-                        {agent.id === selectedAgent?.id && (
-                          <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                        )}
-                      </button>
-                    ))
-                  )}
-                </div>
+                      </div>
+                    </button>
+                  ))
+                )}
               </div>
             </>
           )}

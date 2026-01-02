@@ -29,7 +29,6 @@ import { ToolBadge } from '../ToolDisplay/ToolBadge';
 import { MarkdownRenderer } from '../CodeDisplay/MarkdownRenderer';
 import { CopyButton, RegenerateButton } from '../Controls';
 import { AttachmentButton } from '../Controls/AttachmentButton';
-import { ModelSwitcher } from '../Controls/ModelSwitcher';
 import { ContextIndicator } from '../Controls/ContextIndicator';
 import { AgentSelector } from '../Controls/AgentSelector';
 import { AgentInfoBadge } from '../Controls/AgentInfoBadge';
@@ -84,8 +83,6 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
       thinkingStatus,
       enableAttachments = false,
       enableRegenerate = false,
-      models,
-      selectedModel,
       contextUsage,
       inputPlaceholder = 'Ask the agent...',
       className,
@@ -95,7 +92,6 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
       onSuggestionClick,
       onRegenerate,
       onErrorDismiss,
-      onModelChange,
       onAttach,
       onAgentSelect,
       agents,
@@ -288,23 +284,6 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
       [isSubmitting, onSend]
     );
 
-    // Handle model change (memoized)
-    const handleModelChange = useCallback(
-      (modelId: string) => {
-        const model = models.find((m) => m.id === modelId);
-        if (model) {
-          onModelChange?.(model);
-        }
-      },
-      [models, onModelChange]
-    );
-
-    // Get current model value
-    const currentModelId = useMemo(
-      () => selectedModel?.id ?? models[0]?.id,
-      [selectedModel, models]
-    );
-
     // Render the input actions
     const renderInputActions = () => (
       <>
@@ -312,11 +291,11 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
           {enableAttachments && onAttach && (
             <AttachmentButton onAttach={onAttach} showMenu={false} />
           )}
-          {models.length > 0 && (
-            <ModelSwitcher
-              models={models}
-              value={currentModelId}
-              onChange={handleModelChange}
+          {agents && agents.length > 0 && (
+            <AgentSelector
+              agents={agents}
+              selectedAgent={selectedAgent}
+              onSelect={onAgentSelect}
             />
           )}
         </div>
@@ -334,24 +313,13 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
             suggestions={suggestions}
             onSuggestionClick={onSuggestionClick}
             inputElement={
-              <div className="space-y-4">
-                <div className="flex justify-center">
-                  <AgentSelector
-                    agents={agents ?? []}
-                    selectedAgent={selectedAgent}
-                    onSelect={onAgentSelect}
-                    placeholder="Select an agent..."
-                    className="w-full max-w-md"
-                  />
-                </div>
-                <ChatInput isSubmitting={isSubmitting} onSubmit={handleSubmit}>
-                  <ChatInput.Textarea
-                    ref={inputRef}
-                    placeholder={inputPlaceholder}
-                  />
-                  <ChatInput.Actions>{renderInputActions()}</ChatInput.Actions>
-                </ChatInput>
-              </div>
+              <ChatInput isSubmitting={isSubmitting} onSubmit={handleSubmit}>
+                <ChatInput.Textarea
+                  ref={inputRef}
+                  placeholder={inputPlaceholder}
+                />
+                <ChatInput.Actions>{renderInputActions()}</ChatInput.Actions>
+              </ChatInput>
             }
           />
         ) : (

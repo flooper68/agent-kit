@@ -17,6 +17,9 @@ const envSchema = z.object({
   // Clerk
   CLERK_SECRET_KEY: z.string(),
   CLERK_PUBLISHABLE_KEY: z.string(),
+
+  // AI Providers
+  OPENAI_API_KEY: z.string(),
 });
 
 export const env = envSchema.parse(process.env);

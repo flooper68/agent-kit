@@ -2,7 +2,6 @@ import type {
   TaskMessage,
   TaskStatus,
   SuggestionChip,
-  ModelOption,
   ContextUsage,
   ThinkingStatus,
   AgentType,
@@ -67,9 +66,6 @@ export interface AgentPanelCallbacks {
   /** Called when an error banner is dismissed */
   onErrorDismiss?: () => void;
 
-  /** Called when model is changed (if model switcher enabled) */
-  onModelChange?: (model: ModelOption) => void;
-
   /** Called when files are attached */
   onAttach?: (files: File[]) => void;
 
@@ -113,12 +109,6 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
 
   /** Whether regenerate button is shown on assistant messages */
   enableRegenerate?: boolean;
-
-  /** Available models for the model switcher (required) */
-  models: ModelOption[];
-
-  /** Currently selected model (defaults to first model) */
-  selectedModel?: ModelOption;
 
   /** Context usage information for token limit display */
   contextUsage?: ContextUsage;

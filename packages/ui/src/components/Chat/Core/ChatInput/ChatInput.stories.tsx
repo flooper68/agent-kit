@@ -1,10 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { useState } from 'react';
 import { ChatInput } from './ChatInput';
 import { AttachmentButton } from '../../Controls/AttachmentButton';
 import { SettingsButton } from '../../Controls/SettingsButton';
-import { ModelSwitcher } from '../../Controls/ModelSwitcher';
-import type { ModelOption } from '../../../../types/chat';
 
 const meta: Meta<typeof ChatInput> = {
   title: 'Chat/Chat Components/ChatInput',
@@ -18,21 +15,6 @@ const meta: Meta<typeof ChatInput> = {
 export default meta;
 type Story = StoryObj<typeof ChatInput>;
 
-const sampleModels: ModelOption[] = [
-  {
-    id: 'gpt-4',
-    name: 'GPT-4',
-    provider: 'openai',
-    description: 'Most capable model',
-  },
-  {
-    id: 'claude-3',
-    name: 'Claude 3',
-    provider: 'anthropic',
-    description: 'Latest Claude model',
-  },
-];
-
 export const Default: Story = {
   render: () => (
     <ChatInput onSubmit={(value) => console.log('Submitted:', value)}>
@@ -43,8 +25,6 @@ export const Default: Story = {
 
 export const WithToolbar: Story = {
   render: function WithToolbarStory() {
-    const [model, setModel] = useState('gpt-4');
-
     return (
       <ChatInput onSubmit={(value) => console.log('Submitted:', value)}>
         <ChatInput.Textarea placeholder="Ask the agent..." />
@@ -55,11 +35,6 @@ export const WithToolbar: Story = {
               showMenu={false}
             />
             <SettingsButton onClick={() => console.log('Settings clicked')} />
-            <ModelSwitcher
-              models={sampleModels}
-              value={model}
-              onChange={setModel}
-            />
           </div>
         </ChatInput.Actions>
       </ChatInput>

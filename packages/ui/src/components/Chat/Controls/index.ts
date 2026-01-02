@@ -1,6 +1,3 @@
-export { ModelSwitcher } from './ModelSwitcher';
-export type { ModelSwitcherProps } from './ModelSwitcher';
-
 export { ContextIndicator } from './ContextIndicator';
 export type { ContextIndicatorProps } from './ContextIndicator';
 
