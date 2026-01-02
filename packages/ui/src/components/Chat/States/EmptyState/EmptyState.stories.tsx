@@ -1,11 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { useState } from 'react';
 import { EmptyState } from './EmptyState';
 import { ChatInput } from '../../Core/ChatInput';
 import { AttachmentButton } from '../../Controls/AttachmentButton';
 import { SettingsButton } from '../../Controls/SettingsButton';
-import { ModelSwitcher } from '../../Controls/ModelSwitcher';
-import type { ModelOption } from '../../../../types/chat';
 
 const meta: Meta<typeof EmptyState> = {
   title: 'Chat/Chat Components/EmptyState',
@@ -19,29 +16,12 @@ const meta: Meta<typeof EmptyState> = {
 export default meta;
 type Story = StoryObj<typeof EmptyState>;
 
-const sampleModels: ModelOption[] = [
-  {
-    id: 'gpt-4',
-    name: 'GPT-4',
-    provider: 'openai',
-    description: 'Most capable model',
-  },
-  {
-    id: 'claude-3',
-    name: 'Claude 3',
-    provider: 'anthropic',
-    description: 'Latest Claude model',
-  },
-];
-
 export const Default: Story = {
   args: {},
 };
 
 export const WithInput: Story = {
   render: function WithInputStory() {
-    const [model, setModel] = useState('gpt-4');
-
     return (
       <EmptyState
         title="How can I help you today?"
@@ -57,11 +37,6 @@ export const WithInput: Story = {
                 <SettingsButton
                   onClick={() => console.log('Settings clicked')}
                 />
-                <ModelSwitcher
-                  models={sampleModels}
-                  value={model}
-                  onChange={setModel}
-                />
               </div>
             </ChatInput.Actions>
           </ChatInput>
@@ -73,8 +48,6 @@ export const WithInput: Story = {
 
 export const WithSuggestions: Story = {
   render: function WithSuggestionsStory() {
-    const [model, setModel] = useState('gpt-4');
-
     return (
       <EmptyState
         title="How can I help you today?"
@@ -100,11 +73,6 @@ export const WithSuggestions: Story = {
                 />
                 <SettingsButton
                   onClick={() => console.log('Settings clicked')}
-                />
-                <ModelSwitcher
-                  models={sampleModels}
-                  value={model}
-                  onChange={setModel}
                 />
               </div>
             </ChatInput.Actions>

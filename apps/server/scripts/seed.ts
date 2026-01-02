@@ -1,20 +1,36 @@
 import { db } from '../src/db';
-import { sessions } from '../src/db/schema';
+import { agents } from '../src/db/schema';
 
 async function seed() {
   console.log('Seeding database...');
 
-  // Create some sample sessions
-  const seedSessions = await db
-    .insert(sessions)
-    .values([{}, {}, {}])
+  // Seed default agents
+  const defaultAgents = [
+    {
+      id: 'general-assistant',
+      name: 'General Assistant',
+      description: 'A helpful AI assistant for general tasks',
+      systemPrompt: `You are a helpful AI assistant. Be concise, accurate, and helpful.
+
+When using tools:
+- Use the getTime tool when asked about the current date or time
+- Explain what you're doing when using tools
+
+Be friendly but professional.`,
+      provider: 'openai',
+      model: 'gpt-4o',
+    },
+  ];
+
+  const seedAgents = await db
+    .insert(agents)
+    .values(defaultAgents)
+    .onConflictDoNothing()
     .returning();
 
-  console.log(`Created ${seedSessions.length} sessions:`);
-  for (const session of seedSessions) {
-    console.log(
-      `  - ${session.id} (created: ${session.createdAt.toISOString()})`
-    );
+  console.log(`Seeded ${seedAgents.length} agents:`);
+  for (const agent of seedAgents) {
+    console.log(`  - ${agent.id}: ${agent.name}`);
   }
 
   console.log('Seeding complete');

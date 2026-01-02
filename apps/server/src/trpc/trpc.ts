@@ -1,4 +1,5 @@
 import { initTRPC, TRPCError } from '@trpc/server';
+import { z } from 'zod';
 import type { Context } from './context';
 import { OrgRole } from '../types/auth';
 
@@ -109,7 +110,67 @@ const handleErrors = middleware(async ({ ctx, next, path }) => {
   }
 });
 
+// Session ownership middleware - verifies the user owns the session
+// Input must have sessionId field
+const ownsSession = middleware(async (opts) => {
+  const { ctx, next, getRawInput } = opts;
+
+  if (!ctx.auth.userId) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'You must be signed in to perform this action',
+    });
+  }
+
+  // Parse sessionId from input
+  const inputSchema = z.object({
+    sessionId: z.string().uuid(),
+  });
+
+  const rawInput = await getRawInput();
+  const result = inputSchema.safeParse(rawInput);
+
+  if (!result.success) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Invalid session ID',
+    });
+  }
+
+  const { sessionId } = result.data;
+
+  // Verify ownership using agentsFeature
+  const ownsSession = await ctx.agentsFeature.sessions.verifyOwnership(
+    sessionId,
+    ctx.auth.userId
+  );
+
+  if (!ownsSession) {
+    throw new TRPCError({
+      code: 'NOT_FOUND',
+      message: 'Session not found',
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      sessionId,
+      auth: {
+        userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
+        orgRole: ctx.auth.orgRole,
+      },
+    },
+  });
+});
+
 // Protected procedures
 export const protectedProcedure = t.procedure.use(isAuthenticated);
 export const orgProcedure = t.procedure.use(hasOrganization).use(handleErrors);
 export const adminProcedure = t.procedure.use(isOrgAdmin).use(handleErrors);
+
+// Session-specific procedure - requires authenticated user and validates session ownership
+export const sessionProcedure = t.procedure
+  .use(isAuthenticated)
+  .use(ownsSession);

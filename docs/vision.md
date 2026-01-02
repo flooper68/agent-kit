@@ -16,7 +16,13 @@ The fundamental unit of work. Everything flows from tasks.
 interface Task {
   id: string;
   mode: 'conversation' | 'task' | 'hybrid';
-  status: 'pending' | 'running' | 'awaiting_interaction' | 'completed' | 'failed' | 'canceled';
+  status:
+    | 'pending'
+    | 'running'
+    | 'awaiting_interaction'
+    | 'completed'
+    | 'failed'
+    | 'canceled';
 
   // Hierarchy
   parent_id?: string;
@@ -49,9 +55,19 @@ interface Event {
   id: string;
   task_id: string;
   timestamp: DateTime;
-  type: 'started' | 'progress' | 'tool_call' | 'tool_result' | 'message' |
-        'state_change' | 'subtask_spawned' | 'subtask_completed' |
-        'interaction_requested' | 'interaction_resolved' | 'completed' | 'failed';
+  type:
+    | 'started'
+    | 'progress'
+    | 'tool_call'
+    | 'tool_result'
+    | 'message'
+    | 'state_change'
+    | 'subtask_spawned'
+    | 'subtask_completed'
+    | 'interaction_requested'
+    | 'interaction_resolved'
+    | 'completed'
+    | 'failed';
   payload: any;
   agent_id: string;
 }
@@ -68,7 +84,7 @@ interface Session {
 
   // Context
   messages: Message[];
-  state: Record<string, any>;      // mutable shared state (for workflows)
+  state: Record<string, any>; // mutable shared state (for workflows)
 
   // Linking
   parent_session_id?: string;
@@ -105,7 +121,7 @@ Any point where an agent needs input — approvals, clarifications, decisions, e
 interface Interaction {
   id: string;
   task_id: string;
-  originated_from: TaskId;        // which subtask raised it
+  originated_from: TaskId; // which subtask raised it
 
   type: 'approval' | 'clarification' | 'decision' | 'error' | 'checkpoint';
   status: 'pending' | 'resolved' | 'timeout' | 'escalated';
@@ -171,12 +187,12 @@ interface Artifact {
 
 ```typescript
 type ApprovalStrategy =
-  | { type: 'auto' }                                              // no human needed
-  | { type: 'notify' }                                            // inform, don't block
-  | { type: 'timeout'; duration: Duration; fallback: Fallback }   // wait then fallback
-  | { type: 'require' }                                           // block until resolved
+  | { type: 'auto' } // no human needed
+  | { type: 'notify' } // inform, don't block
+  | { type: 'timeout'; duration: Duration; fallback: Fallback } // wait then fallback
+  | { type: 'require' } // block until resolved
   | { type: 'escalate'; chain: Target[]; timeout_per_level: Duration }
-  | { type: 'batch'; window: Duration };                          // collect and approve together
+  | { type: 'batch'; window: Duration }; // collect and approve together
 ```
 
 ### Decision Strategy
@@ -212,12 +228,12 @@ type RoutingStrategy =
 
 ```typescript
 type PresentationStrategy =
-  | 'buttons'          // [Yes] [No] [Maybe]
-  | 'select'           // dropdown for many options
-  | 'input'            // free text
-  | 'diff'             // before/after comparison
-  | 'full_context'     // show reasoning and implications
-  | 'conversational';  // open thread for discussion
+  | 'buttons' // [Yes] [No] [Maybe]
+  | 'select' // dropdown for many options
+  | 'input' // free text
+  | 'diff' // before/after comparison
+  | 'full_context' // show reasoning and implications
+  | 'conversational'; // open thread for discussion
 ```
 
 ### Visibility Settings
@@ -235,8 +251,8 @@ interface VisibilitySettings {
 
 ```typescript
 interface Permission {
-  resource: string;           // glob pattern: "/src/**", "database:*"
-  actions: string[];          // ["read", "write", "delete"]
+  resource: string; // glob pattern: "/src/**", "database:*"
+  actions: string[]; // ["read", "write", "delete"]
   scope: 'task' | 'session' | 'permanent';
   granted_by?: string;
   expires_at?: DateTime;
@@ -245,8 +261,8 @@ interface Permission {
 interface PermissionPolicy {
   inherit_from_parent: boolean;
   default_permissions: Permission[];
-  require_approval_for: string[];    // actions that need approval
-  auto_approve: string[];            // actions that don't
+  require_approval_for: string[]; // actions that need approval
+  auto_approve: string[]; // actions that don't
 }
 ```
 
@@ -260,7 +276,7 @@ interface PermissionPolicy {
 interface RiskAssessment {
   level: 'low' | 'medium' | 'high' | 'critical';
   reversible: boolean;
-  affects: string[];              // ['production', 'database', 'billing']
+  affects: string[]; // ['production', 'database', 'billing']
   blast_radius: 'local' | 'task' | 'system' | 'external';
 }
 
@@ -302,11 +318,11 @@ interface Checkpoint {
 
 ### Session Models
 
-| Model | Description |
-|-------|-------------|
-| **Single session** | All agents share one context, state mutations visible to all |
-| **Linked sessions** | Separate sessions per agent, connected via task references |
-| **Hybrid** | Separate sessions with summarized handoffs |
+| Model               | Description                                                  |
+| ------------------- | ------------------------------------------------------------ |
+| **Single session**  | All agents share one context, state mutations visible to all |
+| **Linked sessions** | Separate sessions per agent, connected via task references   |
+| **Hybrid**          | Separate sessions with summarized handoffs                   |
 
 ### Agent Card (A2A)
 
@@ -376,6 +392,7 @@ interface AgentCard {
 ## Feature Requirements Summary
 
 ### Task Management
+
 - [ ] Create, read, update, cancel tasks
 - [ ] Hierarchical task relationships (parent/child)
 - [ ] Task status lifecycle and state machine
@@ -383,6 +400,7 @@ interface AgentCard {
 - [ ] Task templates/definitions for reusable patterns
 
 ### Session & State
+
 - [ ] Session creation and management
 - [ ] Shared mutable state for workflow agents
 - [ ] Session linking across task hierarchy
@@ -390,6 +408,7 @@ interface AgentCard {
 - [ ] Session persistence and resumability
 
 ### Event System
+
 - [ ] Append-only event log per task
 - [ ] Event sourcing — derive state from events
 - [ ] Event streaming for real-time updates
@@ -397,6 +416,7 @@ interface AgentCard {
 - [ ] Event filtering and querying
 
 ### Interaction System
+
 - [ ] Unified interaction model (approvals, clarifications, decisions, errors)
 - [ ] Strategy-based routing (self, parent, user, cascade)
 - [ ] Risk assessment integration
@@ -405,6 +425,7 @@ interface AgentCard {
 - [ ] Escalation chains
 
 ### Policy Engine
+
 - [ ] Approval policies with matching rules
 - [ ] Decision policies with authority chains
 - [ ] Routing policies
@@ -413,6 +434,7 @@ interface AgentCard {
 - [ ] Policy inheritance and override
 
 ### Permission System
+
 - [ ] Per-agent permission definitions
 - [ ] Permission inheritance options
 - [ ] Runtime permission requests
@@ -420,6 +442,7 @@ interface AgentCard {
 - [ ] Permission audit trail
 
 ### Agent Orchestration
+
 - [ ] LLM agent support
 - [ ] Workflow agents (sequential, parallel, loop)
 - [ ] Custom agent types
@@ -427,6 +450,7 @@ interface AgentCard {
 - [ ] Agent capability declaration
 
 ### Visibility & UX
+
 - [ ] Configurable visibility levels
 - [ ] Progress streaming
 - [ ] Summary generation
@@ -434,6 +458,7 @@ interface AgentCard {
 - [ ] Drill-down from summary to full trace
 
 ### User Interface Requirements
+
 - [ ] Task list view (all triggers unified)
 - [ ] Task detail view (result + summary)
 - [ ] Interaction inbox (pending approvals/clarifications)
@@ -441,6 +466,7 @@ interface AgentCard {
 - [ ] Subtask navigation (linked but not cluttered)
 
 ### Slack Integration
+
 - [ ] Task notifications
 - [ ] Interaction buttons (approve/reject/options)
 - [ ] Thread-based mini-conversations
@@ -448,6 +474,7 @@ interface AgentCard {
 - [ ] Deep links to web UI
 
 ### Web UI
+
 - [ ] Full conversation mode
 - [ ] Task management dashboard
 - [ ] Event log explorer
@@ -455,6 +482,7 @@ interface AgentCard {
 - [ ] Agent configuration
 
 ### API Requirements
+
 - [ ] Task CRUD
 - [ ] Event streaming (WebSocket/SSE)
 - [ ] Interaction resolution endpoint
@@ -462,6 +490,7 @@ interface AgentCard {
 - [ ] Agent registration (A2A compatible)
 
 ### Observability
+
 - [ ] Full event audit trail
 - [ ] Interaction resolution logging
 - [ ] Permission grant/deny logging
@@ -469,6 +498,7 @@ interface AgentCard {
 - [ ] Error tracking and alerting
 
 ### Reliability
+
 - [ ] Task resumability after failures
 - [ ] Checkpoint/restart support
 - [ ] Idempotent operations
@@ -515,14 +545,14 @@ interface Event {
 
 #### Use Cases to Test
 
-| # | Use Case | Test |
-|---|----------|------|
+| #   | Use Case                | Test                                                            |
+| --- | ----------------------- | --------------------------------------------------------------- |
 | 1.1 | Trigger task from Slack | `/agent run "list files in /src"` → task created, status posted |
-| 1.2 | See task progress | Agent emits progress events → Slack updates message |
-| 1.3 | Get task result | Task completes → result posted to Slack |
-| 1.4 | Handle failure | Agent throws error → failure posted with error message |
-| 1.5 | List recent tasks | `/agent list` → shows last 5 tasks with status |
-| 1.6 | Get task details | `/agent status <id>` → shows full event log |
+| 1.2 | See task progress       | Agent emits progress events → Slack updates message             |
+| 1.3 | Get task result         | Task completes → result posted to Slack                         |
+| 1.4 | Handle failure          | Agent throws error → failure posted with error message          |
+| 1.5 | List recent tasks       | `/agent list` → shows last 5 tasks with status                  |
+| 1.6 | Get task details        | `/agent status <id>` → shows full event log                     |
 
 #### Slack UX
 
@@ -573,7 +603,7 @@ interface Interaction {
 }
 
 interface ApprovalPolicy {
-  action_pattern: string;      // glob: "file:write:*", "npm:*"
+  action_pattern: string; // glob: "file:write:*", "npm:*"
   strategy: 'auto' | 'require';
 }
 ```
@@ -587,14 +617,14 @@ interface ApprovalPolicy {
 
 #### Use Cases to Test
 
-| # | Use Case | Test |
-|---|----------|------|
-| 2.1 | Auto-approve safe actions | Agent reads file → no approval needed, proceeds |
-| 2.2 | Require approval for writes | Agent wants to write file → approval requested |
-| 2.3 | Approve via Slack | Click [Approve] → agent continues |
-| 2.4 | Reject via Slack | Click [Reject] → task fails with rejection reason |
+| #   | Use Case                       | Test                                                 |
+| --- | ------------------------------ | ---------------------------------------------------- |
+| 2.1 | Auto-approve safe actions      | Agent reads file → no approval needed, proceeds      |
+| 2.2 | Require approval for writes    | Agent wants to write file → approval requested       |
+| 2.3 | Approve via Slack              | Click [Approve] → agent continues                    |
+| 2.4 | Reject via Slack               | Click [Reject] → task fails with rejection reason    |
 | 2.5 | Multiple approvals in one task | Agent needs 2 approvals → each surfaced sequentially |
-| 2.6 | Approval timeout | No response in 30m → task fails (configurable) |
+| 2.6 | Approval timeout               | No response in 30m → task fails (configurable)       |
 
 #### Slack UX
 
@@ -632,9 +662,9 @@ Agent: ✅ Approved. Continuing task #2...
 interface Interaction {
   // ... existing fields
   type: 'approval' | 'clarification' | 'decision';
-  options?: Option[];           // for decision/clarification with choices
-  free_text_allowed: boolean;   // can user type custom response
-  response?: string;            // the actual answer
+  options?: Option[]; // for decision/clarification with choices
+  free_text_allowed: boolean; // can user type custom response
+  response?: string; // the actual answer
 }
 
 interface Option {
@@ -653,13 +683,13 @@ interface Option {
 
 #### Use Cases to Test
 
-| # | Use Case | Test |
-|---|----------|------|
-| 3.1 | Binary clarification | "Run tests: unit or integration?" → [Unit] [Integration] |
-| 3.2 | Multi-option decision | "Which environment?" → [dev] [staging] [prod] |
-| 3.3 | Free text clarification | "What should the commit message be?" → user types in thread |
-| 3.4 | Clarification with default | No response in 5m → use default option |
-| 3.5 | Follow-up clarification | Agent asks second question based on first answer |
+| #   | Use Case                   | Test                                                        |
+| --- | -------------------------- | ----------------------------------------------------------- |
+| 3.1 | Binary clarification       | "Run tests: unit or integration?" → [Unit] [Integration]    |
+| 3.2 | Multi-option decision      | "Which environment?" → [dev] [staging] [prod]               |
+| 3.3 | Free text clarification    | "What should the commit message be?" → user types in thread |
+| 3.4 | Clarification with default | No response in 5m → use default option                      |
+| 3.5 | Follow-up clarification    | Agent asks second question based on first answer            |
 
 #### Slack UX
 
@@ -725,14 +755,14 @@ interface TaskTemplate {
 
 #### Use Cases to Test
 
-| # | Use Case | Test |
-|---|----------|------|
-| 4.1 | Create scheduled task | `/agent schedule "0 9 * * MON" "weekly security scan"` |
-| 4.2 | Scheduled task runs | Monday 9am → task auto-created and executed |
-| 4.3 | Scheduled task with approval | Scheduled task hits approval → Slack notification |
-| 4.4 | Webhook triggers task | POST /webhook/github → task created from PR event |
-| 4.5 | List schedules | `/agent schedules` → shows all scheduled tasks |
-| 4.6 | Disable schedule | `/agent schedule disable <id>` |
+| #   | Use Case                     | Test                                                   |
+| --- | ---------------------------- | ------------------------------------------------------ |
+| 4.1 | Create scheduled task        | `/agent schedule "0 9 * * MON" "weekly security scan"` |
+| 4.2 | Scheduled task runs          | Monday 9am → task auto-created and executed            |
+| 4.3 | Scheduled task with approval | Scheduled task hits approval → Slack notification      |
+| 4.4 | Webhook triggers task        | POST /webhook/github → task created from PR event      |
+| 4.5 | List schedules               | `/agent schedules` → shows all scheduled tasks         |
+| 4.6 | Disable schedule             | `/agent schedule disable <id>`                         |
 
 #### Slack UX
 
@@ -768,13 +798,19 @@ interface Task {
   // ... existing fields
   parent_id?: string;
   subtask_ids: string[];
-  depth: number;              // 0 = root, 1 = child, etc.
+  depth: number; // 0 = root, 1 = child, etc.
 }
 
 interface Event {
   // ... existing fields
-  type: 'started' | 'progress' | 'completed' | 'failed' |
-        'subtask_spawned' | 'subtask_completed' | 'subtask_failed';
+  type:
+    | 'started'
+    | 'progress'
+    | 'completed'
+    | 'failed'
+    | 'subtask_spawned'
+    | 'subtask_completed'
+    | 'subtask_failed';
   subtask_id?: string;
 }
 ```
@@ -788,14 +824,14 @@ interface Event {
 
 #### Use Cases to Test
 
-| # | Use Case | Test |
-|---|----------|------|
-| 5.1 | Spawn single subtask | Parent spawns child → child runs → parent continues |
-| 5.2 | Access subtask result | Parent uses child's output in subsequent work |
-| 5.3 | Subtask failure | Child fails → parent can handle or fail |
-| 5.4 | Nested subtasks | Child spawns grandchild → all complete in order |
-| 5.5 | View task hierarchy | `/agent status <id>` shows tree of subtasks |
-| 5.6 | Subtask approval | Child needs approval → surfaces to user |
+| #   | Use Case              | Test                                                |
+| --- | --------------------- | --------------------------------------------------- |
+| 5.1 | Spawn single subtask  | Parent spawns child → child runs → parent continues |
+| 5.2 | Access subtask result | Parent uses child's output in subsequent work       |
+| 5.3 | Subtask failure       | Child fails → parent can handle or fail             |
+| 5.4 | Nested subtasks       | Child spawns grandchild → all complete in order     |
+| 5.5 | View task hierarchy   | `/agent status <id>` shows tree of subtasks         |
+| 5.6 | Subtask approval      | Child needs approval → surfaces to user             |
 
 #### Slack UX
 
@@ -834,11 +870,11 @@ Agent: ✅ Task #15 completed
 ```typescript
 interface Interaction {
   // ... existing fields
-  originated_from: string;      // task_id where interaction was raised
-  surfaced_at: string;          // task_id where it's being handled
+  originated_from: string; // task_id where interaction was raised
+  surfaced_at: string; // task_id where it's being handled
   routing: {
     strategy: 'self' | 'parent' | 'user' | 'cascade';
-    cascade_path?: string[];    // [subtask, parent, root, user]
+    cascade_path?: string[]; // [subtask, parent, root, user]
     resolved_by?: 'self' | 'parent' | 'user';
   };
   metadata: {
@@ -869,14 +905,14 @@ interface RoutingPolicy {
 
 #### Use Cases to Test
 
-| # | Use Case | Test |
-|---|----------|------|
-| 6.1 | Parent resolves clarification | Child asks "which format?" → Parent knows from context → resolved |
+| #   | Use Case                      | Test                                                               |
+| --- | ----------------------------- | ------------------------------------------------------------------ |
+| 6.1 | Parent resolves clarification | Child asks "which format?" → Parent knows from context → resolved  |
 | 6.2 | Parent can't resolve, bubbles | Child asks "which environment?" → Parent doesn't know → user asked |
-| 6.3 | User intent required | Child asks "delete this?" → Always bubbles regardless of parent |
-| 6.4 | Cascade timeout | Parent doesn't respond in 2m → auto-bubbles to user |
-| 6.5 | Resolution flows back | User answers → response propagates to waiting subtask |
-| 6.6 | Audit trail | Can see: asked at subtask → bubbled to root → user answered |
+| 6.3 | User intent required          | Child asks "delete this?" → Always bubbles regardless of parent    |
+| 6.4 | Cascade timeout               | Parent doesn't respond in 2m → auto-bubbles to user                |
+| 6.5 | Resolution flows back         | User answers → response propagates to waiting subtask              |
+| 6.6 | Audit trail                   | Can see: asked at subtask → bubbled to root → user answered        |
 
 #### Slack UX
 
@@ -920,11 +956,11 @@ interface WorkflowDefinition {
 interface WorkflowStep {
   id: string;
   name: string;
-  agent_id?: string;           // which agent runs this step
+  agent_id?: string; // which agent runs this step
   task_template: TaskTemplate;
 
   // For conditional workflows
-  condition?: string;          // expression to evaluate
+  condition?: string; // expression to evaluate
 
   // For checkpoints
   checkpoint?: {
@@ -936,7 +972,7 @@ interface WorkflowStep {
 interface WorkflowExecution {
   id: string;
   workflow_id: string;
-  task_id: string;             // root task for this execution
+  task_id: string; // root task for this execution
   current_step: string;
   step_results: Map<string, any>;
   status: 'running' | 'paused' | 'completed' | 'failed';
@@ -953,15 +989,15 @@ interface WorkflowExecution {
 
 #### Use Cases to Test
 
-| # | Use Case | Test |
-|---|----------|------|
-| 7.1 | Define sequential workflow | Create: test → build → deploy |
-| 7.2 | Run sequential workflow | Each step runs in order, uses previous results |
-| 7.3 | Workflow checkpoint | After "build" step, pause for approval before deploy |
-| 7.4 | Define parallel workflow | Create: run unit tests + integration tests in parallel |
-| 7.5 | Run parallel workflow | Both branches run, workflow continues when both done |
-| 7.6 | Partial failure | One parallel branch fails → configurable: fail all or continue |
-| 7.7 | Resume workflow | System restarts → workflow resumes from last checkpoint |
+| #   | Use Case                   | Test                                                           |
+| --- | -------------------------- | -------------------------------------------------------------- |
+| 7.1 | Define sequential workflow | Create: test → build → deploy                                  |
+| 7.2 | Run sequential workflow    | Each step runs in order, uses previous results                 |
+| 7.3 | Workflow checkpoint        | After "build" step, pause for approval before deploy           |
+| 7.4 | Define parallel workflow   | Create: run unit tests + integration tests in parallel         |
+| 7.5 | Run parallel workflow      | Both branches run, workflow continues when both done           |
+| 7.6 | Partial failure            | One parallel branch fails → configurable: fail all or continue |
+| 7.7 | Resume workflow            | System restarts → workflow resumes from last checkpoint        |
 
 #### Slack UX
 
@@ -1018,7 +1054,11 @@ const PRESETS = {
   silent: { progress: 'hidden', reasoning: 'hidden', subtasks: 'hidden' },
   minimal: { progress: 'summary', reasoning: 'hidden', subtasks: 'summary' },
   normal: { progress: 'summary', reasoning: 'on_demand', subtasks: 'summary' },
-  verbose: { progress: 'streaming', reasoning: 'visible', subtasks: 'expanded' },
+  verbose: {
+    progress: 'streaming',
+    reasoning: 'visible',
+    subtasks: 'expanded',
+  },
 };
 ```
 
@@ -1031,25 +1071,27 @@ const PRESETS = {
 
 #### Use Cases to Test
 
-| # | Use Case | Test |
-|---|----------|------|
-| 8.1 | Silent mode | Task runs, only final result posted |
-| 8.2 | Minimal mode | Start + end + errors only |
-| 8.3 | Normal mode | Progress summaries, details on request |
-| 8.4 | Verbose mode | Full streaming output |
-| 8.5 | Expand details | Click "View details" → see full event log |
+| #   | Use Case             | Test                                                      |
+| --- | -------------------- | --------------------------------------------------------- |
+| 8.1 | Silent mode          | Task runs, only final result posted                       |
+| 8.2 | Minimal mode         | Start + end + errors only                                 |
+| 8.3 | Normal mode          | Progress summaries, details on request                    |
+| 8.4 | Verbose mode         | Full streaming output                                     |
+| 8.5 | Expand details       | Click "View details" → see full event log                 |
 | 8.6 | Batched interactions | 5 approvals collected → single message with "Approve all" |
-| 8.7 | Per-task override | `/agent run --verbose "complex task"` |
+| 8.7 | Per-task override    | `/agent run --verbose "complex task"`                     |
 
 #### Slack UX
 
 **Silent:**
+
 ```
 Agent: ✅ Task #30 completed: Dependencies updated
        [View details]
 ```
 
 **Verbose:**
+
 ```
 Agent: 🚀 Task #30 started: Update dependencies
 Agent: 📋 Checking npm audit...
@@ -1083,7 +1125,7 @@ Agent: ✅ Task #30 completed
 interface Policy {
   id: string;
   name: string;
-  priority: number;            // lower = higher priority
+  priority: number; // lower = higher priority
 
   match: {
     trigger_type?: TriggerType[];
@@ -1092,7 +1134,7 @@ interface Policy {
     resource_pattern?: string;
     risk_level?: RiskLevel[];
     task_depth?: { min?: number; max?: number };
-    time_range?: { start: string; end: string };  // "09:00-17:00"
+    time_range?: { start: string; end: string }; // "09:00-17:00"
   };
 
   actions: {
@@ -1124,14 +1166,14 @@ interface RiskRule {
 
 #### Use Cases to Test
 
-| # | Use Case | Test |
-|---|----------|------|
-| 9.1 | Risk auto-assessment | Delete production file → auto-tagged as high risk |
-| 9.2 | Time-based policy | Deploy during business hours → approval required; after hours → blocked |
-| 9.3 | Trigger-based policy | Cron tasks → stricter approval than manual |
-| 9.4 | Compound matching | High risk + production + off-hours → escalate to on-call |
-| 9.5 | Policy simulation | `/agent policy-check "delete /prod/db"` → shows what would happen |
-| 9.6 | Policy override | Admin can override policy for specific task |
+| #   | Use Case             | Test                                                                    |
+| --- | -------------------- | ----------------------------------------------------------------------- |
+| 9.1 | Risk auto-assessment | Delete production file → auto-tagged as high risk                       |
+| 9.2 | Time-based policy    | Deploy during business hours → approval required; after hours → blocked |
+| 9.3 | Trigger-based policy | Cron tasks → stricter approval than manual                              |
+| 9.4 | Compound matching    | High risk + production + off-hours → escalate to on-call                |
+| 9.5 | Policy simulation    | `/agent policy-check "delete /prod/db"` → shows what would happen       |
+| 9.6 | Policy override      | Admin can override policy for specific task                             |
 
 #### Slack UX
 
@@ -1214,15 +1256,15 @@ interface Delegation {
 
 #### Use Cases to Test
 
-| # | Use Case | Test |
-|---|----------|------|
-| 10.1 | Register agent | Add new agent with capabilities to registry |
-| 10.2 | Capability-based routing | "Research X" → routed to research-agent |
-| 10.3 | Local agent delegation | Orchestrator delegates to local code-agent |
-| 10.4 | Remote agent delegation | Orchestrator delegates to remote A2A agent |
-| 10.5 | A2A task lifecycle | Send task → receive SSE events → get result |
-| 10.6 | Remote agent approval | Remote agent needs approval → bubbles through A2A |
-| 10.7 | Agent discovery | Query agent card → see capabilities |
+| #    | Use Case                 | Test                                              |
+| ---- | ------------------------ | ------------------------------------------------- |
+| 10.1 | Register agent           | Add new agent with capabilities to registry       |
+| 10.2 | Capability-based routing | "Research X" → routed to research-agent           |
+| 10.3 | Local agent delegation   | Orchestrator delegates to local code-agent        |
+| 10.4 | Remote agent delegation  | Orchestrator delegates to remote A2A agent        |
+| 10.5 | A2A task lifecycle       | Send task → receive SSE events → get result       |
+| 10.6 | Remote agent approval    | Remote agent needs approval → bubbles through A2A |
+| 10.7 | Agent discovery          | Query agent card → see capabilities               |
 
 #### Slack UX
 
@@ -1272,15 +1314,15 @@ Agent: ✅ Task #50 completed
 
 #### Use Cases to Test
 
-| # | Use Case | Test |
-|---|----------|------|
-| 11.1 | View dashboard | See active tasks, pending count, recent activity |
-| 11.2 | Filter tasks | Filter by status, trigger, agent, date range |
-| 11.3 | Task drill-down | Click task → see full timeline with expandable events |
-| 11.4 | Approve via web | Resolve interaction from web UI |
-| 11.5 | Create workflow | Visual builder → save → run |
-| 11.6 | Edit policy | Change approval strategy → see effect immediately |
-| 11.7 | Real-time updates | Task progresses → UI updates without refresh |
+| #    | Use Case          | Test                                                  |
+| ---- | ----------------- | ----------------------------------------------------- |
+| 11.1 | View dashboard    | See active tasks, pending count, recent activity      |
+| 11.2 | Filter tasks      | Filter by status, trigger, agent, date range          |
+| 11.3 | Task drill-down   | Click task → see full timeline with expandable events |
+| 11.4 | Approve via web   | Resolve interaction from web UI                       |
+| 11.5 | Create workflow   | Visual builder → save → run                           |
+| 11.6 | Edit policy       | Change approval strategy → see effect immediately     |
+| 11.7 | Real-time updates | Task progresses → UI updates without refresh          |
 
 #### Definition of Done
 
@@ -1307,15 +1349,15 @@ Agent: ✅ Task #50 completed
 
 #### Use Cases to Test
 
-| # | Use Case | Test |
-|---|----------|------|
-| 12.1 | Task metrics | Dashboard shows avg duration, success rate |
-| 12.2 | Stuck task alert | Task running >1 hour → alert fired |
-| 12.3 | Failure alert | 3 consecutive failures → alert fired |
-| 12.4 | Resume after crash | Kill process → restart → tasks resume |
-| 12.5 | Retry transient failure | API timeout → auto-retry 3x → succeed |
-| 12.6 | Audit query | "Show all production deploys last week" → results |
-| 12.7 | SLA tracking | "95% of tasks complete <5min" → report |
+| #    | Use Case                | Test                                              |
+| ---- | ----------------------- | ------------------------------------------------- |
+| 12.1 | Task metrics            | Dashboard shows avg duration, success rate        |
+| 12.2 | Stuck task alert        | Task running >1 hour → alert fired                |
+| 12.3 | Failure alert           | 3 consecutive failures → alert fired              |
+| 12.4 | Resume after crash      | Kill process → restart → tasks resume             |
+| 12.5 | Retry transient failure | API timeout → auto-retry 3x → succeed             |
+| 12.6 | Audit query             | "Show all production deploys last week" → results |
+| 12.7 | SLA tracking            | "95% of tasks complete <5min" → report            |
 
 #### Definition of Done
 
@@ -1369,11 +1411,11 @@ Phase 12: Observability        (production-ready)
 
 ## Recommended Stopping Points
 
-| After Phase | You Have |
-|-------------|----------|
-| 2 | Useful single-agent with safety controls |
-| 4 | Automated tasks with scheduling |
-| 6 | Hierarchical tasks with smart routing |
-| 8 | Polished UX with visibility controls |
-| 10 | Full multi-agent system |
-| 12 | Production-ready platform |
+| After Phase | You Have                                 |
+| ----------- | ---------------------------------------- |
+| 2           | Useful single-agent with safety controls |
+| 4           | Automated tasks with scheduling          |
+| 6           | Hierarchical tasks with smart routing    |
+| 8           | Polished UX with visibility controls     |
+| 10          | Full multi-agent system                  |
+| 12          | Production-ready platform                |

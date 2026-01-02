@@ -136,6 +136,7 @@ const contentVariants = cva(
 export interface DialogContentProps
   extends VariantProps<typeof contentVariants> {
   children: React.ReactNode;
+  className?: string;
   showOverlay?: boolean;
   onEscapeKeyDown?: (event: KeyboardEvent) => void;
   onPointerDownOutside?: (event: Event) => void;
@@ -145,6 +146,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
   (
     {
       children,
+      className,
       position,
       size,
       showOverlay = true,
@@ -158,7 +160,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
         {showOverlay && <DialogOverlay />}
         <DialogPrimitive.Content
           ref={ref}
-          className={cn(contentVariants({ position, size }))}
+          className={cn(contentVariants({ position, size }), className)}
           onEscapeKeyDown={onEscapeKeyDown}
           onPointerDownOutside={onPointerDownOutside}
         >

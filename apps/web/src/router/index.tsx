@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 import { ClerkProvider } from '../providers/ClerkProvider';
 import { TRPCProvider } from '../providers/TRPCProvider';
+import { SessionProvider } from '../contexts/SessionContext';
 import { RootLayout } from '../layouts/RootLayout';
 import { PublicLayout } from '../layouts/PublicLayout';
 import { ProtectedLayout } from '../layouts/ProtectedLayout';
@@ -41,7 +42,9 @@ function ProvidersWrapper() {
   return (
     <ClerkProvider>
       <TRPCProvider>
-        <Outlet />
+        <SessionProvider>
+          <Outlet />
+        </SessionProvider>
       </TRPCProvider>
     </ClerkProvider>
   );

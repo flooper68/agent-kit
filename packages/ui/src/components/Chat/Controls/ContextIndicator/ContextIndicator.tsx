@@ -5,7 +5,6 @@ import type { ContextUsage } from '../../../../types/chat';
 export interface ContextIndicatorProps
   extends React.HTMLAttributes<HTMLDivElement> {
   usage: ContextUsage;
-  showBar?: boolean;
   warningThreshold?: number;
   dangerThreshold?: number;
 }
@@ -15,14 +14,7 @@ export const ContextIndicator = forwardRef<
   ContextIndicatorProps
 >(
   (
-    {
-      usage,
-      showBar = true,
-      warningThreshold = 75,
-      dangerThreshold = 90,
-      className,
-      ...props
-    },
+    { usage, warningThreshold = 75, dangerThreshold = 90, className, ...props },
     ref
   ) => {
     const { used, total, percentage } = usage;
@@ -33,12 +25,6 @@ export const ContextIndicator = forwardRef<
       return 'text-muted-foreground';
     };
 
-    const getBarColor = () => {
-      if (percentage >= dangerThreshold) return 'bg-destructive';
-      if (percentage >= warningThreshold) return 'bg-warning';
-      return 'bg-primary';
-    };
-
     const formatNumber = (num: number) => {
       if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
       if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
@@ -46,24 +32,14 @@ export const ContextIndicator = forwardRef<
     };
 
     return (
-      <div
+      <span
         ref={ref}
-        className={cn('flex items-center gap-2 text-xs', getColor(), className)}
+        className={cn('text-xs', getColor(), className)}
+        title={`${formatNumber(used)} / ${formatNumber(total)} tokens used`}
         {...props}
       >
-        <span>
-          {formatNumber(used)} / {formatNumber(total)} tokens
-        </span>
-        {showBar && (
-          <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-            <div
-              className={cn('h-full transition-all', getBarColor())}
-              style={{ width: `${Math.min(percentage, 100)}%` }}
-            />
-          </div>
-        )}
-        <span>({percentage.toFixed(0)}%)</span>
-      </div>
+        {formatNumber(used)}/{formatNumber(total)} ({percentage.toFixed(0)}%)
+      </span>
     );
   }
 );

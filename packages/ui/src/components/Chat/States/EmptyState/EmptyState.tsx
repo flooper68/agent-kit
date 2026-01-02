@@ -2,7 +2,8 @@ import { forwardRef } from 'react';
 import { cn } from '../../../../lib/utils';
 import { Button } from '../../../Button';
 import { Heading, Text } from '../../../Typography';
-import type { SuggestionChip } from '../../../../types/chat';
+import type { SuggestionChip, TaskHistoryItem } from '../../../../types/chat';
+import { RecentChats } from './RecentChats';
 
 export interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
   title?: string;
@@ -12,6 +13,10 @@ export interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
   icon?: React.ReactNode;
   /** Input element to render inside the card */
   inputElement?: React.ReactNode;
+  /** Recent chats to display below suggestions */
+  recentChats?: TaskHistoryItem[];
+  /** Callback when a recent chat is clicked */
+  onRecentChatClick?: (chat: TaskHistoryItem) => void;
 }
 
 export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(
@@ -23,6 +28,8 @@ export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(
       onSuggestionClick,
       icon,
       inputElement,
+      recentChats,
+      onRecentChatClick,
       className,
       ...props
     },
@@ -67,6 +74,14 @@ export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(
               </Button>
             ))}
           </div>
+        )}
+
+        {recentChats && recentChats.length > 0 && (
+          <RecentChats
+            chats={recentChats}
+            onChatClick={onRecentChatClick}
+            maxItems={3}
+          />
         )}
       </div>
     );

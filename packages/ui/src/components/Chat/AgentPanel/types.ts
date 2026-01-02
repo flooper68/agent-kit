@@ -2,7 +2,6 @@ import type {
   TaskMessage,
   TaskStatus,
   SuggestionChip,
-  ModelOption,
   ContextUsage,
   ThinkingStatus,
   AgentType,
@@ -67,9 +66,6 @@ export interface AgentPanelCallbacks {
   /** Called when an error banner is dismissed */
   onErrorDismiss?: () => void;
 
-  /** Called when model is changed (if model switcher enabled) */
-  onModelChange?: (model: ModelOption) => void;
-
   /** Called when files are attached */
   onAttach?: (files: File[]) => void;
 
@@ -81,6 +77,9 @@ export interface AgentPanelCallbacks {
 
   /** Called when user wants to create a new task */
   onCreateNewTask?: () => void;
+
+  /** Called when a recent chat is clicked in the empty state */
+  onRecentChatClick?: (chat: TaskHistoryItem) => void;
 }
 
 /**
@@ -114,12 +113,6 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
   /** Whether regenerate button is shown on assistant messages */
   enableRegenerate?: boolean;
 
-  /** Available models for the model switcher (required) */
-  models: ModelOption[];
-
-  /** Currently selected model (defaults to first model) */
-  selectedModel?: ModelOption;
-
   /** Context usage information for token limit display */
   contextUsage?: ContextUsage;
 
@@ -135,11 +128,17 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
   /** Currently selected agent */
   selectedAgent?: AgentType;
 
+  /** Whether the agent selector is disabled */
+  isAgentSelectorDisabled?: boolean;
+
   /** Available tasks for the task selector (shown in empty state) */
   tasks?: TaskHistoryItem[];
 
   /** Currently selected task ID */
   selectedTaskId?: string;
+
+  /** Recent chats to display in the empty state */
+  recentChats?: TaskHistoryItem[];
 }
 
 /**

@@ -1,6 +1,3 @@
-export { ModelSwitcher } from './ModelSwitcher';
-export type { ModelSwitcherProps } from './ModelSwitcher';
-
 export { ContextIndicator } from './ContextIndicator';
 export type { ContextIndicatorProps } from './ContextIndicator';
 
@@ -27,3 +24,9 @@ export type {
   AgentInfoBadgeProps,
   AgentInfoDialogProps,
 } from './AgentInfoBadge';
+
+export { HistoryToggleButton } from './HistoryToggleButton';
+export type { HistoryToggleButtonProps } from './HistoryToggleButton';
+
+export { NewTaskButton } from './NewTaskButton';
+export type { NewTaskButtonProps } from './NewTaskButton';

@@ -1,10 +1,18 @@
 import type { createClerkClient } from '@clerk/backend';
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
 import type { AuthContext } from '../types/auth.js';
+import type { AgentSessionManager } from '../agent/agent-session-manager';
+import type { AgentsFeature } from '../features/agents';
 
 export type ClerkClient = ReturnType<typeof createClerkClient>;
 
-export function createContext(clerk: ClerkClient) {
+export interface ContextDeps {
+  clerk: ClerkClient;
+  agentsFeature: AgentsFeature;
+  sessionManager: AgentSessionManager;
+}
+
+export function createContext(deps: ContextDeps) {
   return ({ req, res }: CreateFastifyContextOptions) => {
     // Type assertion needed because Fastify module augmentation is local to server package and the infer will not work in frontend package
     const auth = (req as unknown as { auth: AuthContext }).auth;
@@ -17,7 +25,9 @@ export function createContext(clerk: ClerkClient) {
         orgId: auth.orgId,
         orgRole: auth.orgRole,
       },
-      clerk,
+      clerk: deps.clerk,
+      agentsFeature: deps.agentsFeature,
+      sessionManager: deps.sessionManager,
     };
   };
 }

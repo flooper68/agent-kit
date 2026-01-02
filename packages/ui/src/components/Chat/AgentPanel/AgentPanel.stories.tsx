@@ -73,21 +73,6 @@ const defaultAvatars = {
   user: { fallback: 'U' },
 };
 
-const defaultModels = [
-  {
-    id: 'claude-3-opus',
-    name: 'Claude 3 Opus',
-    provider: 'anthropic' as const,
-  },
-  {
-    id: 'claude-3-sonnet',
-    name: 'Claude 3 Sonnet',
-    provider: 'anthropic' as const,
-  },
-  { id: 'gpt-4', name: 'GPT-4', provider: 'openai' as const },
-  { id: 'gemini-pro', name: 'Gemini Pro', provider: 'google' as const },
-];
-
 // ============================================
 // 1. Empty State
 // ============================================
@@ -103,7 +88,6 @@ export const Empty: Story = {
         description: 'Describe your idea and I will help you build it',
       }}
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={(msg) => console.log('Send:', msg)}
       onSuggestionClick={(s) => console.log('Suggestion:', s)}
     />
@@ -175,7 +159,6 @@ const InteractiveDemoComponent = () => {
           'Try: "create file", "search", "error", "analyze", "fail tool"',
       }}
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={handleSend}
       onInterrupt={handleInterrupt}
       onRetry={handleRetry}
@@ -257,7 +240,6 @@ const LiveUpdatesComponent = () => {
       messages={messages}
       status="streaming"
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={handleSend}
       onInterrupt={handleInterrupt}
     />
@@ -296,7 +278,6 @@ export const ToolCallPending: Story = {
       ]}
       status="ready"
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={() => {}}
     />
   ),
@@ -318,7 +299,6 @@ export const ToolCallRunning: Story = {
       ]}
       status="ready"
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={() => {}}
     />
   ),
@@ -342,7 +322,6 @@ export const ToolCallCompleted: Story = {
       ]}
       status="ready"
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={() => {}}
     />
   ),
@@ -366,7 +345,6 @@ export const ToolCallError: Story = {
       ]}
       status="ready"
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={() => {}}
     />
   ),
@@ -399,7 +377,6 @@ export const MultipleToolCalls: Story = {
       ]}
       status="ready"
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={() => {}}
     />
   ),
@@ -437,7 +414,6 @@ export const NestedToolCalls: Story = {
       ]}
       status="ready"
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={() => {}}
     />
   ),
@@ -458,7 +434,6 @@ export const APIError: Story = {
         retryable: true,
       }}
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={() => {}}
       onRetry={() => console.log('Retry')}
     />
@@ -476,7 +451,6 @@ export const NetworkError: Story = {
         retryable: true,
       }}
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={() => {}}
       onRetry={() => console.log('Retry')}
       onErrorDismiss={() => console.log('Dismissed')}
@@ -495,7 +469,6 @@ export const RateLimitError: Story = {
         retryable: true,
       }}
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={() => {}}
       onRetry={() => console.log('Retry')}
       onErrorDismiss={() => console.log('Dismissed')}
@@ -518,40 +491,11 @@ export const WithAttachments: Story = {
         description: 'You can attach images or documents',
       }}
       avatars={defaultAvatars}
-      models={defaultModels}
       enableAttachments
       onSend={(msg) => console.log('Send:', msg)}
       onAttach={(files) => console.log('Attach:', files)}
     />
   ),
-};
-
-const WithModelSwitcherComponent = () => {
-  const [selectedModel, setSelectedModel] = useState({
-    id: 'claude-3-sonnet',
-    name: 'Claude 3 Sonnet',
-    provider: 'anthropic' as const,
-  });
-
-  return (
-    <AgentPanel
-      messages={[]}
-      status="ready"
-      suggestions={defaultSuggestions}
-      avatars={defaultAvatars}
-      models={defaultModels}
-      selectedModel={selectedModel}
-      onSend={(msg) => console.log('Send:', msg)}
-      onModelChange={(model) => {
-        console.log('Model:', model);
-        setSelectedModel(model);
-      }}
-    />
-  );
-};
-
-export const WithModelSwitcher: Story = {
-  render: () => <WithModelSwitcherComponent />,
 };
 
 export const WithContextUsage: Story = {
@@ -567,7 +511,6 @@ export const WithContextUsage: Story = {
       ]}
       status="ready"
       avatars={defaultAvatars}
-      models={defaultModels}
       contextUsage={{ used: 15000, total: 200000, percentage: 7.5 }}
       onSend={(msg) => console.log('Send:', msg)}
     />
@@ -587,7 +530,6 @@ export const WithTokenWarning: Story = {
       ]}
       status="ready"
       avatars={defaultAvatars}
-      models={defaultModels}
       contextUsage={{ used: 180000, total: 200000, percentage: 90 }}
       onSend={(msg) => console.log('Send:', msg)}
     />
@@ -634,7 +576,6 @@ export const FullConversation: Story = {
       ]}
       status="ready"
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={(msg) => console.log('Send:', msg)}
       onRegenerate={(id) => console.log('Regenerate:', id)}
     />
@@ -656,7 +597,6 @@ export const Thinking: Story = {
         detail: 'Reading 47 files...',
       }}
       avatars={defaultAvatars}
-      models={defaultModels}
       onSend={() => {}}
     />
   ),
@@ -696,7 +636,6 @@ const WithAgentSelectionComponent = () => {
         description: 'Select the type of assistant that best fits your needs',
       }}
       avatars={defaultAvatars}
-      models={defaultModels}
       agents={defaultAgentTypes}
       selectedAgent={selectedAgent}
       onAgentSelect={(agent) => {
@@ -745,7 +684,6 @@ const WithAgentInfoBadgeComponent = () => {
       ]}
       status="ready"
       avatars={defaultAvatars}
-      models={defaultModels}
       selectedAgent={selectedAgent}
       onSend={(msg) => console.log('Send:', msg)}
     />
