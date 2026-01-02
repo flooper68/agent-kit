@@ -75,6 +75,7 @@ const MessageCompleteEventSchema = BaseStreamEventSchema.extend({
     .object({
       promptTokens: z.number(),
       completionTokens: z.number(),
+      estimatedCost: z.number().optional(),
     })
     .optional(),
   finishReason: z.string().optional(),

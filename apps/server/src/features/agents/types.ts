@@ -26,6 +26,7 @@ export interface AgentDefinition {
   provider: string;
   model: string;
   tools: string[];
+  releasedAt: Date;
 }
 
 // Command input types

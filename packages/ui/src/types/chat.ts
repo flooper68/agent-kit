@@ -134,6 +134,9 @@ export interface ContextUsage {
   used: number;
   total: number;
   percentage: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  estimatedCost?: number;
 }
 
 // Suggestion chip for empty state

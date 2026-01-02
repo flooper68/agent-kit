@@ -11,6 +11,7 @@ import type { AgentError } from './errors';
 import { classifyError } from './errors';
 import { logger } from './logger';
 import { SessionSummarizer } from './session-summarizer';
+import { calculateCost } from '../features/agents/pricing';
 
 export interface DbMessage {
   id: string;
@@ -167,7 +168,13 @@ export class AgentJobHandler {
 
         // Write event to database and publish to Redis
         const sequence = this.eventSequence++;
-        await this.handleProviderEvent(event, sessionId, messageId, sequence);
+        await this.handleProviderEvent(
+          event,
+          sessionId,
+          messageId,
+          sequence,
+          agent.model
+        );
 
         // Capture final metadata from done event and update session usage
         if (event.type === 'done') {
@@ -235,7 +242,8 @@ export class AgentJobHandler {
     event: ProviderStreamEvent,
     sessionId: string,
     messageId: string,
-    sequence: number
+    sequence: number,
+    model: string
   ): Promise<void> {
     switch (event.type) {
       case 'text_delta':
@@ -318,19 +326,33 @@ export class AgentJobHandler {
         } as Omit<StreamEvent, 'id' | 'timestamp'>);
         break;
 
-      case 'done':
+      case 'done': {
+        const estimatedCost = event.usage
+          ? calculateCost(
+              model,
+              event.usage.promptTokens,
+              event.usage.completionTokens
+            )
+          : undefined;
         this.log.info('Message complete', {
           sessionId,
           messageId,
+          estimatedCost,
         });
         await this.sessionManager.publishEvent(sessionId, {
           type: 'message_complete',
           sessionId,
           messageId,
-          usage: event.usage,
+          usage: event.usage
+            ? {
+                ...event.usage,
+                estimatedCost,
+              }
+            : undefined,
           finishReason: event.finishReason,
         } as Omit<StreamEvent, 'id' | 'timestamp'>);
         break;
+      }
 
       case 'error':
         this.log.error('Stream error', {
@@ -443,17 +465,20 @@ export class AgentJobHandler {
 
 /**
  * Convert database messages to AI-compatible message format
+ * Filters out messages with empty content (e.g., assistant messages with only tool parts)
  */
 export function convertToAIMessages(dbMessages: DbMessage[]): Message[] {
-  return dbMessages.map((msg) => {
-    const textContent = msg.parts
-      .filter((p) => p.type === 'text')
-      .map((p) => (p as { type: 'text'; content: string }).content)
-      .join('');
+  return dbMessages
+    .map((msg) => {
+      const textContent = msg.parts
+        .filter((p) => p.type === 'text')
+        .map((p) => (p as { type: 'text'; content: string }).content)
+        .join('');
 
-    return {
-      role: msg.role,
-      content: textContent,
-    };
-  });
+      return {
+        role: msg.role,
+        content: textContent,
+      };
+    })
+    .filter((msg) => msg.content.length > 0);
 }
