@@ -7,6 +7,10 @@ import type { MessagePart } from '../db/schema/agent-session-messages';
 import { getProvider } from './providers';
 import { getToolsById } from './tools';
 import type { ProviderStreamEvent, Message } from './types';
+import type { AgentError } from './errors';
+import { classifyError } from './errors';
+import { logger } from './logger';
+import { SessionSummarizer } from './session-summarizer';
 
 export interface DbMessage {
   id: string;
@@ -22,54 +26,90 @@ export class AgentJobHandler {
   private sessionManager: AgentSessionManager;
   private workerId: string;
   private eventSequence = 0;
+  private log: ReturnType<typeof logger.child>;
+  private summarizer: SessionSummarizer;
 
   constructor(sessionManager: AgentSessionManager, workerId: string) {
     this.sessionManager = sessionManager;
     this.workerId = workerId;
-  }
-
-  private log(message: string, data?: Record<string, unknown>): void {
-    const prefix = `[Agent ${this.workerId}]`;
-    if (data) {
-      console.log(prefix, message, data);
-    } else {
-      console.log(prefix, message);
-    }
+    this.log = logger.child({ workerId });
+    this.summarizer = new SessionSummarizer();
   }
 
   /**
    * Process a single agent job
    */
   async handle(job: AgentJob): Promise<void> {
-    const { sessionId, messageId, agentId } = job;
+    const { sessionId, agentId, content } = job;
+
+    // Create user message first (preserves user input even if job fails)
+    const userMessage = await this.sessionManager.createMessage({
+      sessionId,
+      role: 'user',
+      status: 'complete',
+    });
+
+    // Insert user message content event
+    await this.sessionManager.insertEvent({
+      sessionId,
+      messageId: userMessage.id,
+      sequence: 0,
+      type: 'text_delta',
+      content,
+    });
+
+    // Publish user_message_created event so client can update optimistic message
+    await this.sessionManager.publishEvent(sessionId, {
+      type: 'user_message_created',
+      sessionId,
+      messageId: userMessage.id,
+      content,
+    } as Omit<StreamEvent, 'id' | 'timestamp'>);
+
+    // Create assistant placeholder
+    const assistantMessage = await this.sessionManager.createMessage({
+      sessionId,
+      role: 'assistant',
+      status: 'pending',
+    });
+
+    // Update session timestamp
+    await this.sessionManager.updateSessionTimestamp(sessionId);
+
+    const messageId = assistantMessage.id;
 
     // Get agent definition
     const agent = this.sessionManager.agents.get(agentId);
     if (!agent) {
-      this.log(`Agent not found: ${agentId}`);
-      await this.publishError(
-        sessionId,
-        messageId,
-        `Agent not found: ${agentId}`
-      );
+      this.log.error('Agent not found', { sessionId });
+      await this.sessionManager.updateMessageStatus(messageId, 'error');
+      await this.publishError(sessionId, messageId, {
+        code: 'SESSION_ERROR',
+        message: `Agent not found: ${agentId}`,
+        retryable: false,
+      });
       return;
     }
 
-    this.log(`Starting job`, {
-      sessionId: sessionId.slice(0, 8) + '...',
-      agent: agent.name,
+    this.log.info('Starting job', {
+      sessionId,
       model: agent.model,
+      provider: agent.provider,
     });
 
     // Get provider
     const provider = getProvider(agent.provider);
     if (!provider) {
-      this.log(`Provider not found: ${agent.provider}`);
-      await this.publishError(
+      this.log.error('Provider not found', {
         sessionId,
-        messageId,
-        `Provider not found: ${agent.provider}`
-      );
+        provider: agent.provider,
+      });
+      await this.sessionManager.updateMessageStatus(messageId, 'error');
+      await this.publishError(sessionId, messageId, {
+        code: 'PROVIDER_ERROR',
+        message: `Provider not found: ${agent.provider}`,
+        retryable: false,
+      });
       return;
     }
 
@@ -107,6 +147,9 @@ export class AgentJobHandler {
         abortSignal: abortController.signal,
       });
 
+      // Track start time for latency calculation
+      const startTime = Date.now();
+
       let finalStatus: 'complete' | 'error' | 'interrupted' = 'complete';
       let finalMetadata:
         | { tokensUsed?: number; finishReason?: string }
@@ -115,7 +158,7 @@ export class AgentJobHandler {
       for await (const event of stream) {
         // Check for interrupt
         if (await this.sessionManager.isInterrupted(sessionId)) {
-          this.log(`Interrupted by user`);
+          this.log.info('Interrupted by user', { sessionId, messageId });
           abortController.abort();
           finalStatus = 'interrupted';
           await this.publishInterrupted(sessionId, messageId);
@@ -126,7 +169,7 @@ export class AgentJobHandler {
         const sequence = this.eventSequence++;
         await this.handleProviderEvent(event, sessionId, messageId, sequence);
 
-        // Capture final metadata from done event
+        // Capture final metadata from done event and update session usage
         if (event.type === 'done') {
           finalMetadata = {
             tokensUsed: event.usage
@@ -134,6 +177,19 @@ export class AgentJobHandler {
               : undefined,
             finishReason: event.finishReason,
           };
+
+          // Update session usage metrics
+          if (event.usage) {
+            const latency = Date.now() - startTime;
+            await this.sessionManager.updateSessionUsage({
+              sessionId,
+              promptTokens: event.usage.promptTokens,
+              completionTokens: event.usage.completionTokens,
+              latency,
+              model: agent.model,
+              provider: agent.provider,
+            });
+          }
         }
 
         if (event.type === 'error') {
@@ -147,13 +203,26 @@ export class AgentJobHandler {
         finalStatus,
         finalMetadata
       );
+
+      // Trigger summarization for successful completions
+      if (finalStatus === 'complete') {
+        this.triggerSummarizationIfNeeded(sessionId).catch((err) => {
+          this.log.error('Summarization trigger failed', {
+            sessionId,
+            error: err instanceof Error ? err.message : 'Unknown error',
+          });
+        });
+      }
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      this.log(`Job failed: ${errorMessage}`);
-      console.error(`Error processing job for session ${sessionId}:`, error);
+      const agentError = classifyError(error);
+      this.log.error('Job failed', {
+        sessionId,
+        messageId,
+        code: agentError.code,
+        statusCode: agentError.details?.statusCode,
+      });
       await this.sessionManager.updateMessageStatus(messageId, 'error');
-      await this.publishError(sessionId, messageId, errorMessage);
+      await this.publishError(sessionId, messageId, agentError);
     } finally {
       await this.sessionManager.unregisterJob(sessionId);
     }
@@ -202,9 +271,10 @@ export class AgentJobHandler {
         break;
 
       case 'tool_call':
-        this.log(`Tool call: ${event.toolName}`, {
-          toolCallId: event.toolCallId.slice(0, 8) + '...',
-          args: event.args,
+        this.log.debug('Tool call', {
+          sessionId,
+          toolName: event.toolName,
+          toolCallId: event.toolCallId,
         });
         await this.sessionManager.insertEvent({
           sessionId,
@@ -225,8 +295,9 @@ export class AgentJobHandler {
         break;
 
       case 'tool_result':
-        this.log(`Tool result: ${event.isError ? 'ERROR' : 'success'}`, {
-          toolCallId: event.toolCallId.slice(0, 8) + '...',
+        this.log.debug('Tool result', {
+          sessionId,
+          toolCallId: event.toolCallId,
         });
         await this.sessionManager.insertEvent({
           sessionId,
@@ -248,11 +319,9 @@ export class AgentJobHandler {
         break;
 
       case 'done':
-        this.log(`Message complete`, {
-          finishReason: event.finishReason,
-          tokens: event.usage
-            ? `${event.usage.promptTokens} in / ${event.usage.completionTokens} out`
-            : 'N/A',
+        this.log.info('Message complete', {
+          sessionId,
+          messageId,
         });
         await this.sessionManager.publishEvent(sessionId, {
           type: 'message_complete',
@@ -264,8 +333,25 @@ export class AgentJobHandler {
         break;
 
       case 'error':
-        this.log(`Error: ${event.error.message}`);
-        await this.publishError(sessionId, messageId, event.error.message);
+        this.log.error('Stream error', {
+          sessionId,
+          messageId,
+          code: event.error.code,
+        });
+        // Persist error event to DB
+        await this.sessionManager.insertEvent({
+          sessionId,
+          messageId,
+          sequence,
+          type: 'error',
+          errorCode: event.error.code,
+          errorMessage: event.error.message,
+          errorRetryable: event.error.retryable,
+          errorDetails: event.error.details
+            ? { ...event.error.details }
+            : undefined,
+        });
+        await this.publishError(sessionId, messageId, event.error);
         break;
 
       default:
@@ -289,13 +375,16 @@ export class AgentJobHandler {
   private async publishError(
     sessionId: string,
     messageId: string,
-    error: string
+    error: AgentError
   ): Promise<void> {
     await this.sessionManager.publishEvent(sessionId, {
       type: 'error',
       sessionId,
       messageId,
-      error,
+      error: error.message,
+      code: error.code,
+      retryable: error.retryable,
+      details: error.details,
     } as Omit<StreamEvent, 'id' | 'timestamp'>);
   }
 
@@ -308,6 +397,47 @@ export class AgentJobHandler {
       sessionId,
       messageId,
     } as Omit<StreamEvent, 'id' | 'timestamp'>);
+  }
+
+  /**
+   * Check if summarization should be triggered and run it async
+   */
+  private async triggerSummarizationIfNeeded(sessionId: string): Promise<void> {
+    // Increment message count and get new value
+    const newCount = await this.sessionManager.incrementMessageCount(sessionId);
+
+    if (!newCount) {
+      this.log.warn('Failed to increment message count', { sessionId });
+      return;
+    }
+
+    // Check if we hit a threshold
+    if (!this.summarizer.shouldSummarize(newCount)) {
+      return;
+    }
+
+    this.log.info('Triggering summarization', {
+      sessionId,
+      messageCount: newCount,
+    });
+
+    // Get all messages for summarization
+    const messages = await this.sessionManager.getSessionMessages(sessionId);
+
+    // Generate summary
+    const summary = await this.summarizer.generateSummary(messages);
+
+    // Update session with summary
+    await this.sessionManager.updateSessionSummary(
+      sessionId,
+      summary.title,
+      summary.description
+    );
+
+    this.log.info('Summarization complete', {
+      sessionId,
+      title: summary.title,
+    });
   }
 }
 

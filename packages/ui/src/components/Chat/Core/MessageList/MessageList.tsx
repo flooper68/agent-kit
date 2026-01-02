@@ -27,6 +27,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const isFirstScrollRef = useRef(true);
+    const isAtBottomRef = useRef(true); // Track if user is at bottom for smart auto-scroll
     const [showScrollButton, setShowScrollButton] = useState(false);
 
     const scrollToBottom = useCallback((behavior?: ScrollBehavior) => {
@@ -48,7 +49,10 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(
 
       const { scrollTop, scrollHeight, clientHeight } = container;
       const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-      setShowScrollButton(distanceFromBottom > SCROLL_THRESHOLD);
+      const atBottom = distanceFromBottom <= SCROLL_THRESHOLD;
+
+      isAtBottomRef.current = atBottom;
+      setShowScrollButton(!atBottom);
     }, []);
 
     useImperativeHandle(ref, () => ({
@@ -73,12 +77,13 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(
     }, [checkScrollPosition]);
 
     useEffect(() => {
-      if (autoScroll) {
-        scrollToBottom();
+      if (autoScroll && isAtBottomRef.current) {
+        scrollToBottom('instant');
       }
     }, [children, autoScroll, scrollToBottom]);
 
     const handleScrollButtonClick = useCallback(() => {
+      isAtBottomRef.current = true; // Re-enable auto-scroll immediately
       scrollToBottom('smooth');
     }, [scrollToBottom]);
 
@@ -87,10 +92,12 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(
         <div
           ref={containerRef}
           className={cn(
-            'flex-1 min-h-0 overflow-y-auto px-4 py-6 space-y-4 scrollbar-thin'
+            'flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-6 scrollbar-thin'
           )}
         >
-          {children}
+          <div className="max-w-3xl mx-auto px-4 space-y-4 min-w-0">
+            {children}
+          </div>
           <div ref={bottomRef} aria-hidden="true" />
         </div>
 

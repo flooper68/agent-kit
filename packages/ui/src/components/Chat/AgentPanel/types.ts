@@ -128,6 +128,9 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
   /** Currently selected agent */
   selectedAgent?: AgentType;
 
+  /** Whether the agent selector is disabled */
+  isAgentSelectorDisabled?: boolean;
+
   /** Available tasks for the task selector (shown in empty state) */
   tasks?: TaskHistoryItem[];
 

@@ -25,9 +25,13 @@ export function useChatHistory(
     return sessionsQuery.data.items.map((session) => ({
       id: session.id,
       title: session.title || 'Untitled Chat',
+      description: session.description ?? undefined,
       preview: undefined,
       createdAt: new Date(session.createdAt),
       updatedAt: new Date(session.updatedAt),
+      agentName: session.agentId,
+      totalTokens: session.usage?.totalTokens,
+      messageCount: session.messageCount,
     }));
   }, [sessionsQuery.data]);
 

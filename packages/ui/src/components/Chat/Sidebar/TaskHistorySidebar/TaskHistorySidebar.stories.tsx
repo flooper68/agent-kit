@@ -8,7 +8,9 @@ const createTask = (
   id: string,
   title: string,
   daysAgo: number,
-  preview?: string
+  preview?: string,
+  agentName?: string,
+  totalTokens?: number
 ): TaskHistoryItem => {
   const date = new Date();
   date.setDate(date.getDate() - daysAgo);
@@ -18,6 +20,8 @@ const createTask = (
     preview,
     createdAt: date,
     updatedAt: date,
+    agentName,
+    totalTokens,
   };
 };
 
@@ -26,31 +30,41 @@ const sampleTasks: TaskHistoryItem[] = [
     '1',
     'Help with React hooks',
     0,
-    'Can you explain useEffect cleanup functions?'
+    'Can you explain useEffect cleanup functions?',
+    'GPT-4o',
+    12500
   ),
   createTask(
     '2',
     'TypeScript generics',
     1,
-    'I need help understanding generic constraints'
+    'I need help understanding generic constraints',
+    'Claude Sonnet',
+    8200
   ),
   createTask(
     '3',
     'API design patterns',
     2,
-    'What are best practices for REST API design?'
+    'What are best practices for REST API design?',
+    'GPT-4o',
+    45000
   ),
   createTask(
     '4',
     'Database optimization',
     5,
-    'How can I improve my PostgreSQL query performance?'
+    'How can I improve my PostgreSQL query performance?',
+    'Gemini Pro',
+    3100
   ),
   createTask(
     '5',
     'Testing strategies',
     8,
-    'What testing approach should I use for a React app?'
+    'What testing approach should I use for a React app?',
+    'Claude Sonnet',
+    156000
   ),
 ];
 
@@ -108,6 +122,8 @@ export const Empty: Story = {
   render: () => <SidebarWrapper tasks={[]} />,
 };
 
+const agents = ['GPT-4o', 'Claude Sonnet', 'Gemini Pro'];
+
 export const ManyTasks: Story = {
   render: () => (
     <SidebarWrapper
@@ -116,7 +132,9 @@ export const ManyTasks: Story = {
           `task-${i + 1}`,
           `Task conversation ${i + 1}`,
           i,
-          `This is a preview of task ${i + 1} with some sample content...`
+          `This is a preview of task ${i + 1} with some sample content...`,
+          agents[i % agents.length],
+          Math.floor(Math.random() * 100000) + 1000
         )
       )}
     />

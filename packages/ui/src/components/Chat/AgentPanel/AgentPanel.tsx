@@ -96,6 +96,7 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
       onAgentSelect,
       agents,
       selectedAgent,
+      isAgentSelectorDisabled,
       recentChats,
       onRecentChatClick,
     },
@@ -216,7 +217,7 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
     const renderMessageContent = useCallback(
       (message: TaskMessage) => {
         return (
-          <div className="space-y-2">
+          <div className="space-y-2 w-full">
             {message.parts.map((part, index) =>
               renderPart(part, index, message)
             )}
@@ -293,13 +294,17 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
           {enableAttachments && onAttach && (
             <AttachmentButton onAttach={onAttach} showMenu={false} />
           )}
-          {agents && agents.length > 0 && (
-            <AgentSelector
-              agents={agents}
-              selectedAgent={selectedAgent}
-              onSelect={onAgentSelect}
-            />
-          )}
+          {/* Show selector when not locked, badge when locked */}
+          {isAgentSelectorDisabled
+            ? selectedAgent && <AgentInfoBadge agent={selectedAgent} />
+            : agents &&
+              agents.length > 0 && (
+                <AgentSelector
+                  agents={agents}
+                  selectedAgent={selectedAgent}
+                  onSelect={onAgentSelect}
+                />
+              )}
         </div>
         {contextUsage && <ContextIndicator usage={contextUsage} />}
       </>
@@ -346,14 +351,14 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
 
         {/* Interrupt button when processing (submitted or streaming) */}
         {isSubmitting && onInterrupt && (
-          <div className="px-4 pb-2 flex justify-center">
+          <div className="pb-2 flex justify-center">
             <InterruptButton onClick={onInterrupt} />
           </div>
         )}
 
         {/* Banners RIGHT ABOVE input (only when not in empty state) */}
         {!showEmptyState && (
-          <>
+          <div className="max-w-3xl mx-auto w-full">
             {showTokenWarning && contextUsage && (
               <div className="px-4">
                 <TokenLimitBanner usage={contextUsage} />
@@ -368,21 +373,18 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
                 />
               </div>
             )}
-          </>
+          </div>
         )}
 
         {/* Input area (only when not in empty state) */}
         {!showEmptyState && (
-          <div className="px-4 pb-4 pt-2">
+          <div className="max-w-3xl mx-auto w-full px-4 pb-4 pt-2">
             <ChatInput isSubmitting={isSubmitting} onSubmit={handleSubmit}>
               <ChatInput.Textarea
                 ref={inputRef}
                 placeholder={inputPlaceholder}
               />
-              <ChatInput.Actions>
-                {renderInputActions()}
-                {selectedAgent && <AgentInfoBadge agent={selectedAgent} />}
-              </ChatInput.Actions>
+              <ChatInput.Actions>{renderInputActions()}</ChatInput.Actions>
             </ChatInput>
           </div>
         )}

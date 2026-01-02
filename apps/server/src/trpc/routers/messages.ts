@@ -24,15 +24,15 @@ export const messagesRouter = router({
         });
       }
 
-      // Use sessionManager to handle all the message creation and job enqueuing
-      const result = await ctx.sessionManager.sendMessage(
+      // Enqueue job for processing - message creation happens in job handler
+      await ctx.sessionManager.sendMessage(
         input.sessionId,
         agentId,
         ctx.auth.userId,
         input.content
       );
 
-      return result;
+      return { sessionId: input.sessionId };
     }),
 
   subscribe: sessionProcedure

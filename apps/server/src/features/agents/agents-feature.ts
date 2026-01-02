@@ -6,11 +6,15 @@ import {
   CreateSessionCommand,
   UpdateSessionTitleCommand,
   UpdateSessionTimestampCommand,
+  UpdateSessionSummaryCommand,
+  UpdateSessionUsageCommand,
+  IncrementMessageCountCommand,
   DeleteSessionCommand,
   CreateMessageCommand,
   UpdateMessageStatusCommand,
   InsertEventCommand,
 } from './commands';
+import type { UpdateSessionUsageInput } from './commands/update-session-usage';
 import {
   GetAgentQuery,
   ListAgentsQuery,
@@ -27,6 +31,7 @@ import type {
   AgentDefinition,
   CreateSessionInput,
   UpdateSessionTitleInput,
+  UpdateSessionSummaryInput,
   CreateMessageInput,
   UpdateMessageStatusInput,
   NewAgentSessionEvent,
@@ -49,6 +54,21 @@ Be friendly but professional.`,
     model: 'gpt-4o',
     tools: ['getTime'],
   },
+  {
+    id: 'gemini-assistant',
+    name: 'Gemini Assistant',
+    description: 'A fast AI assistant powered by Google Gemini',
+    systemPrompt: `You are a helpful AI assistant powered by Google Gemini. Be concise, accurate, and helpful.
+
+When using tools:
+- Use the getTime tool when asked about the current date or time
+- Explain what you're doing when using tools
+
+Be friendly but professional.`,
+    provider: 'gemini',
+    model: 'gemini-3-flash-preview',
+    tools: ['getTime'],
+  },
 ];
 
 /**
@@ -66,6 +86,9 @@ export class AgentsFeature {
   private createSessionCommand: CreateSessionCommand;
   private updateSessionTitleCommand: UpdateSessionTitleCommand;
   private updateSessionTimestampCommand: UpdateSessionTimestampCommand;
+  private updateSessionSummaryCommand: UpdateSessionSummaryCommand;
+  private updateSessionUsageCommand: UpdateSessionUsageCommand;
+  private incrementMessageCountCommand: IncrementMessageCountCommand;
   private deleteSessionCommand: DeleteSessionCommand;
   private createMessageCommand: CreateMessageCommand;
   private updateMessageStatusCommand: UpdateMessageStatusCommand;
@@ -97,6 +120,9 @@ export class AgentsFeature {
     this.createSessionCommand = new CreateSessionCommand(db);
     this.updateSessionTitleCommand = new UpdateSessionTitleCommand(db);
     this.updateSessionTimestampCommand = new UpdateSessionTimestampCommand(db);
+    this.updateSessionSummaryCommand = new UpdateSessionSummaryCommand(db);
+    this.updateSessionUsageCommand = new UpdateSessionUsageCommand(db);
+    this.incrementMessageCountCommand = new IncrementMessageCountCommand(db);
     this.deleteSessionCommand = new DeleteSessionCommand(db);
     this.createMessageCommand = new CreateMessageCommand(db);
     this.updateMessageStatusCommand = new UpdateMessageStatusCommand(db);
@@ -142,6 +168,12 @@ export class AgentsFeature {
         this.updateSessionTitleCommand.execute(input),
       updateTimestamp: (sessionId: string) =>
         this.updateSessionTimestampCommand.execute(sessionId),
+      updateSummary: (input: UpdateSessionSummaryInput) =>
+        this.updateSessionSummaryCommand.execute(input),
+      updateUsage: (input: UpdateSessionUsageInput) =>
+        this.updateSessionUsageCommand.execute(input),
+      incrementMessageCount: (sessionId: string) =>
+        this.incrementMessageCountCommand.execute(sessionId),
       delete: (sessionId: string) =>
         this.deleteSessionCommand.execute(sessionId),
       getById: (sessionId: string) =>

@@ -11,6 +11,7 @@ import type {
 
 // Zod schemas for type-safe parsing
 const StreamEventTypeSchema = z.enum([
+  'user_message_created',
   'message_start',
   'text_delta',
   'reasoning_delta',
@@ -28,6 +29,11 @@ const BaseStreamEventSchema = z.object({
   sessionId: z.string(),
   messageId: z.string(),
   timestamp: z.string(),
+});
+
+const UserMessageCreatedEventSchema = BaseStreamEventSchema.extend({
+  type: z.literal('user_message_created'),
+  content: z.string(),
 });
 
 const MessageStartEventSchema = BaseStreamEventSchema.extend({
@@ -78,6 +84,8 @@ const ErrorEventSchema = BaseStreamEventSchema.extend({
   type: z.literal('error'),
   error: z.string(),
   code: z.string().optional(),
+  retryable: z.boolean().optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
 });
 
 const InterruptedEventSchema = BaseStreamEventSchema.extend({
@@ -85,6 +93,7 @@ const InterruptedEventSchema = BaseStreamEventSchema.extend({
 });
 
 export const StreamEventSchema = z.discriminatedUnion('type', [
+  UserMessageCreatedEventSchema,
   MessageStartEventSchema,
   TextDeltaEventSchema,
   ReasoningDeltaEventSchema,
@@ -101,9 +110,9 @@ export type StreamEvent = z.infer<typeof StreamEventSchema>;
 export const AgentJobSchema = z.object({
   id: z.string(),
   sessionId: z.string(),
-  messageId: z.string(),
   agentId: z.string(),
   userId: z.string(),
+  content: z.string(),
   createdAt: z.string(),
 });
 
@@ -118,25 +127,31 @@ const INTERRUPT_REQUESTS_KEY = 'agent:interrupt-requests';
 const getSessionStream = (sessionId: string) =>
   `agent:session:${sessionId}:events`;
 
-// Return type for sendMessage
-export interface SendMessageResult {
-  userMessageId: string;
-  assistantMessageId: string;
-}
-
 /**
  * AgentSessionManager - manages agent session lifecycle, job queues, and event streams
  * Combines job queue management, interrupt handling, event streaming, and database operations
  */
+export type RedisConnectionFactory = () => Redis;
+
 export class AgentSessionManager {
   private redis: Redis;
   private workerRedis: Redis;
+  private createSubscriptionConnection: RedisConnectionFactory;
   private agentsFeature: AgentsFeature;
 
-  constructor(redis: Redis, agentsFeature: AgentsFeature, workerRedis?: Redis) {
+  constructor(
+    redis: Redis,
+    agentsFeature: AgentsFeature,
+    workerRedis?: Redis,
+    createSubscriptionConnection?: RedisConnectionFactory
+  ) {
     this.redis = redis;
-    // Use dedicated worker connection for blocking operations, or fall back to main connection
+    // Use dedicated worker connection for blocking XREADGROUP operations
     this.workerRedis = workerRedis ?? redis;
+    // Factory to create per-subscription connections for blocking XREAD operations
+    // Each subscription gets its own connection to avoid blocking contention
+    this.createSubscriptionConnection =
+      createSubscriptionConnection ?? (() => redis);
     this.agentsFeature = agentsFeature;
   }
 
@@ -152,52 +167,21 @@ export class AgentSessionManager {
   // ============= Message Operations =============
 
   /**
-   * Send a message to a session - creates user message, assistant placeholder, and enqueues job
+   * Send a message to a session - enqueues job for processing
    */
   async sendMessage(
     sessionId: string,
     agentId: string,
     userId: string,
     content: string
-  ): Promise<SendMessageResult> {
-    // Create user message
-    const userMessage = await this.agentsFeature.messages.create({
-      sessionId,
-      role: 'user',
-      status: 'complete',
-    });
-
-    // Insert event for user message content
-    await this.agentsFeature.events.insert({
-      sessionId,
-      messageId: userMessage.id,
-      sequence: 0,
-      type: 'text_delta',
-      content,
-    });
-
-    // Create assistant message placeholder
-    const assistantMessage = await this.agentsFeature.messages.create({
-      sessionId,
-      role: 'assistant',
-      status: 'pending',
-    });
-
-    // Update session timestamp
-    await this.agentsFeature.sessions.updateTimestamp(sessionId);
-
-    // Enqueue job to Redis Stream
+  ): Promise<void> {
+    // Just enqueue job - message creation happens in job handler
     await this.enqueueJob({
       sessionId,
-      messageId: assistantMessage.id,
       agentId,
       userId,
+      content,
     });
-
-    return {
-      userMessageId: userMessage.id,
-      assistantMessageId: assistantMessage.id,
-    };
   }
 
   /**
@@ -227,6 +211,63 @@ export class AgentSessionManager {
       status,
       metadata,
     });
+  }
+
+  /**
+   * Create a new message
+   */
+  async createMessage(input: {
+    sessionId: string;
+    role: 'user' | 'assistant';
+    status: AgentSessionMessageStatus;
+  }): Promise<{ id: string }> {
+    return this.agentsFeature.messages.create(input);
+  }
+
+  /**
+   * Update session timestamp
+   */
+  async updateSessionTimestamp(sessionId: string): Promise<void> {
+    await this.agentsFeature.sessions.updateTimestamp(sessionId);
+  }
+
+  /**
+   * Increment message count for a session
+   * Returns the new count for threshold checking
+   */
+  async incrementMessageCount(sessionId: string): Promise<number | undefined> {
+    const result =
+      await this.agentsFeature.sessions.incrementMessageCount(sessionId);
+    return result?.messageCount;
+  }
+
+  /**
+   * Update session title and description
+   */
+  async updateSessionSummary(
+    sessionId: string,
+    title: string,
+    description: string
+  ): Promise<void> {
+    await this.agentsFeature.sessions.updateSummary({
+      sessionId,
+      title,
+      description,
+    });
+  }
+
+  /**
+   * Update session usage metrics
+   */
+  async updateSessionUsage(input: {
+    sessionId: string;
+    promptTokens: number;
+    completionTokens: number;
+    latency?: number;
+    model?: string;
+    provider?: string;
+  }): Promise<void> {
+    await this.agentsFeature.sessions.updateUsage(input);
   }
 
   // ============= Job Queue Methods =============
@@ -264,16 +305,16 @@ export class AgentSessionManager {
    * Enqueue an agent job to the job stream
    */
   async enqueueJob(job: Omit<AgentJob, 'id' | 'createdAt'>): Promise<string> {
+    const startTime = Date.now();
     const fullJob: AgentJob = {
       ...job,
       id: randomUUID(),
       createdAt: new Date().toISOString(),
     };
 
-    console.log('[AgentSessionManager] Enqueuing job:', fullJob.id, {
-      sessionId: fullJob.sessionId,
-      agentId: fullJob.agentId,
-    });
+    console.log(
+      `[AgentSessionManager] Enqueuing job: ${fullJob.id} at ${startTime}`
+    );
 
     try {
       const messageId = await this.redis.xadd(
@@ -284,8 +325,7 @@ export class AgentSessionManager {
       );
 
       console.log(
-        '[AgentSessionManager] Job enqueued with Redis messageId:',
-        messageId
+        `[AgentSessionManager] Job enqueued, Redis messageId: ${messageId}`
       );
 
       return messageId ?? fullJob.id;
@@ -425,59 +465,77 @@ export class AgentSessionManager {
   /**
    * Subscribe to session events as an async iterator
    * Supports reconnection by providing lastId
+   * Each subscription gets its own Redis connection to avoid blocking contention
    */
   async *subscribeToSession(
     sessionId: string,
     lastId?: string
   ): AsyncGenerator<StreamEvent, void, unknown> {
     const streamName = getSessionStream(sessionId);
+    // Default to '$' (new events only) - client should ensure subscription is
+    // connected before sending messages to avoid missing events
     let currentId = lastId ?? '$';
 
-    while (true) {
-      try {
-        // Use dedicated worker connection for blocking operations
-        const result = (await this.workerRedis.call(
-          'XREAD',
-          'BLOCK',
-          '5000',
-          'COUNT',
-          '10',
-          'STREAMS',
-          streamName,
-          currentId
-        )) as [string, [string, string[]][]][] | null;
+    // Create a dedicated connection for this subscription
+    // This ensures multiple concurrent subscriptions don't block each other
+    const subscriptionRedis = this.createSubscriptionConnection();
 
-        if (!result) continue;
+    try {
+      // Wait for connection to be ready
+      await new Promise<void>((resolve, reject) => {
+        if (subscriptionRedis.status === 'ready') {
+          resolve();
+        } else {
+          subscriptionRedis.once('ready', resolve);
+          subscriptionRedis.once('error', reject);
+        }
+      });
 
-        for (const [, messages] of result) {
-          for (const [messageId, fields] of messages) {
-            currentId = messageId;
+      while (true) {
+        try {
+          const result = (await subscriptionRedis.call(
+            'XREAD',
+            'BLOCK',
+            '5000',
+            'COUNT',
+            '10',
+            'STREAMS',
+            streamName,
+            currentId
+          )) as [string, [string, string[]][]][] | null;
 
-            const dataIndex = fields.indexOf('data');
-            if (dataIndex === -1 || dataIndex + 1 >= fields.length) continue;
+          if (!result) continue;
 
-            const rawData = fields[dataIndex + 1];
-            if (!rawData) continue;
+          for (const [, messages] of result) {
+            for (const [messageId, fields] of messages) {
+              currentId = messageId;
 
-            const parsed = JSON.parse(rawData);
-            const event = StreamEventSchema.parse(parsed);
-            yield event;
+              const dataIndex = fields.indexOf('data');
+              if (dataIndex === -1 || dataIndex + 1 >= fields.length) continue;
 
-            // Check for terminal events
-            if (
-              event.type === 'message_complete' ||
-              event.type === 'error' ||
-              event.type === 'interrupted'
-            ) {
-              return;
+              const rawData = fields[dataIndex + 1];
+              if (!rawData) continue;
+
+              const parsed = JSON.parse(rawData);
+              const event = StreamEventSchema.parse(parsed);
+              yield event;
+
+              // Note: Don't end subscription on terminal events (message_complete, error, interrupted)
+              // The subscription should stay alive to receive events for subsequent messages
+              // Client manages subscription lifecycle (unsubscribes when leaving session)
             }
           }
+        } catch (error) {
+          console.error('Error reading stream:', error);
+          // Wait before retrying
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
-      } catch (error) {
-        console.error('Error reading stream:', error);
-        // Wait before retrying
-        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
+    } finally {
+      // Clean up the connection when subscription ends
+      await subscriptionRedis.quit().catch(() => {
+        // Ignore errors during cleanup
+      });
     }
   }
 

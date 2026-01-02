@@ -5,12 +5,15 @@ import { createPubSubClients, createRedisClient } from '../lib/redis/client';
 import { PubSubManager } from '../lib/redis/pubsub';
 import type { RedisConfig } from '../lib/redis/types';
 
+export type RedisConnectionFactory = () => Redis;
+
 declare module 'fastify' {
   interface FastifyInstance {
     redis: {
       publisher: Redis;
       subscriber: Redis;
       worker: Redis;
+      createSubscriptionConnection: RedisConnectionFactory;
       pubsub: PubSubManager;
     };
   }
@@ -30,6 +33,12 @@ const redisPlugin: FastifyPluginAsync<RedisPluginOptions> = async (
   // Create a dedicated connection for the worker's blocking XREADGROUP operations
   const worker = createRedisClient(config);
   const pubsub = new PubSubManager(publisher, subscriber);
+
+  // Factory function to create new connections for subscriptions
+  // Each subscription gets its own connection to avoid blocking contention
+  const createSubscriptionConnection: RedisConnectionFactory = () => {
+    return createRedisClient(config);
+  };
 
   await Promise.all([
     new Promise<void>((resolve, reject) => {
@@ -52,6 +61,7 @@ const redisPlugin: FastifyPluginAsync<RedisPluginOptions> = async (
     publisher,
     subscriber,
     worker,
+    createSubscriptionConnection,
     pubsub,
   });
 

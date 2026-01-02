@@ -155,12 +155,15 @@ export interface TaskHistoryUser {
 export interface TaskHistoryItem {
   id: string;
   title: string;
+  description?: string;
   preview?: string;
   createdAt: Date;
   updatedAt?: Date;
   isPrivate?: boolean;
   user?: TaskHistoryUser;
   agentName?: string;
+  totalTokens?: number;
+  messageCount?: number;
 }
 
 // Agent type for selection
@@ -169,4 +172,7 @@ export interface AgentType {
   name: string;
   description?: string;
   icon?: ReactNode;
+  tools?: string[];
+  model?: string;
+  provider?: string;
 }

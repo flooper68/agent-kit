@@ -6,8 +6,9 @@ export { AgentWorker } from './worker';
 export { AgentJobHandler, convertToAIMessages } from './agent-job-handler';
 export type { DbMessage } from './agent-job-handler';
 export { AgentSessionManager } from './agent-session-manager';
-export type {
-  StreamEvent,
-  AgentJob,
-  SendMessageResult,
-} from './agent-session-manager';
+export type { StreamEvent, AgentJob } from './agent-session-manager';
+export {
+  SessionSummarizer,
+  SUMMARIZATION_THRESHOLDS,
+} from './session-summarizer';
+export type { SessionSummary, SummarizerConfig } from './session-summarizer';

@@ -48,10 +48,17 @@ let sessionManager: AgentSessionManager;
 fastify.addHook('onReady', async () => {
   const redis = fastify.redis.publisher;
   const workerRedis = fastify.redis.worker;
+  const createSubscriptionConnection =
+    fastify.redis.createSubscriptionConnection;
 
   // Create session manager with Redis and AgentsFeature
-  // Pass dedicated worker connection for blocking operations
-  sessionManager = new AgentSessionManager(redis, agentsFeature, workerRedis);
+  // Pass dedicated worker connection for job processing and factory for subscriptions
+  sessionManager = new AgentSessionManager(
+    redis,
+    agentsFeature,
+    workerRedis,
+    createSubscriptionConnection
+  );
 
   // Create the agent worker
   const agentWorker = new AgentWorker(sessionManager);

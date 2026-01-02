@@ -69,10 +69,10 @@ const ChatCard = ({
         )}
       </div>
 
-      {/* Preview/subtitle */}
-      {chat.preview && (
+      {/* Description/preview */}
+      {(chat.description || chat.preview) && (
         <p className="text-sm text-muted-foreground truncate mb-3">
-          {chat.preview}
+          {chat.description || chat.preview}
         </p>
       )}
 

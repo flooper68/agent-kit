@@ -9,6 +9,7 @@ import {
   AppLayout,
   ProjectSwitcher,
   HistoryToggleButton,
+  NewTaskButton,
   TaskHistorySidebar,
 } from '@agent-kit/ui';
 import type { Project, MenuSection } from '@agent-kit/ui';
@@ -67,7 +68,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleNewSession = useCallback(() => {
     clearSession();
-    setIsHistoryOpen(false);
   }, [clearSession]);
 
   const projects: Project[] = useMemo(() => {
@@ -143,7 +143,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               />
             ) : null,
           toolButtons: (
-            <HistoryToggleButton onClick={() => setIsHistoryOpen(true)} />
+            <>
+              <NewTaskButton onClick={handleNewSession} />
+              <HistoryToggleButton onClick={() => setIsHistoryOpen(true)} />
+            </>
           ),
         }}
       >
@@ -156,7 +159,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         tasks={sessions}
         onTaskSelect={handleSessionSelect}
         onTaskDelete={handleSessionDelete}
-        onNewTask={handleNewSession}
       />
     </>
   );

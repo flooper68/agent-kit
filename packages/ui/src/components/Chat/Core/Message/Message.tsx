@@ -6,7 +6,7 @@ import { Tooltip } from '../../../Tooltip';
 import type { MessageRole } from '../../../../types/chat';
 
 const messageVariants = cva(
-  'flex flex-col gap-1 w-full animate-fade-in group',
+  'flex flex-col gap-1 w-full min-w-0 animate-fade-in group',
   {
     variants: {
       role: {
@@ -21,11 +21,11 @@ const messageVariants = cva(
   }
 );
 
-const bubbleVariants = cva('text-sm', {
+const bubbleVariants = cva('text-sm min-w-0 max-w-full', {
   variants: {
     role: {
       user: 'bg-muted text-foreground rounded-2xl rounded-br-sm px-3 py-0.5',
-      assistant: 'text-foreground max-w-[85%]',
+      assistant: 'text-foreground w-full',
       system:
         'bg-muted/50 text-muted-foreground text-center italic rounded-2xl px-4 py-3 max-w-[85%]',
     },

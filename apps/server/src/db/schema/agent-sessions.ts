@@ -5,6 +5,7 @@ import {
   timestamp,
   jsonb,
   integer,
+  text,
 } from 'drizzle-orm/pg-core';
 import { agents } from './agents';
 
@@ -42,6 +43,7 @@ export const agentSessions = pgTable('agent_sessions', {
     .notNull()
     .references(() => agents.id),
   title: varchar('title', { length: 255 }),
+  description: text('description'),
   status: varchar('status', { length: 32 })
     .$type<AgentSessionStatus>()
     .notNull()

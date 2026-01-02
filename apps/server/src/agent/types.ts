@@ -1,3 +1,5 @@
+import type { AgentError } from './errors';
+
 // Agent definition stored in the registry
 export interface AgentDefinition {
   id: string;
@@ -55,4 +57,4 @@ export type ProviderStreamEvent =
       usage?: { promptTokens: number; completionTokens: number };
       finishReason?: string;
     }
-  | { type: 'error'; error: Error };
+  | { type: 'error'; error: AgentError };

@@ -40,6 +40,12 @@ export interface UpdateSessionTitleInput {
   title: string;
 }
 
+export interface UpdateSessionSummaryInput {
+  sessionId: string;
+  title: string;
+  description: string;
+}
+
 export interface CreateMessageInput {
   sessionId: string;
   role: 'user' | 'assistant' | 'system';

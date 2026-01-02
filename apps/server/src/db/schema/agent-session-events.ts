@@ -16,6 +16,7 @@ export type AgentSessionEventType =
   | 'reasoning_delta'
   | 'tool_call'
   | 'tool_result'
+  | 'error'
   | 'unknown';
 
 export const agentSessionEvents = pgTable('agent_session_events', {
@@ -38,6 +39,12 @@ export const agentSessionEvents = pgTable('agent_session_events', {
   toolArgs: jsonb('tool_args').$type<Record<string, unknown>>(), // For tool_call
   toolResult: jsonb('tool_result').$type<unknown>(), // For tool_result
   isError: boolean('is_error'), // For tool_result
+
+  // Error event fields
+  errorCode: varchar('error_code', { length: 32 }), // For error events (e.g., 'PROVIDER_ERROR', 'RATE_LIMIT')
+  errorMessage: text('error_message'), // For error events
+  errorRetryable: boolean('error_retryable'), // For error events
+  errorDetails: jsonb('error_details').$type<Record<string, unknown>>(), // For error events
 
   // For unknown/unhandled event types
   rawEventType: varchar('raw_event_type', { length: 64 }), // Original event type when we store as 'unknown'

@@ -28,7 +28,9 @@ export class AgentWorker {
         'agent-workers',
         this.workerId,
         async (job) => {
-          console.log(`[AgentWorker ${this.workerId}] Received job:`, job.id);
+          console.log(
+            `[AgentWorker ${this.workerId}] Received job: ${job.id} at ${Date.now()}`
+          );
           const handler = new AgentJobHandler(
             this.sessionManager,
             this.workerId

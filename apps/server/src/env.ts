@@ -20,6 +20,7 @@ const envSchema = z.object({
 
   // AI Providers
   OPENAI_API_KEY: z.string(),
+  GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

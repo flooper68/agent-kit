@@ -1,5 +1,5 @@
 import { streamText } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { google } from '@ai-sdk/google';
 import type {
   AgentProvider,
   StreamConfig,
@@ -8,8 +8,8 @@ import type {
 import { classifyError } from '../errors';
 import { logger } from '../logger';
 
-export class OpenAIProvider implements AgentProvider {
-  id = 'openai';
+export class GeminiProvider implements AgentProvider {
+  id = 'gemini';
 
   async *createStream(
     config: StreamConfig
@@ -18,7 +18,7 @@ export class OpenAIProvider implements AgentProvider {
     const timer = logger.startTimer();
     const toolNames = Object.keys(tools);
 
-    logger.debug('Starting OpenAI stream', {
+    logger.debug('Starting Gemini stream', {
       model,
       provider: this.id,
       toolName: toolNames.join(', '),
@@ -26,7 +26,7 @@ export class OpenAIProvider implements AgentProvider {
 
     try {
       const result = streamText({
-        model: openai(model),
+        model: google(model),
         system: systemPrompt,
         messages,
         tools,

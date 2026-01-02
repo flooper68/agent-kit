@@ -43,11 +43,22 @@ function getWSClient(getToken: () => Promise<string | null>) {
   // Recreate if getToken function changed (different user session)
   if (!wsClient || currentGetToken !== getToken) {
     currentGetToken = getToken;
+    const wsUrl = getWebSocketUrl();
+    console.log('[tRPC] Creating WebSocket client:', wsUrl);
     wsClient = createWSClient({
-      url: getWebSocketUrl(),
+      url: wsUrl,
       connectionParams: async () => {
         const token = await getToken();
+        console.log('[tRPC] WebSocket connectionParams:', {
+          hasToken: !!token,
+        });
         return token ? { token } : {};
+      },
+      onOpen: () => {
+        console.log('[tRPC] WebSocket opened');
+      },
+      onClose: (cause) => {
+        console.log('[tRPC] WebSocket closed:', cause);
       },
     });
   }

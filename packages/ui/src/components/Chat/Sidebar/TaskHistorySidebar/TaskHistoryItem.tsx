@@ -27,6 +27,16 @@ const formatDate = (date: Date): string => {
   return date.toLocaleDateString();
 };
 
+const formatTokens = (tokens: number): string => {
+  if (tokens >= 1000000) {
+    return `${(tokens / 1000000).toFixed(1)}M`;
+  }
+  if (tokens >= 1000) {
+    return `${(tokens / 1000).toFixed(1)}k`;
+  }
+  return tokens.toString();
+};
+
 export const TaskHistoryItemComponent = forwardRef<
   HTMLDivElement,
   TaskHistoryItemProps
@@ -49,13 +59,13 @@ export const TaskHistoryItemComponent = forwardRef<
         }
       }}
       className={cn(
-        'group relative flex flex-col gap-1 p-3 rounded-lg cursor-pointer transition-colors',
+        'group relative flex flex-col py-1.5 px-2 rounded-lg cursor-pointer transition-colors border border-border',
         isSelected
           ? 'bg-primary/10 text-foreground'
           : 'hover:bg-muted text-foreground'
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-1.5">
         <h4 className="text-sm font-medium truncate flex-1">
           {task.title || 'Untitled Task'}
         </h4>
@@ -72,15 +82,24 @@ export const TaskHistoryItemComponent = forwardRef<
         )}
       </div>
 
-      {task.preview && (
-        <p className="text-xs text-muted-foreground line-clamp-2">
-          {task.preview}
+      {(task.description || task.preview) && (
+        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+          {task.description || task.preview}
         </p>
       )}
 
-      <p className="text-xs text-muted-foreground/60">
-        {formatDate(task.updatedAt ?? task.createdAt)}
-      </p>
+      <div className="flex items-center justify-between mt-0.5 text-xs text-muted-foreground/60">
+        <span>{formatDate(task.updatedAt ?? task.createdAt)}</span>
+        <div className="flex items-center gap-1.5">
+          {task.agentName && <span>{task.agentName}</span>}
+          {task.agentName &&
+            task.totalTokens != null &&
+            task.totalTokens > 0 && <span>·</span>}
+          {task.totalTokens != null && task.totalTokens > 0 && (
+            <span>{formatTokens(task.totalTokens)} tokens</span>
+          )}
+        </div>
+      </div>
     </div>
   );
 });

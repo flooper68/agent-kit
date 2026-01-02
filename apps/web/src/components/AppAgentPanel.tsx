@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { AgentPanel } from '@agent-kit/ui';
-import type { AgentType, TaskHistoryItem } from '@agent-kit/ui';
+import type { AgentType, TaskHistoryItem, SuggestionChip } from '@agent-kit/ui';
 import { trpc } from '../lib/trpc';
 import { useAgentSession } from '../hooks/useAgentSession';
 import { useSession } from '../contexts/SessionContext';
@@ -38,10 +38,19 @@ export function AppAgentPanel({
   const createSessionMutation = trpc.sessions.create.useMutation();
 
   // Use the agent session hook
-  const { messages, status, thinkingStatus, sendMessage, interrupt } =
-    useAgentSession({
-      sessionId,
-    });
+  const {
+    messages,
+    status,
+    thinkingStatus,
+    sendMessage,
+    interrupt,
+    error,
+    retry,
+    dismissError,
+    contextUsage,
+  } = useAgentSession({
+    sessionId,
+  });
 
   // Map server agents to UI AgentType format
   const agents: AgentType[] = useMemo(() => {
@@ -49,8 +58,21 @@ export function AppAgentPanel({
       id: agent.id,
       name: agent.name,
       description: agent.description,
+      tools: agent.tools,
+      model: agent.model,
+      provider: agent.provider,
     }));
   }, [agentsQuery.data]);
+
+  // Auto-select first agent when available and no session exists
+  useEffect(() => {
+    if (!sessionId && !selectedAgent && agents.length > 0) {
+      const firstAgent = agents[0];
+      if (firstAgent) {
+        setSelectedAgent(firstAgent);
+      }
+    }
+  }, [sessionId, selectedAgent, agents]);
 
   // Create avatars config from logged-in user
   const avatars = useMemo(
@@ -93,17 +115,17 @@ export function AppAgentPanel({
     async (message: string) => {
       let currentSessionId = sessionId;
 
-      // If no session yet, create one with the first agent
-      if (!currentSessionId && agents.length > 0) {
-        const firstAgent = agents[0];
-        if (firstAgent) {
+      // If no session yet, create one with the selected agent (or first agent as fallback)
+      if (!currentSessionId) {
+        const agentToUse = selectedAgent || agents[0];
+        if (agentToUse) {
           try {
             const session = await createSessionMutation.mutateAsync({
-              agentId: firstAgent.id,
+              agentId: agentToUse.id,
             });
             if (session) {
               currentSessionId = session.id;
-              setSelectedAgent(firstAgent);
+              setSelectedAgent(agentToUse);
               // Set the session ID in global context
               setSessionId(session.id);
             }
@@ -119,12 +141,34 @@ export function AppAgentPanel({
         await sendMessage(message, currentSessionId);
       }
     },
-    [sessionId, agents, createSessionMutation, sendMessage, setSessionId]
+    [
+      sessionId,
+      selectedAgent,
+      agents,
+      createSessionMutation,
+      sendMessage,
+      setSessionId,
+    ]
   );
 
   const handleInterrupt = useCallback(() => {
     interrupt();
   }, [interrupt]);
+
+  const handleRetry = useCallback(() => {
+    retry();
+  }, [retry]);
+
+  const handleErrorDismiss = useCallback(() => {
+    dismissError();
+  }, [dismissError]);
+
+  const handleSuggestionClick = useCallback(
+    (suggestion: SuggestionChip) => {
+      handleSend(suggestion.text);
+    },
+    [handleSend]
+  );
 
   return (
     <AgentPanel
@@ -135,14 +179,20 @@ export function AppAgentPanel({
       avatars={avatars}
       agents={agents}
       selectedAgent={selectedAgent || undefined}
+      isAgentSelectorDisabled={!!sessionId}
+      contextUsage={contextUsage ?? undefined}
       emptyStateConfig={emptyStateConfig}
       suggestions={suggestions}
+      onSuggestionClick={handleSuggestionClick}
       recentChats={recentChats}
+      error={error ?? undefined}
       onSend={handleSend}
       onInterrupt={handleInterrupt}
       onAgentSelect={handleAgentSelect}
       onRecentChatClick={onRecentChatClick}
       onCreateNewTask={onNewChat}
+      onRetry={handleRetry}
+      onErrorDismiss={handleErrorDismiss}
     />
   );
 }
