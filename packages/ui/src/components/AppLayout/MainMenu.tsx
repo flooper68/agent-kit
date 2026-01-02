@@ -1,10 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, LogOut } from 'lucide-react';
+import { ChevronDown, LogOut, Sun, Moon, Monitor } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../Button';
 import { Avatar } from '../Avatar';
-import { ThemeToggle } from '../ThemeToggle';
+import { useTheme, type Theme } from '../../theme';
 import type { MainMenuProps, MenuItem } from './types';
+
+const themeIcons: Record<Theme, React.ReactNode> = {
+  light: <Sun className="h-4 w-4" />,
+  dark: <Moon className="h-4 w-4" />,
+  system: <Monitor className="h-4 w-4" />,
+};
+
+const nextTheme: Record<Theme, Theme> = {
+  light: 'dark',
+  dark: 'system',
+  system: 'light',
+};
 
 const MenuItemButton = ({
   item,
@@ -16,24 +28,42 @@ const MenuItemButton = ({
   const handleClick = () => {
     if (item.onClick) {
       item.onClick();
-      onClose();
     }
+    onClose();
   };
+
+  const className = cn(
+    'w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded',
+    'hover:bg-muted transition-colors text-left',
+    item.disabled && 'opacity-50 cursor-not-allowed',
+    item.danger && 'text-destructive hover:bg-destructive/10',
+    item.active && 'bg-muted font-medium'
+  );
+
+  const content = (
+    <>
+      {item.icon && <span className="h-4 w-4">{item.icon}</span>}
+      <span>{item.label}</span>
+    </>
+  );
+
+  // Render as link if href is provided
+  if (item.href) {
+    return (
+      <a href={item.href} className={className} onClick={onClose}>
+        {content}
+      </a>
+    );
+  }
 
   return (
     <button
       type="button"
-      className={cn(
-        'w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded',
-        'hover:bg-muted transition-colors text-left',
-        item.disabled && 'opacity-50 cursor-not-allowed',
-        item.danger && 'text-destructive hover:bg-destructive/10'
-      )}
+      className={className}
       onClick={handleClick}
       disabled={item.disabled}
     >
-      {item.icon && <span className="h-4 w-4">{item.icon}</span>}
-      <span>{item.label}</span>
+      {content}
     </button>
   );
 };
@@ -41,6 +71,8 @@ const MenuItemButton = ({
 export const MainMenu = ({ config }: MainMenuProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const displayTheme = theme === 'system' ? 'system' : resolvedTheme;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -181,10 +213,19 @@ export const MainMenu = ({ config }: MainMenuProps) => {
           {/* Theme Toggle */}
           {config?.showThemeToggle && (
             <div className="px-1 py-1">
-              <div className="flex items-center justify-between px-2 py-1">
-                <span className="text-sm">Theme</span>
-                <ThemeToggle size="sm" />
-              </div>
+              <button
+                type="button"
+                className={cn(
+                  'w-full flex items-center justify-between px-2 py-1.5 text-sm rounded',
+                  'hover:bg-muted transition-colors'
+                )}
+                onClick={() => setTheme(nextTheme[theme])}
+              >
+                <span>Theme</span>
+                <span className="h-4 w-4 text-muted-foreground">
+                  {themeIcons[displayTheme]}
+                </span>
+              </button>
             </div>
           )}
 

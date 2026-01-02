@@ -6,12 +6,15 @@ import { SessionProvider } from '../contexts/SessionContext';
 import { RootLayout } from '../layouts/RootLayout';
 import { PublicLayout } from '../layouts/PublicLayout';
 import { ProtectedLayout } from '../layouts/ProtectedLayout';
+import { DashboardLayout } from '../layouts/DashboardLayout';
+import { AdminPageLayout } from '../layouts/AdminPageLayout';
 import {
   LandingPageSkeleton,
   SignInPageSkeleton,
   SignUpPageSkeleton,
   SSOCallbackSkeleton,
-  DashboardPageSkeleton,
+  SettingsPageSkeleton,
+  AnalyticsPageSkeleton,
 } from '../components/skeletons';
 
 // Lazy load pages for code splitting
@@ -34,8 +37,27 @@ const NoProjectPage = lazy(() =>
     default: m.NoProjectPage,
   }))
 );
-const DashboardPage = lazy(() =>
-  import('../pages/DashboardPage').then((m) => ({ default: m.DashboardPage }))
+// DashboardPage is not lazy-loaded since it handles its own loading state
+import { DashboardPage } from '../pages/DashboardPage';
+const SettingsPage = lazy(() =>
+  import('../pages/admin/SettingsPage').then((m) => ({
+    default: m.SettingsPage,
+  }))
+);
+const AnalyticsPage = lazy(() =>
+  import('../pages/admin/AnalyticsPage').then((m) => ({
+    default: m.AnalyticsPage,
+  }))
+);
+const NotFoundPage = lazy(() =>
+  import('../pages/NotFoundPage').then((m) => ({
+    default: m.NotFoundPage,
+  }))
+);
+const ErrorPage = lazy(() =>
+  import('../pages/ErrorPage').then((m) => ({
+    default: m.ErrorPage,
+  }))
 );
 
 function ProvidersWrapper() {
@@ -53,10 +75,20 @@ function ProvidersWrapper() {
 const router = createBrowserRouter([
   {
     element: <ProvidersWrapper />,
+    errorElement: (
+      <Suspense fallback={null}>
+        <ErrorPage />
+      </Suspense>
+    ),
     children: [
       {
         path: '/',
         element: <RootLayout />,
+        errorElement: (
+          <Suspense fallback={null}>
+            <ErrorPage />
+          </Suspense>
+        ),
         children: [
           // Public routes (landing + auth) with shared header
           {
@@ -112,12 +144,41 @@ const router = createBrowserRouter([
               {
                 index: true,
                 element: (
-                  <Suspense fallback={<DashboardPageSkeleton />}>
+                  <DashboardLayout>
                     <DashboardPage />
-                  </Suspense>
+                  </DashboardLayout>
+                ),
+              },
+              {
+                path: 'users',
+                element: (
+                  <AdminPageLayout>
+                    <Suspense fallback={<SettingsPageSkeleton />}>
+                      <SettingsPage />
+                    </Suspense>
+                  </AdminPageLayout>
+                ),
+              },
+              {
+                path: 'analytics',
+                element: (
+                  <AdminPageLayout>
+                    <Suspense fallback={<AnalyticsPageSkeleton />}>
+                      <AnalyticsPage />
+                    </Suspense>
+                  </AdminPageLayout>
                 ),
               },
             ],
+          },
+          // Catch-all 404 route
+          {
+            path: '*',
+            element: (
+              <Suspense fallback={null}>
+                <NotFoundPage />
+              </Suspense>
+            ),
           },
         ],
       },

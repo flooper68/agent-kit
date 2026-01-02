@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { AgentPanel } from '@agent-kit/ui';
 import type { AgentType, TaskHistoryItem, SuggestionChip } from '@agent-kit/ui';
@@ -7,6 +7,8 @@ import { useAgentSession } from '../hooks/useAgentSession';
 import { useSession } from '../contexts/SessionContext';
 
 interface AppAgentPanelProps {
+  /** Available agents passed from parent */
+  agents: AgentType[];
   /** Callback when user wants to start a new chat */
   onNewChat?: () => void;
   emptyStateConfig?: {
@@ -16,23 +18,23 @@ interface AppAgentPanelProps {
   suggestions?: Array<{ id: string; text: string }>;
   recentChats?: TaskHistoryItem[];
   onRecentChatClick?: (chat: TaskHistoryItem) => void;
+  onRecentChatDelete?: (chat: TaskHistoryItem) => void;
   className?: string;
 }
 
 export function AppAgentPanel({
+  agents,
   onNewChat,
   emptyStateConfig,
   suggestions,
   recentChats,
   onRecentChatClick,
+  onRecentChatDelete,
   className,
 }: AppAgentPanelProps) {
   const { sessionId, setSessionId } = useSession();
   const { user } = useUser();
   const [selectedAgent, setSelectedAgent] = useState<AgentType | null>(null);
-
-  // Fetch available agents
-  const agentsQuery = trpc.agents.list.useQuery();
 
   // Create session mutation
   const createSessionMutation = trpc.sessions.create.useMutation();
@@ -51,18 +53,6 @@ export function AppAgentPanel({
   } = useAgentSession({
     sessionId,
   });
-
-  // Map server agents to UI AgentType format
-  const agents: AgentType[] = useMemo(() => {
-    return (agentsQuery.data || []).map((agent) => ({
-      id: agent.id,
-      name: agent.name,
-      description: agent.description,
-      tools: agent.tools,
-      model: agent.model,
-      provider: agent.provider,
-    }));
-  }, [agentsQuery.data]);
 
   // Auto-select first agent when available and no session exists
   useEffect(() => {
@@ -90,26 +80,10 @@ export function AppAgentPanel({
     [user]
   );
 
-  // Handle agent selection
-  const handleAgentSelect = useCallback(
-    async (agent: AgentType) => {
-      setSelectedAgent(agent);
-
-      // Create a new session with this agent
-      try {
-        const session = await createSessionMutation.mutateAsync({
-          agentId: agent.id,
-        });
-        if (session) {
-          // Set the session ID in global context
-          setSessionId(session.id);
-        }
-      } catch (error) {
-        console.error('Failed to create session:', error);
-      }
-    },
-    [createSessionMutation, setSessionId]
-  );
+  // Handle agent selection - session is created on first message, not here
+  const handleAgentSelect = useCallback((agent: AgentType) => {
+    setSelectedAgent(agent);
+  }, []);
 
   const handleSend = useCallback(
     async (message: string) => {
@@ -190,6 +164,7 @@ export function AppAgentPanel({
       onInterrupt={handleInterrupt}
       onAgentSelect={handleAgentSelect}
       onRecentChatClick={onRecentChatClick}
+      onRecentChatDelete={onRecentChatDelete}
       onCreateNewTask={onNewChat}
       onRetry={handleRetry}
       onErrorDismiss={handleErrorDismiss}

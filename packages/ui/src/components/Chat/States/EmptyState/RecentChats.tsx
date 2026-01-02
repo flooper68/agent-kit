@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { Lock, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Lock, MoreHorizontal, Trash2, MessageSquare } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
 import type { TaskHistoryItem } from '../../../../types/chat';
 import { DropdownMenu } from '../../../DropdownMenu';
@@ -9,6 +9,8 @@ export interface RecentChatsProps extends React.HTMLAttributes<HTMLDivElement> {
   onChatClick?: (chat: TaskHistoryItem) => void;
   onDeleteClick?: (chat: TaskHistoryItem) => void;
   maxItems?: number;
+  /** Show empty state when no chats instead of hiding */
+  showEmptyState?: boolean;
 }
 
 const formatDate = (date: Date): string => {
@@ -42,10 +44,12 @@ const ChatCard = ({
   onClick?: () => void;
   onDelete?: () => void;
 }) => {
+  const hasDescription = chat.description || chat.preview;
+
   return (
     <div
       className={cn(
-        'border border-border rounded-lg p-4',
+        'flex flex-col border border-border rounded-lg p-4',
         'hover:border-border/80 hover:bg-muted/30 transition-colors',
         'cursor-pointer'
       )}
@@ -60,7 +64,7 @@ const ChatCard = ({
       }}
     >
       {/* Title row */}
-      <div className="flex items-center gap-1.5 mb-1">
+      <div className="flex items-center gap-1.5">
         <span className="text-sm font-medium text-foreground truncate">
           {chat.title}
         </span>
@@ -70,14 +74,19 @@ const ChatCard = ({
       </div>
 
       {/* Description/preview */}
-      {(chat.description || chat.preview) && (
-        <p className="text-sm text-muted-foreground truncate mb-3">
+      {hasDescription && (
+        <p className="mt-1 text-sm text-muted-foreground truncate">
           {chat.description || chat.preview}
         </p>
       )}
 
       {/* Bottom row */}
-      <div className="flex items-center justify-between gap-2 mt-3">
+      <div
+        className={cn(
+          'flex items-center justify-between gap-2',
+          hasDescription ? 'mt-3' : 'mt-2'
+        )}
+      >
         <div className="flex items-center gap-2 min-w-0">
           {chat.user && (
             <>
@@ -130,10 +139,18 @@ const ChatCard = ({
 
 export const RecentChats = forwardRef<HTMLDivElement, RecentChatsProps>(
   (
-    { chats, onChatClick, onDeleteClick, maxItems = 4, className, ...props },
+    {
+      chats,
+      onChatClick,
+      onDeleteClick,
+      maxItems = 4,
+      showEmptyState = false,
+      className,
+      ...props
+    },
     ref
   ) => {
-    if (chats.length === 0) return null;
+    if (chats.length === 0 && !showEmptyState) return null;
 
     const displayChats = chats.slice(0, maxItems);
 
@@ -143,23 +160,33 @@ export const RecentChats = forwardRef<HTMLDivElement, RecentChatsProps>(
         className={cn('w-full max-w-3xl mt-8', className)}
         {...props}
       >
-        <div
-          className={cn(
-            'grid gap-3',
-            displayChats.length === 1
-              ? 'grid-cols-1 max-w-sm mx-auto'
-              : 'grid-cols-2'
-          )}
-        >
-          {displayChats.map((chat) => (
-            <ChatCard
-              key={chat.id}
-              chat={chat}
-              onClick={() => onChatClick?.(chat)}
-              onDelete={() => onDeleteClick?.(chat)}
-            />
-          ))}
-        </div>
+        {chats.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-8 text-center">
+            <MessageSquare className="mb-3 h-8 w-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">No recent chats</p>
+            <p className="mt-1 text-xs text-muted-foreground/70">
+              Your conversations will appear here
+            </p>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              'grid gap-3',
+              displayChats.length === 1
+                ? 'grid-cols-1 max-w-sm mx-auto'
+                : 'grid-cols-2'
+            )}
+          >
+            {displayChats.map((chat) => (
+              <ChatCard
+                key={chat.id}
+                chat={chat}
+                onClick={() => onChatClick?.(chat)}
+                onDelete={() => onDeleteClick?.(chat)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     );
   }

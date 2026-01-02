@@ -31,7 +31,10 @@ import { MarkdownRenderer } from '../CodeDisplay/MarkdownRenderer';
 import { CopyButton, RegenerateButton } from '../Controls';
 import { AttachmentButton } from '../Controls/AttachmentButton';
 import { ContextIndicator } from '../Controls/ContextIndicator';
-import { AgentSelector } from '../Controls/AgentSelector';
+import {
+  AgentSelector,
+  AgentSelectorSkeleton,
+} from '../Controls/AgentSelector';
 import { AgentInfoBadge } from '../Controls/AgentInfoBadge';
 import type { AgentPanelProps, AgentPanelRef } from './types';
 
@@ -99,8 +102,10 @@ export const AgentPanel = memo(
         agents,
         selectedAgent,
         isAgentSelectorDisabled,
+        isAgentsLoading,
         recentChats,
         onRecentChatClick,
+        onRecentChatDelete,
       },
       ref
     ) => {
@@ -303,17 +308,21 @@ export const AgentPanel = memo(
             {enableAttachments && onAttach && (
               <AttachmentButton onAttach={onAttach} showMenu={false} />
             )}
-            {/* Show selector when not locked, badge when locked */}
-            {isAgentSelectorDisabled
-              ? selectedAgent && <AgentInfoBadge agent={selectedAgent} />
-              : agents &&
-                agents.length > 0 && (
-                  <AgentSelector
-                    agents={agents}
-                    selectedAgent={selectedAgent}
-                    onSelect={onAgentSelect}
-                  />
-                )}
+            {/* Show selector when not locked, badge when locked, skeleton when loading */}
+            {isAgentSelectorDisabled ? (
+              selectedAgent && <AgentInfoBadge agent={selectedAgent} />
+            ) : isAgentsLoading ? (
+              <AgentSelectorSkeleton />
+            ) : (
+              agents &&
+              agents.length > 0 && (
+                <AgentSelector
+                  agents={agents}
+                  selectedAgent={selectedAgent}
+                  onSelect={onAgentSelect}
+                />
+              )
+            )}
           </div>
           {contextUsage && <ContextIndicator usage={contextUsage} />}
         </>
@@ -330,6 +339,7 @@ export const AgentPanel = memo(
               onSuggestionClick={onSuggestionClick}
               recentChats={recentChats}
               onRecentChatClick={onRecentChatClick}
+              onRecentChatDelete={onRecentChatDelete}
               inputElement={
                 <ChatInput isSubmitting={isSubmitting} onSubmit={handleSubmit}>
                   <ChatInput.Textarea

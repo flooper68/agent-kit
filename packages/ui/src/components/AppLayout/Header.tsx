@@ -44,7 +44,10 @@ export const Header = ({ mainMenu, moreMenu, slots }: HeaderProps) => {
         <div className="flex-1" />
 
         {slots?.toolButtons && (
-          <div className="flex items-center gap-1">{slots.toolButtons}</div>
+          <>
+            <div className="h-4 w-px bg-border mx-1" />
+            <div className="flex items-center gap-1">{slots.toolButtons}</div>
+          </>
         )}
 
         {hasPanel && (
