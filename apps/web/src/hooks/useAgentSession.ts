@@ -478,6 +478,14 @@ export function useAgentSession({
       },
       onError: (error) => {
         console.error('[AgentSession] Subscription error:', error);
+        setError({
+          type: 'network',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Connection to server lost',
+          retryable: true,
+        });
         setStatus('error');
         setThinkingStatus({ isThinking: false });
       },
@@ -543,12 +551,13 @@ export function useAgentSession({
   );
 
   // Effect to send pending message once subscription is ready
+  // tRPC subscription.status: 'idle' (ready), 'connecting', 'pending', 'error'
   useEffect(() => {
     const pending = pendingMessageRef.current;
     if (
       pending &&
       sessionId === pending.sessionId &&
-      subscription.status === 'pending'
+      subscription.status === 'idle'
     ) {
       console.log('[AgentSession] Subscription ready, sending pending message');
       pendingMessageRef.current = null;

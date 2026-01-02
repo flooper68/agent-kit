@@ -7,7 +7,7 @@ export const messagesRouter = router({
     .input(
       z.object({
         sessionId: z.string().uuid(),
-        content: z.string().min(1),
+        content: z.string().min(1).max(50000), // 50KB limit to prevent DoS
       })
     )
     .mutation(async ({ ctx, input }) => {

@@ -14,16 +14,11 @@ function getServerUrl(): string {
 
 function getWebSocketUrl(): string {
   const url = import.meta.env.VITE_SERVER_URL;
-  // Extract host and port, then add 1 to port for WebSocket server
+  // Extract host - WebSocket runs on the same port as HTTP
   let host = url;
   if (host.startsWith('http://') || host.startsWith('https://')) {
     host = host.replace(/^https?:\/\//, '');
   }
-
-  // Parse host and port
-  const [hostname, portStr] = host.split(':');
-  const port = portStr ? parseInt(portStr, 10) : 3000;
-  const wsPort = port + 1;
 
   // Determine ws vs wss based on environment
   const isSecure =
@@ -32,7 +27,7 @@ function getWebSocketUrl(): string {
     window.location.protocol === 'https:';
   const protocol = isSecure ? 'wss' : 'ws';
 
-  return `${protocol}://${hostname}:${wsPort}/trpc`;
+  return `${protocol}://${host}/trpc`;
 }
 
 // Store for WebSocket client - needs to be recreated when token changes

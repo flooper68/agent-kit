@@ -1,7 +1,6 @@
 import { env } from './env';
 import { createClerkClient, verifyToken } from '@clerk/backend';
 import Fastify from 'fastify';
-import fastifyWebsocket from '@fastify/websocket';
 import {
   fastifyTRPCPlugin,
   type FastifyTRPCPluginOptions,
@@ -35,8 +34,23 @@ fastify.register(corsPlugin);
 fastify.register(clerkPlugin, { secretKey: env.CLERK_SECRET_KEY });
 
 fastify.register(redisPlugin, { url: env.REDIS_URL });
-fastify.register(fastifyWebsocket);
+// Note: Not using @fastify/websocket - we handle WebSocket manually via ws library
 fastify.register(pubsubTestRoutes, { prefix: '/api' });
+
+// Prevent Fastify from processing WebSocket upgrade requests to /trpc
+// The ws library handles these via the 'upgrade' event on the HTTP server
+fastify.addHook('onRequest', async (request, reply) => {
+  const isWebSocketUpgrade =
+    request.headers.upgrade?.toLowerCase() === 'websocket';
+  const isTrpcPath = request.url.startsWith('/trpc');
+
+  if (isWebSocketUpgrade && isTrpcPath) {
+    // Don't let Fastify handle this - ws library will handle the upgrade
+    // We need to hijack the response to prevent Fastify from sending anything
+    reply.hijack();
+    return;
+  }
+});
 
 // Create agents feature (single instance)
 const agentsFeature = new AgentsFeature(db);
@@ -109,15 +123,9 @@ const start = async () => {
     // Run database migrations
     await runMigrations();
 
-    await fastify.listen({ port: env.PORT, host: env.HOST });
-    console.log(`Server is running at http://${env.HOST}:${env.PORT}`);
-
     // Set up WebSocket server for tRPC subscriptions
-    // We use a separate port for WebSocket to avoid conflicts with Fastify
-    const wss = new WebSocketServer({
-      port: env.PORT + 1,
-      path: '/trpc',
-    });
+    // Using noServer mode to manually handle upgrade and avoid conflicts with Fastify
+    const wss = new WebSocketServer({ noServer: true });
 
     const handler = applyWSSHandler<AppRouter>({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -180,8 +188,25 @@ const start = async () => {
       },
     });
 
+    // Start HTTP server
+    await fastify.listen({ port: env.PORT, host: env.HOST });
+    console.log(`Server is running at http://${env.HOST}:${env.PORT}`);
+
+    // Manually handle WebSocket upgrades to avoid conflicts with Fastify
+    // This intercepts upgrade requests before Fastify tries to handle them as 404s
+    fastify.server.on('upgrade', (request, socket, head) => {
+      const url = new URL(request.url || '', `http://${request.headers.host}`);
+      if (url.pathname === '/trpc') {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit('connection', ws, request);
+        });
+      } else {
+        socket.destroy();
+      }
+    });
+
     console.log(
-      `WebSocket server is running at ws://${env.HOST}:${env.PORT + 1}/trpc`
+      `WebSocket server is running at ws://${env.HOST}:${env.PORT}/trpc`
     );
 
     process.on('SIGTERM', () => {

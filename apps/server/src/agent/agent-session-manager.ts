@@ -357,6 +357,9 @@ export class AgentSessionManager {
       `[AgentSessionManager] Consumer group ready, starting to consume jobs from ${JOB_STREAM}`
     );
 
+    let consecutiveErrors = 0;
+    const maxConsecutiveErrors = 10;
+
     while (true) {
       try {
         // Use dedicated worker connection for blocking operations
@@ -405,8 +408,20 @@ export class AgentSessionManager {
                 continue;
               }
 
-              const parsed = JSON.parse(rawData);
-              const job = AgentJobSchema.parse(parsed);
+              let job: AgentJob;
+              try {
+                const parsed = JSON.parse(rawData);
+                job = AgentJobSchema.parse(parsed);
+              } catch (parseError) {
+                console.error(
+                  '[AgentSessionManager] Failed to parse job data:',
+                  parseError,
+                  { messageId, rawData: rawData.slice(0, 200) }
+                );
+                // Acknowledge malformed message to prevent infinite redelivery
+                await this.redis.xack(JOB_STREAM, groupName, messageId);
+                continue;
+              }
 
               console.log('[AgentSessionManager] Processing job:', job.id, {
                 sessionId: job.sessionId,
@@ -428,10 +443,32 @@ export class AgentSessionManager {
             }
           }
         }
+
+        // Reset error count on successful iteration
+        consecutiveErrors = 0;
       } catch (error) {
-        console.error('[AgentSessionManager] Error consuming jobs:', error);
-        // Wait before retrying
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        consecutiveErrors++;
+        console.error(
+          `[AgentSessionManager] Error consuming jobs (attempt ${consecutiveErrors}/${maxConsecutiveErrors}):`,
+          error
+        );
+
+        if (consecutiveErrors >= maxConsecutiveErrors) {
+          console.error(
+            '[AgentSessionManager] Max consecutive errors reached, stopping consumer'
+          );
+          throw new Error(
+            `Job consumer stopped after ${maxConsecutiveErrors} consecutive errors`
+          );
+        }
+
+        // Exponential backoff: 1s, 2s, 4s, 8s, ... up to 30s max
+        const delay = Math.min(
+          1000 * Math.pow(2, consecutiveErrors - 1),
+          30000
+        );
+        console.log(`[AgentSessionManager] Retrying in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
@@ -516,9 +553,19 @@ export class AgentSessionManager {
               const rawData = fields[dataIndex + 1];
               if (!rawData) continue;
 
-              const parsed = JSON.parse(rawData);
-              const event = StreamEventSchema.parse(parsed);
-              yield event;
+              try {
+                const parsed = JSON.parse(rawData);
+                const event = StreamEventSchema.parse(parsed);
+                yield event;
+              } catch (parseError) {
+                console.error(
+                  '[AgentSessionManager] Failed to parse event data:',
+                  parseError,
+                  { messageId, rawData: rawData.slice(0, 200) }
+                );
+                // Skip malformed event and continue
+                continue;
+              }
 
               // Note: Don't end subscription on terminal events (message_complete, error, interrupted)
               // The subscription should stay alive to receive events for subsequent messages
@@ -557,18 +604,36 @@ export class AgentSessionManager {
       count
     );
 
-    return result.map(([_id, fields]) => {
-      const dataIndex = fields.indexOf('data');
-      if (dataIndex === -1 || dataIndex + 1 >= fields.length) {
-        throw new Error('Invalid stream event format');
-      }
-      const rawData = fields[dataIndex + 1];
-      if (!rawData) {
-        throw new Error('Missing event data');
-      }
-      const parsed = JSON.parse(rawData);
-      return StreamEventSchema.parse(parsed);
-    });
+    return result
+      .map(([id, fields]) => {
+        const dataIndex = fields.indexOf('data');
+        if (dataIndex === -1 || dataIndex + 1 >= fields.length) {
+          console.warn(
+            '[AgentSessionManager] Invalid stream event format, skipping:',
+            { id }
+          );
+          return null;
+        }
+        const rawData = fields[dataIndex + 1];
+        if (!rawData) {
+          console.warn('[AgentSessionManager] Missing event data, skipping:', {
+            id,
+          });
+          return null;
+        }
+        try {
+          const parsed = JSON.parse(rawData);
+          return StreamEventSchema.parse(parsed);
+        } catch (parseError) {
+          console.error(
+            '[AgentSessionManager] Failed to parse event in history:',
+            parseError,
+            { id, rawData: rawData.slice(0, 200) }
+          );
+          return null;
+        }
+      })
+      .filter((event): event is StreamEvent => event !== null);
   }
 
   /**
