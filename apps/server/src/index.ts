@@ -47,19 +47,23 @@ let sessionManager: AgentSessionManager;
 // Hook to initialize Redis-dependent services after Redis plugin is registered
 fastify.addHook('onReady', async () => {
   const redis = fastify.redis.publisher;
+  const workerRedis = fastify.redis.worker;
 
   // Create session manager with Redis and AgentsFeature
-  sessionManager = new AgentSessionManager(redis, agentsFeature);
+  // Pass dedicated worker connection for blocking operations
+  sessionManager = new AgentSessionManager(redis, agentsFeature, workerRedis);
 
   // Create the agent worker
   const agentWorker = new AgentWorker(sessionManager);
+
+  fastify.log.info('Starting agent worker...');
 
   // Start the agent worker in the background
   agentWorker.start().catch((err) => {
     fastify.log.error(err, 'Agent worker error');
   });
 
-  fastify.log.info('Agent worker started');
+  fastify.log.info('Agent worker initialization complete');
 });
 
 // Register tRPC - uses a getter to access sessionManager after it's initialized

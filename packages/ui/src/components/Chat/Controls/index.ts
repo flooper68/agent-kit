@@ -24,3 +24,6 @@ export type {
   AgentInfoBadgeProps,
   AgentInfoDialogProps,
 } from './AgentInfoBadge';
+
+export { HistoryToggleButton } from './HistoryToggleButton';
+export type { HistoryToggleButtonProps } from './HistoryToggleButton';

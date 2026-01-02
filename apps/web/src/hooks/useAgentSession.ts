@@ -97,31 +97,49 @@ export function useAgentSession({
   // Interrupt mutation
   const interruptMutation = trpc.messages.interrupt.useMutation();
 
+  // Reset state when sessionId changes
+  useEffect(() => {
+    // Clear messages and reset state when switching sessions
+    setMessages([]);
+    setStatus('ready');
+    setThinkingStatus({ isThinking: false });
+    accumulatedTextRef.current = {};
+    accumulatedReasoningRef.current = {};
+  }, [sessionId]);
+
   // Load initial messages when session loads
   useEffect(() => {
     if (sessionQuery.data?.messages) {
-      const loadedMessages: TaskMessage[] = sessionQuery.data.messages.map(
-        (msg) => {
+      const loadedMessages: TaskMessage[] = sessionQuery.data.messages
+        .map((msg) => {
           // Convert server parts to UI parts
-          const parts: MessagePart[] = msg.parts.map((p) => {
+          const parts: MessagePart[] = [];
+          for (const p of msg.parts) {
             switch (p.type) {
               case 'text':
-                return createTextPart(p.content);
+                parts.push(createTextPart(p.content));
+                break;
               case 'reasoning':
-                return createReasoningPart(p.content);
+                parts.push(createReasoningPart(p.content));
+                break;
               case 'tool_invocation':
-                return createToolInvocationPart(
-                  p.toolCallId,
-                  p.toolName,
-                  p.args,
-                  p.state
+                parts.push(
+                  createToolInvocationPart(
+                    p.toolCallId,
+                    p.toolName,
+                    p.args,
+                    p.state
+                  )
                 );
+                break;
               case 'tool_result':
-                return createToolResultPart(p.toolCallId, p.result, p.isError);
-              default:
-                return createTextPart('');
+                parts.push(
+                  createToolResultPart(p.toolCallId, p.result, p.isError)
+                );
+                break;
+              // Skip unknown types
             }
-          });
+          }
 
           return {
             id: msg.id,
@@ -129,11 +147,12 @@ export function useAgentSession({
             parts,
             createdAt: new Date(msg.createdAt),
           };
-        }
-      );
+        })
+        // Filter out messages with no parts (empty assistant placeholders)
+        .filter((msg) => msg.parts.length > 0);
       setMessages(loadedMessages);
     }
-  }, [sessionQuery.data?.messages]);
+  }, [sessionId, sessionQuery.data?.messages]);
 
   // Subscribe to session events
   trpc.messages.subscribe.useSubscription(

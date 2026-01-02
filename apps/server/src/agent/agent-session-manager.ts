@@ -130,10 +130,13 @@ export interface SendMessageResult {
  */
 export class AgentSessionManager {
   private redis: Redis;
+  private workerRedis: Redis;
   private agentsFeature: AgentsFeature;
 
-  constructor(redis: Redis, agentsFeature: AgentsFeature) {
+  constructor(redis: Redis, agentsFeature: AgentsFeature, workerRedis?: Redis) {
     this.redis = redis;
+    // Use dedicated worker connection for blocking operations, or fall back to main connection
+    this.workerRedis = workerRedis ?? redis;
     this.agentsFeature = agentsFeature;
   }
 
@@ -233,13 +236,25 @@ export class AgentSessionManager {
    */
   async ensureJobConsumerGroup(groupName: string): Promise<void> {
     try {
+      console.log(
+        `[AgentSessionManager] Creating consumer group: ${groupName} for stream: ${JOB_STREAM}`
+      );
       await this.redis.xgroup('CREATE', JOB_STREAM, groupName, '0', 'MKSTREAM');
+      console.log(`[AgentSessionManager] Consumer group ${groupName} created`);
     } catch (error) {
       // Group already exists - that's fine
       if (
         error instanceof Error &&
-        !error.message.includes('BUSYGROUP Consumer Group name already exists')
+        error.message.includes('BUSYGROUP Consumer Group name already exists')
       ) {
+        console.log(
+          `[AgentSessionManager] Consumer group ${groupName} already exists`
+        );
+      } else {
+        console.error(
+          `[AgentSessionManager] Error creating consumer group:`,
+          error
+        );
         throw error;
       }
     }
@@ -260,19 +275,24 @@ export class AgentSessionManager {
       agentId: fullJob.agentId,
     });
 
-    const messageId = await this.redis.xadd(
-      JOB_STREAM,
-      '*',
-      'data',
-      JSON.stringify(fullJob)
-    );
+    try {
+      const messageId = await this.redis.xadd(
+        JOB_STREAM,
+        '*',
+        'data',
+        JSON.stringify(fullJob)
+      );
 
-    console.log(
-      '[AgentSessionManager] Job enqueued with Redis messageId:',
-      messageId
-    );
+      console.log(
+        '[AgentSessionManager] Job enqueued with Redis messageId:',
+        messageId
+      );
 
-    return messageId ?? fullJob.id;
+      return messageId ?? fullJob.id;
+    } catch (error) {
+      console.error('[AgentSessionManager] Error enqueueing job:', error);
+      throw error;
+    }
   }
 
   /**
@@ -287,11 +307,20 @@ export class AgentSessionManager {
   ): Promise<void> {
     const { blockMs = 5000, count = 1 } = options;
 
+    console.log(
+      `[AgentSessionManager] Setting up consumer group: ${groupName}, consumer: ${consumerName}`
+    );
+
     await this.ensureJobConsumerGroup(groupName);
+
+    console.log(
+      `[AgentSessionManager] Consumer group ready, starting to consume jobs from ${JOB_STREAM}`
+    );
 
     while (true) {
       try {
-        const result = (await this.redis.call(
+        // Use dedicated worker connection for blocking operations
+        const result = (await this.workerRedis.call(
           'XREADGROUP',
           'GROUP',
           groupName,
@@ -305,16 +334,36 @@ export class AgentSessionManager {
           '>'
         )) as [string, [string, string[]][]][] | null;
 
-        if (!result) continue;
+        if (!result) {
+          // Timeout - no messages available, continue polling
+          continue;
+        }
 
-        for (const [, messages] of result) {
+        console.log(
+          `[AgentSessionManager] XREADGROUP returned ${result.length} stream(s)`
+        );
+
+        for (const [streamName, messages] of result) {
+          console.log(
+            `[AgentSessionManager] Stream ${streamName} has ${messages.length} message(s)`
+          );
+
           for (const [messageId, fields] of messages) {
             try {
               const dataIndex = fields.indexOf('data');
-              if (dataIndex === -1 || dataIndex + 1 >= fields.length) continue;
+              if (dataIndex === -1 || dataIndex + 1 >= fields.length) {
+                console.warn(
+                  `[AgentSessionManager] Invalid message format, fields:`,
+                  fields
+                );
+                continue;
+              }
 
               const rawData = fields[dataIndex + 1];
-              if (!rawData) continue;
+              if (!rawData) {
+                console.warn(`[AgentSessionManager] Empty data field`);
+                continue;
+              }
 
               const parsed = JSON.parse(rawData);
               const job = AgentJobSchema.parse(parsed);
@@ -331,13 +380,16 @@ export class AgentSessionManager {
               // Acknowledge the message
               await this.redis.xack(JOB_STREAM, groupName, messageId);
             } catch (error) {
-              console.error('Error processing job:', error);
+              console.error(
+                '[AgentSessionManager] Error processing job:',
+                error
+              );
               // Don't ack - message will be redelivered
             }
           }
         }
       } catch (error) {
-        console.error('Error consuming jobs:', error);
+        console.error('[AgentSessionManager] Error consuming jobs:', error);
         // Wait before retrying
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
@@ -383,7 +435,8 @@ export class AgentSessionManager {
 
     while (true) {
       try {
-        const result = (await this.redis.call(
+        // Use dedicated worker connection for blocking operations
+        const result = (await this.workerRedis.call(
           'XREAD',
           'BLOCK',
           '5000',

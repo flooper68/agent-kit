@@ -143,6 +143,14 @@ export interface SuggestionChip {
   prompt?: string;
 }
 
+// User info for task history
+export interface TaskHistoryUser {
+  id: string;
+  name: string;
+  avatarColor?: string;
+  avatarUrl?: string;
+}
+
 // Task history item for sidebar
 export interface TaskHistoryItem {
   id: string;
@@ -150,6 +158,9 @@ export interface TaskHistoryItem {
   preview?: string;
   createdAt: Date;
   updatedAt?: Date;
+  isPrivate?: boolean;
+  user?: TaskHistoryUser;
+  agentName?: string;
 }
 
 // Agent type for selection

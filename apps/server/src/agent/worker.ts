@@ -20,17 +20,26 @@ export class AgentWorker {
     if (this.isRunning) return;
     this.isRunning = true;
 
-    console.log(`Agent worker ${this.workerId} starting...`);
+    console.log(`[AgentWorker ${this.workerId}] Starting worker...`);
 
-    // Start consuming jobs - this runs forever
-    await this.sessionManager.consumeJobs(
-      'agent-workers',
-      this.workerId,
-      async (job) => {
-        const handler = new AgentJobHandler(this.sessionManager, this.workerId);
-        await handler.handle(job);
-      }
-    );
+    try {
+      // Start consuming jobs - this runs forever
+      await this.sessionManager.consumeJobs(
+        'agent-workers',
+        this.workerId,
+        async (job) => {
+          console.log(`[AgentWorker ${this.workerId}] Received job:`, job.id);
+          const handler = new AgentJobHandler(
+            this.sessionManager,
+            this.workerId
+          );
+          await handler.handle(job);
+        }
+      );
+    } catch (error) {
+      console.error(`[AgentWorker ${this.workerId}] Worker error:`, error);
+      throw error;
+    }
   }
 
   stop(): void {

@@ -96,6 +96,8 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
       onAgentSelect,
       agents,
       selectedAgent,
+      recentChats,
+      onRecentChatClick,
     },
     ref
   ) => {
@@ -239,7 +241,7 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
             {isUser && (
               <Message.Avatar
                 {...avatar}
-                className="h-8 w-8"
+                className="h-6 w-6"
                 tooltip={tooltipName}
               />
             )}
@@ -312,6 +314,8 @@ export const AgentPanel = forwardRef<AgentPanelRef, AgentPanelProps>(
             description={emptyStateConfig?.description}
             suggestions={suggestions}
             onSuggestionClick={onSuggestionClick}
+            recentChats={recentChats}
+            onRecentChatClick={onRecentChatClick}
             inputElement={
               <ChatInput isSubmitting={isSubmitting} onSubmit={handleSubmit}>
                 <ChatInput.Textarea

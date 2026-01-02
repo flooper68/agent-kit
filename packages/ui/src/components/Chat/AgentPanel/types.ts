@@ -77,6 +77,9 @@ export interface AgentPanelCallbacks {
 
   /** Called when user wants to create a new task */
   onCreateNewTask?: () => void;
+
+  /** Called when a recent chat is clicked in the empty state */
+  onRecentChatClick?: (chat: TaskHistoryItem) => void;
 }
 
 /**
@@ -130,6 +133,9 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
 
   /** Currently selected task ID */
   selectedTaskId?: string;
+
+  /** Recent chats to display in the empty state */
+  recentChats?: TaskHistoryItem[];
 }
 
 /**

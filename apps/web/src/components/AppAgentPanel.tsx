@@ -1,26 +1,34 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useUser } from '@clerk/clerk-react';
 import { AgentPanel } from '@agent-kit/ui';
-import type { AgentType } from '@agent-kit/ui';
+import type { AgentType, TaskHistoryItem } from '@agent-kit/ui';
 import { trpc } from '../lib/trpc';
 import { useAgentSession } from '../hooks/useAgentSession';
+import { useSession } from '../contexts/SessionContext';
 
 interface AppAgentPanelProps {
+  /** Callback when user wants to start a new chat */
+  onNewChat?: () => void;
   emptyStateConfig?: {
     title?: string;
     description?: string;
   };
   suggestions?: Array<{ id: string; text: string }>;
+  recentChats?: TaskHistoryItem[];
+  onRecentChatClick?: (chat: TaskHistoryItem) => void;
   className?: string;
 }
 
 export function AppAgentPanel({
+  onNewChat,
   emptyStateConfig,
   suggestions,
+  recentChats,
+  onRecentChatClick,
   className,
 }: AppAgentPanelProps) {
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
-    null
-  );
+  const { sessionId, setSessionId } = useSession();
+  const { user } = useUser();
   const [selectedAgent, setSelectedAgent] = useState<AgentType | null>(null);
 
   // Fetch available agents
@@ -32,7 +40,7 @@ export function AppAgentPanel({
   // Use the agent session hook
   const { messages, status, thinkingStatus, sendMessage, interrupt } =
     useAgentSession({
-      sessionId: selectedSessionId,
+      sessionId,
     });
 
   // Map server agents to UI AgentType format
@@ -43,6 +51,22 @@ export function AppAgentPanel({
       description: agent.description,
     }));
   }, [agentsQuery.data]);
+
+  // Create avatars config from logged-in user
+  const avatars = useMemo(
+    () => ({
+      user: {
+        src: user?.imageUrl,
+        fallback: user?.fullName?.charAt(0).toUpperCase() ?? 'U',
+        name: user?.fullName ?? user?.primaryEmailAddress?.emailAddress,
+      },
+      assistant: {
+        fallback: 'AI',
+        name: 'Assistant',
+      },
+    }),
+    [user]
+  );
 
   // Handle agent selection
   const handleAgentSelect = useCallback(
@@ -55,21 +79,22 @@ export function AppAgentPanel({
           agentId: agent.id,
         });
         if (session) {
-          setSelectedSessionId(session.id);
+          // Set the session ID in global context
+          setSessionId(session.id);
         }
       } catch (error) {
         console.error('Failed to create session:', error);
       }
     },
-    [createSessionMutation]
+    [createSessionMutation, setSessionId]
   );
 
   const handleSend = useCallback(
     async (message: string) => {
-      let sessionId = selectedSessionId;
+      let currentSessionId = sessionId;
 
       // If no session yet, create one with the first agent
-      if (!sessionId && agents.length > 0) {
+      if (!currentSessionId && agents.length > 0) {
         const firstAgent = agents[0];
         if (firstAgent) {
           try {
@@ -77,9 +102,10 @@ export function AppAgentPanel({
               agentId: firstAgent.id,
             });
             if (session) {
-              sessionId = session.id;
-              setSelectedSessionId(session.id);
+              currentSessionId = session.id;
               setSelectedAgent(firstAgent);
+              // Set the session ID in global context
+              setSessionId(session.id);
             }
           } catch (error) {
             console.error('Failed to create session:', error);
@@ -88,12 +114,12 @@ export function AppAgentPanel({
         }
       }
 
-      if (sessionId) {
+      if (currentSessionId) {
         // Pass sessionId explicitly in case state hasn't updated yet
-        await sendMessage(message, sessionId);
+        await sendMessage(message, currentSessionId);
       }
     },
-    [selectedSessionId, agents, createSessionMutation, sendMessage]
+    [sessionId, agents, createSessionMutation, sendMessage, setSessionId]
   );
 
   const handleInterrupt = useCallback(() => {
@@ -106,13 +132,17 @@ export function AppAgentPanel({
       messages={messages}
       status={status}
       thinkingStatus={thinkingStatus}
+      avatars={avatars}
       agents={agents}
       selectedAgent={selectedAgent || undefined}
       emptyStateConfig={emptyStateConfig}
       suggestions={suggestions}
+      recentChats={recentChats}
       onSend={handleSend}
       onInterrupt={handleInterrupt}
       onAgentSelect={handleAgentSelect}
+      onRecentChatClick={onRecentChatClick}
+      onCreateNewTask={onNewChat}
     />
   );
 }

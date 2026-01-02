@@ -5,11 +5,19 @@ import {
   useOrganization,
   useOrganizationList,
 } from '@clerk/clerk-react';
-import { AppLayout, ProjectSwitcher } from '@agent-kit/ui';
+import {
+  AppLayout,
+  ProjectSwitcher,
+  HistoryToggleButton,
+  TaskHistorySidebar,
+} from '@agent-kit/ui';
 import type { Project, MenuSection } from '@agent-kit/ui';
 import { Bot, Settings } from 'lucide-react';
 import { SettingsModal } from '../components/settings/SettingsModal';
 import { checkIsAdmin } from '../lib/auth';
+import { useChatHistory } from '../hooks/useChatHistory';
+import { useSession } from '../contexts/SessionContext';
+import { trpc } from '../lib/trpc';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -22,9 +30,45 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { userMemberships, setActive, isLoaded } = useOrganizationList({
     userMemberships: { infinite: true },
   });
+  const { setSessionId, clearSession } = useSession();
   const [isSwitching, setIsSwitching] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const isAdmin = checkIsAdmin(membership?.role);
+
+  // Fetch chat history for the sidebar
+  const { sessions, refetch: refetchSessions } = useChatHistory({ limit: 50 });
+
+  // Delete session mutation
+  const deleteSessionMutation = trpc.sessions.delete.useMutation({
+    onSuccess: () => {
+      refetchSessions();
+    },
+  });
+
+  const handleSessionSelect = useCallback(
+    (sessionId: string) => {
+      setSessionId(sessionId);
+      setIsHistoryOpen(false);
+    },
+    [setSessionId]
+  );
+
+  const handleSessionDelete = useCallback(
+    async (sessionId: string) => {
+      try {
+        await deleteSessionMutation.mutateAsync({ sessionId });
+      } catch (error) {
+        console.error('Failed to delete session:', error);
+      }
+    },
+    [deleteSessionMutation]
+  );
+
+  const handleNewSession = useCallback(() => {
+    clearSession();
+    setIsHistoryOpen(false);
+  }, [clearSession]);
 
   const projects: Project[] = useMemo(() => {
     if (!userMemberships?.data) return [];
@@ -98,11 +142,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 isLoading={isSwitching}
               />
             ) : null,
+          toolButtons: (
+            <HistoryToggleButton onClick={() => setIsHistoryOpen(true)} />
+          ),
         }}
       >
         {children}
       </AppLayout>
       <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+      <TaskHistorySidebar
+        open={isHistoryOpen}
+        onOpenChange={setIsHistoryOpen}
+        tasks={sessions}
+        onTaskSelect={handleSessionSelect}
+        onTaskDelete={handleSessionDelete}
+        onNewTask={handleNewSession}
+      />
     </>
   );
 }
