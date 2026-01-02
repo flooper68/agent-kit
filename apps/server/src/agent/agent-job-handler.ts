@@ -13,6 +13,55 @@ import { logger } from './logger';
 import { SessionSummarizer } from './session-summarizer';
 import { calculateCost } from '../features/agents/pricing';
 
+type BufferableEvent = {
+  type: 'text_delta' | 'reasoning_delta';
+  content: string;
+};
+
+/**
+ * Buffers consecutive events of the same type to reduce database writes.
+ * Events are accumulated until the type changes, then flushed as a single event.
+ */
+class EventBuffer {
+  private buffer: BufferableEvent | null = null;
+  private startSequence: number = 0;
+
+  /**
+   * Add event to buffer. Returns the previous buffered event if type changed,
+   * null if event was accumulated into existing buffer.
+   */
+  add(
+    event: BufferableEvent,
+    sequence: number
+  ): { event: BufferableEvent; sequence: number } | null {
+    if (!this.buffer) {
+      this.buffer = { ...event };
+      this.startSequence = sequence;
+      return null;
+    }
+
+    if (this.buffer.type === event.type) {
+      // Same type - accumulate content
+      this.buffer.content += event.content;
+      return null;
+    }
+
+    // Type changed - flush old buffer, start new one
+    const toFlush = { event: this.buffer, sequence: this.startSequence };
+    this.buffer = { ...event };
+    this.startSequence = sequence;
+    return toFlush;
+  }
+
+  /** Flush and return any buffered event */
+  flush(): { event: BufferableEvent; sequence: number } | null {
+    if (!this.buffer) return null;
+    const result = { event: this.buffer, sequence: this.startSequence };
+    this.buffer = null;
+    return result;
+  }
+}
+
 export interface DbMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -27,6 +76,7 @@ export class AgentJobHandler {
   private sessionManager: AgentSessionManager;
   private workerId: string;
   private eventSequence = 0;
+  private eventBuffer = new EventBuffer();
   private log: ReturnType<typeof logger.child>;
   private summarizer: SessionSummarizer;
 
@@ -162,6 +212,8 @@ export class AgentJobHandler {
           this.log.info('Interrupted by user', { sessionId, messageId });
           abortController.abort();
           finalStatus = 'interrupted';
+          // Flush any buffered events before interruption
+          await this.flushBuffer(sessionId, messageId);
           await this.publishInterrupted(sessionId, messageId);
           break;
         }
@@ -228,6 +280,8 @@ export class AgentJobHandler {
         code: agentError.code,
         statusCode: agentError.details?.statusCode,
       });
+      // Flush any buffered events before marking as error
+      await this.flushBuffer(sessionId, messageId);
       await this.sessionManager.updateMessageStatus(messageId, 'error');
       await this.publishError(sessionId, messageId, agentError);
     } finally {
@@ -246,14 +300,22 @@ export class AgentJobHandler {
     model: string
   ): Promise<void> {
     switch (event.type) {
-      case 'text_delta':
-        await this.sessionManager.insertEvent({
-          sessionId,
-          messageId,
-          sequence,
-          type: 'text_delta',
-          content: event.content,
-        });
+      case 'text_delta': {
+        // Buffer consecutive text deltas to reduce DB writes
+        const toFlush = this.eventBuffer.add(
+          { type: 'text_delta', content: event.content },
+          sequence
+        );
+        if (toFlush) {
+          await this.sessionManager.insertEvent({
+            sessionId,
+            messageId,
+            sequence: toFlush.sequence,
+            type: toFlush.event.type,
+            content: toFlush.event.content,
+          });
+        }
+        // Always publish immediately for real-time streaming
         await this.sessionManager.publishEvent(sessionId, {
           type: 'text_delta',
           sessionId,
@@ -261,15 +323,24 @@ export class AgentJobHandler {
           delta: event.content,
         } as Omit<StreamEvent, 'id' | 'timestamp'>);
         break;
+      }
 
-      case 'reasoning_delta':
-        await this.sessionManager.insertEvent({
-          sessionId,
-          messageId,
-          sequence,
-          type: 'reasoning_delta',
-          content: event.content,
-        });
+      case 'reasoning_delta': {
+        // Buffer consecutive reasoning deltas to reduce DB writes
+        const toFlush = this.eventBuffer.add(
+          { type: 'reasoning_delta', content: event.content },
+          sequence
+        );
+        if (toFlush) {
+          await this.sessionManager.insertEvent({
+            sessionId,
+            messageId,
+            sequence: toFlush.sequence,
+            type: toFlush.event.type,
+            content: toFlush.event.content,
+          });
+        }
+        // Always publish immediately for real-time streaming
         await this.sessionManager.publishEvent(sessionId, {
           type: 'reasoning_delta',
           sessionId,
@@ -277,8 +348,11 @@ export class AgentJobHandler {
           delta: event.content,
         } as Omit<StreamEvent, 'id' | 'timestamp'>);
         break;
+      }
 
       case 'tool_call':
+        // Flush any buffered deltas before tool call
+        await this.flushBuffer(sessionId, messageId);
         this.log.debug('Tool call', {
           sessionId,
           toolName: event.toolName,
@@ -303,6 +377,8 @@ export class AgentJobHandler {
         break;
 
       case 'tool_result':
+        // Flush any buffered deltas before tool result
+        await this.flushBuffer(sessionId, messageId);
         this.log.debug('Tool result', {
           sessionId,
           toolCallId: event.toolCallId,
@@ -327,6 +403,8 @@ export class AgentJobHandler {
         break;
 
       case 'done': {
+        // Flush any remaining buffered deltas
+        await this.flushBuffer(sessionId, messageId);
         const estimatedCost = event.usage
           ? calculateCost(
               model,
@@ -355,6 +433,8 @@ export class AgentJobHandler {
       }
 
       case 'error':
+        // Flush any buffered deltas before error
+        await this.flushBuffer(sessionId, messageId);
         this.log.error('Stream error', {
           sessionId,
           messageId,
@@ -377,6 +457,8 @@ export class AgentJobHandler {
         break;
 
       default:
+        // Flush any buffered deltas before unknown event
+        await this.flushBuffer(sessionId, messageId);
         // Store unknown event types for debugging/future handling
         await this.sessionManager.insertEvent({
           sessionId,
@@ -392,6 +474,25 @@ export class AgentJobHandler {
         );
         break;
     }
+  }
+
+  /**
+   * Flush any buffered events to the database
+   */
+  private async flushBuffer(
+    sessionId: string,
+    messageId: string
+  ): Promise<void> {
+    const buffered = this.eventBuffer.flush();
+    if (!buffered) return;
+
+    await this.sessionManager.insertEvent({
+      sessionId,
+      messageId,
+      sequence: buffered.sequence,
+      type: buffered.event.type,
+      content: buffered.event.content,
+    });
   }
 
   private async publishError(

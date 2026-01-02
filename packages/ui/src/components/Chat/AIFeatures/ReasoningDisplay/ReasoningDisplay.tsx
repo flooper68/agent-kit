@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, useState, useEffect } from 'react';
 import { cn } from '../../../../lib/utils';
 import { Collapsible } from '../../../Collapsible';
 import { Text } from '../../../Typography';
@@ -8,6 +8,8 @@ export interface ReasoningDisplayProps
   content: string;
   label?: string;
   defaultExpanded?: boolean;
+  /** Controlled expanded state - when provided, overrides internal state */
+  expanded?: boolean;
 }
 
 export const ReasoningDisplay = forwardRef<
@@ -19,15 +21,26 @@ export const ReasoningDisplay = forwardRef<
       content,
       label = 'Reasoning',
       defaultExpanded = false,
+      expanded,
       className,
       ...props
     },
     ref
   ) => {
+    // Track internal open state for controlled behavior
+    const [isOpen, setIsOpen] = useState(expanded ?? defaultExpanded);
+
+    // Sync with controlled expanded prop when it changes
+    useEffect(() => {
+      if (expanded !== undefined) {
+        setIsOpen(expanded);
+      }
+    }, [expanded]);
+
     return (
-      <Collapsible defaultOpen={defaultExpanded}>
-        <div ref={ref} className={cn('text-sm', className)} {...props}>
-          <Collapsible.Trigger className="px-3 py-2 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div ref={ref} className={cn('text-sm mb-3', className)} {...props}>
+          <Collapsible.Trigger className="py-1 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
             <svg
               className="h-4 w-4"
               fill="none"

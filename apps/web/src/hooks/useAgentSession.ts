@@ -15,6 +15,7 @@ import type {
 
 interface UseAgentSessionOptions {
   sessionId: string | null;
+  onSessionInvalid?: () => void;
 }
 
 interface UseAgentSessionReturn {
@@ -60,8 +61,11 @@ function createTextPart(content: string): TextPart {
 }
 
 // Helper to create a reasoning part
-function createReasoningPart(content: string): ReasoningPart {
-  return { type: 'reasoning', id: generatePartId(), content };
+function createReasoningPart(
+  content: string,
+  isCollapsed?: boolean
+): ReasoningPart {
+  return { type: 'reasoning', id: generatePartId(), content, isCollapsed };
 }
 
 // Helper to create a tool invocation part
@@ -98,6 +102,7 @@ function createToolResultPart(
 
 export function useAgentSession({
   sessionId,
+  onSessionInvalid,
 }: UseAgentSessionOptions): UseAgentSessionReturn {
   const [messages, setMessages] = useState<TaskMessage[]>([]);
   const [status, setStatus] = useState<TaskStatus>('ready');
@@ -154,6 +159,13 @@ export function useAgentSession({
     lastMessageRef.current = null;
   }, [sessionId]);
 
+  // Handle invalid session (e.g., persisted session that no longer exists)
+  useEffect(() => {
+    if (sessionQuery.isError && onSessionInvalid) {
+      onSessionInvalid();
+    }
+  }, [sessionQuery.isError, onSessionInvalid]);
+
   // Log session data when loaded
   useEffect(() => {
     if (sessionQuery.data) {
@@ -186,13 +198,19 @@ export function useAgentSession({
         .map((msg) => {
           // Convert server parts to UI parts
           const parts: MessagePart[] = [];
+          let textContent = '';
+          let reasoningContent = '';
+
           for (const p of msg.parts) {
             switch (p.type) {
               case 'text':
                 parts.push(createTextPart(p.content));
+                textContent = p.content;
                 break;
               case 'reasoning':
-                parts.push(createReasoningPart(p.content));
+                // Collapse reasoning blocks by default when loading from DB
+                parts.push(createReasoningPart(p.content, true));
+                reasoningContent = p.content;
                 break;
               case 'tool_invocation':
                 parts.push(
@@ -213,6 +231,18 @@ export function useAgentSession({
             }
           }
 
+          // IMPORTANT: Initialize accumulators with loaded content for assistant messages
+          // This ensures that when subscription events arrive, they APPEND to existing
+          // content rather than REPLACING it (which would cause content loss on refresh)
+          if (msg.role === 'assistant') {
+            if (textContent) {
+              accumulatedTextRef.current[msg.id] = textContent;
+            }
+            if (reasoningContent) {
+              accumulatedReasoningRef.current[msg.id] = reasoningContent;
+            }
+          }
+
           return {
             id: msg.id,
             role: msg.role as 'user' | 'assistant',
@@ -227,11 +257,17 @@ export function useAgentSession({
   }, [sessionId, sessionQuery.data?.messages]);
 
   // Subscribe to session events
-  // Historical messages are loaded via sessionQuery, subscription is for new events only
+  // Historical messages are loaded via sessionQuery, subscription resumes from lastStreamId
+  // to ensure no events are missed between the HTTP query and WebSocket connection
+  // IMPORTANT: We must wait for sessionQuery to complete so lastStreamId is available
+  // before starting the subscription, otherwise it defaults to '$' (new events only)
   const subscription = trpc.messages.subscribe.useSubscription(
-    { sessionId: sessionId! },
     {
-      enabled: !!sessionId,
+      sessionId: sessionId!,
+      lastEventId: sessionQuery.data?.lastStreamId,
+    },
+    {
+      enabled: !!sessionId && sessionQuery.isSuccess,
       onData: (event) => {
         console.log('[AgentSession] Event:', event.type, event);
         switch (event.type) {
@@ -279,7 +315,10 @@ export function useAgentSession({
                   const textPartIndex = m.parts.findIndex(
                     (p) => p.type === 'text'
                   );
-                  const newParts = [...m.parts];
+                  // Collapse any reasoning parts when text starts streaming
+                  const newParts = m.parts.map((p) =>
+                    p.type === 'reasoning' ? { ...p, isCollapsed: true } : p
+                  );
 
                   if (textPartIndex >= 0) {
                     const existingPart = newParts[textPartIndex];
@@ -290,7 +329,8 @@ export function useAgentSession({
                       } as TextPart;
                     }
                   } else {
-                    newParts.unshift(createTextPart(newContent));
+                    // Push to maintain streaming order (don't use unshift which reverses order)
+                    newParts.push(createTextPart(newContent));
                   }
 
                   return { ...m, parts: newParts };
@@ -378,7 +418,11 @@ export function useAgentSession({
               if (existing) {
                 return prev.map((m) => {
                   if (m.id !== event.messageId) return m;
-                  return { ...m, parts: [...m.parts, newPart] };
+                  // Collapse any reasoning parts when tool call starts
+                  const updatedParts = m.parts.map((p) =>
+                    p.type === 'reasoning' ? { ...p, isCollapsed: true } : p
+                  );
+                  return { ...m, parts: [...updatedParts, newPart] };
                 });
               } else {
                 // Create assistant message if it doesn't exist (missed message_start)
@@ -448,6 +492,19 @@ export function useAgentSession({
             // Clean up accumulators
             delete accumulatedTextRef.current[event.messageId];
             delete accumulatedReasoningRef.current[event.messageId];
+
+            // Collapse reasoning parts now that streaming is complete
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== event.messageId) return m;
+                return {
+                  ...m,
+                  parts: m.parts.map((p) =>
+                    p.type === 'reasoning' ? { ...p, isCollapsed: true } : p
+                  ),
+                };
+              })
+            );
 
             // Accumulate usage from this message
             if (event.usage) {

@@ -1,14 +1,15 @@
-import { forwardRef } from 'react';
+import * as SelectPrimitive from '@radix-ui/react-select';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { ChevronDown } from 'lucide-react';
 
-const selectVariants = cva(
+const selectTriggerVariants = cva(
   [
     'flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm',
     'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
     'disabled:cursor-not-allowed disabled:opacity-50',
-    'appearance-none cursor-pointer',
+    'cursor-pointer',
+    '[&>span]:line-clamp-1',
   ],
   {
     variants: {
@@ -30,40 +31,98 @@ export interface SelectOption {
 }
 
 export interface SelectProps
-  extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'size'>,
-    VariantProps<typeof selectVariants> {
+  extends VariantProps<typeof selectTriggerVariants> {
   options: SelectOption[];
   placeholder?: string;
+  value?: string;
+  defaultValue?: string;
+  onChange?: (e: { target: { value: string } }) => void;
+  onValueChange?: (value: string) => void;
+  disabled?: boolean;
+  className?: string;
+  name?: string;
 }
 
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, variant, options, placeholder, ...props }, ref) => {
-    return (
-      <div className="relative">
-        <select
-          ref={ref}
-          className={cn(selectVariants({ variant }), className)}
-          {...props}
-        >
-          {placeholder && (
-            <option value="" disabled>
-              {placeholder}
-            </option>
+export function Select({
+  className,
+  variant,
+  options,
+  placeholder,
+  value,
+  defaultValue,
+  onChange,
+  onValueChange,
+  disabled,
+  name,
+}: SelectProps) {
+  const handleValueChange = (newValue: string) => {
+    // Support both patterns: onValueChange (Radix style) and onChange (HTML style)
+    onValueChange?.(newValue);
+    onChange?.({ target: { value: newValue } });
+  };
+
+  return (
+    <SelectPrimitive.Root
+      value={value}
+      defaultValue={defaultValue}
+      onValueChange={handleValueChange}
+      disabled={disabled}
+      name={name}
+    >
+      <SelectPrimitive.Trigger
+        className={cn(selectTriggerVariants({ variant }), className)}
+      >
+        <SelectPrimitive.Value placeholder={placeholder} />
+        <SelectPrimitive.Icon asChild>
+          <ChevronDown className="h-4 w-4 opacity-50" />
+        </SelectPrimitive.Icon>
+      </SelectPrimitive.Trigger>
+      <SelectPrimitive.Portal>
+        <SelectPrimitive.Content
+          className={cn(
+            'relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+            'data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2',
+            'data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2'
           )}
-          {options.map((option) => (
-            <option
-              key={option.value}
-              value={option.value}
-              disabled={option.disabled}
-            >
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-      </div>
-    );
-  }
-);
+          position="popper"
+          sideOffset={4}
+        >
+          <SelectPrimitive.ScrollUpButton className="flex cursor-default items-center justify-center py-1">
+            <ChevronUp className="h-4 w-4" />
+          </SelectPrimitive.ScrollUpButton>
+          <SelectPrimitive.Viewport className="p-1 h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]">
+            {options.map((option) => (
+              <SelectPrimitive.Item
+                key={option.value}
+                value={option.value}
+                disabled={option.disabled}
+                className={cn(
+                  'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none',
+                  'focus:bg-accent focus:text-accent-foreground',
+                  'data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
+                )}
+              >
+                <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                  <SelectPrimitive.ItemIndicator>
+                    <Check className="h-4 w-4" />
+                  </SelectPrimitive.ItemIndicator>
+                </span>
+                <SelectPrimitive.ItemText>
+                  {option.label}
+                </SelectPrimitive.ItemText>
+              </SelectPrimitive.Item>
+            ))}
+          </SelectPrimitive.Viewport>
+          <SelectPrimitive.ScrollDownButton className="flex cursor-default items-center justify-center py-1">
+            <ChevronDown className="h-4 w-4" />
+          </SelectPrimitive.ScrollDownButton>
+        </SelectPrimitive.Content>
+      </SelectPrimitive.Portal>
+    </SelectPrimitive.Root>
+  );
+}
 
 Select.displayName = 'Select';

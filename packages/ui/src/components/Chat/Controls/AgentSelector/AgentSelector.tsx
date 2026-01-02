@@ -158,7 +158,7 @@ export const AgentSelector = memo(
                 </div>
                 <div className="max-h-64 overflow-y-auto">
                   {filteredAgents.length === 0 ? (
-                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                    <div className="px-1.5 py-1 text-sm text-muted-foreground">
                       {agents.length === 0
                         ? 'No agents available'
                         : 'No agents found'}
@@ -170,7 +170,7 @@ export const AgentSelector = memo(
                         type="button"
                         onClick={() => handleSelect(agent)}
                         className={cn(
-                          'w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors',
+                          'w-full px-1.5 py-1 text-left text-sm hover:bg-accent transition-colors',
                           agent.id === selectedAgent?.id && 'bg-accent'
                         )}
                       >

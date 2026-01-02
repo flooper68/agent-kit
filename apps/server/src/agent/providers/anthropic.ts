@@ -1,4 +1,4 @@
-import { streamText } from 'ai';
+import { streamText, stepCountIs } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import type {
   AgentProvider,
@@ -31,6 +31,12 @@ export class AnthropicProvider implements AgentProvider {
         messages,
         tools,
         abortSignal,
+        stopWhen: stepCountIs(2000),
+        providerOptions: {
+          anthropic: {
+            thinking: { type: 'enabled', budgetTokens: 10000 },
+          },
+        },
       });
 
       let accumulatedText = '';

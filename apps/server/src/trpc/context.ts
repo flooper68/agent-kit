@@ -3,12 +3,14 @@ import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify'
 import type { AuthContext } from '../types/auth.js';
 import type { AgentSessionManager } from '../agent/agent-session-manager';
 import type { AgentsFeature } from '../features/agents';
+import type { AnalyticsFeature } from '../features/analytics';
 
 export type ClerkClient = ReturnType<typeof createClerkClient>;
 
 export interface ContextDeps {
   clerk: ClerkClient;
   agentsFeature: AgentsFeature;
+  analyticsFeature: AnalyticsFeature;
   sessionManager: AgentSessionManager;
 }
 
@@ -27,6 +29,7 @@ export function createContext(deps: ContextDeps) {
       },
       clerk: deps.clerk,
       agentsFeature: deps.agentsFeature,
+      analyticsFeature: deps.analyticsFeature,
       sessionManager: deps.sessionManager,
     };
   };

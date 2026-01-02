@@ -44,6 +44,15 @@ export const sessionsRouter = router({
     .input(z.object({ sessionId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       // Session ownership already verified by sessionProcedure middleware
+
+      // IMPORTANT: Get lastStreamId FIRST, before fetching messages
+      // This ensures the subscription starts from a point <= what's in the DB
+      // Any events written after this point will be in BOTH DB and subscription,
+      // which the client handles via accumulator initialization
+      const lastStreamId = await ctx.sessionManager.getLastStreamId(
+        input.sessionId
+      );
+
       const session = await ctx.agentsFeature.sessions.getWithMessages(
         input.sessionId
       );
@@ -55,7 +64,10 @@ export const sessionsRouter = router({
         });
       }
 
-      return session;
+      return {
+        ...session,
+        lastStreamId,
+      };
     }),
 
   updateTitle: sessionProcedure

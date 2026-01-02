@@ -17,6 +17,7 @@ import { appRouter, createContext, type AppRouter } from './trpc';
 import { OrgRole, type AuthContext } from './types/auth';
 import { AgentSessionManager, AgentWorker } from './agent';
 import { AgentsFeature } from './features/agents';
+import { AnalyticsFeature } from './features/analytics';
 
 const clerk = createClerkClient({
   secretKey: env.CLERK_SECRET_KEY,
@@ -25,6 +26,8 @@ const clerk = createClerkClient({
 
 const fastify = Fastify({
   logger: true,
+  // Increase max param length to support tRPC batched requests with many procedures
+  maxParamLength: 500,
 });
 
 // Register CORS
@@ -54,6 +57,15 @@ fastify.addHook('onRequest', async (request, reply) => {
 
 // Create agents feature (single instance)
 const agentsFeature = new AgentsFeature(db);
+
+// Create agent names map for analytics display
+const agentNameMap = new Map<string, string>();
+for (const agent of agentsFeature.agents.list()) {
+  agentNameMap.set(agent.id, agent.name);
+}
+
+// Create analytics feature
+const analyticsFeature = new AnalyticsFeature(db, agentNameMap);
 
 // Will be initialized after Redis is ready
 let sessionManager: AgentSessionManager;
@@ -97,6 +109,7 @@ fastify.register(fastifyTRPCPlugin, {
       return createContext({
         clerk,
         agentsFeature,
+        analyticsFeature,
         sessionManager,
       })(opts);
     },
@@ -183,6 +196,7 @@ const start = async () => {
           auth,
           clerk,
           agentsFeature,
+          analyticsFeature,
           sessionManager,
         };
       },

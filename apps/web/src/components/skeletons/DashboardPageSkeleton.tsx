@@ -33,7 +33,7 @@ export function DashboardPageSkeleton() {
       {/* Input area */}
       <div className="mt-2 w-full max-w-2xl">
         {/* Chat input */}
-        <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-4 shadow-md">
+        <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-4 shadow-sm">
           {/* Textarea placeholder */}
           <Skeleton className="h-[66px] w-full rounded-md" />
           {/* Input actions bar */}

@@ -1,4 +1,4 @@
-import { streamText } from 'ai';
+import { streamText, stepCountIs } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import type {
   AgentProvider,
@@ -24,6 +24,9 @@ export class OpenAIProvider implements AgentProvider {
       toolName: toolNames.join(', '),
     });
 
+    // o-series models (o3, o4-mini) support reasoning
+    const isReasoningModel = model.startsWith('o3') || model.startsWith('o4');
+
     try {
       const result = streamText({
         model: openai(model),
@@ -31,6 +34,15 @@ export class OpenAIProvider implements AgentProvider {
         messages,
         tools,
         abortSignal,
+        stopWhen: stepCountIs(2000),
+        ...(isReasoningModel && {
+          providerOptions: {
+            openai: {
+              reasoningEffort: 'medium',
+              reasoningSummary: 'auto',
+            },
+          },
+        }),
       });
 
       let accumulatedText = '';

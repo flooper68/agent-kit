@@ -6,6 +6,8 @@ import { trpc } from '../lib/trpc';
 import { useAgentSession } from '../hooks/useAgentSession';
 import { useSession } from '../contexts/SessionContext';
 
+const STORAGE_KEY_AGENT = 'agent-kit:lastAgentId';
+
 interface AppAgentPanelProps {
   /** Available agents passed from parent */
   agents: AgentType[];
@@ -32,12 +34,17 @@ export function AppAgentPanel({
   onRecentChatDelete,
   className,
 }: AppAgentPanelProps) {
-  const { sessionId, setSessionId } = useSession();
+  const { sessionId, setSessionId, clearSession } = useSession();
   const { user } = useUser();
   const [selectedAgent, setSelectedAgent] = useState<AgentType | null>(null);
 
   // Create session mutation
   const createSessionMutation = trpc.sessions.create.useMutation();
+
+  // Handle invalid persisted session
+  const handleSessionInvalid = useCallback(() => {
+    clearSession();
+  }, [clearSession]);
 
   // Use the agent session hook
   const {
@@ -52,11 +59,26 @@ export function AppAgentPanel({
     contextUsage,
   } = useAgentSession({
     sessionId,
+    onSessionInvalid: handleSessionInvalid,
   });
 
-  // Auto-select first agent when available and no session exists
+  // Restore last selected agent from localStorage, or fallback to first agent
   useEffect(() => {
     if (!sessionId && !selectedAgent && agents.length > 0) {
+      // Try to restore from localStorage first
+      try {
+        const savedAgentId = localStorage.getItem(STORAGE_KEY_AGENT);
+        if (savedAgentId) {
+          const savedAgent = agents.find((a) => a.id === savedAgentId);
+          if (savedAgent) {
+            setSelectedAgent(savedAgent);
+            return;
+          }
+        }
+      } catch {
+        // Ignore localStorage errors
+      }
+      // Fallback to first agent
       const firstAgent = agents[0];
       if (firstAgent) {
         setSelectedAgent(firstAgent);
@@ -83,6 +105,11 @@ export function AppAgentPanel({
   // Handle agent selection - session is created on first message, not here
   const handleAgentSelect = useCallback((agent: AgentType) => {
     setSelectedAgent(agent);
+    try {
+      localStorage.setItem(STORAGE_KEY_AGENT, agent.id);
+    } catch {
+      // Ignore localStorage errors
+    }
   }, []);
 
   const handleSend = useCallback(
@@ -100,6 +127,12 @@ export function AppAgentPanel({
             if (session) {
               currentSessionId = session.id;
               setSelectedAgent(agentToUse);
+              // Persist the agent ID to localStorage
+              try {
+                localStorage.setItem(STORAGE_KEY_AGENT, agentToUse.id);
+              } catch {
+                // Ignore localStorage errors
+              }
               // Set the session ID in global context
               setSessionId(session.id);
             }

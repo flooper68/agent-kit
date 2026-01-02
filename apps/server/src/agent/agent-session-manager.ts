@@ -588,6 +588,24 @@ export class AgentSessionManager {
   }
 
   /**
+   * Get the last message ID in a session's event stream
+   * Used for subscription resumption after page refresh
+   * Returns undefined if stream doesn't exist or is empty
+   */
+  async getLastStreamId(sessionId: string): Promise<string | undefined> {
+    const streamName = getSessionStream(sessionId);
+
+    // XREVRANGE with COUNT 1 gets the last entry
+    const result = await this.redis.xrevrange(streamName, '+', '-', 'COUNT', 1);
+
+    if (result.length === 0) {
+      return undefined;
+    }
+
+    return result[0]?.[0]; // Return the message ID
+  }
+
+  /**
    * Get all events for a session (for history replay)
    */
   async getRedisSessionEvents(

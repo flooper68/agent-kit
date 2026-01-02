@@ -25,6 +25,7 @@ export type ToolResultPart = {
 export type ReasoningPart = {
   type: 'reasoning';
   content: string;
+  isCollapsed?: boolean;
 };
 
 export type MessagePart =

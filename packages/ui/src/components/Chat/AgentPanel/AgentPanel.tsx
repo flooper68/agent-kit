@@ -184,7 +184,7 @@ export const AgentPanel = memo(
                 <ReasoningDisplay
                   key={part.id || index}
                   content={reasoningPart.content}
-                  defaultExpanded={!reasoningPart.isCollapsed}
+                  expanded={!reasoningPart.isCollapsed}
                 />
               );
             }
@@ -345,6 +345,7 @@ export const AgentPanel = memo(
                   <ChatInput.Textarea
                     ref={inputRef}
                     placeholder={inputPlaceholder}
+                    autoFocus
                   />
                   <ChatInput.Actions>{renderInputActions()}</ChatInput.Actions>
                 </ChatInput>
@@ -402,6 +403,7 @@ export const AgentPanel = memo(
                 <ChatInput.Textarea
                   ref={inputRef}
                   placeholder={inputPlaceholder}
+                  autoFocus
                 />
                 <ChatInput.Actions>{renderInputActions()}</ChatInput.Actions>
               </ChatInput>
