@@ -22,6 +22,11 @@ export class ListArtifactsQuery {
         .where(eq(artifacts.id, cursor))
         .limit(1);
 
+      // If cursor artifact was deleted, return empty results to indicate invalid cursor
+      if (cursorArtifact.length === 0) {
+        return { items: [], nextCursor: undefined };
+      }
+
       cursorDate = cursorArtifact[0]?.createdAt;
     }
 

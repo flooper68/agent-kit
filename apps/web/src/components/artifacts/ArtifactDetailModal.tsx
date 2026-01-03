@@ -69,8 +69,8 @@ export function ArtifactDetailModal({
               {/* Metadata */}
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                 <span>Created: {formatDate(artifactQuery.data.createdAt)}</span>
-                {artifactQuery.data.updatedAt !==
-                  artifactQuery.data.createdAt && (
+                {new Date(artifactQuery.data.updatedAt).getTime() !==
+                  new Date(artifactQuery.data.createdAt).getTime() && (
                   <span>
                     Updated: {formatDate(artifactQuery.data.updatedAt)}
                   </span>

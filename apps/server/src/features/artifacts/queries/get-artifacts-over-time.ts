@@ -4,6 +4,8 @@ import { artifacts } from '../../../db/schema';
 import type { TimeRange, ArtifactsOverTimePoint } from '../types';
 import { getTimeRangeStart, getGranularityForTimeRange } from './utils';
 
+const VALID_GRANULARITIES = ['hour', 'day', 'week'] as const;
+
 export class GetArtifactsOverTimeQuery {
   private db: typeof DbType;
 
@@ -17,6 +19,15 @@ export class GetArtifactsOverTimeQuery {
   ): Promise<ArtifactsOverTimePoint[]> {
     const startDate = getTimeRangeStart(timeRange);
     const granularity = getGranularityForTimeRange(timeRange);
+
+    // Validate granularity to prevent SQL injection
+    if (
+      !VALID_GRANULARITIES.includes(
+        granularity as (typeof VALID_GRANULARITIES)[number]
+      )
+    ) {
+      throw new Error(`Invalid granularity: ${granularity}`);
+    }
 
     const conditions = [eq(artifacts.orgId, orgId)];
     if (startDate) {
