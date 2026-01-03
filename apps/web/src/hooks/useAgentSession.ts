@@ -30,6 +30,7 @@ interface UseAgentSessionReturn {
   retry: () => Promise<void>;
   dismissError: () => void;
   contextUsage: ContextUsage | null;
+  handleScrollPositionChange: (isAtBottom: boolean) => void;
 }
 
 // Map server error codes to TaskError types
@@ -106,8 +107,7 @@ export function useAgentSession({
   onSessionInvalid,
 }: UseAgentSessionOptions): UseAgentSessionReturn {
   const messageListRef = useRef<HTMLDivElement | null>(null);
-
-  const temporarySpacerRef = useRef<boolean>(false);
+  const hasInitialScrolledRef = useRef<boolean>(false);
 
   const [messages, setMessages] = useState<TaskMessage[]>([]);
   const [status, setStatus] = useState<TaskStatus>('ready');
@@ -128,6 +128,8 @@ export function useAgentSession({
   const accumulatedReasoningRef = useRef<Record<string, string>>({});
   // Track last user message for retry functionality
   const lastMessageRef = useRef<string | null>(null);
+  // Track when a new text part is needed (after tool calls)
+  const needsNewTextPartRef = useRef<Record<string, boolean>>({});
   // Track pending message to send once subscription is ready
   const pendingMessageRef = useRef<{
     content: string;
@@ -162,7 +164,9 @@ export function useAgentSession({
     setAccumulatedUsage(null);
     accumulatedTextRef.current = {};
     accumulatedReasoningRef.current = {};
+    needsNewTextPartRef.current = {};
     lastMessageRef.current = null;
+    hasInitialScrolledRef.current = false;
   }, [sessionId]);
 
   // Handle invalid session (e.g., persisted session that no longer exists)
@@ -185,58 +189,15 @@ export function useAgentSession({
 
       messageListRef.current = node;
 
-      if (sessionQuery.data && node) {
+      // Only scroll on initial load of an existing session, not on subsequent updates
+      if (sessionQuery.data && !hasInitialScrolledRef.current) {
+        hasInitialScrolledRef.current = true;
         const lastMessage = node.children[node.children.length - 1];
 
         setTimeout(() => {
           lastMessage?.scrollIntoView({ behavior: 'instant' });
         });
       }
-
-      const observer = new ResizeObserver(() => {
-        if (temporarySpacerRef.current) {
-          return;
-        }
-
-        const spacer = messageListRef.current
-          ?.lastElementChild as HTMLDivElement;
-
-        const container = messageListRef.current?.parentNode as
-          | HTMLDivElement
-          | undefined;
-
-        if (!container) {
-          return;
-        }
-
-        const userMessage = messageListRef.current?.children[
-          messageListRef.current.children.length - 3
-        ] as HTMLDivElement | undefined;
-
-        if (!userMessage) {
-          return;
-        }
-
-        const responseMessage = messageListRef.current?.children[
-          messageListRef.current.children.length - 2
-        ] as HTMLDivElement | undefined;
-
-        if (!responseMessage) {
-          return;
-        }
-
-        const availableHeight =
-          container.offsetHeight -
-          userMessage.offsetHeight -
-          responseMessage.offsetHeight -
-          90;
-
-        spacer.style.minHeight = `${availableHeight}px`;
-      });
-
-      observer.observe(node);
-
-      return () => observer.disconnect();
     },
     [sessionQuery.data]
   );
@@ -383,9 +344,19 @@ export function useAgentSession({
             // Initialize accumulator for this message
             accumulatedTextRef.current[event.messageId] = '';
             accumulatedReasoningRef.current[event.messageId] = '';
+            needsNewTextPartRef.current[event.messageId] = false;
             break;
 
-          case 'text_delta':
+          case 'text_delta': {
+            const needsNewPart =
+              needsNewTextPartRef.current[event.messageId] ?? false;
+
+            if (needsNewPart) {
+              // Reset flag and clear accumulator for new segment
+              needsNewTextPartRef.current[event.messageId] = false;
+              accumulatedTextRef.current[event.messageId] = '';
+            }
+
             accumulatedTextRef.current[event.messageId] =
               (accumulatedTextRef.current[event.messageId] || '') + event.delta;
 
@@ -398,26 +369,36 @@ export function useAgentSession({
                 return prev.map((m) => {
                   if (m.id !== event.messageId) return m;
 
-                  // Update or add text part
-                  const textPartIndex = m.parts.findIndex(
-                    (p) => p.type === 'text'
-                  );
                   // Collapse any reasoning parts when text starts streaming
                   const newParts = m.parts.map((p) =>
                     p.type === 'reasoning' ? { ...p, isCollapsed: true } : p
                   );
 
-                  if (textPartIndex >= 0) {
-                    const existingPart = newParts[textPartIndex];
-                    if (existingPart) {
-                      newParts[textPartIndex] = {
-                        ...existingPart,
-                        content: newContent,
-                      } as TextPart;
-                    }
-                  } else {
-                    // Push to maintain streaming order (don't use unshift which reverses order)
+                  if (needsNewPart) {
+                    // Create new text part at the end (after tool results)
                     newParts.push(createTextPart(newContent));
+                  } else {
+                    // Find the LAST text part to update (iterate backwards)
+                    let textPartIndex = -1;
+                    for (let i = newParts.length - 1; i >= 0; i--) {
+                      if (newParts[i]?.type === 'text') {
+                        textPartIndex = i;
+                        break;
+                      }
+                    }
+
+                    if (textPartIndex >= 0) {
+                      const existingPart = newParts[textPartIndex];
+                      if (existingPart) {
+                        newParts[textPartIndex] = {
+                          ...existingPart,
+                          content: newContent,
+                        } as TextPart;
+                      }
+                    } else {
+                      // No text part yet, create one
+                      newParts.push(createTextPart(newContent));
+                    }
                   }
 
                   return { ...m, parts: newParts };
@@ -435,6 +416,7 @@ export function useAgentSession({
               }
             });
             break;
+          }
 
           case 'reasoning_delta': {
             accumulatedReasoningRef.current[event.messageId] =
@@ -493,6 +475,8 @@ export function useAgentSession({
           }
 
           case 'tool_call_start':
+            // Mark that next text_delta needs a new text part
+            needsNewTextPartRef.current[event.messageId] = true;
             setMessages((prev) => {
               const existing = prev.find((m) => m.id === event.messageId);
               const newPart = createToolInvocationPart(
@@ -579,6 +563,7 @@ export function useAgentSession({
             // Clean up accumulators
             delete accumulatedTextRef.current[event.messageId];
             delete accumulatedReasoningRef.current[event.messageId];
+            delete needsNewTextPartRef.current[event.messageId];
 
             // Collapse reasoning parts now that streaming is complete
             setMessages((prev) =>
@@ -699,42 +684,16 @@ export function useAgentSession({
 
       setIsLoading(true);
 
-      temporarySpacerRef.current = true;
-
-      const request = requestAnimationFrame(() => {
-        const spacer = messageListRef.current
-          ?.lastElementChild as HTMLDivElement;
-
-        const container = messageListRef.current?.parentNode as
-          | HTMLDivElement
-          | undefined;
-
-        if (!container) {
-          return;
-        }
-
+      // Scroll to show the user's message
+      requestAnimationFrame(() => {
         const userMessage = messageListRef.current?.children[
-          container.children.length - 2
+          messageListRef.current.children.length - 2
         ] as HTMLDivElement | undefined;
 
-        if (!userMessage) {
-          return;
-        }
-
-        const availableHeight =
-          container.offsetHeight - userMessage.offsetHeight - 66;
-
-        spacer.style.minHeight = `${availableHeight}px`;
-
-        spacer?.scrollIntoView({
+        userMessage?.scrollIntoView({
           behavior: 'instant',
+          block: 'start',
         });
-
-        setTimeout(() => {
-          temporarySpacerRef.current = false;
-        }, 500);
-
-        cancelAnimationFrame(request);
       });
 
       try {
@@ -832,6 +791,13 @@ export function useAgentSession({
     setStatus('ready');
   }, []);
 
+  // Callback for MessageList to report scroll position changes
+  // Currently a no-op - can be used in the future for auto-scroll during streaming
+  const handleScrollPositionChange = useCallback((_isAtBottom: boolean) => {
+    // Intentionally empty - scroll position is tracked by MessageList
+    // but not currently used for any conditional behavior
+  }, []);
+
   // Calculate context usage from accumulated state
   const DEFAULT_CONTEXT_WINDOW = 200000;
   const contextUsage: ContextUsage | null = accumulatedUsage
@@ -858,5 +824,6 @@ export function useAgentSession({
     dismissError,
     contextUsage,
     setMessageListRef,
+    handleScrollPositionChange,
   };
 }

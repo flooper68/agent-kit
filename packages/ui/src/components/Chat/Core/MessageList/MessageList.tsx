@@ -4,15 +4,16 @@ import { cn } from '../../../../lib/utils';
 
 export interface MessageListProps {
   children: React.ReactNode;
+  /** Callback when scroll position changes (at bottom vs scrolled up) */
+  onScrollPositionChange?: (isAtBottom: boolean) => void;
 }
 
 // Threshold in pixels from bottom to consider "at bottom"
-// Larger threshold handles big content blocks like markdown during streaming
-const SCROLL_BUTTON_THRESHOLD = 300;
+const SCROLL_BUTTON_THRESHOLD = 10;
 
 export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(
-  ({ children }, ref) => {
-    const containerRef = useRef<HTMLDivElement | null>();
+  ({ children, onScrollPositionChange }, ref) => {
+    const scrollContainerRef = useRef<HTMLDivElement>(null); // The outer div that scrolls
     const contentRef = useRef<HTMLDivElement>(null);
     const spacerRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -30,8 +31,10 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(
     //   }
     // });
 
-    const setRefs = (node: HTMLDivElement | null) => {
-      containerRef.current = node;
+    // Forward ref to the content div (used by useAgentSession for spacer logic)
+    const setContentRef = (node: HTMLDivElement | null) => {
+      (contentRef as React.MutableRefObject<HTMLDivElement | null>).current =
+        node;
       if (typeof ref === 'function') {
         ref(node);
       } else if (ref) {
@@ -81,7 +84,7 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(
 
     // Check if user is at the bottom of the scroll container
     const checkScrollPosition = useCallback(() => {
-      const container = containerRef.current;
+      const container = scrollContainerRef.current;
       if (!container) return;
 
       const { scrollTop, scrollHeight, clientHeight } = container;
@@ -90,11 +93,12 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(
 
       isAtBottomRef.current = atBottom;
       setShowScrollButton(!atBottom);
-    }, []);
+      onScrollPositionChange?.(atBottom);
+    }, [onScrollPositionChange]);
 
     // Listen for scroll events
     useEffect(() => {
-      const container = containerRef.current;
+      const container = scrollContainerRef.current;
       if (!container) return;
 
       container.addEventListener('scroll', checkScrollPosition, {
@@ -299,12 +303,13 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(
     return (
       <>
         <div
+          ref={scrollContainerRef}
           className={cn(
             'flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-6 scrollbar-thin'
           )}
         >
           <div
-            ref={setRefs}
+            ref={setContentRef}
             className="max-w-3xl mx-auto px-4 space-y-6 min-w-0"
           >
             {children}

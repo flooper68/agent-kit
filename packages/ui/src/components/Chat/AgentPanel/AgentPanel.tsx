@@ -100,6 +100,7 @@ export const AgentPanel = memo(
         recentChats,
         onRecentChatClick,
         onRecentChatDelete,
+        onScrollPositionChange,
       },
       ref
     ) => {
@@ -339,7 +340,10 @@ export const AgentPanel = memo(
               }
             />
           ) : (
-            <MessageList ref={ref}>
+            <MessageList
+              ref={ref}
+              onScrollPositionChange={onScrollPositionChange}
+            >
               {messages.map(renderMessage)}
 
               {/* Thinking indicator when submitted */}

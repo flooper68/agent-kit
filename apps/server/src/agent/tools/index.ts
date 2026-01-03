@@ -1,6 +1,8 @@
 import type { Tool } from '../types';
 import type { ArtifactsFeature } from '../../features/artifacts';
 import { getTimeTool } from './get-time';
+import { webSearchTool } from './web-search';
+import { extractContentTool } from './extract-content';
 import { createWriteArtifactTool } from './write-artifact';
 import { createSearchArtifactsTool } from './search-artifacts';
 import { createReadArtifactTool } from './read-artifact';
@@ -8,6 +10,8 @@ import { createReadArtifactTool } from './read-artifact';
 // Static tools (no context needed)
 const STATIC_TOOLS: Record<string, Tool> = {
   getTime: getTimeTool,
+  webSearch: webSearchTool,
+  extractContent: extractContentTool,
 };
 
 // Context-aware tool IDs

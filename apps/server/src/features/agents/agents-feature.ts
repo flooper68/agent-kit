@@ -40,6 +40,8 @@ import type {
 // Standard tools available to all agents
 const STANDARD_TOOLS = [
   'getTime',
+  'webSearch',
+  'extractContent',
   'writeArtifact',
   'searchArtifacts',
   'readArtifact',
@@ -49,7 +51,9 @@ const STANDARD_TOOLS = [
 const STANDARD_SYSTEM_PROMPT = `You are a helpful AI assistant. Be concise, accurate, and helpful.
 
 When using tools:
-- Use the getTime tool when asked about the current date or time
+- Use getTime when asked about the current date or time
+- Use webSearch to find current information from the web
+- Use extractContent to get full article text from URLs
 - Use writeArtifact to save documents, notes, or any content the user asks you to save
 - Use searchArtifacts to find previously saved documents by title or summary
 - Use readArtifact to retrieve the full content of a saved document

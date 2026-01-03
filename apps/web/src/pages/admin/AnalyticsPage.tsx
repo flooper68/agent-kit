@@ -16,6 +16,7 @@ import {
   AgentDistributionChart,
   CostBreakdownChart,
   TokensPerUserChart,
+  WebSearchCallsChart,
   RecentActivityTable,
   SessionDetailModal,
   ChartErrorBoundary,
@@ -92,6 +93,12 @@ export function AnalyticsPage() {
 
   // Fetch tokens per user
   const tokensPerUserQuery = trpc.analytics.getTokensPerUser.useQuery({
+    timeRange,
+    userId: userIdFilter,
+  });
+
+  // Fetch web search calls
+  const webSearchCallsQuery = trpc.analytics.getWebSearchCalls.useQuery({
     timeRange,
     userId: userIdFilter,
   });
@@ -230,6 +237,16 @@ export function AnalyticsPage() {
             <TokensPerUserChart
               data={tokensPerUserQuery.data ?? []}
               isLoading={tokensPerUserQuery.isLoading}
+            />
+          </ChartErrorBoundary>
+        </div>
+
+        {/* Web Search Analytics */}
+        <div className="grid gap-6 lg:grid-cols-2 mb-8">
+          <ChartErrorBoundary chartName="Web Search Calls">
+            <WebSearchCallsChart
+              data={webSearchCallsQuery.data ?? []}
+              isLoading={webSearchCallsQuery.isLoading}
             />
           </ChartErrorBoundary>
         </div>
