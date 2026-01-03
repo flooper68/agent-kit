@@ -387,8 +387,8 @@ export class AgentsFeature {
         this.listSessionsByUserQuery.execute(userId, limit),
       getAgentId: (sessionId: string) =>
         this.getAgentIdForSessionQuery.execute(sessionId),
-      verifyOwnership: (sessionId: string, userId: string) =>
-        this.verifySessionOwnershipQuery.execute(sessionId, userId),
+      verifyOwnership: (sessionId: string, userId: string, orgId?: string) =>
+        this.verifySessionOwnershipQuery.execute(sessionId, userId, orgId),
     };
   }
 

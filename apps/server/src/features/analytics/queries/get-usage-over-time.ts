@@ -1,4 +1,4 @@
-import { sql, eq, and, gte, sum, count } from 'drizzle-orm';
+import { sql, eq, and, gte, sum, count, type SQL } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { agentSessions } from '../../../db/schema';
 import type {
@@ -8,6 +8,21 @@ import type {
   AnalyticsFilters,
 } from '../types';
 import { getStartDate as getStartDateBase } from './utils';
+
+/**
+ * Returns the DATE_TRUNC SQL fragment for the given granularity.
+ * Uses explicit case mapping instead of sql.raw() to prevent SQL injection.
+ */
+function getDateTruncSql(granularity: Granularity): SQL<string> {
+  switch (granularity) {
+    case 'hour':
+      return sql<string>`DATE_TRUNC('hour', ${agentSessions.createdAt})`;
+    case 'day':
+      return sql<string>`DATE_TRUNC('day', ${agentSessions.createdAt})`;
+    case 'week':
+      return sql<string>`DATE_TRUNC('week', ${agentSessions.createdAt})`;
+  }
+}
 
 function getStartDate(timeRange: TimeRange): Date | null {
   // For usage over time, limit 'all' to 90 days to avoid massive queries
@@ -47,12 +62,6 @@ export class GetUsageOverTimeQuery {
     const granularity =
       input.granularity ?? getDefaultGranularity(input.timeRange);
 
-    // Defense in depth - validate granularity even if schema should have caught it
-    const validGranularities = ['hour', 'day', 'week'] as const;
-    if (!validGranularities.includes(granularity)) {
-      throw new Error(`Invalid granularity: ${granularity}`);
-    }
-
     // Build conditions - always filter by orgId
     const conditions = [eq(agentSessions.orgId, input.orgId)];
     if (startDate) {
@@ -62,7 +71,8 @@ export class GetUsageOverTimeQuery {
       conditions.push(eq(agentSessions.userId, input.userId));
     }
 
-    const dateTrunc = sql<string>`DATE_TRUNC('${sql.raw(granularity)}', ${agentSessions.createdAt})`;
+    // Use explicit SQL fragments to prevent SQL injection
+    const dateTrunc = getDateTruncSql(granularity);
 
     const results = await this.db
       .select({

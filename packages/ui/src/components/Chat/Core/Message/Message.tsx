@@ -21,7 +21,7 @@ const messageVariants = cva(
   }
 );
 
-const bubbleVariants = cva('text-base min-w-0 max-w-full', {
+const bubbleVariants = cva('text-lg min-w-0 max-w-full', {
   variants: {
     role: {
       user: 'bg-muted text-foreground rounded-2xl rounded-br-sm px-3 py-0.5 max-w-[80%]',

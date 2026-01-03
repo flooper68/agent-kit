@@ -9,13 +9,30 @@ export class VerifySessionOwnershipQuery {
     this.db = db;
   }
 
-  async execute(sessionId: string, userId: string): Promise<boolean> {
+  /**
+   * Verifies that a session belongs to the specified user.
+   * If orgId is provided, also verifies the session belongs to that organization
+   * to prevent cross-tenant data access when switching organizations.
+   */
+  async execute(
+    sessionId: string,
+    userId: string,
+    orgId?: string
+  ): Promise<boolean> {
+    const conditions = [
+      eq(agentSessions.id, sessionId),
+      eq(agentSessions.userId, userId),
+    ];
+
+    // If orgId is provided, also verify organization ownership
+    if (orgId) {
+      conditions.push(eq(agentSessions.orgId, orgId));
+    }
+
     const [session] = await this.db
       .select({ id: agentSessions.id })
       .from(agentSessions)
-      .where(
-        and(eq(agentSessions.id, sessionId), eq(agentSessions.userId, userId))
-      );
+      .where(and(...conditions));
 
     return session !== undefined;
   }

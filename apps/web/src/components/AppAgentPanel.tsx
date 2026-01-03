@@ -118,6 +118,11 @@ export function AppAgentPanel({
 
       // If no session yet, create one with the selected agent (or first agent as fallback)
       if (!currentSessionId) {
+        // Guard against concurrent session creation (e.g., double-click)
+        if (createSessionMutation.isPending) {
+          return;
+        }
+
         const agentToUse = selectedAgent || agents[0];
         if (agentToUse) {
           try {
