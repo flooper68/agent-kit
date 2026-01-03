@@ -8,6 +8,7 @@ import {
   GetUsersWithSessionsQuery,
   GetTokensPerUserQuery,
   GetSessionDetailQuery,
+  GetWebSearchCallsQuery,
 } from './queries';
 import type {
   GetUsageOverTimeInput,
@@ -29,6 +30,7 @@ export class AnalyticsFeature {
   private getUsersWithSessionsQuery: GetUsersWithSessionsQuery;
   private getTokensPerUserQuery: GetTokensPerUserQuery;
   private getSessionDetailQuery: GetSessionDetailQuery;
+  private getWebSearchCallsQuery: GetWebSearchCallsQuery;
 
   constructor(db: typeof DbType, agentNames: Map<string, string>) {
     this.getOverviewStatsQuery = new GetOverviewStatsQuery(db);
@@ -42,6 +44,7 @@ export class AnalyticsFeature {
     this.getUsersWithSessionsQuery = new GetUsersWithSessionsQuery(db);
     this.getTokensPerUserQuery = new GetTokensPerUserQuery(db);
     this.getSessionDetailQuery = new GetSessionDetailQuery(db, agentNames);
+    this.getWebSearchCallsQuery = new GetWebSearchCallsQuery(db);
   }
 
   getOverviewStats(filters: AnalyticsFilters) {
@@ -74,5 +77,9 @@ export class AnalyticsFeature {
 
   getSessionDetail(input: GetSessionDetailInput) {
     return this.getSessionDetailQuery.execute(input);
+  }
+
+  getWebSearchCalls(filters: AnalyticsFilters) {
+    return this.getWebSearchCallsQuery.execute(filters);
   }
 }

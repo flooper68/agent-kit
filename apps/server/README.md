@@ -30,6 +30,21 @@ docker compose up -d
 docker compose logs -f server
 ```
 
+## Environment Variables
+
+| Variable         | Default       | Description              |
+| ---------------- | ------------- | ------------------------ |
+| `PORT`           | `3000`        | Server port              |
+| `HOST`           | `0.0.0.0`     | Server host              |
+| `NODE_ENV`       | `development` | Environment              |
+| `REDIS_URL`      | (required)    | Redis connection URL     |
+| `TAVILY_API_KEY` | (required)    | Tavily API key for tools |
+
+## Documentation
+
+- [Tools Architecture](docs/tools.md) - How agent tools work and adding new tools
+- [Tavily Setup](docs/tavily.md) - Web search API configuration
+
 ## Redis Pub/Sub
 
 The server uses Redis pub/sub for real-time agent session communication.
@@ -62,12 +77,3 @@ await fastify.redis.pubsub.publish('agent:session:123', {
   data: { ... }
 });
 ```
-
-## Environment Variables
-
-| Variable    | Default       | Description          |
-| ----------- | ------------- | -------------------- |
-| `PORT`      | `3000`        | Server port          |
-| `HOST`      | `0.0.0.0`     | Server host          |
-| `NODE_ENV`  | `development` | Environment          |
-| `REDIS_URL` | (required)    | Redis connection URL |

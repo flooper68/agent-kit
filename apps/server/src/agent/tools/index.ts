@@ -1,9 +1,13 @@
 import type { Tool } from '../types';
 import { getTimeTool } from './get-time';
+import { webSearchTool } from './web-search';
+import { extractContentTool } from './extract-content';
 
 // Tool registry - maps tool IDs to their implementations
 export const TOOLS: Record<string, Tool> = {
   getTime: getTimeTool,
+  webSearch: webSearchTool,
+  extractContent: extractContentTool,
 };
 
 export type ToolId = keyof typeof TOOLS;

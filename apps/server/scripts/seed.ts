@@ -4,7 +4,9 @@ import { agents } from '../src/db/schema';
 const STANDARD_SYSTEM_PROMPT = `You are a helpful AI assistant. Be concise, accurate, and helpful.
 
 When using tools:
-- Use the getTime tool when asked about the current date or time
+- Use getTime when asked about the current date or time
+- Use webSearch to find current information from the web
+- Use extractContent to get full article text from URLs
 - Explain what you're doing when using tools
 
 Be friendly but professional.`;
@@ -22,7 +24,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'openai',
       model: 'gpt-5.2',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-11-15'),
     },
     {
@@ -32,7 +34,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'openai',
       model: 'gpt-5.2-codex',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-11-15'),
     },
     {
@@ -42,7 +44,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'anthropic',
       model: 'claude-opus-4-5-20251101',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-11-01'),
     },
     // October 2025
@@ -53,7 +55,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'gemini',
       model: 'gemini-3-pro-preview',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-10-20'),
     },
     {
@@ -63,7 +65,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'gemini',
       model: 'gemini-3-flash-preview',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-10-20'),
     },
     {
@@ -73,7 +75,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'anthropic',
       model: 'claude-haiku-4-5-20251001',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-10-01'),
     },
     // September 2025
@@ -84,7 +86,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'anthropic',
       model: 'claude-sonnet-4-5-20250929',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-09-29'),
     },
     {
@@ -94,7 +96,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'openai',
       model: 'gpt-5',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-09-15'),
     },
     {
@@ -104,7 +106,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'openai',
       model: 'gpt-5-mini',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-09-15'),
     },
     {
@@ -114,7 +116,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'openai',
       model: 'gpt-5-nano',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-09-15'),
     },
     // August 2025
@@ -125,7 +127,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'anthropic',
       model: 'claude-opus-4-1-20250805',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-08-05'),
     },
     // June 2025
@@ -136,7 +138,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'gemini',
       model: 'gemini-2.5-pro',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-06-15'),
     },
     {
@@ -146,7 +148,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'gemini',
       model: 'gemini-2.5-flash',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-06-15'),
     },
     {
@@ -156,7 +158,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'gemini',
       model: 'gemini-2.5-flash-lite',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-06-15'),
     },
     // May 2025
@@ -167,7 +169,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'anthropic',
       model: 'claude-sonnet-4-20250514',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-05-14'),
     },
     // April 2025
@@ -178,7 +180,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'openai',
       model: 'o3',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-04-16'),
     },
     {
@@ -188,7 +190,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'openai',
       model: 'o4-mini',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2025-04-16'),
     },
     // December 2024
@@ -199,7 +201,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'gemini',
       model: 'gemini-2.0-flash',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2024-12-10'),
     },
     // October 2024
@@ -210,7 +212,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'anthropic',
       model: 'claude-3-5-haiku-20241022',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2024-10-22'),
     },
     // July 2024
@@ -221,7 +223,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'openai',
       model: 'gpt-4o-mini',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2024-07-18'),
     },
     // May 2024
@@ -232,7 +234,7 @@ async function seed() {
       systemPrompt: STANDARD_SYSTEM_PROMPT,
       provider: 'openai',
       model: 'gpt-4o',
-      tools: ['getTime'],
+      tools: ['getTime', 'webSearch', 'extractContent'],
       releasedAt: new Date('2024-05-13'),
     },
   ];
