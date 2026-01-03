@@ -713,8 +713,13 @@ export function useAgentSession({
           return;
         }
 
-        const userMessage = messageListRef.current?.children[
-          container.children.length - 2
+        const messageList = messageListRef.current;
+        if (!messageList) {
+          return;
+        }
+
+        const userMessage = messageList.children[
+          messageList.children.length - 2
         ] as HTMLDivElement | undefined;
 
         if (!userMessage) {
