@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure, sessionProcedure } from '../trpc';
+import { router, orgProcedure, sessionProcedure } from '../trpc';
 
 export const sessionsRouter = router({
-  create: protectedProcedure
+  create: orgProcedure
     .input(
       z.object({
         agentId: z.string(),
@@ -21,12 +21,13 @@ export const sessionsRouter = router({
 
       return ctx.agentsFeature.sessions.create({
         userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
         agentId: input.agentId,
         title: input.title,
       });
     }),
 
-  list: protectedProcedure
+  list: orgProcedure
     .input(
       z.object({
         limit: z.number().min(1).max(100).default(20),

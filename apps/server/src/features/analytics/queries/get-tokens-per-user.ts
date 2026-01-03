@@ -22,7 +22,11 @@ export class GetTokensPerUserQuery {
   async execute(filters: AnalyticsFilters): Promise<TokensPerUserItem[]> {
     const startDate = getStartDate(filters.timeRange);
 
-    const conditions = [sql`${agentSessions.usage} IS NOT NULL`];
+    // Build conditions - always filter by orgId
+    const conditions = [
+      eq(agentSessions.orgId, filters.orgId),
+      sql`${agentSessions.usage} IS NOT NULL`,
+    ];
     if (startDate) {
       conditions.push(gte(agentSessions.createdAt, startDate));
     }

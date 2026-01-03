@@ -101,8 +101,6 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(
         requestAnimationFrame(() => {
           scrollToBottom('instant');
         });
-      } else if (autoScroll && isAtBottomRef.current) {
-        scrollToBottom('instant');
       }
 
       prevChildCountRef.current = childCount;

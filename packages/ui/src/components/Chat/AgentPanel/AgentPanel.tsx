@@ -259,7 +259,7 @@ export const AgentPanel = memo(
               <Message.Actions>
                 {isUser && (
                   <span
-                    className="text-xs text-muted-foreground cursor-default opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="text-sm text-muted-foreground cursor-default opacity-0 group-hover:opacity-100 transition-opacity"
                     title={formatFullTimestamp(message.createdAt)}
                   >
                     {formatTime(message.createdAt)}
@@ -273,7 +273,7 @@ export const AgentPanel = memo(
                 )}
                 {!isUser && (
                   <span
-                    className="text-xs text-muted-foreground cursor-default opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="text-sm text-muted-foreground cursor-default opacity-0 group-hover:opacity-100 transition-opacity"
                     title={formatFullTimestamp(message.createdAt)}
                   >
                     {formatTime(message.createdAt)}

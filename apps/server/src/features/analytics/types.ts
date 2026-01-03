@@ -3,6 +3,7 @@ export type Granularity = 'hour' | 'day' | 'week';
 
 export interface AnalyticsFilters {
   timeRange: TimeRange;
+  orgId: string;
   userId?: string;
 }
 

@@ -32,6 +32,7 @@ export interface AgentDefinition {
 // Command input types
 export interface CreateSessionInput {
   userId: string;
+  orgId: string;
   agentId: string;
   title?: string;
 }

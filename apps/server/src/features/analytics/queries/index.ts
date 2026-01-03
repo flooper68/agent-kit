@@ -16,6 +16,7 @@ export { GetTokensPerUserQuery } from './get-tokens-per-user';
 export type { TokensPerUserItem } from './get-tokens-per-user';
 export { GetSessionDetailQuery } from './get-session-detail';
 export type {
+  GetSessionDetailInput,
   SessionDetailData,
   SessionDetailEvent,
 } from './get-session-detail';

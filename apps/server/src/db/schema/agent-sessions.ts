@@ -39,6 +39,7 @@ export interface AgentSessionUsage {
 export const agentSessions = pgTable('agent_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: varchar('user_id', { length: 255 }).notNull(),
+  orgId: varchar('org_id', { length: 255 }).notNull(),
   agentId: varchar('agent_id', { length: 64 })
     .notNull()
     .references(() => agents.id),

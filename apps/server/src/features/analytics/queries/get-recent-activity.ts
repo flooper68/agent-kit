@@ -4,6 +4,7 @@ import { agentSessions } from '../../../db/schema';
 import type { PaginatedRecentActivity, RecentActivityItem } from '../types';
 
 export interface GetRecentActivityInput {
+  orgId: string;
   limit?: number;
   userId?: string;
   cursor?: string;
@@ -35,8 +36,8 @@ export class GetRecentActivityQuery {
       cursorDate = cursorSession[0]?.updatedAt;
     }
 
-    // Build the where conditions
-    const conditions = [];
+    // Build the where conditions - always filter by orgId
+    const conditions = [eq(agentSessions.orgId, input.orgId)];
     if (input.userId) {
       conditions.push(eq(agentSessions.userId, input.userId));
     }
@@ -45,7 +46,7 @@ export class GetRecentActivityQuery {
     }
 
     // Build and execute query
-    const query = this.db
+    const results = await this.db
       .select({
         sessionId: agentSessions.id,
         userId: agentSessions.userId,
@@ -56,13 +57,9 @@ export class GetRecentActivityQuery {
         updatedAt: agentSessions.updatedAt,
       })
       .from(agentSessions)
+      .where(and(...conditions))
       .orderBy(desc(agentSessions.updatedAt))
       .limit(limit + 1); // Fetch one extra to detect if there are more
-
-    const results =
-      conditions.length > 0
-        ? await query.where(and(...conditions))
-        : await query;
 
     // Determine if there are more results
     let nextCursor: string | undefined;

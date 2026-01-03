@@ -20,8 +20,8 @@ export class GetAgentDistributionQuery {
   async execute(filters: AnalyticsFilters): Promise<AgentDistributionItem[]> {
     const startDate = getStartDate(filters.timeRange);
 
-    // Build conditions
-    const conditions = [];
+    // Build conditions - always filter by orgId
+    const conditions = [eq(agentSessions.orgId, filters.orgId)];
     if (startDate) {
       conditions.push(gte(agentSessions.createdAt, startDate));
     }
@@ -37,7 +37,7 @@ export class GetAgentDistributionQuery {
         cost: sql<number>`COALESCE(SUM((${agentSessions.usage}->>'estimatedCost')::numeric), 0)`,
       })
       .from(agentSessions)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .where(and(...conditions))
       .groupBy(agentSessions.agentId)
       .orderBy(desc(count()))
       .limit(10);
@@ -64,8 +64,11 @@ export class GetProviderDistributionQuery {
   ): Promise<ProviderDistributionItem[]> {
     const startDate = getStartDate(filters.timeRange);
 
-    // Build conditions
-    const conditions = [sql`${agentSessions.usage} IS NOT NULL`];
+    // Build conditions - always filter by orgId
+    const conditions = [
+      eq(agentSessions.orgId, filters.orgId),
+      sql`${agentSessions.usage} IS NOT NULL`,
+    ];
     if (startDate) {
       conditions.push(gte(agentSessions.createdAt, startDate));
     }

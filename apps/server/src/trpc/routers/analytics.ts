@@ -16,6 +16,7 @@ export const analyticsRouter = router({
     .query(async ({ ctx, input }) => {
       return ctx.analyticsFeature.getOverviewStats({
         timeRange: input.timeRange,
+        orgId: ctx.auth.orgId,
         userId: input.userId,
       });
     }),
@@ -31,6 +32,7 @@ export const analyticsRouter = router({
     .query(async ({ ctx, input }) => {
       return ctx.analyticsFeature.getUsageOverTime({
         timeRange: input.timeRange,
+        orgId: ctx.auth.orgId,
         granularity: input.granularity,
         userId: input.userId,
       });
@@ -46,6 +48,7 @@ export const analyticsRouter = router({
     .query(async ({ ctx, input }) => {
       return ctx.analyticsFeature.getAgentDistribution({
         timeRange: input.timeRange,
+        orgId: ctx.auth.orgId,
         userId: input.userId,
       });
     }),
@@ -60,6 +63,7 @@ export const analyticsRouter = router({
     .query(async ({ ctx, input }) => {
       return ctx.analyticsFeature.getProviderDistribution({
         timeRange: input.timeRange,
+        orgId: ctx.auth.orgId,
         userId: input.userId,
       });
     }),
@@ -74,6 +78,7 @@ export const analyticsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       return ctx.analyticsFeature.getRecentActivity({
+        orgId: ctx.auth.orgId,
         limit: input.limit,
         userId: input.userId,
         cursor: input.cursor,
@@ -88,6 +93,7 @@ export const analyticsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const users = await ctx.analyticsFeature.getUsersWithSessions({
+        orgId: ctx.auth.orgId,
         timeRange: input.timeRange,
       });
 
@@ -133,6 +139,7 @@ export const analyticsRouter = router({
     .query(async ({ ctx, input }) => {
       const data = await ctx.analyticsFeature.getTokensPerUser({
         timeRange: input.timeRange,
+        orgId: ctx.auth.orgId,
         userId: input.userId,
       });
 
@@ -171,7 +178,10 @@ export const analyticsRouter = router({
   getSessionDetail: adminProcedure
     .input(z.object({ sessionId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      const data = await ctx.analyticsFeature.getSessionDetail(input.sessionId);
+      const data = await ctx.analyticsFeature.getSessionDetail({
+        sessionId: input.sessionId,
+        orgId: ctx.auth.orgId,
+      });
       if (!data) {
         throw new TRPCError({
           code: 'NOT_FOUND',

@@ -13,6 +13,7 @@ import type {
   GetUsageOverTimeInput,
   GetRecentActivityInput,
   GetUsersWithSessionsInput,
+  GetSessionDetailInput,
 } from './queries';
 import type { AnalyticsFilters } from './types';
 
@@ -71,7 +72,7 @@ export class AnalyticsFeature {
     return this.getTokensPerUserQuery.execute(filters);
   }
 
-  getSessionDetail(sessionId: string) {
-    return this.getSessionDetailQuery.execute(sessionId);
+  getSessionDetail(input: GetSessionDetailInput) {
+    return this.getSessionDetailQuery.execute(input);
   }
 }

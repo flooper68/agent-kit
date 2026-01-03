@@ -1,10 +1,15 @@
-import { eq, asc } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { agentSessions, agentSessionEvents } from '../../../db/schema';
 import type {
   AgentSessionUsage,
   AgentSessionEventType,
 } from '../../../db/schema';
+
+export interface GetSessionDetailInput {
+  sessionId: string;
+  orgId: string;
+}
 
 export interface SessionDetailEvent {
   id: string;
@@ -53,8 +58,10 @@ export class GetSessionDetailQuery {
     this.agentNames = agentNames;
   }
 
-  async execute(sessionId: string): Promise<SessionDetailData | undefined> {
-    // Fetch session
+  async execute(
+    input: GetSessionDetailInput
+  ): Promise<SessionDetailData | undefined> {
+    // Fetch session - filter by both sessionId and orgId for security
     const sessionResults = await this.db
       .select({
         id: agentSessions.id,
@@ -69,7 +76,12 @@ export class GetSessionDetailQuery {
         updatedAt: agentSessions.updatedAt,
       })
       .from(agentSessions)
-      .where(eq(agentSessions.id, sessionId))
+      .where(
+        and(
+          eq(agentSessions.id, input.sessionId),
+          eq(agentSessions.orgId, input.orgId)
+        )
+      )
       .limit(1);
 
     const session = sessionResults[0];
@@ -99,7 +111,7 @@ export class GetSessionDetailQuery {
         rawData: agentSessionEvents.rawData,
       })
       .from(agentSessionEvents)
-      .where(eq(agentSessionEvents.sessionId, sessionId))
+      .where(eq(agentSessionEvents.sessionId, input.sessionId))
       .orderBy(
         asc(agentSessionEvents.createdAt),
         asc(agentSessionEvents.sequence)

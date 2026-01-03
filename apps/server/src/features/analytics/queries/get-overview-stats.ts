@@ -48,7 +48,7 @@ export class GetOverviewStatsQuery {
     const previousPeriod = getPreviousPeriodDates(filters.timeRange);
 
     // Build conditions for current period
-    const currentConditions = [];
+    const currentConditions = [eq(agentSessions.orgId, filters.orgId)];
     if (startDate) {
       currentConditions.push(gte(agentSessions.createdAt, startDate));
     }
@@ -81,6 +81,7 @@ export class GetOverviewStatsQuery {
 
     if (previousPeriod) {
       const previousConditions = [
+        eq(agentSessions.orgId, filters.orgId),
         gte(agentSessions.createdAt, previousPeriod.start),
         sql`${agentSessions.createdAt} < ${previousPeriod.end.toISOString()}`,
       ];

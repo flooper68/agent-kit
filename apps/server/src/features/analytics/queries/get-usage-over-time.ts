@@ -53,8 +53,8 @@ export class GetUsageOverTimeQuery {
       throw new Error(`Invalid granularity: ${granularity}`);
     }
 
-    // Build conditions
-    const conditions = [];
+    // Build conditions - always filter by orgId
+    const conditions = [eq(agentSessions.orgId, input.orgId)];
     if (startDate) {
       conditions.push(gte(agentSessions.createdAt, startDate));
     }
@@ -72,7 +72,7 @@ export class GetUsageOverTimeQuery {
         cost: sql<number>`COALESCE(SUM((${agentSessions.usage}->>'estimatedCost')::numeric), 0)`,
       })
       .from(agentSessions)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .where(and(...conditions))
       .groupBy(dateTrunc)
       .orderBy(dateTrunc);
 
