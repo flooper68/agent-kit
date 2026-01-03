@@ -95,7 +95,7 @@ export class AgentJobHandler {
     this.eventSequence = 0;
     this.eventBuffer = new EventBuffer();
 
-    const { sessionId, agentId, content } = job;
+    const { sessionId, agentId, userId, orgId, content } = job;
 
     // Create user message first (preserves user input even if job fails)
     const userMessage = await this.sessionManager.createMessage({
@@ -180,8 +180,14 @@ export class AgentJobHandler {
         await this.sessionManager.getSessionMessages(sessionId);
       const messages = convertToAIMessages(dbMessages);
 
-      // Get tools for this agent
-      const tools = getToolsById(agent.tools);
+      // Get tools for this agent (with context for artifact tools)
+      const tools = getToolsById(agent.tools, {
+        userId,
+        orgId,
+        sessionId,
+        agentId,
+        artifactsFeature: this.sessionManager.artifactsFeature,
+      });
 
       // Publish message start event
       await this.sessionManager.publishEvent(sessionId, {

@@ -16,6 +16,7 @@ import {
   SettingsPageSkeleton,
   AnalyticsPageSkeleton,
 } from '../components/skeletons';
+import { ArtifactsPageSkeleton } from '../components/skeletons/ArtifactsPageSkeleton';
 
 // Lazy load pages for code splitting
 const LandingPage = lazy(() =>
@@ -47,6 +48,11 @@ const SettingsPage = lazy(() =>
 const AnalyticsPage = lazy(() =>
   import('../pages/admin/AnalyticsPage').then((m) => ({
     default: m.AnalyticsPage,
+  }))
+);
+const ArtifactsPage = lazy(() =>
+  import('../pages/ArtifactsPage').then((m) => ({
+    default: m.ArtifactsPage,
   }))
 );
 const NotFoundPage = lazy(() =>
@@ -167,6 +173,16 @@ const router = createBrowserRouter([
                       <AnalyticsPage />
                     </Suspense>
                   </AdminPageLayout>
+                ),
+              },
+              {
+                path: 'artifacts',
+                element: (
+                  <DashboardLayout>
+                    <Suspense fallback={<ArtifactsPageSkeleton />}>
+                      <ArtifactsPage />
+                    </Suspense>
+                  </DashboardLayout>
                 ),
               },
             ],

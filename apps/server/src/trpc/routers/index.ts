@@ -5,6 +5,7 @@ import { agentsRouter } from './agents';
 import { sessionsRouter } from './sessions';
 import { messagesRouter } from './messages';
 import { analyticsRouter } from './analytics';
+import { artifactsRouter } from './artifacts';
 
 export const appRouter = router({
   greeting: greetingRouter,
@@ -13,6 +14,7 @@ export const appRouter = router({
   sessions: sessionsRouter,
   messages: messagesRouter,
   analytics: analyticsRouter,
+  artifacts: artifactsRouter,
 });
 
 export type AppRouter = typeof appRouter;
