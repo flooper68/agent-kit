@@ -19,6 +19,7 @@ interface UseAgentSessionOptions {
 }
 
 interface UseAgentSessionReturn {
+  setMessageListRef: (node: HTMLDivElement | null) => void;
   messages: TaskMessage[];
   status: TaskStatus;
   thinkingStatus: ThinkingStatus;
@@ -104,6 +105,10 @@ export function useAgentSession({
   sessionId,
   onSessionInvalid,
 }: UseAgentSessionOptions): UseAgentSessionReturn {
+  const messageListRef = useRef<HTMLDivElement | null>(null);
+
+  const temporarySpacerRef = useRef<boolean>(false);
+
   const [messages, setMessages] = useState<TaskMessage[]>([]);
   const [status, setStatus] = useState<TaskStatus>('ready');
   const [thinkingStatus, setThinkingStatus] = useState<ThinkingStatus>({
@@ -150,7 +155,8 @@ export function useAgentSession({
 
     // Clear messages and reset state when switching sessions
     setMessages([]);
-    setStatus('ready');
+    // Show loading state when switching to an existing chat, ready state for new chat
+    setStatus(sessionId ? 'loading' : 'ready');
     setThinkingStatus({ isThinking: false });
     setError(null);
     setAccumulatedUsage(null);
@@ -172,6 +178,68 @@ export function useAgentSession({
       console.log('[AgentSession] Session loaded:', sessionQuery.data);
     }
   }, [sessionQuery.data]);
+
+  const setMessageListRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (!node) return;
+
+      messageListRef.current = node;
+
+      if (sessionQuery.data && node) {
+        const lastMessage = node.children[node.children.length - 1];
+
+        setTimeout(() => {
+          lastMessage?.scrollIntoView({ behavior: 'instant' });
+        });
+      }
+
+      const observer = new ResizeObserver(() => {
+        if (temporarySpacerRef.current) {
+          return;
+        }
+
+        const spacer = messageListRef.current
+          ?.lastElementChild as HTMLDivElement;
+
+        const container = messageListRef.current?.parentNode as
+          | HTMLDivElement
+          | undefined;
+
+        if (!container) {
+          return;
+        }
+
+        const userMessage = messageListRef.current?.children[
+          messageListRef.current.children.length - 3
+        ] as HTMLDivElement | undefined;
+
+        if (!userMessage) {
+          return;
+        }
+
+        const responseMessage = messageListRef.current?.children[
+          messageListRef.current.children.length - 2
+        ] as HTMLDivElement | undefined;
+
+        if (!responseMessage) {
+          return;
+        }
+
+        const availableHeight =
+          container.offsetHeight -
+          userMessage.offsetHeight -
+          responseMessage.offsetHeight -
+          90;
+
+        spacer.style.minHeight = `${availableHeight}px`;
+      });
+
+      observer.observe(node);
+
+      return () => observer.disconnect();
+    },
+    [sessionQuery.data]
+  );
 
   // Initialize accumulated usage from session data when it loads
   useEffect(() => {
@@ -253,6 +321,8 @@ export function useAgentSession({
         // Filter out messages with no parts (empty assistant placeholders)
         .filter((msg) => msg.parts.length > 0);
       setMessages(loadedMessages);
+      // Session loaded successfully, set status to ready
+      setStatus('ready');
     }
   }, [sessionId, sessionQuery.data?.messages]);
 
@@ -272,21 +342,38 @@ export function useAgentSession({
         console.log('[AgentSession] Event:', event.type, event);
         switch (event.type) {
           case 'user_message_created':
-            // Add user message from server event (no optimistic update)
+            // Replace optimistic message with real one from server
             setMessages((prev) => {
               // Check if message already exists (avoid duplicates)
               if (prev.some((m) => m.id === event.messageId)) {
                 return prev;
               }
-              return [
-                ...prev,
-                {
-                  id: event.messageId,
-                  role: 'user' as const,
-                  parts: [createTextPart(event.content)],
-                  createdAt: new Date(),
-                },
-              ];
+
+              // Find and remove the optimistic message with matching content
+              const optimisticIndex = prev.findIndex(
+                (m) =>
+                  m.id.startsWith('optimistic-') &&
+                  m.role === 'user' &&
+                  m.parts[0]?.type === 'text' &&
+                  (m.parts[0] as TextPart).content === event.content
+              );
+
+              const realMessage: TaskMessage = {
+                id: event.messageId,
+                role: 'user' as const,
+                parts: [createTextPart(event.content)],
+                createdAt: new Date(),
+              };
+
+              if (optimisticIndex >= 0) {
+                // Replace optimistic with real message at the same position
+                const newMessages = [...prev];
+                newMessages[optimisticIndex] = realMessage;
+                return newMessages;
+              }
+
+              // No optimistic message found, just add the real one
+              return [...prev, realMessage];
             });
             break;
 
@@ -573,7 +660,7 @@ export function useAgentSession({
   }, [sessionId, subscription.status, subscription.error]);
 
   // Internal function to actually send the message
-  // No optimistic update - we wait for server's user_message_created event
+  // Uses optimistic update - add user message immediately, replace when server confirms
   const doSendMessage = useCallback(
     async (content: string, targetSessionId: string) => {
       console.log('[AgentSession] Sending:', { targetSessionId, content });
@@ -583,11 +670,73 @@ export function useAgentSession({
       // Track the message for retry functionality
       lastMessageRef.current = content;
 
+      // Add optimistic user message immediately for responsive UI
+      // Skip if an optimistic message with same content already exists (from queued message)
+      setMessages((prev) => {
+        const alreadyHasOptimistic = prev.some(
+          (m) =>
+            m.id.startsWith('optimistic-') &&
+            m.role === 'user' &&
+            m.parts[0]?.type === 'text' &&
+            (m.parts[0] as TextPart).content === content
+        );
+        if (alreadyHasOptimistic) {
+          return prev;
+        }
+        const optimisticId = `optimistic-${Date.now()}`;
+        const optimisticMessage: TaskMessage = {
+          id: optimisticId,
+          role: 'user',
+          parts: [createTextPart(content)],
+          createdAt: new Date(),
+        };
+        return [...prev, optimisticMessage];
+      });
+
       // Set thinking indicator immediately for responsive UI
       setThinkingStatus({ isThinking: true });
       setStatus('submitted');
 
       setIsLoading(true);
+
+      temporarySpacerRef.current = true;
+
+      const request = requestAnimationFrame(() => {
+        const spacer = messageListRef.current
+          ?.lastElementChild as HTMLDivElement;
+
+        const container = messageListRef.current?.parentNode as
+          | HTMLDivElement
+          | undefined;
+
+        if (!container) {
+          return;
+        }
+
+        const userMessage = messageListRef.current?.children[
+          container.children.length - 2
+        ] as HTMLDivElement | undefined;
+
+        if (!userMessage) {
+          return;
+        }
+
+        const availableHeight =
+          container.offsetHeight - userMessage.offsetHeight - 66;
+
+        spacer.style.minHeight = `${availableHeight}px`;
+
+        spacer?.scrollIntoView({
+          behavior: 'instant',
+        });
+
+        setTimeout(() => {
+          temporarySpacerRef.current = false;
+        }, 500);
+
+        cancelAnimationFrame(request);
+      });
+
       try {
         await sendMutation.mutateAsync({
           sessionId: targetSessionId,
@@ -634,11 +783,22 @@ export function useAgentSession({
       // If using a different session (new session being created), queue the message
       // until subscription is ready for that session
       if (overrideSessionId && overrideSessionId !== sessionId) {
-        // Queue message until subscription is ready (no optimistic update - wait for server)
+        // Queue message until subscription is ready
         pendingMessageRef.current = {
           content,
           sessionId: overrideSessionId,
         };
+
+        // Add optimistic user message immediately for responsive UI
+        const optimisticId = `optimistic-${Date.now()}`;
+        const optimisticMessage: TaskMessage = {
+          id: optimisticId,
+          role: 'user',
+          parts: [createTextPart(content)],
+          createdAt: new Date(),
+        };
+        setMessages((prev) => [...prev, optimisticMessage]);
+
         // Set thinking indicator immediately for responsive UI
         setThinkingStatus({ isThinking: true });
         setStatus('submitted');
@@ -697,5 +857,6 @@ export function useAgentSession({
     retry,
     dismissError,
     contextUsage,
+    setMessageListRef,
   };
 }

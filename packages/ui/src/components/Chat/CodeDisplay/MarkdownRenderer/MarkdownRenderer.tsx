@@ -14,17 +14,17 @@ export interface MarkdownRendererProps
 }
 
 // Default styling for markdown prose - uses theme colors
-// Uses text-sm and leading-snug to match chat message styling
+// Uses text-base and leading-relaxed to match chat message styling
 const proseClasses = `
-  prose prose-sm dark:prose-invert max-w-none
-  overflow-hidden break-words text-sm leading-snug
+  prose dark:prose-invert max-w-none
+  overflow-hidden break-words text-base leading-relaxed
   prose-headings:text-foreground prose-headings:font-semibold
-  prose-h1:text-lg prose-h2:text-base prose-h3:text-sm
-  prose-p:text-foreground prose-p:my-2.5 prose-p:leading-snug
-  prose-ul:my-2.5 prose-ol:my-2.5 prose-li:text-foreground
-  prose-li:my-0.5
+  prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+  prose-p:text-foreground prose-p:my-3 prose-p:leading-relaxed
+  prose-ul:my-3 prose-ol:my-3 prose-li:text-foreground
+  prose-li:my-1
   prose-strong:text-foreground prose-strong:font-semibold
-  prose-code:text-foreground prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
+  prose-code:text-foreground prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
   prose-code:before:content-none prose-code:after:content-none
   prose-pre:bg-transparent prose-pre:p-0
   prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-a:break-all
@@ -101,7 +101,7 @@ const CodeBlock = memo(({ children, language, isDark }: CodeBlockProps) => {
   const style = isDark ? oneDark : oneLight;
 
   return (
-    <div className="relative group rounded-lg overflow-hidden my-2 w-full">
+    <div className="not-prose relative group rounded-lg overflow-hidden my-2 w-full">
       {/* Header with language label and copy button */}
       <div className="flex items-center justify-between px-4 py-2 bg-code-header border-b border-code-border">
         <span className="text-xs font-mono text-muted-foreground">
@@ -118,7 +118,11 @@ const CodeBlock = memo(({ children, language, isDark }: CodeBlockProps) => {
             margin: 0,
             padding: '1rem',
             background: 'hsl(var(--code-background))',
-            fontSize: '0.875rem',
+            fontSize: '1rem',
+            lineHeight: '1.625',
+            whiteSpace: 'pre',
+            wordBreak: 'normal',
+            overflowWrap: 'normal',
           }}
           codeTagProps={{
             style: {
@@ -150,7 +154,10 @@ export const MarkdownRenderer = memo(
             components={{
               code({ className, children, ...codeProps }) {
                 const match = /language-(\w+)/.exec(className || '');
-                const isInline = !match && !className;
+                // Check if inline: either no parent pre element, or content has no newlines
+                const codeContent = String(children);
+                const hasNewlines = codeContent.includes('\n');
+                const isInline = !hasNewlines && !match;
 
                 if (isInline) {
                   // Inline code

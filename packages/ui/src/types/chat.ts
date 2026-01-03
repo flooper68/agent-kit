@@ -14,7 +14,12 @@ export type AIProvider =
   | 'unknown';
 
 // Task status states
-export type TaskStatus = 'ready' | 'submitted' | 'streaming' | 'error';
+export type TaskStatus =
+  | 'ready'
+  | 'submitted'
+  | 'streaming'
+  | 'error'
+  | 'loading';
 
 // Message part types (following AI SDK patterns)
 export type MessagePartType =
