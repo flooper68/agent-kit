@@ -1,9 +1,50 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
+import type { ClerkClient } from '@clerk/backend';
 import { router, adminProcedure } from '../trpc';
 
 const TimeRangeSchema = z.enum(['today', 'week', 'month', 'all']);
 const GranularitySchema = z.enum(['hour', 'day', 'week']);
+
+type ClerkUserInfo = {
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+};
+
+async function enrichWithClerkUserInfo<T extends { userId: string }>(
+  clerk: ClerkClient,
+  data: T[]
+): Promise<(T & ClerkUserInfo)[]> {
+  const userIds = data.map((d) => d.userId);
+  if (userIds.length === 0) return [];
+
+  const clerkUsers = await clerk.users.getUserList({
+    userId: userIds,
+    limit: Math.max(userIds.length, 100),
+  });
+
+  const userMap = new Map(
+    clerkUsers.data.map((u) => [
+      u.id,
+      {
+        email: u.emailAddresses[0]?.emailAddress ?? null,
+        firstName: u.firstName,
+        lastName: u.lastName,
+      },
+    ])
+  );
+
+  return data.map((d) => {
+    const info = userMap.get(d.userId);
+    return {
+      ...d,
+      email: info?.email ?? null,
+      firstName: info?.firstName ?? null,
+      lastName: info?.lastName ?? null,
+    };
+  });
+}
 
 export const analyticsRouter = router({
   getOverview: adminProcedure
@@ -97,36 +138,7 @@ export const analyticsRouter = router({
         timeRange: input.timeRange,
       });
 
-      // Fetch user info from Clerk
-      const userIds = users.map((u) => u.userId);
-      if (userIds.length === 0) return [];
-
-      const clerkUsers = await ctx.clerk.users.getUserList({
-        userId: userIds,
-        limit: 100,
-      });
-
-      // Create a map for quick lookup
-      const userMap = new Map(
-        clerkUsers.data.map((u) => [
-          u.id,
-          {
-            email: u.emailAddresses[0]?.emailAddress ?? null,
-            firstName: u.firstName,
-            lastName: u.lastName,
-          },
-        ])
-      );
-
-      return users.map((u) => {
-        const info = userMap.get(u.userId);
-        return {
-          ...u,
-          email: info?.email ?? null,
-          firstName: info?.firstName ?? null,
-          lastName: info?.lastName ?? null,
-        };
-      });
+      return enrichWithClerkUserInfo(ctx.clerk, users);
     }),
 
   getTokensPerUser: adminProcedure
@@ -143,36 +155,7 @@ export const analyticsRouter = router({
         userId: input.userId,
       });
 
-      // Fetch user info from Clerk
-      const userIds = data.map((d) => d.userId);
-      if (userIds.length === 0) return [];
-
-      const clerkUsers = await ctx.clerk.users.getUserList({
-        userId: userIds,
-        limit: 100,
-      });
-
-      // Create a map for quick lookup
-      const userMap = new Map(
-        clerkUsers.data.map((u) => [
-          u.id,
-          {
-            email: u.emailAddresses[0]?.emailAddress ?? null,
-            firstName: u.firstName,
-            lastName: u.lastName,
-          },
-        ])
-      );
-
-      return data.map((d) => {
-        const info = userMap.get(d.userId);
-        return {
-          ...d,
-          email: info?.email ?? null,
-          firstName: info?.firstName ?? null,
-          lastName: info?.lastName ?? null,
-        };
-      });
+      return enrichWithClerkUserInfo(ctx.clerk, data);
     }),
 
   getSessionDetail: adminProcedure
@@ -205,35 +188,6 @@ export const analyticsRouter = router({
         userId: input.userId,
       });
 
-      // Fetch user info from Clerk
-      const userIds = data.map((d) => d.userId);
-      if (userIds.length === 0) return [];
-
-      const clerkUsers = await ctx.clerk.users.getUserList({
-        userId: userIds,
-        limit: 100,
-      });
-
-      // Create a map for quick lookup
-      const userMap = new Map(
-        clerkUsers.data.map((u) => [
-          u.id,
-          {
-            email: u.emailAddresses[0]?.emailAddress ?? null,
-            firstName: u.firstName,
-            lastName: u.lastName,
-          },
-        ])
-      );
-
-      return data.map((d) => {
-        const info = userMap.get(d.userId);
-        return {
-          ...d,
-          email: info?.email ?? null,
-          firstName: info?.firstName ?? null,
-          lastName: info?.lastName ?? null,
-        };
-      });
+      return enrichWithClerkUserInfo(ctx.clerk, data);
     }),
 });

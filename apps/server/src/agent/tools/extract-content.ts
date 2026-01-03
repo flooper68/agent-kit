@@ -17,15 +17,28 @@ export const extractContentTool: Tool = tool({
     ),
   }),
   execute: async ({ urls, format }) => {
-    const client = getTavilyClient();
-    const result = await client.extract({ urls, format });
+    try {
+      const client = getTavilyClient();
+      const result = await client.extract({ urls, format });
 
-    return {
-      results: result.results.map((r) => ({
-        url: r.url,
-        content: r.raw_content,
-      })),
-      failed: result.failed_results ?? [],
-    };
+      return {
+        results: result.results.map((r) => ({
+          url: r.url,
+          content: r.raw_content,
+        })),
+        failed: result.failed_results ?? [],
+      };
+    } catch (error) {
+      return {
+        error: 'Content extraction failed',
+        message:
+          error instanceof Error ? error.message : 'Unknown error occurred',
+        results: [],
+        failed: urls.map((url) => ({
+          url,
+          error: 'Extraction failed',
+        })),
+      };
+    }
   },
 });

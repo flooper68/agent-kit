@@ -1,4 +1,4 @@
-export { TavilyClient, getTavilyClient } from './client';
+export { TavilyClient, getTavilyClient, resetTavilyClient } from './client';
 export {
   TavilyTopicSchema,
   TavilySearchDepthSchema,

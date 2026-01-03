@@ -107,7 +107,6 @@ export function useAgentSession({
   onSessionInvalid,
 }: UseAgentSessionOptions): UseAgentSessionReturn {
   const messageListRef = useRef<HTMLDivElement | null>(null);
-  const isAtBottomRef = useRef<boolean>(true);
   const hasInitialScrolledRef = useRef<boolean>(false);
 
   const [messages, setMessages] = useState<TaskMessage[]>([]);
@@ -793,8 +792,10 @@ export function useAgentSession({
   }, []);
 
   // Callback for MessageList to report scroll position changes
-  const handleScrollPositionChange = useCallback((isAtBottom: boolean) => {
-    isAtBottomRef.current = isAtBottom;
+  // Currently a no-op - can be used in the future for auto-scroll during streaming
+  const handleScrollPositionChange = useCallback((_isAtBottom: boolean) => {
+    // Intentionally empty - scroll position is tracked by MessageList
+    // but not currently used for any conditional behavior
   }, []);
 
   // Calculate context usage from accumulated state

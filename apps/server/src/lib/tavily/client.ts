@@ -1,10 +1,27 @@
 import { env } from '../../env';
-import type {
-  TavilySearchInput,
-  TavilySearchResponse,
-  TavilyExtractInput,
-  TavilyExtractResponse,
+import {
+  TavilySearchResponseSchema,
+  TavilyExtractResponseSchema,
+  type TavilySearchInput,
+  type TavilySearchResponse,
+  type TavilyExtractInput,
+  type TavilyExtractResponse,
 } from './types';
+
+const REQUEST_TIMEOUT_MS = 30000;
+
+function getSanitizedError(status: number, context: string): Error {
+  if (status === 401 || status === 403) {
+    return new Error(`${context} authentication failed`);
+  }
+  if (status === 429) {
+    return new Error(`${context} rate limit exceeded. Please try again later.`);
+  }
+  if (status >= 500) {
+    return new Error(`${context} service temporarily unavailable`);
+  }
+  return new Error(`${context} failed with status ${status}`);
+}
 
 export class TavilyClient {
   private apiKey: string;
@@ -15,39 +32,87 @@ export class TavilyClient {
   }
 
   async search(input: TavilySearchInput): Promise<TavilySearchResponse> {
-    const response = await fetch(`${this.baseUrl}/search`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify(input),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-    if (!response.ok) {
-      const error = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Tavily search failed (${response.status}): ${error}`);
+    try {
+      const response = await fetch(`${this.baseUrl}/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify(input),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => 'Unknown error');
+        console.error(
+          `Tavily search failed (${response.status}): ${errorBody}`
+        );
+        throw getSanitizedError(response.status, 'Web search');
+      }
+
+      const json = await response.json();
+      const parsed = TavilySearchResponseSchema.safeParse(json);
+
+      if (!parsed.success) {
+        console.error('Invalid Tavily search response:', parsed.error.message);
+        throw new Error('Web search returned an invalid response');
+      }
+
+      return parsed.data;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Web search request timed out');
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
     }
-
-    return response.json() as Promise<TavilySearchResponse>;
   }
 
   async extract(input: TavilyExtractInput): Promise<TavilyExtractResponse> {
-    const response = await fetch(`${this.baseUrl}/extract`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify(input),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-    if (!response.ok) {
-      const error = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Tavily extract failed (${response.status}): ${error}`);
+    try {
+      const response = await fetch(`${this.baseUrl}/extract`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify(input),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => 'Unknown error');
+        console.error(
+          `Tavily extract failed (${response.status}): ${errorBody}`
+        );
+        throw getSanitizedError(response.status, 'Content extraction');
+      }
+
+      const json = await response.json();
+      const parsed = TavilyExtractResponseSchema.safeParse(json);
+
+      if (!parsed.success) {
+        console.error('Invalid Tavily extract response:', parsed.error.message);
+        throw new Error('Content extraction returned an invalid response');
+      }
+
+      return parsed.data;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Content extraction request timed out');
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
     }
-
-    return response.json() as Promise<TavilyExtractResponse>;
   }
 }
 
@@ -62,4 +127,11 @@ export function getTavilyClient(): TavilyClient {
     client = new TavilyClient(env.TAVILY_API_KEY);
   }
   return client;
+}
+
+/**
+ * Reset the Tavily client singleton (for testing and API key rotation)
+ */
+export function resetTavilyClient(): void {
+  client = null;
 }
