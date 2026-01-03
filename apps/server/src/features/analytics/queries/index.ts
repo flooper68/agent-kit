@@ -20,3 +20,5 @@ export type {
   SessionDetailData,
   SessionDetailEvent,
 } from './get-session-detail';
+export { GetWebSearchCallsQuery } from './get-web-search-calls';
+export type { WebSearchCallsPerUserItem } from './get-web-search-calls';

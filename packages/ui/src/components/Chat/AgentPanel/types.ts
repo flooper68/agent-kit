@@ -145,4 +145,7 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
 
   /** Recent chats to display in the empty state */
   recentChats?: TaskHistoryItem[];
+
+  /** Callback when scroll position changes (at bottom vs scrolled up) */
+  onScrollPositionChange?: (isAtBottom: boolean) => void;
 }

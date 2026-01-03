@@ -190,4 +190,50 @@ export const analyticsRouter = router({
       }
       return data;
     }),
+
+  getWebSearchCalls: adminProcedure
+    .input(
+      z.object({
+        timeRange: TimeRangeSchema.default('month'),
+        userId: z.string().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const data = await ctx.analyticsFeature.getWebSearchCalls({
+        timeRange: input.timeRange,
+        orgId: ctx.auth.orgId,
+        userId: input.userId,
+      });
+
+      // Fetch user info from Clerk
+      const userIds = data.map((d) => d.userId);
+      if (userIds.length === 0) return [];
+
+      const clerkUsers = await ctx.clerk.users.getUserList({
+        userId: userIds,
+        limit: 100,
+      });
+
+      // Create a map for quick lookup
+      const userMap = new Map(
+        clerkUsers.data.map((u) => [
+          u.id,
+          {
+            email: u.emailAddresses[0]?.emailAddress ?? null,
+            firstName: u.firstName,
+            lastName: u.lastName,
+          },
+        ])
+      );
+
+      return data.map((d) => {
+        const info = userMap.get(d.userId);
+        return {
+          ...d,
+          email: info?.email ?? null,
+          firstName: info?.firstName ?? null,
+          lastName: info?.lastName ?? null,
+        };
+      });
+    }),
 });

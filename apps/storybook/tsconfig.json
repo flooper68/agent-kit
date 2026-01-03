@@ -1,12 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "composite": true,
-    "outDir": "./dist",
-    "rootDir": ".",
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "noEmit": true
   },
   "include": [".storybook/**/*"],
-  "exclude": ["node_modules", "dist"],
-  "references": [{ "path": "../../packages/ui" }]
+  "exclude": ["node_modules", "dist"]
 }

@@ -58,6 +58,7 @@ export function AppAgentPanel({
     retry,
     dismissError,
     contextUsage,
+    handleScrollPositionChange,
   } = useAgentSession({
     sessionId,
     onSessionInvalid: handleSessionInvalid,
@@ -208,6 +209,7 @@ export function AppAgentPanel({
       onCreateNewTask={onNewChat}
       onRetry={handleRetry}
       onErrorDismiss={handleErrorDismiss}
+      onScrollPositionChange={handleScrollPositionChange}
     />
   );
 }

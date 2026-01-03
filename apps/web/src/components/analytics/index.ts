@@ -6,6 +6,7 @@ export { UsageChart } from './UsageChart';
 export { AgentDistributionChart } from './AgentDistributionChart';
 export { CostBreakdownChart } from './CostBreakdownChart';
 export { TokensPerUserChart } from './TokensPerUserChart';
+export { WebSearchCallsChart } from './WebSearchCallsChart';
 export { RecentActivityTable } from './RecentActivityTable';
 export { SessionDetailModal } from './SessionDetailModal';
 export { SessionMetadataHeader } from './SessionMetadataHeader';
