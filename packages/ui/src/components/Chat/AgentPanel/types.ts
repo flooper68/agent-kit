@@ -146,17 +146,3 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
   /** Recent chats to display in the empty state */
   recentChats?: TaskHistoryItem[];
 }
-
-/**
- * Imperative handle for AgentPanel
- */
-export interface AgentPanelRef {
-  /** Scroll to the bottom of the message list */
-  scrollToBottom: (behavior?: ScrollBehavior) => void;
-
-  /** Scroll to the top of the message list */
-  scrollToTop: (behavior?: ScrollBehavior) => void;
-
-  /** Focus the input textarea */
-  focusInput: () => void;
-}

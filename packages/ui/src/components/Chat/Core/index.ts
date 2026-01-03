@@ -2,7 +2,7 @@ export { ChatContainer } from './ChatContainer';
 export type { ChatContainerProps } from './ChatContainer';
 
 export { MessageList } from './MessageList';
-export type { MessageListProps, MessageListRef } from './MessageList';
+export type { MessageListProps } from './MessageList';
 
 export { Message, useMessage } from './Message';
 export type {

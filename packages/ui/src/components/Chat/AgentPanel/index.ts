@@ -1,7 +1,6 @@
 export { AgentPanel } from './AgentPanel';
 export type {
   AgentPanelProps,
-  AgentPanelRef,
   AgentPanelCallbacks,
   TaskError,
   EmptyStateConfig,

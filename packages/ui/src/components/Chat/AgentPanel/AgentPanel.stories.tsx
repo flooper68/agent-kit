@@ -701,3 +701,80 @@ export const WithAgentInfoBadge: Story = {
     },
   },
 };
+
+// ============================================
+// 11. Scroll Behavior Demo
+// ============================================
+
+const ScrollBehaviorDemoComponent = () => {
+  const [messages, setMessages] = useState<TaskMessage[]>([]);
+  const [status, setStatus] = useState<TaskStatus>('ready');
+
+  const handleSend = useCallback((content: string) => {
+    // Optimistic: add user message immediately
+    const userMsg = createMessage('user', [createTextPart(content)]);
+    setMessages((prev) => [...prev, userMsg]);
+    setStatus('submitted');
+
+    // Simulate thinking then streaming response
+    setTimeout(() => {
+      setStatus('streaming');
+      const assistantMsg = createMessage('assistant', [createTextPart('')]);
+      setMessages((prev) => [...prev, assistantMsg]);
+
+      // Simulate word-by-word streaming
+      const words =
+        'This is a simulated response that streams in word by word to demonstrate the scroll behavior. When you send a message, it appears immediately at the top of the viewport with space below it.'.split(
+          ' '
+        );
+      let i = 0;
+      const interval = setInterval(() => {
+        if (i < words.length) {
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            const last = newMessages[newMessages.length - 1];
+            if (last) {
+              last.parts = [createTextPart(words.slice(0, i + 1).join(' '))];
+            }
+            return newMessages;
+          });
+          i++;
+        } else {
+          clearInterval(interval);
+          setStatus('ready');
+        }
+      }, 50);
+    }, 500);
+  }, []);
+
+  return (
+    <AgentPanel
+      messages={messages}
+      status={status}
+      avatars={defaultAvatars}
+      emptyStateConfig={{
+        title: 'Scroll Behavior Demo',
+        description:
+          'Send a message to see it appear at the top of the viewport',
+      }}
+      onSend={handleSend}
+    />
+  );
+};
+
+export const ScrollBehavior: Story = {
+  render: () => <ScrollBehaviorDemoComponent />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+Demonstrates the ChatGPT-like scroll behavior:
+- User message appears immediately (optimistic update)
+- Scrolls so user message is at TOP of viewport
+- Empty space below allows this positioning
+- Assistant response streams in below
+        `,
+      },
+    },
+  },
+};

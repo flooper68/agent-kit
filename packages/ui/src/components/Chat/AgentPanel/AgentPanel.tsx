@@ -1,11 +1,4 @@
-import {
-  forwardRef,
-  memo,
-  useRef,
-  useImperativeHandle,
-  useCallback,
-  useMemo,
-} from 'react';
+import { forwardRef, memo, useRef, useCallback, useMemo } from 'react';
 import { cn } from '../../../lib/utils';
 import type {
   TaskMessage,
@@ -17,10 +10,11 @@ import type {
   ImagePart,
 } from '../../../types/chat';
 import { ChatContainer } from '../Core/ChatContainer';
-import { MessageList, type MessageListRef } from '../Core/MessageList';
+import { MessageList } from '../Core/MessageList';
 import { Message } from '../Core/Message';
 import { ChatInput } from '../Core/ChatInput';
 import { EmptyState } from '../States/EmptyState';
+import { LoadingState } from '../States/LoadingState';
 import { ErrorBanner } from '../Banners/ErrorBanner';
 import { TokenLimitBanner } from '../Banners/TokenLimitBanner';
 import { ThinkingIndicator } from '../AIFeatures/ThinkingIndicator';
@@ -36,7 +30,7 @@ import {
   AgentSelectorSkeleton,
 } from '../Controls/AgentSelector';
 import { AgentInfoBadge } from '../Controls/AgentInfoBadge';
-import type { AgentPanelProps, AgentPanelRef } from './types';
+import type { AgentPanelProps } from './types';
 
 /**
  * Get text content from a message for copying
@@ -76,7 +70,7 @@ function formatFullTimestamp(date: Date): string {
  * Handles all states: empty, loading, streaming, error, and normal conversation.
  */
 export const AgentPanel = memo(
-  forwardRef<AgentPanelRef, AgentPanelProps>(
+  forwardRef<HTMLDivElement, AgentPanelProps>(
     (
       {
         messages,
@@ -109,17 +103,7 @@ export const AgentPanel = memo(
       },
       ref
     ) => {
-      const messageListRef = useRef<MessageListRef>(null);
       const inputRef = useRef<HTMLTextAreaElement>(null);
-
-      // Expose imperative methods
-      useImperativeHandle(ref, () => ({
-        scrollToBottom: (behavior) =>
-          messageListRef.current?.scrollToBottom(behavior),
-        scrollToTop: (behavior) =>
-          messageListRef.current?.scrollToTop(behavior),
-        focusInput: () => inputRef.current?.focus(),
-      }));
 
       // Derived state (memoized)
       const isEmpty = useMemo(() => messages.length === 0, [messages.length]);
@@ -332,7 +316,9 @@ export const AgentPanel = memo(
       return (
         <ChatContainer className={cn('h-full', className)}>
           {/* Main content area */}
-          {showEmptyState ? (
+          {status === 'loading' ? (
+            <LoadingState />
+          ) : showEmptyState ? (
             <EmptyState
               title={emptyStateConfig?.title}
               description={emptyStateConfig?.description}
@@ -353,7 +339,7 @@ export const AgentPanel = memo(
               }
             />
           ) : (
-            <MessageList ref={messageListRef}>
+            <MessageList ref={ref}>
               {messages.map(renderMessage)}
 
               {/* Thinking indicator when submitted */}

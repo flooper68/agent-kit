@@ -48,6 +48,7 @@ export function AppAgentPanel({
 
   // Use the agent session hook
   const {
+    setMessageListRef,
     messages,
     status,
     thinkingStatus,
@@ -185,6 +186,7 @@ export function AppAgentPanel({
   return (
     <AgentPanel
       className={className}
+      ref={setMessageListRef}
       messages={messages}
       status={status}
       thinkingStatus={thinkingStatus}
