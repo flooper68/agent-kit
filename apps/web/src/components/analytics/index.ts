@@ -11,3 +11,4 @@ export { SessionDetailModal } from './SessionDetailModal';
 export { SessionMetadataHeader } from './SessionMetadataHeader';
 export { SessionEventsTimeline } from './SessionEventsTimeline';
 export { EventTypeBadge } from './EventTypeBadge';
+export { ChartErrorBoundary } from './ChartErrorBoundary';

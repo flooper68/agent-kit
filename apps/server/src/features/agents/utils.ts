@@ -27,6 +27,10 @@ export function reconstructPartsFromEvents(
   let currentReasoningContent = '';
   let lastContentType: 'text' | 'reasoning' | null = null;
 
+  // Track reasoning timestamps for duration calculation
+  let reasoningStartTime: Date | null = null;
+  let reasoningEndTime: Date | null = null;
+
   // Helper to flush accumulated text content
   const flushText = () => {
     if (currentTextContent) {
@@ -38,13 +42,24 @@ export function reconstructPartsFromEvents(
   // Helper to flush accumulated reasoning content
   const flushReasoning = () => {
     if (currentReasoningContent) {
+      // Calculate duration in seconds
+      let durationSeconds: number | undefined;
+      if (reasoningStartTime && reasoningEndTime) {
+        durationSeconds = Math.round(
+          (reasoningEndTime.getTime() - reasoningStartTime.getTime()) / 1000
+        );
+      }
+
       // Historical messages have finished streaming, so collapse reasoning
       parts.push({
         type: 'reasoning',
         content: currentReasoningContent,
         isCollapsed: true,
+        durationSeconds,
       });
       currentReasoningContent = '';
+      reasoningStartTime = null;
+      reasoningEndTime = null;
     }
   };
 
@@ -77,6 +92,11 @@ export function reconstructPartsFromEvents(
         if (lastContentType === 'text') {
           flushText();
         }
+        // Track timestamps for duration calculation
+        if (!reasoningStartTime) {
+          reasoningStartTime = event.createdAt;
+        }
+        reasoningEndTime = event.createdAt;
         currentReasoningContent += event.content ?? '';
         lastContentType = 'reasoning';
         break;

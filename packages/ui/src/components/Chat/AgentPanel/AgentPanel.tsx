@@ -185,6 +185,7 @@ export const AgentPanel = memo(
                   key={part.id || index}
                   content={reasoningPart.content}
                   expanded={!reasoningPart.isCollapsed}
+                  durationSeconds={reasoningPart.durationSeconds}
                 />
               );
             }

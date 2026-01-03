@@ -2,20 +2,7 @@ import { sql, eq, and, gte, countDistinct, count } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { agentSessions } from '../../../db/schema';
 import type { TimeRange, OverviewStats, AnalyticsFilters } from '../types';
-
-function getStartDate(timeRange: TimeRange): Date | null {
-  const now = new Date();
-  switch (timeRange) {
-    case 'today':
-      return new Date(now.setHours(0, 0, 0, 0));
-    case 'week':
-      return new Date(now.setDate(now.getDate() - 7));
-    case 'month':
-      return new Date(now.setDate(now.getDate() - 30));
-    case 'all':
-      return null;
-  }
-}
+import { getStartDate } from './utils';
 
 function getPreviousPeriodDates(
   timeRange: TimeRange

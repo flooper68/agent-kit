@@ -59,6 +59,7 @@ export interface ReasoningPart extends BaseMessagePart {
   type: 'reasoning';
   content: string;
   isCollapsed?: boolean;
+  durationSeconds?: number;
 }
 
 // Image attachment

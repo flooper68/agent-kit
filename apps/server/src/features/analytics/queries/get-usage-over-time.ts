@@ -7,20 +7,16 @@ import type {
   UsageOverTimePoint,
   AnalyticsFilters,
 } from '../types';
+import { getStartDate as getStartDateBase } from './utils';
 
 function getStartDate(timeRange: TimeRange): Date | null {
-  const now = new Date();
-  switch (timeRange) {
-    case 'today':
-      return new Date(now.setHours(0, 0, 0, 0));
-    case 'week':
-      return new Date(now.setDate(now.getDate() - 7));
-    case 'month':
-      return new Date(now.setDate(now.getDate() - 30));
-    case 'all':
-      // Default to 90 days for "all" to avoid massive queries
-      return new Date(now.setDate(now.getDate() - 90));
+  // For usage over time, limit 'all' to 90 days to avoid massive queries
+  if (timeRange === 'all') {
+    const date = new Date();
+    date.setDate(date.getDate() - 90);
+    return date;
   }
+  return getStartDateBase(timeRange);
 }
 
 function getDefaultGranularity(timeRange: TimeRange): Granularity {
@@ -50,6 +46,12 @@ export class GetUsageOverTimeQuery {
     const startDate = getStartDate(input.timeRange);
     const granularity =
       input.granularity ?? getDefaultGranularity(input.timeRange);
+
+    // Defense in depth - validate granularity even if schema should have caught it
+    const validGranularities = ['hour', 'day', 'week'] as const;
+    if (!validGranularities.includes(granularity)) {
+      throw new Error(`Invalid granularity: ${granularity}`);
+    }
 
     // Build conditions
     const conditions = [];

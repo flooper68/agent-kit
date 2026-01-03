@@ -610,25 +610,21 @@ export function useAgentSession({
     [sendMutation]
   );
 
-  // Effect to send pending message once subscription should be ready
-  // We use a small delay to ensure the SSE connection has time to establish
+  // Track if subscription is ready for the current session
+  // Subscription is ready when: sessionId matches, query succeeded, and subscription is connected ('idle' status)
+  const isSubscriptionReady =
+    !!sessionId && sessionQuery.isSuccess && subscription.status === 'idle';
+
+  // Effect to send pending message once subscription is ready
+  // This replaces the previous timer-based approach with proper state tracking
   useEffect(() => {
     const pending = pendingMessageRef.current;
-    if (pending && sessionId === pending.sessionId) {
-      // Small delay to ensure subscription connection is established
-      const timer = setTimeout(() => {
-        if (
-          pendingMessageRef.current &&
-          pendingMessageRef.current.sessionId === sessionId
-        ) {
-          const msg = pendingMessageRef.current;
-          pendingMessageRef.current = null;
-          doSendMessage(msg.content, msg.sessionId);
-        }
-      }, 150);
-      return () => clearTimeout(timer);
+    if (pending && sessionId === pending.sessionId && isSubscriptionReady) {
+      // Subscription is connected and ready, send the pending message
+      pendingMessageRef.current = null;
+      doSendMessage(pending.content, pending.sessionId);
     }
-  }, [sessionId, doSendMessage]);
+  }, [sessionId, isSubscriptionReady, doSendMessage]);
 
   const sendMessage = useCallback(
     async (content: string, overrideSessionId?: string) => {

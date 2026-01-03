@@ -8,6 +8,45 @@ import type {
 import { classifyError } from '../errors';
 import { logger } from '../logger';
 
+/**
+ * Thinking budget configuration per model.
+ * Models not listed here will not have thinking enabled.
+ * Budget is in tokens.
+ */
+const THINKING_BUDGET_BY_MODEL: Record<string, number> = {
+  'claude-sonnet-4-20250514': 10000,
+  'claude-opus-4-20250514': 16000,
+  // Add more models as needed
+};
+
+/**
+ * Default thinking budget for models that support thinking but aren't explicitly configured.
+ * Set to 0 to disable thinking by default.
+ */
+const DEFAULT_THINKING_BUDGET = 10000;
+
+/**
+ * Get the thinking configuration for a model.
+ * Returns undefined if thinking should be disabled for the model.
+ */
+function getThinkingConfig(
+  model: string
+): { type: 'enabled'; budgetTokens: number } | undefined {
+  // Check if model is explicitly configured
+  const configuredBudget = THINKING_BUDGET_BY_MODEL[model];
+  if (configuredBudget !== undefined) {
+    return { type: 'enabled', budgetTokens: configuredBudget };
+  }
+
+  // For Claude models with extended thinking support, use default budget
+  if (model.includes('claude-sonnet-4') || model.includes('claude-opus-4')) {
+    return { type: 'enabled', budgetTokens: DEFAULT_THINKING_BUDGET };
+  }
+
+  // Disable thinking for other models
+  return undefined;
+}
+
 export class AnthropicProvider implements AgentProvider {
   id = 'anthropic';
 
@@ -25,6 +64,8 @@ export class AnthropicProvider implements AgentProvider {
     });
 
     try {
+      const thinkingConfig = getThinkingConfig(model);
+
       const result = streamText({
         model: anthropic(model),
         system: systemPrompt,
@@ -32,11 +73,13 @@ export class AnthropicProvider implements AgentProvider {
         tools,
         abortSignal,
         stopWhen: stepCountIs(2000),
-        providerOptions: {
-          anthropic: {
-            thinking: { type: 'enabled', budgetTokens: 10000 },
-          },
-        },
+        providerOptions: thinkingConfig
+          ? {
+              anthropic: {
+                thinking: thinkingConfig,
+              },
+            }
+          : undefined,
       });
 
       let accumulatedText = '';

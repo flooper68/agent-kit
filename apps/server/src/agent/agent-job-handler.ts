@@ -91,6 +91,10 @@ export class AgentJobHandler {
    * Process a single agent job
    */
   async handle(job: AgentJob): Promise<void> {
+    // Reset state at the start of each job to prevent stale data accumulation
+    this.eventSequence = 0;
+    this.eventBuffer = new EventBuffer();
+
     const { sessionId, agentId, content } = job;
 
     // Create user message first (preserves user input even if job fails)

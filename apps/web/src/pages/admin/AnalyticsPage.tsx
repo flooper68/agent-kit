@@ -12,6 +12,7 @@ import {
   TokensPerUserChart,
   RecentActivityTable,
   SessionDetailModal,
+  ChartErrorBoundary,
 } from '../../components/analytics';
 import type { TimeRange } from '../../components/analytics';
 
@@ -174,26 +175,34 @@ export function AnalyticsPage() {
 
         {/* Charts Section */}
         <div className="grid gap-6 lg:grid-cols-2 mb-8">
-          <UsageChart
-            data={usageQuery.data ?? []}
-            isLoading={usageQuery.isLoading}
-          />
-          <AgentDistributionChart
-            data={agentDistQuery.data ?? []}
-            isLoading={agentDistQuery.isLoading}
-          />
+          <ChartErrorBoundary chartName="Usage Chart">
+            <UsageChart
+              data={usageQuery.data ?? []}
+              isLoading={usageQuery.isLoading}
+            />
+          </ChartErrorBoundary>
+          <ChartErrorBoundary chartName="Agent Distribution">
+            <AgentDistributionChart
+              data={agentDistQuery.data ?? []}
+              isLoading={agentDistQuery.isLoading}
+            />
+          </ChartErrorBoundary>
         </div>
 
         {/* Cost Breakdown & Tokens Per User */}
         <div className="grid gap-6 lg:grid-cols-2 mb-8">
-          <CostBreakdownChart
-            data={providerDistQuery.data ?? []}
-            isLoading={providerDistQuery.isLoading}
-          />
-          <TokensPerUserChart
-            data={tokensPerUserQuery.data ?? []}
-            isLoading={tokensPerUserQuery.isLoading}
-          />
+          <ChartErrorBoundary chartName="Cost Breakdown">
+            <CostBreakdownChart
+              data={providerDistQuery.data ?? []}
+              isLoading={providerDistQuery.isLoading}
+            />
+          </ChartErrorBoundary>
+          <ChartErrorBoundary chartName="Tokens Per User">
+            <TokensPerUserChart
+              data={tokensPerUserQuery.data ?? []}
+              isLoading={tokensPerUserQuery.isLoading}
+            />
+          </ChartErrorBoundary>
         </div>
 
         {/* Recent Activity */}

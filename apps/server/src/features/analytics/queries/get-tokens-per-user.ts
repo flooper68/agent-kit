@@ -1,21 +1,8 @@
 import { sql, eq, and, gte, count, desc } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { agentSessions } from '../../../db/schema';
-import type { TimeRange, AnalyticsFilters } from '../types';
-
-function getStartDate(timeRange: TimeRange): Date | null {
-  const now = new Date();
-  switch (timeRange) {
-    case 'today':
-      return new Date(now.setHours(0, 0, 0, 0));
-    case 'week':
-      return new Date(now.setDate(now.getDate() - 7));
-    case 'month':
-      return new Date(now.setDate(now.getDate() - 30));
-    case 'all':
-      return null;
-  }
-}
+import type { AnalyticsFilters } from '../types';
+import { getStartDate } from './utils';
 
 export interface TokensPerUserItem {
   userId: string;
