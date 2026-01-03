@@ -1,6 +1,5 @@
 import { useAuth, useOrganization } from '@clerk/clerk-react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { DashboardLayout } from './DashboardLayout';
 import { ProtectedLayoutSkeleton } from '../components/skeletons';
 
 export function ProtectedLayout() {
@@ -26,9 +25,6 @@ export function ProtectedLayout() {
     return <Navigate to="/app/no-project" replace />;
   }
 
-  return (
-    <DashboardLayout>
-      <Outlet />
-    </DashboardLayout>
-  );
+  // Layout wrapping is now handled by each route's element
+  return <Outlet />;
 }

@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure, sessionProcedure } from '../trpc';
+import { router, orgProcedure, sessionProcedure } from '../trpc';
 
 export const sessionsRouter = router({
-  create: protectedProcedure
+  create: orgProcedure
     .input(
       z.object({
         agentId: z.string(),
@@ -21,12 +21,13 @@ export const sessionsRouter = router({
 
       return ctx.agentsFeature.sessions.create({
         userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
         agentId: input.agentId,
         title: input.title,
       });
     }),
 
-  list: protectedProcedure
+  list: orgProcedure
     .input(
       z.object({
         limit: z.number().min(1).max(100).default(20),
@@ -44,6 +45,15 @@ export const sessionsRouter = router({
     .input(z.object({ sessionId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       // Session ownership already verified by sessionProcedure middleware
+
+      // IMPORTANT: Get lastStreamId FIRST, before fetching messages
+      // This ensures the subscription starts from a point <= what's in the DB
+      // Any events written after this point will be in BOTH DB and subscription,
+      // which the client handles via accumulator initialization
+      const lastStreamId = await ctx.sessionManager.getLastStreamId(
+        input.sessionId
+      );
+
       const session = await ctx.agentsFeature.sessions.getWithMessages(
         input.sessionId
       );
@@ -55,7 +65,10 @@ export const sessionsRouter = router({
         });
       }
 
-      return session;
+      return {
+        ...session,
+        lastStreamId,
+      };
     }),
 
   updateTitle: sessionProcedure

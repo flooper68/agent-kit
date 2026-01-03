@@ -22,6 +22,20 @@
       "when": 1735862400000,
       "tag": "0002_add_gemini_agent",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1735948800000,
+      "tag": "0003_add_all_agents",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1736035200000,
+      "tag": "0004_add_org_id_to_sessions",
+      "breakpoints": true
     }
   ]
 }

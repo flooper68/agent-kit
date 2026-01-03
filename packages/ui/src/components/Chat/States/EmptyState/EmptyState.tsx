@@ -17,6 +17,8 @@ export interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
   recentChats?: TaskHistoryItem[];
   /** Callback when a recent chat is clicked */
   onRecentChatClick?: (chat: TaskHistoryItem) => void;
+  /** Callback when a recent chat is deleted */
+  onRecentChatDelete?: (chat: TaskHistoryItem) => void;
 }
 
 export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(
@@ -30,6 +32,7 @@ export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(
       inputElement,
       recentChats,
       onRecentChatClick,
+      onRecentChatDelete,
       className,
       ...props
     },
@@ -76,11 +79,13 @@ export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(
           </div>
         )}
 
-        {recentChats && recentChats.length > 0 && (
+        {recentChats && (
           <RecentChats
             chats={recentChats}
             onChatClick={onRecentChatClick}
+            onDeleteClick={onRecentChatDelete}
             maxItems={3}
+            showEmptyState
           />
         )}
       </div>

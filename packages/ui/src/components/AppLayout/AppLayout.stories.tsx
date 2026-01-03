@@ -11,11 +11,21 @@ import {
   Code,
   Sparkles,
   History,
+  BarChart3,
+  Users,
+  MessageSquare,
+  Clock,
+  AlertTriangle,
+  RefreshCw,
+  ArrowLeft,
+  Search,
 } from 'lucide-react';
 import { AppLayout } from './AppLayout';
 import { Button } from '../Button';
 import { IconButton } from '../IconButton';
 import { Tooltip } from '../Tooltip';
+import { Heading } from '../Typography/Heading';
+import { Text } from '../Typography/Text';
 import { AgentPanel } from '../Chat/AgentPanel';
 import type { AgentPanelRef } from '../Chat/AgentPanel/types';
 import { MockChatService } from '../Chat/AgentPanel/mocks/MockChatService';
@@ -518,6 +528,234 @@ AppLayout with task history sidebar integration.
 - Shows list of past tasks with timestamps
 - Supports selecting, deleting, and creating new tasks
 - Sidebar closes automatically when a task is selected
+        `,
+      },
+    },
+  },
+};
+
+// ============================================
+// Fullscreen Page (No Assistant Panel)
+// ============================================
+
+const FullscreenPageComponent = () => {
+  const mainMenu: MainMenuConfig = {
+    appName: 'Agent Kit',
+    appIcon: <Sparkles className="h-4 w-4" />,
+    branding: {
+      logo: <Sparkles className="h-5 w-5 text-primary" />,
+      name: 'Agent Kit',
+      tagline: 'Build AI-powered apps',
+    },
+    profile: {
+      name: 'John Doe',
+      email: 'john@example.com',
+      avatarFallback: 'JD',
+    },
+    showThemeToggle: true,
+    sections: [
+      {
+        id: 'navigation',
+        items: [
+          {
+            id: 'agents',
+            label: 'Agents',
+            icon: <Sparkles className="h-4 w-4" />,
+            onClick: () => console.log('Navigate to Agents'),
+          },
+          {
+            id: 'analytics',
+            label: 'Analytics',
+            icon: <BarChart3 className="h-4 w-4" />,
+            onClick: () => console.log('Navigate to Analytics'),
+          },
+          {
+            id: 'settings',
+            label: 'Settings',
+            icon: <Settings className="h-4 w-4" />,
+            onClick: () => console.log('Navigate to Settings'),
+          },
+        ],
+      },
+    ],
+    onSignOut: () => console.log('Sign out'),
+  };
+
+  // Mock analytics data
+  const stats = [
+    { label: 'Total Tasks', value: '1,234', icon: MessageSquare },
+    { label: 'Active Users', value: '56', icon: Users },
+    { label: 'Avg. Response Time', value: '2.3s', icon: Clock },
+    { label: 'Success Rate', value: '94.2%', icon: BarChart3 },
+  ];
+
+  return (
+    <AppLayout mainMenu={mainMenu}>
+      {/* Fullscreen content - no chat panel */}
+      <div className="h-full overflow-auto p-6">
+        <div className="mx-auto max-w-6xl">
+          {/* Page Header */}
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold">Analytics</h1>
+            <p className="text-muted-foreground">
+              Overview of your organization&apos;s usage and performance
+            </p>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+            {stats.map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-lg border border-border bg-card p-6"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-muted-foreground text-sm">
+                    {stat.label}
+                  </span>
+                  <stat.icon className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="text-2xl font-semibold">{stat.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Content Area */}
+          <div className="rounded-lg border border-border bg-card p-6">
+            <h2 className="text-lg font-semibold mb-4">Usage Over Time</h2>
+            <div className="h-64 flex items-center justify-center bg-muted/30 rounded-md">
+              <div className="text-center text-muted-foreground">
+                <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>Chart visualization placeholder</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </AppLayout>
+  );
+};
+
+export const FullscreenPage: Story = {
+  render: () => <FullscreenPageComponent />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+AppLayout without an assistant panel, suitable for admin pages like Settings or Analytics.
+
+**Features:**
+- Full header with main menu (app name, navigation items)
+- No assistantPanel prop - content takes full width
+- No panelConfig or panel toggle needed
+- Clean, distraction-free layout for content-focused pages
+- Navigation menu with links to Agents, Analytics, and Settings
+
+**Use Cases:**
+- Settings pages
+- Analytics dashboards
+- User management pages
+- Any page that doesn't need the AI chat panel
+        `,
+      },
+    },
+  },
+};
+
+// ============================================
+// Error Pages
+// ============================================
+
+const NotFoundPageComponent = () => {
+  return (
+    <div className="flex h-screen flex-col items-center justify-center p-4">
+      <div className="mx-auto max-w-md text-center">
+        <div className="mb-8">
+          <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-muted">
+            <Search className="h-10 w-10 text-muted-foreground" />
+          </div>
+        </div>
+        <Heading as="h1" size="24" className="mb-2">
+          Page not found
+        </Heading>
+        <Text className="text-muted-foreground mb-6">
+          The page you&apos;re looking for doesn&apos;t exist.
+        </Text>
+        <div className="flex items-center justify-center gap-3">
+          <Button onClick={() => console.log('Navigate to dashboard')}>
+            <Home className="mr-2 h-4 w-4" />
+            Dashboard
+          </Button>
+          <Button variant="outline" onClick={() => console.log('Go back')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Go Back
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const NotFoundPage: Story = {
+  render: () => <NotFoundPageComponent />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+A simple 404 Not Found page with a clean design.
+
+**Features:**
+- Centered layout with icon
+- Clear messaging
+- Navigation buttons to go back or to dashboard
+        `,
+      },
+    },
+  },
+};
+
+const ErrorPageComponent = () => {
+  return (
+    <div className="flex h-screen flex-col items-center justify-center p-4">
+      <div className="mx-auto max-w-md text-center">
+        <div className="mb-8">
+          <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10">
+            <AlertTriangle className="h-10 w-10 text-destructive" />
+          </div>
+        </div>
+        <Heading as="h1" size="24" className="mb-2">
+          Something went wrong
+        </Heading>
+        <Text className="text-muted-foreground mb-6">
+          An unexpected error occurred. Please try again.
+        </Text>
+        <div className="flex items-center justify-center gap-3">
+          <Button onClick={() => console.log('Refresh')}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Try Again
+          </Button>
+          <Button variant="outline" onClick={() => console.log('Dashboard')}>
+            <Home className="mr-2 h-4 w-4" />
+            Dashboard
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const ErrorPage: Story = {
+  render: () => <ErrorPageComponent />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+A simple error page for displaying unexpected errors.
+
+**Features:**
+- Centered layout with warning icon
+- Clear error messaging
+- Retry and navigation buttons
         `,
       },
     },

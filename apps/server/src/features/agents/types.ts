@@ -26,11 +26,13 @@ export interface AgentDefinition {
   provider: string;
   model: string;
   tools: string[];
+  releasedAt: Date;
 }
 
 // Command input types
 export interface CreateSessionInput {
   userId: string;
+  orgId: string;
   agentId: string;
   title?: string;
 }

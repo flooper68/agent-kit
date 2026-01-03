@@ -18,7 +18,8 @@
     "db:seed": "bun --env-file ../../.env scripts/seed.ts"
   },
   "dependencies": {
-    "@ai-sdk/google": "^3.0.2",
+    "@ai-sdk/anthropic": "3.0.2",
+    "@ai-sdk/google": "3.0.2",
     "@ai-sdk/openai": "3.0.2",
     "@clerk/backend": "2.29.0",
     "@fastify/cors": "11.2.0",

@@ -1,4 +1,4 @@
-import { streamText } from 'ai';
+import { streamText, stepCountIs } from 'ai';
 import { google } from '@ai-sdk/google';
 import type {
   AgentProvider,
@@ -24,6 +24,11 @@ export class GeminiProvider implements AgentProvider {
       toolName: toolNames.join(', '),
     });
 
+    // Gemini 2.5+ and 3 models support thinking
+    const isGemini3 = model.includes('gemini-3');
+    const isGemini25 = model.includes('gemini-2.5');
+    const supportsThinking = isGemini3 || isGemini25;
+
     try {
       const result = streamText({
         model: google(model),
@@ -31,6 +36,16 @@ export class GeminiProvider implements AgentProvider {
         messages,
         tools,
         abortSignal,
+        stopWhen: stepCountIs(2000),
+        ...(supportsThinking && {
+          providerOptions: {
+            google: {
+              thinkingConfig: isGemini3
+                ? { thinkingLevel: 'medium', includeThoughts: true }
+                : { thinkingBudget: 8192, includeThoughts: true },
+            },
+          },
+        }),
       });
 
       let accumulatedText = '';

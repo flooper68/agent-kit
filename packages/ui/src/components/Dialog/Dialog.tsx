@@ -180,7 +180,7 @@ interface DialogHeaderProps {
 
 const DialogHeader = ({ children }: DialogHeaderProps) => {
   return (
-    <div className="flex flex-col space-y-1.5 text-center sm:text-left">
+    <div className="flex flex-col space-y-2 text-center sm:text-left">
       {children}
     </div>
   );

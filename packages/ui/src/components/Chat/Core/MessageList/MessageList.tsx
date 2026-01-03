@@ -5,6 +5,7 @@ import {
   useImperativeHandle,
   useState,
   useCallback,
+  Children,
 } from 'react';
 import { ArrowDown } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
@@ -20,7 +21,8 @@ export interface MessageListRef {
 }
 
 // Threshold in pixels from bottom to consider "at bottom"
-const SCROLL_THRESHOLD = 100;
+// Larger threshold handles big content blocks like markdown during streaming
+const SCROLL_THRESHOLD = 300;
 
 export const MessageList = forwardRef<MessageListRef, MessageListProps>(
   ({ children, autoScroll = true }, ref) => {
@@ -29,8 +31,14 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(
     const isFirstScrollRef = useRef(true);
     const isAtBottomRef = useRef(true); // Track if user is at bottom for smart auto-scroll
     const [showScrollButton, setShowScrollButton] = useState(false);
+    const prevChildCountRef = useRef(0);
 
     const scrollToBottom = useCallback((behavior?: ScrollBehavior) => {
+      // Mark as at bottom before scrolling to prevent race conditions
+      // during streaming when content grows faster than scroll updates
+      isAtBottomRef.current = true;
+      setShowScrollButton(false);
+
       // First scroll is instant, subsequent scrolls are smooth
       const scrollBehavior =
         behavior ?? (isFirstScrollRef.current ? 'instant' : 'smooth');
@@ -77,9 +85,25 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(
     }, [checkScrollPosition]);
 
     useEffect(() => {
-      if (autoScroll && isAtBottomRef.current) {
-        scrollToBottom('instant');
+      const childCount = Children.count(children);
+
+      // Detect initial content load (e.g., opening an existing chat)
+      // When going from 0 to multiple children, this is a fresh load, not streaming
+      // In this case, always scroll to bottom regardless of isAtBottomRef
+      const isInitialLoad = prevChildCountRef.current === 0 && childCount > 0;
+
+      if (isInitialLoad) {
+        // Reset scroll state for fresh load
+        isAtBottomRef.current = true;
+        isFirstScrollRef.current = true;
+        setShowScrollButton(false);
+        // Use requestAnimationFrame to ensure DOM is ready before scrolling
+        requestAnimationFrame(() => {
+          scrollToBottom('instant');
+        });
       }
+
+      prevChildCountRef.current = childCount;
     }, [children, autoScroll, scrollToBottom]);
 
     const handleScrollButtonClick = useCallback(() => {
@@ -95,7 +119,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(
             'flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-6 scrollbar-thin'
           )}
         >
-          <div className="max-w-3xl mx-auto px-4 space-y-4 min-w-0">
+          <div className="max-w-3xl mx-auto px-4 space-y-6 min-w-0">
             {children}
           </div>
           <div ref={bottomRef} aria-hidden="true" />

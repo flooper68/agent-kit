@@ -6,3 +6,5 @@ export { SignUpPageSkeleton } from './SignUpPageSkeleton';
 export { DashboardPageSkeleton } from './DashboardPageSkeleton';
 export { MembersSectionSkeleton } from './MembersSectionSkeleton';
 export { SSOCallbackSkeleton } from './SSOCallbackSkeleton';
+export { SettingsPageSkeleton } from './SettingsPageSkeleton';
+export { AnalyticsPageSkeleton } from './AnalyticsPageSkeleton';

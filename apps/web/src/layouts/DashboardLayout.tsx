@@ -5,6 +5,7 @@ import {
   useOrganization,
   useOrganizationList,
 } from '@clerk/clerk-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   AppLayout,
   ProjectSwitcher,
@@ -13,8 +14,7 @@ import {
   TaskHistorySidebar,
 } from '@agent-kit/ui';
 import type { Project, MenuSection } from '@agent-kit/ui';
-import { Bot, Settings } from 'lucide-react';
-import { SettingsModal } from '../components/settings/SettingsModal';
+import { Bot, BarChart3, Users } from 'lucide-react';
 import { checkIsAdmin } from '../lib/auth';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useSession } from '../contexts/SessionContext';
@@ -25,6 +25,8 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useUser();
   const { signOut } = useClerk();
   const { organization, membership } = useOrganization();
@@ -33,9 +35,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   });
   const { setSessionId, clearSession } = useSession();
   const [isSwitching, setIsSwitching] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const isAdmin = checkIsAdmin(membership?.role);
+  const currentPath = location.pathname;
 
   // Fetch chat history for the sidebar
   const { sessions, refetch: refetchSessions } = useChatHistory({ limit: 50 });
@@ -118,13 +120,28 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           sections: (isAdmin
             ? [
                 {
-                  id: 'settings',
+                  id: 'navigation',
                   items: [
                     {
-                      id: 'settings',
-                      label: 'Settings',
-                      icon: <Settings className="h-4 w-4" />,
-                      onClick: () => setIsSettingsOpen(true),
+                      id: 'agents',
+                      label: 'Agents',
+                      icon: <Bot className="h-4 w-4" />,
+                      onClick: () => navigate('/app'),
+                      active: currentPath === '/app',
+                    },
+                    {
+                      id: 'analytics',
+                      label: 'Analytics',
+                      icon: <BarChart3 className="h-4 w-4" />,
+                      onClick: () => navigate('/app/analytics'),
+                      active: currentPath === '/app/analytics',
+                    },
+                    {
+                      id: 'users',
+                      label: 'Users',
+                      icon: <Users className="h-4 w-4" />,
+                      onClick: () => navigate('/app/users'),
+                      active: currentPath === '/app/users',
                     },
                   ],
                 },
@@ -152,7 +169,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         {children}
       </AppLayout>
-      <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
       <TaskHistorySidebar
         open={isHistoryOpen}
         onOpenChange={setIsHistoryOpen}

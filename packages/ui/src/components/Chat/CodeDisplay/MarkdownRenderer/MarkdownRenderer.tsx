@@ -14,16 +14,17 @@ export interface MarkdownRendererProps
 }
 
 // Default styling for markdown prose - uses theme colors
+// Uses text-sm and leading-snug to match chat message styling
 const proseClasses = `
   prose prose-sm dark:prose-invert max-w-none
-  overflow-hidden break-words
+  overflow-hidden break-words text-sm leading-snug
   prose-headings:text-foreground prose-headings:font-semibold
-  prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
-  prose-p:text-foreground prose-p:my-2 prose-p:leading-relaxed
-  prose-ul:my-2 prose-ol:my-2 prose-li:text-foreground
+  prose-h1:text-lg prose-h2:text-base prose-h3:text-sm
+  prose-p:text-foreground prose-p:my-2.5 prose-p:leading-snug
+  prose-ul:my-2.5 prose-ol:my-2.5 prose-li:text-foreground
   prose-li:my-0.5
   prose-strong:text-foreground prose-strong:font-semibold
-  prose-code:text-foreground prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
+  prose-code:text-foreground prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
   prose-code:before:content-none prose-code:after:content-none
   prose-pre:bg-transparent prose-pre:p-0
   prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-a:break-all

@@ -59,6 +59,7 @@ export interface ReasoningPart extends BaseMessagePart {
   type: 'reasoning';
   content: string;
   isCollapsed?: boolean;
+  durationSeconds?: number;
 }
 
 // Image attachment
@@ -134,6 +135,9 @@ export interface ContextUsage {
   used: number;
   total: number;
   percentage: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  estimatedCost?: number;
 }
 
 // Suggestion chip for empty state

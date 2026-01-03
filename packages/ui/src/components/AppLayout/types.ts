@@ -9,6 +9,7 @@ export interface MenuItem {
   href?: string;
   disabled?: boolean;
   danger?: boolean;
+  active?: boolean;
 }
 
 export interface MenuSection {

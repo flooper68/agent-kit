@@ -86,7 +86,7 @@ const ChatInputRoot = memo(
           <form
             ref={ref}
             className={cn(
-              'flex flex-col gap-2 p-4 border rounded-xl bg-background shadow-md',
+              'flex flex-col gap-2 p-4 border rounded-xl bg-background shadow-sm transition-shadow hover:shadow-md focus-within:shadow-md focus-within:border-primary/50',
               className
             )}
             onSubmit={handleSubmit}

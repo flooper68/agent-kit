@@ -14,6 +14,7 @@ export class CreateSessionCommand {
       .insert(agentSessions)
       .values({
         userId: input.userId,
+        orgId: input.orgId,
         agentId: input.agentId,
         title: input.title,
       })

@@ -75,6 +75,7 @@ const MessageCompleteEventSchema = BaseStreamEventSchema.extend({
     .object({
       promptTokens: z.number(),
       completionTokens: z.number(),
+      estimatedCost: z.number().optional(),
     })
     .optional(),
   finishReason: z.string().optional(),
@@ -584,6 +585,24 @@ export class AgentSessionManager {
         // Ignore errors during cleanup
       });
     }
+  }
+
+  /**
+   * Get the last message ID in a session's event stream
+   * Used for subscription resumption after page refresh
+   * Returns undefined if stream doesn't exist or is empty
+   */
+  async getLastStreamId(sessionId: string): Promise<string | undefined> {
+    const streamName = getSessionStream(sessionId);
+
+    // XREVRANGE with COUNT 1 gets the last entry
+    const result = await this.redis.xrevrange(streamName, '+', '-', 'COUNT', 1);
+
+    if (result.length === 0) {
+      return undefined;
+    }
+
+    return result[0]?.[0]; // Return the message ID
   }
 
   /**

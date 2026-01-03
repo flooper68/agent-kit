@@ -80,6 +80,9 @@ export interface AgentPanelCallbacks {
 
   /** Called when a recent chat is clicked in the empty state */
   onRecentChatClick?: (chat: TaskHistoryItem) => void;
+
+  /** Called when a recent chat is deleted in the empty state */
+  onRecentChatDelete?: (chat: TaskHistoryItem) => void;
 }
 
 /**
@@ -130,6 +133,9 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
 
   /** Whether the agent selector is disabled */
   isAgentSelectorDisabled?: boolean;
+
+  /** Whether agents are currently loading */
+  isAgentsLoading?: boolean;
 
   /** Available tasks for the task selector (shown in empty state) */
   tasks?: TaskHistoryItem[];

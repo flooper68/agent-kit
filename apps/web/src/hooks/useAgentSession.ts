@@ -15,6 +15,7 @@ import type {
 
 interface UseAgentSessionOptions {
   sessionId: string | null;
+  onSessionInvalid?: () => void;
 }
 
 interface UseAgentSessionReturn {
@@ -60,8 +61,11 @@ function createTextPart(content: string): TextPart {
 }
 
 // Helper to create a reasoning part
-function createReasoningPart(content: string): ReasoningPart {
-  return { type: 'reasoning', id: generatePartId(), content };
+function createReasoningPart(
+  content: string,
+  isCollapsed?: boolean
+): ReasoningPart {
+  return { type: 'reasoning', id: generatePartId(), content, isCollapsed };
 }
 
 // Helper to create a tool invocation part
@@ -98,6 +102,7 @@ function createToolResultPart(
 
 export function useAgentSession({
   sessionId,
+  onSessionInvalid,
 }: UseAgentSessionOptions): UseAgentSessionReturn {
   const [messages, setMessages] = useState<TaskMessage[]>([]);
   const [status, setStatus] = useState<TaskStatus>('ready');
@@ -110,6 +115,7 @@ export function useAgentSession({
     promptTokens: number;
     completionTokens: number;
     totalTokens: number;
+    estimatedCost: number;
   } | null>(null);
 
   // Track accumulated text for streaming
@@ -137,6 +143,11 @@ export function useAgentSession({
 
   // Reset state when sessionId changes
   useEffect(() => {
+    // Don't reset if we have a pending message (new session being created)
+    if (pendingMessageRef.current) {
+      return;
+    }
+
     // Clear messages and reset state when switching sessions
     setMessages([]);
     setStatus('ready');
@@ -147,6 +158,13 @@ export function useAgentSession({
     accumulatedReasoningRef.current = {};
     lastMessageRef.current = null;
   }, [sessionId]);
+
+  // Handle invalid session (e.g., persisted session that no longer exists)
+  useEffect(() => {
+    if (sessionQuery.isError && onSessionInvalid) {
+      onSessionInvalid();
+    }
+  }, [sessionQuery.isError, onSessionInvalid]);
 
   // Log session data when loaded
   useEffect(() => {
@@ -163,24 +181,36 @@ export function useAgentSession({
         promptTokens: usage.promptTokens ?? 0,
         completionTokens: usage.completionTokens ?? 0,
         totalTokens: usage.totalTokens ?? 0,
+        estimatedCost: usage.estimatedCost ?? 0,
       });
     }
   }, [sessionQuery.data?.usage]);
 
   // Load initial messages when session loads
   useEffect(() => {
+    // Skip if we have a pending message (waiting for subscription to be ready)
+    if (pendingMessageRef.current) {
+      return;
+    }
+
     if (sessionQuery.data?.messages) {
       const loadedMessages: TaskMessage[] = sessionQuery.data.messages
         .map((msg) => {
           // Convert server parts to UI parts
           const parts: MessagePart[] = [];
+          let textContent = '';
+          let reasoningContent = '';
+
           for (const p of msg.parts) {
             switch (p.type) {
               case 'text':
                 parts.push(createTextPart(p.content));
+                textContent = p.content;
                 break;
               case 'reasoning':
-                parts.push(createReasoningPart(p.content));
+                // Collapse reasoning blocks by default when loading from DB
+                parts.push(createReasoningPart(p.content, true));
+                reasoningContent = p.content;
                 break;
               case 'tool_invocation':
                 parts.push(
@@ -201,6 +231,18 @@ export function useAgentSession({
             }
           }
 
+          // IMPORTANT: Initialize accumulators with loaded content for assistant messages
+          // This ensures that when subscription events arrive, they APPEND to existing
+          // content rather than REPLACING it (which would cause content loss on refresh)
+          if (msg.role === 'assistant') {
+            if (textContent) {
+              accumulatedTextRef.current[msg.id] = textContent;
+            }
+            if (reasoningContent) {
+              accumulatedReasoningRef.current[msg.id] = reasoningContent;
+            }
+          }
+
           return {
             id: msg.id,
             role: msg.role as 'user' | 'assistant',
@@ -215,32 +257,37 @@ export function useAgentSession({
   }, [sessionId, sessionQuery.data?.messages]);
 
   // Subscribe to session events
-  // Historical messages are loaded via sessionQuery, subscription is for new events only
+  // Historical messages are loaded via sessionQuery, subscription resumes from lastStreamId
+  // to ensure no events are missed between the HTTP query and WebSocket connection
+  // IMPORTANT: We must wait for sessionQuery to complete so lastStreamId is available
+  // before starting the subscription, otherwise it defaults to '$' (new events only)
   const subscription = trpc.messages.subscribe.useSubscription(
-    { sessionId: sessionId! },
     {
-      enabled: !!sessionId,
+      sessionId: sessionId!,
+      lastEventId: sessionQuery.data?.lastStreamId,
+    },
+    {
+      enabled: !!sessionId && sessionQuery.isSuccess,
       onData: (event) => {
         console.log('[AgentSession] Event:', event.type, event);
         switch (event.type) {
           case 'user_message_created':
-            // Replace temp message ID with real ID from server
-            setMessages((prev) =>
-              prev.map((m) => {
-                // Find the temp user message with matching content
-                if (m.role === 'user' && m.id.startsWith('temp-')) {
-                  const textPart = m.parts.find((p) => p.type === 'text');
-                  if (
-                    textPart &&
-                    'content' in textPart &&
-                    textPart.content === event.content
-                  ) {
-                    return { ...m, id: event.messageId };
-                  }
-                }
-                return m;
-              })
-            );
+            // Add user message from server event (no optimistic update)
+            setMessages((prev) => {
+              // Check if message already exists (avoid duplicates)
+              if (prev.some((m) => m.id === event.messageId)) {
+                return prev;
+              }
+              return [
+                ...prev,
+                {
+                  id: event.messageId,
+                  role: 'user' as const,
+                  parts: [createTextPart(event.content)],
+                  createdAt: new Date(),
+                },
+              ];
+            });
             break;
 
           case 'message_start':
@@ -268,7 +315,10 @@ export function useAgentSession({
                   const textPartIndex = m.parts.findIndex(
                     (p) => p.type === 'text'
                   );
-                  const newParts = [...m.parts];
+                  // Collapse any reasoning parts when text starts streaming
+                  const newParts = m.parts.map((p) =>
+                    p.type === 'reasoning' ? { ...p, isCollapsed: true } : p
+                  );
 
                   if (textPartIndex >= 0) {
                     const existingPart = newParts[textPartIndex];
@@ -279,7 +329,8 @@ export function useAgentSession({
                       } as TextPart;
                     }
                   } else {
-                    newParts.unshift(createTextPart(newContent));
+                    // Push to maintain streaming order (don't use unshift which reverses order)
+                    newParts.push(createTextPart(newContent));
                   }
 
                   return { ...m, parts: newParts };
@@ -367,7 +418,11 @@ export function useAgentSession({
               if (existing) {
                 return prev.map((m) => {
                   if (m.id !== event.messageId) return m;
-                  return { ...m, parts: [...m.parts, newPart] };
+                  // Collapse any reasoning parts when tool call starts
+                  const updatedParts = m.parts.map((p) =>
+                    p.type === 'reasoning' ? { ...p, isCollapsed: true } : p
+                  );
+                  return { ...m, parts: [...updatedParts, newPart] };
                 });
               } else {
                 // Create assistant message if it doesn't exist (missed message_start)
@@ -438,18 +493,34 @@ export function useAgentSession({
             delete accumulatedTextRef.current[event.messageId];
             delete accumulatedReasoningRef.current[event.messageId];
 
+            // Collapse reasoning parts now that streaming is complete
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== event.messageId) return m;
+                return {
+                  ...m,
+                  parts: m.parts.map((p) =>
+                    p.type === 'reasoning' ? { ...p, isCollapsed: true } : p
+                  ),
+                };
+              })
+            );
+
             // Accumulate usage from this message
             if (event.usage) {
               setAccumulatedUsage((prev) => {
                 const currentPrompt = prev?.promptTokens ?? 0;
                 const currentCompletion = prev?.completionTokens ?? 0;
+                const currentCost = prev?.estimatedCost ?? 0;
                 const newPrompt = currentPrompt + event.usage!.promptTokens;
                 const newCompletion =
                   currentCompletion + event.usage!.completionTokens;
+                const newCost = currentCost + (event.usage!.estimatedCost ?? 0);
                 return {
                   promptTokens: newPrompt,
                   completionTokens: newCompletion,
                   totalTokens: newPrompt + newCompletion,
+                  estimatedCost: newCost,
                 };
               });
             }
@@ -502,6 +573,7 @@ export function useAgentSession({
   }, [sessionId, subscription.status, subscription.error]);
 
   // Internal function to actually send the message
+  // No optimistic update - we wait for server's user_message_created event
   const doSendMessage = useCallback(
     async (content: string, targetSessionId: string) => {
       console.log('[AgentSession] Sending:', { targetSessionId, content });
@@ -517,18 +589,6 @@ export function useAgentSession({
 
       setIsLoading(true);
       try {
-        // Add user message optimistically
-        const tempId = `temp-${Date.now()}`;
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: tempId,
-            role: 'user' as const,
-            parts: [createTextPart(content)],
-            createdAt: new Date(),
-          },
-        ]);
-
         await sendMutation.mutateAsync({
           sessionId: targetSessionId,
           content,
@@ -550,20 +610,21 @@ export function useAgentSession({
     [sendMutation]
   );
 
+  // Track if subscription is ready for the current session
+  // Subscription is ready when: sessionId matches, query succeeded, and subscription is connected ('idle' status)
+  const isSubscriptionReady =
+    !!sessionId && sessionQuery.isSuccess && subscription.status === 'idle';
+
   // Effect to send pending message once subscription is ready
-  // tRPC subscription.status: 'idle' (ready), 'connecting', 'pending', 'error'
+  // This replaces the previous timer-based approach with proper state tracking
   useEffect(() => {
     const pending = pendingMessageRef.current;
-    if (
-      pending &&
-      sessionId === pending.sessionId &&
-      subscription.status === 'idle'
-    ) {
-      console.log('[AgentSession] Subscription ready, sending pending message');
+    if (pending && sessionId === pending.sessionId && isSubscriptionReady) {
+      // Subscription is connected and ready, send the pending message
       pendingMessageRef.current = null;
       doSendMessage(pending.content, pending.sessionId);
     }
-  }, [sessionId, subscription.status, doSendMessage]);
+  }, [sessionId, isSubscriptionReady, doSendMessage]);
 
   const sendMessage = useCallback(
     async (content: string, overrideSessionId?: string) => {
@@ -573,10 +634,7 @@ export function useAgentSession({
       // If using a different session (new session being created), queue the message
       // until subscription is ready for that session
       if (overrideSessionId && overrideSessionId !== sessionId) {
-        console.log(
-          '[AgentSession] Queueing message until subscription ready:',
-          overrideSessionId
-        );
+        // Queue message until subscription is ready (no optimistic update - wait for server)
         pendingMessageRef.current = {
           content,
           sessionId: overrideSessionId,
@@ -622,6 +680,9 @@ export function useAgentSession({
         total: DEFAULT_CONTEXT_WINDOW,
         percentage:
           (accumulatedUsage.totalTokens / DEFAULT_CONTEXT_WINDOW) * 100,
+        promptTokens: accumulatedUsage.promptTokens,
+        completionTokens: accumulatedUsage.completionTokens,
+        estimatedCost: accumulatedUsage.estimatedCost,
       }
     : null;
 

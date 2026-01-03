@@ -140,9 +140,11 @@ const ownsSession = middleware(async (opts) => {
   const { sessionId } = result.data;
 
   // Verify ownership using agentsFeature
+  // Pass orgId to prevent cross-tenant access when user switches organizations
   const ownsSession = await ctx.agentsFeature.sessions.verifyOwnership(
     sessionId,
-    ctx.auth.userId
+    ctx.auth.userId,
+    ctx.auth.orgId ?? undefined
   );
 
   if (!ownsSession) {

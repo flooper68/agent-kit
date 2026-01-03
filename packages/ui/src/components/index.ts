@@ -83,6 +83,18 @@ export type {
   DataListEmptyProps,
 } from './DataList';
 
+export { Pagination } from './Pagination';
+export type { PaginationProps } from './Pagination';
+
+export { CollapsibleList, useCollapsibleListItem } from './CollapsibleList';
+export type {
+  CollapsibleListProps,
+  CollapsibleListItemProps,
+  CollapsibleListTriggerProps,
+  CollapsibleListContentProps,
+  CollapsibleListEmptyProps,
+} from './CollapsibleList';
+
 // Theme
 export { ThemeToggle } from './ThemeToggle';
 export type { ThemeToggleProps } from './ThemeToggle';
