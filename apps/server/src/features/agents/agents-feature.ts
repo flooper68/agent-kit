@@ -37,6 +37,16 @@ import type {
   NewAgentSessionEvent,
 } from './types';
 
+// Standard tools available to all agents
+const STANDARD_TOOLS = [
+  'getTime',
+  'webSearch',
+  'extractContent',
+  'writeArtifact',
+  'searchArtifacts',
+  'readArtifact',
+];
+
 // Standard system prompt for all assistants
 const STANDARD_SYSTEM_PROMPT = `You are a helpful AI assistant. Be concise, accurate, and helpful.
 
@@ -44,6 +54,9 @@ When using tools:
 - Use getTime when asked about the current date or time
 - Use webSearch to find current information from the web
 - Use extractContent to get full article text from URLs
+- Use writeArtifact to save documents, notes, or any content the user asks you to save
+- Use searchArtifacts to find previously saved documents by title or summary
+- Use readArtifact to retrieve the full content of a saved document
 - Explain what you're doing when using tools
 
 Be friendly but professional.`;
@@ -59,7 +72,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'openai',
     model: 'gpt-5.2',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-11-15'),
   },
   {
@@ -69,7 +82,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'openai',
     model: 'gpt-5.2-codex',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-11-15'),
   },
   {
@@ -79,7 +92,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'anthropic',
     model: 'claude-opus-4-5-20251101',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-11-01'),
   },
   // October 2025
@@ -90,7 +103,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'gemini',
     model: 'gemini-3-pro-preview',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-10-20'),
   },
   {
@@ -100,7 +113,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'gemini',
     model: 'gemini-3-flash-preview',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-10-20'),
   },
   {
@@ -110,7 +123,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'anthropic',
     model: 'claude-haiku-4-5-20251001',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-10-01'),
   },
   // September 2025
@@ -121,7 +134,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'anthropic',
     model: 'claude-sonnet-4-5-20250929',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-09-29'),
   },
   {
@@ -131,7 +144,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'openai',
     model: 'gpt-5',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-09-15'),
   },
   {
@@ -141,7 +154,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'openai',
     model: 'gpt-5-mini',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-09-15'),
   },
   {
@@ -151,7 +164,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'openai',
     model: 'gpt-5-nano',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-09-15'),
   },
   // August 2025
@@ -162,7 +175,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'anthropic',
     model: 'claude-opus-4-1-20250805',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-08-05'),
   },
   // June 2025
@@ -173,7 +186,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'gemini',
     model: 'gemini-2.5-pro',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-06-15'),
   },
   {
@@ -183,7 +196,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'gemini',
     model: 'gemini-2.5-flash',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-06-15'),
   },
   {
@@ -193,7 +206,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'gemini',
     model: 'gemini-2.5-flash-lite',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-06-15'),
   },
   // May 2025
@@ -204,7 +217,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'anthropic',
     model: 'claude-sonnet-4-20250514',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-05-14'),
   },
   // April 2025
@@ -215,7 +228,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'openai',
     model: 'o3',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-04-16'),
   },
   {
@@ -225,7 +238,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'openai',
     model: 'o4-mini',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2025-04-16'),
   },
   // December 2024
@@ -236,7 +249,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'gemini',
     model: 'gemini-2.0-flash',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2024-12-10'),
   },
   // October 2024
@@ -247,7 +260,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'anthropic',
     model: 'claude-3-5-haiku-20241022',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2024-10-22'),
   },
   // July 2024
@@ -258,7 +271,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'openai',
     model: 'gpt-4o-mini',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2024-07-18'),
   },
   // May 2024
@@ -269,7 +282,7 @@ const DEFAULT_AGENTS: AgentDefinition[] = [
     systemPrompt: STANDARD_SYSTEM_PROMPT,
     provider: 'openai',
     model: 'gpt-4o',
-    tools: ['getTime', 'webSearch', 'extractContent'],
+    tools: STANDARD_TOOLS,
     releasedAt: new Date('2024-05-13'),
   },
 ];

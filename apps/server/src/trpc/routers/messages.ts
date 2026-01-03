@@ -24,11 +24,19 @@ export const messagesRouter = router({
         });
       }
 
+      if (!ctx.auth.orgId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Organization context required',
+        });
+      }
+
       // Enqueue job for processing - message creation happens in job handler
       await ctx.sessionManager.sendMessage(
         input.sessionId,
         agentId,
         ctx.auth.userId,
+        ctx.auth.orgId,
         input.content
       );
 

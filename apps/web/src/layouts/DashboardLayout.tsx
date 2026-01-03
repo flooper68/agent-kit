@@ -14,7 +14,7 @@ import {
   TaskHistorySidebar,
 } from '@agent-kit/ui';
 import type { Project, MenuSection } from '@agent-kit/ui';
-import { Bot, BarChart3, Users } from 'lucide-react';
+import { Bot, BarChart3, Users, FileText } from 'lucide-react';
 import { checkIsAdmin } from '../lib/auth';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useSession } from '../contexts/SessionContext';
@@ -53,8 +53,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     (sessionId: string) => {
       setSessionId(sessionId);
       setIsHistoryOpen(false);
+      navigate('/app');
     },
-    [setSessionId]
+    [setSessionId, navigate]
   );
 
   const handleSessionDelete = useCallback(
@@ -70,7 +71,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleNewSession = useCallback(() => {
     clearSession();
-  }, [clearSession]);
+    navigate('/app');
+  }, [clearSession, navigate]);
 
   const projects: Project[] = useMemo(() => {
     if (!userMemberships?.data) return [];
@@ -117,36 +119,45 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             email: user?.primaryEmailAddress?.emailAddress,
             avatarSrc: user?.imageUrl,
           },
-          sections: (isAdmin
-            ? [
+          sections: [
+            {
+              id: 'navigation',
+              items: [
                 {
-                  id: 'navigation',
-                  items: [
-                    {
-                      id: 'agents',
-                      label: 'Agents',
-                      icon: <Bot className="h-4 w-4" />,
-                      onClick: () => navigate('/app'),
-                      active: currentPath === '/app',
-                    },
-                    {
-                      id: 'analytics',
-                      label: 'Analytics',
-                      icon: <BarChart3 className="h-4 w-4" />,
-                      onClick: () => navigate('/app/analytics'),
-                      active: currentPath === '/app/analytics',
-                    },
-                    {
-                      id: 'users',
-                      label: 'Users',
-                      icon: <Users className="h-4 w-4" />,
-                      onClick: () => navigate('/app/users'),
-                      active: currentPath === '/app/users',
-                    },
-                  ],
+                  id: 'agents',
+                  label: 'Agents',
+                  icon: <Bot className="h-4 w-4" />,
+                  onClick: () => navigate('/app'),
+                  active: currentPath === '/app',
                 },
-              ]
-            : []) as MenuSection[],
+                {
+                  id: 'artifacts',
+                  label: 'Artifacts',
+                  icon: <FileText className="h-4 w-4" />,
+                  onClick: () => navigate('/app/artifacts'),
+                  active: currentPath === '/app/artifacts',
+                },
+                ...(isAdmin
+                  ? [
+                      {
+                        id: 'analytics',
+                        label: 'Analytics',
+                        icon: <BarChart3 className="h-4 w-4" />,
+                        onClick: () => navigate('/app/analytics'),
+                        active: currentPath === '/app/analytics',
+                      },
+                      {
+                        id: 'users',
+                        label: 'Users',
+                        icon: <Users className="h-4 w-4" />,
+                        onClick: () => navigate('/app/users'),
+                        active: currentPath === '/app/users',
+                      },
+                    ]
+                  : []),
+              ],
+            },
+          ] as MenuSection[],
           onSignOut: () => signOut(),
         }}
         headerSlots={{

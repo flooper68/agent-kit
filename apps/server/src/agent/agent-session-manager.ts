@@ -2,6 +2,7 @@ import type Redis from 'ioredis';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import type { AgentsFeature } from '../features/agents';
+import type { ArtifactsFeature } from '../features/artifacts';
 import type {
   MessageWithParts,
   AgentSessionMessageStatus,
@@ -113,6 +114,7 @@ export const AgentJobSchema = z.object({
   sessionId: z.string(),
   agentId: z.string(),
   userId: z.string(),
+  orgId: z.string(),
   content: z.string(),
   createdAt: z.string(),
 });
@@ -139,10 +141,12 @@ export class AgentSessionManager {
   private workerRedis: Redis;
   private createSubscriptionConnection: RedisConnectionFactory;
   private agentsFeature: AgentsFeature;
+  private _artifactsFeature: ArtifactsFeature;
 
   constructor(
     redis: Redis,
     agentsFeature: AgentsFeature,
+    artifactsFeature: ArtifactsFeature,
     workerRedis?: Redis,
     createSubscriptionConnection?: RedisConnectionFactory
   ) {
@@ -154,6 +158,7 @@ export class AgentSessionManager {
     this.createSubscriptionConnection =
       createSubscriptionConnection ?? (() => redis);
     this.agentsFeature = agentsFeature;
+    this._artifactsFeature = artifactsFeature;
   }
 
   // ============= Agent Access =============
@@ -165,6 +170,13 @@ export class AgentSessionManager {
     return this.agentsFeature.agents;
   }
 
+  /**
+   * Get artifacts feature for tool context
+   */
+  get artifactsFeature() {
+    return this._artifactsFeature;
+  }
+
   // ============= Message Operations =============
 
   /**
@@ -174,6 +186,7 @@ export class AgentSessionManager {
     sessionId: string,
     agentId: string,
     userId: string,
+    orgId: string,
     content: string
   ): Promise<void> {
     // Just enqueue job - message creation happens in job handler
@@ -181,6 +194,7 @@ export class AgentSessionManager {
       sessionId,
       agentId,
       userId,
+      orgId,
       content,
     });
   }

@@ -18,6 +18,7 @@ import { OrgRole, type AuthContext } from './types/auth';
 import { AgentSessionManager, AgentWorker } from './agent';
 import { AgentsFeature } from './features/agents';
 import { AnalyticsFeature } from './features/analytics';
+import { ArtifactsFeature } from './features/artifacts';
 
 const clerk = createClerkClient({
   secretKey: env.CLERK_SECRET_KEY,
@@ -67,6 +68,9 @@ for (const agent of agentsFeature.agents.list()) {
 // Create analytics feature
 const analyticsFeature = new AnalyticsFeature(db, agentNameMap);
 
+// Create artifacts feature
+const artifactsFeature = new ArtifactsFeature(db, agentNameMap);
+
 // Will be initialized after Redis is ready
 let sessionManager: AgentSessionManager;
 
@@ -82,6 +86,7 @@ fastify.addHook('onReady', async () => {
   sessionManager = new AgentSessionManager(
     redis,
     agentsFeature,
+    artifactsFeature,
     workerRedis,
     createSubscriptionConnection
   );
@@ -110,6 +115,7 @@ fastify.register(fastifyTRPCPlugin, {
         clerk,
         agentsFeature,
         analyticsFeature,
+        artifactsFeature,
         sessionManager,
       })(opts);
     },
@@ -197,6 +203,7 @@ const start = async () => {
           clerk,
           agentsFeature,
           analyticsFeature,
+          artifactsFeature,
           sessionManager,
         };
       },

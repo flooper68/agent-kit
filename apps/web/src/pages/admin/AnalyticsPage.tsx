@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Heading, Text } from '@agent-kit/ui';
-import { MessageSquare, Users, DollarSign, Coins } from 'lucide-react';
+import {
+  MessageSquare,
+  Users,
+  DollarSign,
+  Coins,
+  FileText,
+} from 'lucide-react';
 import { trpc } from '../../lib/trpc';
 import {
   TimeRangeSelector,
@@ -15,6 +21,8 @@ import {
   SessionDetailModal,
   ChartErrorBoundary,
 } from '../../components/analytics';
+import { ArtifactsCreationChart } from '../../components/analytics/ArtifactsCreationChart';
+import { ArtifactsByAgentChart } from '../../components/analytics/ArtifactsByAgentChart';
 import type { TimeRange } from '../../components/analytics';
 
 function formatNumber(value: number): string {
@@ -102,6 +110,19 @@ export function AnalyticsPage() {
     cursor: currentCursor,
   });
 
+  // Fetch artifacts analytics
+  const artifactsStatsQuery = trpc.artifacts.getStats.useQuery({
+    timeRange,
+  });
+
+  const artifactsOverTimeQuery = trpc.artifacts.getOverTime.useQuery({
+    timeRange,
+  });
+
+  const artifactsByAgentQuery = trpc.artifacts.getByAgent.useQuery({
+    timeRange,
+  });
+
   const handleNextPage = () => {
     if (recentActivityQuery.data?.nextCursor) {
       setCursors([...cursors, recentActivityQuery.data.nextCursor]);
@@ -141,6 +162,14 @@ export function AnalyticsPage() {
       value: isLoadingOverview ? '-' : formatNumber(overview?.totalTokens ?? 0),
       trend: overview?.trends.tokens,
       icon: Coins,
+    },
+    {
+      label: 'Total Artifacts',
+      value: artifactsStatsQuery.isLoading
+        ? '-'
+        : formatNumber(artifactsStatsQuery.data?.totalCount ?? 0),
+      trend: undefined,
+      icon: FileText,
     },
   ];
 
@@ -218,6 +247,22 @@ export function AnalyticsPage() {
             <WebSearchCallsChart
               data={webSearchCallsQuery.data ?? []}
               isLoading={webSearchCallsQuery.isLoading}
+            />
+          </ChartErrorBoundary>
+        </div>
+
+        {/* Artifacts Analytics */}
+        <div className="grid gap-6 lg:grid-cols-2 mb-8">
+          <ChartErrorBoundary chartName="Artifacts Created">
+            <ArtifactsCreationChart
+              data={artifactsOverTimeQuery.data ?? []}
+              isLoading={artifactsOverTimeQuery.isLoading}
+            />
+          </ChartErrorBoundary>
+          <ChartErrorBoundary chartName="Artifacts by Agent">
+            <ArtifactsByAgentChart
+              data={artifactsByAgentQuery.data ?? []}
+              isLoading={artifactsByAgentQuery.isLoading}
             />
           </ChartErrorBoundary>
         </div>

@@ -36,6 +36,13 @@
       "when": 1736035200000,
       "tag": "0004_add_org_id_to_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1767479504592,
+      "tag": "0005_amusing_loki",
+      "breakpoints": true
     }
   ]
 }
