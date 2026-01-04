@@ -29,6 +29,7 @@ export const MermaidDiagram = memo(
     useEffect(() => {
       // Skip rendering if chart is empty
       if (!chart) {
+        console.error('Mermaid error: Empty diagram');
         setError('Empty diagram');
         return;
       }
@@ -45,7 +46,7 @@ export const MermaidDiagram = memo(
             startOnLoad: false,
             theme,
             fontFamily: 'inherit',
-            securityLevel: 'strict', // 'strict' can cause text rendering issues
+            securityLevel: 'strict',
           });
           currentTheme = theme;
         }
