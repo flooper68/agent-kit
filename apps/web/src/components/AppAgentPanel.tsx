@@ -10,6 +10,7 @@ import type {
 import { trpc, subscribeToConnectionState } from '../lib/trpc';
 import { useAgentSession } from '../hooks/useAgentSession';
 import { useSession } from '../contexts/SessionContext';
+import { SessionDetailModal } from './analytics/SessionDetailModal';
 
 const STORAGE_KEY_AGENT = 'agent-kit:lastAgentId';
 
@@ -56,6 +57,9 @@ export function AppAgentPanel({
     useState<ConnectionStatus>('reconnecting');
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
+  // State for session inspect modal
+  const [isInspectModalOpen, setIsInspectModalOpen] = useState(false);
+
   useEffect(() => {
     let mounted = true;
     const unsubscribe = subscribeToConnectionState((state) => {
@@ -84,7 +88,6 @@ export function AppAgentPanel({
     setMessageListRef,
     messages,
     status,
-    thinkingStatus,
     sendMessage,
     interrupt,
     error,
@@ -92,6 +95,7 @@ export function AppAgentPanel({
     dismissError,
     contextUsage,
     handleScrollPositionChange,
+    sessionAgentId,
   } = useAgentSession({
     sessionId,
     onSessionInvalid: handleSessionInvalid,
@@ -120,6 +124,16 @@ export function AppAgentPanel({
       }
     }
   }, [sessionId, selectedAgent, agents]);
+
+  // Restore agent from session data (e.g., after page refresh)
+  useEffect(() => {
+    if (sessionAgentId && agents.length > 0) {
+      const sessionAgent = agents.find((a) => a.id === sessionAgentId);
+      if (sessionAgent && sessionAgent.id !== selectedAgent?.id) {
+        setSelectedAgent(sessionAgent);
+      }
+    }
+  }, [sessionAgentId, agents, selectedAgent?.id]);
 
   // Create avatars config from logged-in user
   const avatars = useMemo(
@@ -217,6 +231,14 @@ export function AppAgentPanel({
     [handleSend]
   );
 
+  const handleInspect = useCallback(() => {
+    setIsInspectModalOpen(true);
+  }, []);
+
+  const handleInspectClose = useCallback(() => {
+    setIsInspectModalOpen(false);
+  }, []);
+
   return (
     <>
       <AgentPanel
@@ -224,7 +246,6 @@ export function AppAgentPanel({
         ref={setMessageListRef}
         messages={messages}
         status={status}
-        thinkingStatus={thinkingStatus}
         avatars={avatars}
         agents={agents}
         selectedAgent={selectedAgent || undefined}
@@ -244,10 +265,15 @@ export function AppAgentPanel({
         onRetry={handleRetry}
         onErrorDismiss={handleErrorDismiss}
         onScrollPositionChange={handleScrollPositionChange}
+        onInspect={sessionId ? handleInspect : undefined}
       />
       <ConnectionSnackbar
         status={connectionStatus}
         reconnectAttempt={reconnectAttempts}
+      />
+      <SessionDetailModal
+        sessionId={isInspectModalOpen ? sessionId : null}
+        onClose={handleInspectClose}
       />
     </>
   );

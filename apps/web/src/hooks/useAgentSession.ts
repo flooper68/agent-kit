@@ -31,6 +31,7 @@ interface UseAgentSessionReturn {
   dismissError: () => void;
   contextUsage: ContextUsage | null;
   handleScrollPositionChange: (isAtBottom: boolean) => void;
+  sessionAgentId: string | null;
 }
 
 // Map server error codes to TaskError types
@@ -130,6 +131,8 @@ export function useAgentSession({
   const lastMessageRef = useRef<string | null>(null);
   // Track when a new text part is needed (after tool calls)
   const needsNewTextPartRef = useRef<Record<string, boolean>>({});
+  // Track when a new reasoning part is needed (after tool calls)
+  const needsNewReasoningPartRef = useRef<Record<string, boolean>>({});
   // Track pending message to send once subscription is ready
   const pendingMessageRef = useRef<{
     content: string;
@@ -165,6 +168,7 @@ export function useAgentSession({
     accumulatedTextRef.current = {};
     accumulatedReasoningRef.current = {};
     needsNewTextPartRef.current = {};
+    needsNewReasoningPartRef.current = {};
     lastMessageRef.current = null;
     hasInitialScrolledRef.current = false;
   }, [sessionId]);
@@ -345,6 +349,7 @@ export function useAgentSession({
             accumulatedTextRef.current[event.messageId] = '';
             accumulatedReasoningRef.current[event.messageId] = '';
             needsNewTextPartRef.current[event.messageId] = false;
+            needsNewReasoningPartRef.current[event.messageId] = false;
             break;
 
           case 'text_delta': {
@@ -417,6 +422,15 @@ export function useAgentSession({
           }
 
           case 'reasoning_delta': {
+            const needsNewPart =
+              needsNewReasoningPartRef.current[event.messageId] ?? false;
+
+            if (needsNewPart) {
+              // Reset flag and clear accumulator for new reasoning segment
+              needsNewReasoningPartRef.current[event.messageId] = false;
+              accumulatedReasoningRef.current[event.messageId] = '';
+            }
+
             accumulatedReasoningRef.current[event.messageId] =
               (accumulatedReasoningRef.current[event.messageId] || '') +
               event.delta;
@@ -436,22 +450,33 @@ export function useAgentSession({
                 return prev.map((m) => {
                   if (m.id !== event.messageId) return m;
 
-                  // Update or add reasoning part
-                  const reasoningPartIndex = m.parts.findIndex(
-                    (p) => p.type === 'reasoning'
-                  );
                   const newParts = [...m.parts];
 
-                  if (reasoningPartIndex >= 0) {
-                    const existingPart = newParts[reasoningPartIndex];
-                    if (existingPart) {
-                      newParts[reasoningPartIndex] = {
-                        ...existingPart,
-                        content: currentReasoning,
-                      } as ReasoningPart;
-                    }
-                  } else {
+                  if (needsNewPart) {
+                    // Create new reasoning part at the end (after tool results)
                     newParts.push(createReasoningPart(currentReasoning));
+                  } else {
+                    // Find the LAST reasoning part to update (iterate backwards)
+                    let reasoningPartIndex = -1;
+                    for (let i = newParts.length - 1; i >= 0; i--) {
+                      if (newParts[i]?.type === 'reasoning') {
+                        reasoningPartIndex = i;
+                        break;
+                      }
+                    }
+
+                    if (reasoningPartIndex >= 0) {
+                      const existingPart = newParts[reasoningPartIndex];
+                      if (existingPart) {
+                        newParts[reasoningPartIndex] = {
+                          ...existingPart,
+                          content: currentReasoning,
+                        } as ReasoningPart;
+                      }
+                    } else {
+                      // No reasoning part yet, create one
+                      newParts.push(createReasoningPart(currentReasoning));
+                    }
                   }
 
                   return { ...m, parts: newParts };
@@ -473,8 +498,9 @@ export function useAgentSession({
           }
 
           case 'tool_call_start':
-            // Mark that next text_delta needs a new text part
+            // Mark that next text_delta/reasoning_delta needs a new part
             needsNewTextPartRef.current[event.messageId] = true;
+            needsNewReasoningPartRef.current[event.messageId] = true;
             setMessages((prev) => {
               const existing = prev.find((m) => m.id === event.messageId);
               const newPart = createToolInvocationPart(
@@ -559,6 +585,7 @@ export function useAgentSession({
             delete accumulatedTextRef.current[event.messageId];
             delete accumulatedReasoningRef.current[event.messageId];
             delete needsNewTextPartRef.current[event.messageId];
+            delete needsNewReasoningPartRef.current[event.messageId];
 
             // Keep reasoning parts expanded after streaming is complete
             // (no auto-collapse)
@@ -840,5 +867,6 @@ export function useAgentSession({
     contextUsage,
     setMessageListRef,
     handleScrollPositionChange,
+    sessionAgentId: sessionQuery.data?.agentId ?? null,
   };
 }

@@ -1,4 +1,5 @@
 import { forwardRef, memo, useRef, useCallback, useMemo } from 'react';
+import { ScanSearch } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import type {
   TaskMessage,
@@ -17,12 +18,12 @@ import { EmptyState } from '../States/EmptyState';
 import { LoadingState } from '../States/LoadingState';
 import { ErrorBanner } from '../Banners/ErrorBanner';
 import { TokenLimitBanner } from '../Banners/TokenLimitBanner';
-import { ThinkingIndicator } from '../AIFeatures/ThinkingIndicator';
 import { InterruptButton } from '../AIFeatures/InterruptButton';
 import { ReasoningDisplay } from '../AIFeatures/ReasoningDisplay';
 import { ToolBadge } from '../ToolDisplay/ToolBadge';
 import { MarkdownRenderer } from '../CodeDisplay/MarkdownRenderer';
 import { CopyButton, RegenerateButton } from '../Controls';
+import { IconButton } from '../../IconButton';
 import { AttachmentButton } from '../Controls/AttachmentButton';
 import { ContextIndicator } from '../Controls/ContextIndicator';
 import {
@@ -79,7 +80,6 @@ export const AgentPanel = memo(
         suggestions = [],
         emptyStateConfig,
         avatars,
-        thinkingStatus,
         enableAttachments = false,
         enableRegenerate = false,
         contextUsage,
@@ -101,6 +101,7 @@ export const AgentPanel = memo(
         onRecentChatClick,
         onRecentChatDelete,
         onScrollPositionChange,
+        onInspect,
       },
       ref
     ) => {
@@ -223,9 +224,12 @@ export const AgentPanel = memo(
 
       // Render a single message (memoized)
       const renderMessage = useCallback(
-        (message: TaskMessage) => {
+        (message: TaskMessage, index: number) => {
           const avatar = getAvatar(message.role as 'user' | 'assistant');
           const isUser = message.role === 'user';
+          const isLastMessage = index === messages.length - 1;
+          // Hide actions for the last assistant message while streaming
+          const hideActions = !isUser && isLastMessage && isSubmitting;
 
           const tooltipName = isUser
             ? (avatars?.user?.name ?? 'You')
@@ -241,30 +245,32 @@ export const AgentPanel = memo(
                 />
               )}
               <Message.Bubble>{renderMessageContent(message)}</Message.Bubble>
-              <Message.Actions>
-                {isUser && (
-                  <span
-                    className="text-sm text-muted-foreground cursor-default opacity-0 group-hover:opacity-100 transition-opacity"
-                    title={formatFullTimestamp(message.createdAt)}
-                  >
-                    {formatTime(message.createdAt)}
-                  </span>
-                )}
-                <CopyButton content={getTextContent(message)} />
-                {!isUser && enableRegenerate && onRegenerate && (
-                  <RegenerateButton
-                    onRegenerate={() => onRegenerate(message.id)}
-                  />
-                )}
-                {!isUser && (
-                  <span
-                    className="text-sm text-muted-foreground cursor-default opacity-0 group-hover:opacity-100 transition-opacity"
-                    title={formatFullTimestamp(message.createdAt)}
-                  >
-                    {formatTime(message.createdAt)}
-                  </span>
-                )}
-              </Message.Actions>
+              {!hideActions && (
+                <Message.Actions>
+                  {isUser && (
+                    <span
+                      className="text-sm text-muted-foreground cursor-default opacity-0 group-hover:opacity-100 transition-opacity"
+                      title={formatFullTimestamp(message.createdAt)}
+                    >
+                      {formatTime(message.createdAt)}
+                    </span>
+                  )}
+                  <CopyButton content={getTextContent(message)} />
+                  {!isUser && enableRegenerate && onRegenerate && (
+                    <RegenerateButton
+                      onRegenerate={() => onRegenerate(message.id)}
+                    />
+                  )}
+                  {!isUser && (
+                    <span
+                      className="text-sm text-muted-foreground cursor-default opacity-0 group-hover:opacity-100 transition-opacity"
+                      title={formatFullTimestamp(message.createdAt)}
+                    >
+                      {formatTime(message.createdAt)}
+                    </span>
+                  )}
+                </Message.Actions>
+              )}
             </Message>
           );
         },
@@ -274,6 +280,8 @@ export const AgentPanel = memo(
           enableRegenerate,
           onRegenerate,
           avatars,
+          isSubmitting,
+          messages.length,
         ]
       );
 
@@ -296,7 +304,17 @@ export const AgentPanel = memo(
             )}
             {/* Show selector when not locked, badge when locked, skeleton when loading */}
             {isAgentSelectorDisabled ? (
-              selectedAgent && <AgentInfoBadge agent={selectedAgent} />
+              <>
+                {selectedAgent && <AgentInfoBadge agent={selectedAgent} />}
+                {onInspect && (
+                  <IconButton
+                    icon={<ScanSearch className="h-4 w-4" />}
+                    label="Inspect session"
+                    size="sm"
+                    onClick={onInspect}
+                  />
+                )}
+              </>
             ) : isAgentsLoading ? (
               <AgentSelectorSkeleton />
             ) : (
@@ -345,18 +363,6 @@ export const AgentPanel = memo(
               onScrollPositionChange={onScrollPositionChange}
             >
               {messages.map(renderMessage)}
-
-              {/* Thinking indicator when submitted */}
-              {status === 'submitted' && thinkingStatus?.isThinking && (
-                <Message role="assistant">
-                  <Message.Bubble>
-                    <ThinkingIndicator
-                      status={thinkingStatus.status}
-                      detail={thinkingStatus.detail}
-                    />
-                  </Message.Bubble>
-                </Message>
-              )}
             </MessageList>
           )}
 

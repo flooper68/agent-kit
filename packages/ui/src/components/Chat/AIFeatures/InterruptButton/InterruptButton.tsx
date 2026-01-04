@@ -15,7 +15,7 @@ export const InterruptButton = forwardRef<
       ref={ref}
       variant="outline"
       size="sm"
-      className={cn('gap-2', className)}
+      className={cn('gap-2 animate-pulse', className)}
       {...props}
     >
       <svg

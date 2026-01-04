@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { agentSessions, type AgentSessionUsage } from '../../../db/schema';
+import { calculateCost } from '../pricing';
 
 export interface UpdateSessionUsageInput {
   sessionId: string;
@@ -50,7 +51,9 @@ export class UpdateSessionUsageCommand {
       completionTokens:
         (currentUsage?.completionTokens || 0) + completionTokens,
       totalTokens: (currentUsage?.totalTokens || 0) + totalTokens,
-      estimatedCost: 0, // TODO: Calculate based on model pricing
+      estimatedCost:
+        (currentUsage?.estimatedCost || 0) +
+        calculateCost(model, promptTokens, completionTokens),
       totalLatency: (currentUsage?.totalLatency || 0) + latency,
       averageLatency:
         currentMessageCount > 0
