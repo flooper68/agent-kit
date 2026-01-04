@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { trpc } from '../lib/trpc';
+import { trpc, getConnectionState } from '../lib/trpc';
 import type {
   TaskMessage,
   TaskStatus,
@@ -606,12 +606,28 @@ export function useAgentSession({
       },
       onError: (error) => {
         console.error('[AgentSession] Subscription error:', error);
+        const errorMessage =
+          error instanceof Error ? error.message : 'Connection to server lost';
+
+        // Don't show error for temporary WebSocket disconnects
+        // The WebSocket client will auto-reconnect with retryDelayMs
+        // But DO show error if reconnection has been failing for too long
+        if (errorMessage.includes('WebSocket closed')) {
+          const wsState = getConnectionState();
+          // Show error after 5+ failed reconnection attempts
+          if (wsState.reconnectAttempts < 5) {
+            console.log(
+              '[AgentSession] WebSocket closed, waiting for reconnection...'
+            );
+            setThinkingStatus({ isThinking: false });
+            return;
+          }
+          // Fall through to show error after too many attempts
+        }
+
         setError({
           type: 'network',
-          message:
-            error instanceof Error
-              ? error.message
-              : 'Connection to server lost',
+          message: errorMessage,
           retryable: true,
         });
         setStatus('error');
@@ -628,6 +644,20 @@ export function useAgentSession({
       error: subscription.error,
     });
   }, [sessionId, subscription.status, subscription.error]);
+
+  // Recover from network errors when WebSocket reconnects
+  // When subscription becomes idle again after an error, clear the error state
+  useEffect(() => {
+    if (
+      subscription.status === 'idle' &&
+      sessionQuery.isSuccess &&
+      error?.type === 'network'
+    ) {
+      console.log('[AgentSession] Recovered from network error');
+      setError(null);
+      setStatus('ready');
+    }
+  }, [subscription.status, sessionQuery.isSuccess, error]);
 
   // Internal function to actually send the message
   // Uses optimistic update - add user message immediately, replace when server confirms

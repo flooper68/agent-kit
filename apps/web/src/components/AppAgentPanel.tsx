@@ -1,12 +1,25 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/clerk-react';
-import { AgentPanel } from '@agent-kit/ui';
-import type { AgentType, TaskHistoryItem, SuggestionChip } from '@agent-kit/ui';
-import { trpc } from '../lib/trpc';
+import { AgentPanel, ConnectionSnackbar } from '@agent-kit/ui';
+import type {
+  AgentType,
+  TaskHistoryItem,
+  SuggestionChip,
+  ConnectionStatus,
+} from '@agent-kit/ui';
+import { trpc, subscribeToConnectionState } from '../lib/trpc';
 import { useAgentSession } from '../hooks/useAgentSession';
 import { useSession } from '../contexts/SessionContext';
 
 const STORAGE_KEY_AGENT = 'agent-kit:lastAgentId';
+
+// Map WebSocket connection status to UI ConnectionStatus
+const WS_TO_CONNECTION_STATUS_MAP: Record<string, ConnectionStatus> = {
+  connecting: 'reconnecting',
+  connected: 'connected',
+  disconnected: 'disconnected',
+  reconnecting: 'reconnecting',
+};
 
 interface AppAgentPanelProps {
   /** Available agents passed from parent */
@@ -37,6 +50,26 @@ export function AppAgentPanel({
   const { sessionId, setSessionId, clearSession } = useSession();
   const { user } = useUser();
   const [selectedAgent, setSelectedAgent] = useState<AgentType | null>(null);
+
+  // Track WebSocket connection state for debugging snackbar
+  const [connectionStatus, setConnectionStatus] =
+    useState<ConnectionStatus>('reconnecting');
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    const unsubscribe = subscribeToConnectionState((state) => {
+      if (!mounted) return;
+      setConnectionStatus(
+        WS_TO_CONNECTION_STATUS_MAP[state.status] ?? 'disconnected'
+      );
+      setReconnectAttempts(state.reconnectAttempts);
+    });
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, []);
 
   // Create session mutation
   const createSessionMutation = trpc.sessions.create.useMutation();
@@ -185,31 +218,37 @@ export function AppAgentPanel({
   );
 
   return (
-    <AgentPanel
-      className={className}
-      ref={setMessageListRef}
-      messages={messages}
-      status={status}
-      thinkingStatus={thinkingStatus}
-      avatars={avatars}
-      agents={agents}
-      selectedAgent={selectedAgent || undefined}
-      isAgentSelectorDisabled={!!sessionId}
-      contextUsage={contextUsage ?? undefined}
-      emptyStateConfig={emptyStateConfig}
-      suggestions={suggestions}
-      onSuggestionClick={handleSuggestionClick}
-      recentChats={recentChats}
-      error={error ?? undefined}
-      onSend={handleSend}
-      onInterrupt={handleInterrupt}
-      onAgentSelect={handleAgentSelect}
-      onRecentChatClick={onRecentChatClick}
-      onRecentChatDelete={onRecentChatDelete}
-      onCreateNewTask={onNewChat}
-      onRetry={handleRetry}
-      onErrorDismiss={handleErrorDismiss}
-      onScrollPositionChange={handleScrollPositionChange}
-    />
+    <>
+      <AgentPanel
+        className={className}
+        ref={setMessageListRef}
+        messages={messages}
+        status={status}
+        thinkingStatus={thinkingStatus}
+        avatars={avatars}
+        agents={agents}
+        selectedAgent={selectedAgent || undefined}
+        isAgentSelectorDisabled={!!sessionId}
+        contextUsage={contextUsage ?? undefined}
+        emptyStateConfig={emptyStateConfig}
+        suggestions={suggestions}
+        onSuggestionClick={handleSuggestionClick}
+        recentChats={recentChats}
+        error={error ?? undefined}
+        onSend={handleSend}
+        onInterrupt={handleInterrupt}
+        onAgentSelect={handleAgentSelect}
+        onRecentChatClick={onRecentChatClick}
+        onRecentChatDelete={onRecentChatDelete}
+        onCreateNewTask={onNewChat}
+        onRetry={handleRetry}
+        onErrorDismiss={handleErrorDismiss}
+        onScrollPositionChange={handleScrollPositionChange}
+      />
+      <ConnectionSnackbar
+        status={connectionStatus}
+        reconnectAttempt={reconnectAttempts}
+      />
+    </>
   );
 }
