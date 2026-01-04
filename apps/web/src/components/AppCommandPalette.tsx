@@ -54,7 +54,6 @@ type PaletteMode = 'commands' | 'chats' | 'projects';
 interface AppCommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  panelCollapsed?: boolean;
   onTogglePanel?: () => void;
   onSetPanelWidth?: (width: number) => void;
 }
@@ -62,7 +61,6 @@ interface AppCommandPaletteProps {
 export function AppCommandPalette({
   open,
   onOpenChange,
-  panelCollapsed,
   onTogglePanel,
   onSetPanelWidth,
 }: AppCommandPaletteProps) {
@@ -77,7 +75,10 @@ export function AppCommandPalette({
 
   // Fetch projects
   const projectsQuery = trpc.projects.list.useQuery({ limit: 50 });
-  const projects = projectsQuery.data?.items ?? [];
+  const projects = useMemo(
+    () => projectsQuery.data?.items ?? [],
+    [projectsQuery.data?.items]
+  );
 
   // Check if we should navigate when opening a chat
   const shouldNavigateOnChatOpen = useMemo(() => {
@@ -317,8 +318,8 @@ export function AppCommandPalette({
         ? [
             {
               id: 'toggle-panel',
-              label: panelCollapsed ? 'Show chat panel' : 'Hide chat panel',
-              description: 'Toggle the assistant panel visibility',
+              label: 'Toggle chat panel',
+              description: 'Show or hide the assistant panel',
               icon: <PanelLeft className="h-4 w-4" />,
               keywords: ['panel', 'toggle', 'show', 'hide', 'sidebar', 'chat'],
               onSelect: () => {
@@ -366,7 +367,6 @@ export function AppCommandPalette({
       sessions.length,
       projects.length,
       shouldNavigateOnChatOpen,
-      panelCollapsed,
       onTogglePanel,
       onSetPanelWidth,
     ]

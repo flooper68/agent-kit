@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   useUser,
   useClerk,
@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { checkIsAdmin } from '../lib/auth';
 import { useChatHistory } from '../hooks/useChatHistory';
+import { useGlobalKeyboardShortcut } from '../hooks/useGlobalKeyboardShortcut';
 import { useSession } from '../contexts/SessionContext';
 import { trpc } from '../lib/trpc';
 import { AppCommandPalette } from '../components/AppCommandPalette';
@@ -53,16 +54,10 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
   const currentPath = location.pathname;
 
   // Register Cmd+P keyboard shortcut for command palette
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'p' && e.metaKey) {
-        e.preventDefault();
-        setIsCommandPaletteOpen(true);
-      }
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+  const openCommandPalette = useCallback(() => {
+    setIsCommandPaletteOpen(true);
   }, []);
+  useGlobalKeyboardShortcut('p', openCommandPalette, { metaKey: true });
 
   // Fetch chat history for the sidebar
   const { sessions, refetch: refetchSessions } = useChatHistory({ limit: 50 });

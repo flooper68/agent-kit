@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   useUser,
   useClerk,
@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { checkIsAdmin } from '../lib/auth';
 import { useChatHistory } from '../hooks/useChatHistory';
+import { useGlobalKeyboardShortcut } from '../hooks/useGlobalKeyboardShortcut';
 import { useSession } from '../contexts/SessionContext';
 import {
   HeaderActionsProvider,
@@ -77,7 +78,6 @@ function DashboardLayoutInner({
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [panelWidth, setPanelWidth] = useState(getDefaultPanelWidth);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
   const appLayoutRef = useRef<AppLayoutRef>(null);
   const isAdmin = checkIsAdmin(membership?.role);
   const currentPath = location.pathname;
@@ -91,26 +91,22 @@ function DashboardLayoutInner({
   // Handle panel toggle from command palette
   const handleTogglePanel = useCallback(() => {
     appLayoutRef.current?.togglePanel();
-    setIsPanelCollapsed((prev) => !prev);
   }, []);
 
   // Handle panel width change from command palette
-  const handleSetPanelWidth = useCallback((width: number) => {
-    appLayoutRef.current?.setPanelWidth(width);
-    handlePanelWidthChange(width);
-  }, [handlePanelWidthChange]);
+  const handleSetPanelWidth = useCallback(
+    (width: number) => {
+      appLayoutRef.current?.setPanelWidth(width);
+      handlePanelWidthChange(width);
+    },
+    [handlePanelWidthChange]
+  );
 
   // Register Cmd+P keyboard shortcut for command palette
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'p' && e.metaKey) {
-        e.preventDefault();
-        setIsCommandPaletteOpen(true);
-      }
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+  const openCommandPalette = useCallback(() => {
+    setIsCommandPaletteOpen(true);
   }, []);
+  useGlobalKeyboardShortcut('p', openCommandPalette, { metaKey: true });
 
   // Fetch chat history for the sidebar
   const { sessions, refetch: refetchSessions } = useChatHistory({ limit: 50 });
@@ -410,7 +406,6 @@ function DashboardLayoutInner({
       <AppCommandPalette
         open={isCommandPaletteOpen}
         onOpenChange={setIsCommandPaletteOpen}
-        panelCollapsed={isPanelCollapsed}
         onTogglePanel={showAgentPanel ? handleTogglePanel : undefined}
         onSetPanelWidth={showAgentPanel ? handleSetPanelWidth : undefined}
       />
