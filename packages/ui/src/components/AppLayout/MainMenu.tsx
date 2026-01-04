@@ -135,7 +135,7 @@ export const MainMenu = ({ config }: MainMenuProps) => {
           className={cn(
             'absolute left-0 top-full mt-1 z-50',
             'w-56 rounded-md border border-border bg-background shadow-lg',
-            'animate-fade-in'
+            'animate-fade-in-fast'
           )}
           role="menu"
         >

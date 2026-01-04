@@ -129,7 +129,7 @@ export const ProjectSwitcher = ({
           className={cn(
             'absolute left-0 top-full z-50 mt-1',
             'w-56 rounded-md border border-border bg-background shadow-lg',
-            'animate-fade-in'
+            'animate-fade-in-fast'
           )}
           role="listbox"
           aria-label="Select project"

@@ -350,6 +350,24 @@ export function useAgentSession({
             accumulatedReasoningRef.current[event.messageId] = '';
             needsNewTextPartRef.current[event.messageId] = false;
             needsNewReasoningPartRef.current[event.messageId] = false;
+            // Replace placeholder with real message ID
+            setMessages((prev) => {
+              const placeholderIndex = prev.findIndex((m) =>
+                m.id.startsWith('placeholder-')
+              );
+              if (placeholderIndex !== -1) {
+                const updated = [...prev];
+                const placeholder = updated[placeholderIndex];
+                if (placeholder) {
+                  updated[placeholderIndex] = {
+                    ...placeholder,
+                    id: event.messageId,
+                  };
+                }
+                return updated;
+              }
+              return prev;
+            });
             break;
 
           case 'text_delta': {
@@ -628,6 +646,12 @@ export function useAgentSession({
           case 'interrupted':
             setStatus('ready');
             setThinkingStatus({ isThinking: false });
+            // Clean up empty placeholder messages (no content was streamed)
+            setMessages((prev) =>
+              prev.filter(
+                (m) => !(m.role === 'assistant' && m.parts.length === 0)
+              )
+            );
             break;
         }
       },
@@ -697,7 +721,7 @@ export function useAgentSession({
       // Track the message for retry functionality
       lastMessageRef.current = content;
 
-      // Add optimistic user message immediately for responsive UI
+      // Add optimistic user message and placeholder assistant message for responsive UI
       // Skip if an optimistic message with same content already exists (from queued message)
       setMessages((prev) => {
         const alreadyHasOptimistic = prev.some(
@@ -708,6 +732,20 @@ export function useAgentSession({
             (m.parts[0] as TextPart).content === content
         );
         if (alreadyHasOptimistic) {
+          // Still add placeholder if not present
+          const hasPlaceholder = prev.some((m) =>
+            m.id.startsWith('placeholder-')
+          );
+          if (!hasPlaceholder) {
+            const placeholderId = `placeholder-${Date.now()}`;
+            const placeholderMessage: TaskMessage = {
+              id: placeholderId,
+              role: 'assistant',
+              parts: [], // Empty parts = placeholder state
+              createdAt: new Date(),
+            };
+            return [...prev, placeholderMessage];
+          }
           return prev;
         }
         const optimisticId = `optimistic-${Date.now()}`;
@@ -717,7 +755,15 @@ export function useAgentSession({
           parts: [createTextPart(content)],
           createdAt: new Date(),
         };
-        return [...prev, optimisticMessage];
+        // Add placeholder assistant message for immediate scroll target
+        const placeholderId = `placeholder-${Date.now()}`;
+        const placeholderMessage: TaskMessage = {
+          id: placeholderId,
+          role: 'assistant',
+          parts: [], // Empty parts = placeholder state
+          createdAt: new Date(),
+        };
+        return [...prev, optimisticMessage, placeholderMessage];
       });
 
       // Set thinking indicator immediately for responsive UI
@@ -726,13 +772,13 @@ export function useAgentSession({
 
       setIsLoading(true);
 
-      // Scroll to show the user's message
+      // Scroll to the placeholder (last message before spacer)
       requestAnimationFrame(() => {
-        const userMessage = messageListRef.current?.children[
+        const placeholder = messageListRef.current?.children[
           messageListRef.current.children.length - 2
         ] as HTMLDivElement | undefined;
 
-        userMessage?.scrollIntoView({
+        placeholder?.scrollIntoView({
           behavior: 'instant',
           block: 'start',
         });
@@ -790,7 +836,7 @@ export function useAgentSession({
           sessionId: overrideSessionId,
         };
 
-        // Add optimistic user message immediately for responsive UI
+        // Add optimistic user message and placeholder assistant message for responsive UI
         const optimisticId = `optimistic-${Date.now()}`;
         const optimisticMessage: TaskMessage = {
           id: optimisticId,
@@ -798,7 +844,15 @@ export function useAgentSession({
           parts: [createTextPart(content)],
           createdAt: new Date(),
         };
-        setMessages((prev) => [...prev, optimisticMessage]);
+        // Add placeholder assistant message for immediate scroll target
+        const placeholderId = `placeholder-${Date.now()}`;
+        const placeholderMessage: TaskMessage = {
+          id: placeholderId,
+          role: 'assistant',
+          parts: [], // Empty parts = placeholder state
+          createdAt: new Date(),
+        };
+        setMessages((prev) => [...prev, optimisticMessage, placeholderMessage]);
 
         // Set thinking indicator immediately for responsive UI
         setThinkingStatus({ isThinking: true });
