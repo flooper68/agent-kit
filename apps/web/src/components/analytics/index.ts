@@ -5,6 +5,7 @@ export { StatCard } from './StatCard';
 export { UsageChart } from './UsageChart';
 export { AgentDistributionChart } from './AgentDistributionChart';
 export { CostBreakdownChart } from './CostBreakdownChart';
+export { TokensByProviderChart } from './TokensByProviderChart';
 export { TokensPerUserChart } from './TokensPerUserChart';
 export { WebSearchCallsChart } from './WebSearchCallsChart';
 export { RecentActivityTable } from './RecentActivityTable';

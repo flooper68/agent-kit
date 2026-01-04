@@ -83,6 +83,8 @@ export class GetProviderDistributionQuery {
         provider: providerField,
         sessions: count(),
         tokens: sql<number>`COALESCE(SUM((${agentSessions.usage}->>'totalTokens')::integer), 0)`,
+        promptTokens: sql<number>`COALESCE(SUM((${agentSessions.usage}->>'promptTokens')::integer), 0)`,
+        completionTokens: sql<number>`COALESCE(SUM((${agentSessions.usage}->>'completionTokens')::integer), 0)`,
         cost: sql<number>`COALESCE(SUM((${agentSessions.usage}->>'estimatedCost')::numeric), 0)`,
       })
       .from(agentSessions)
@@ -96,6 +98,8 @@ export class GetProviderDistributionQuery {
         provider: row.provider ?? 'unknown',
         sessions: Number(row.sessions),
         tokens: Number(row.tokens),
+        promptTokens: Number(row.promptTokens),
+        completionTokens: Number(row.completionTokens),
         cost: Number(row.cost),
       }));
   }
