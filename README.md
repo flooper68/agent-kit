@@ -100,3 +100,41 @@ function App() {
   return <Button variant="primary">Click me</Button>;
 }
 ```
+
+## Authentication & Multitenancy
+
+Agent Kit uses [Clerk](https://clerk.com) for authentication with a multi-tenant architecture based on Organizations.
+
+### How It Works
+
+- **Users** authenticate via Clerk (email/password or OAuth)
+- **Organizations** represent projects/tenants - each user can belong to multiple organizations
+- **Role-based access** with `org:admin` and `org:member` roles
+- **Tenant isolation** - all data (sessions, artifacts) is scoped by `orgId`
+
+### Key Features
+
+| Feature                | Description                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| JWT Authentication     | Tokens verified on backend via `@clerk/backend`                                       |
+| Organization Switching | Users can switch between organizations in the UI                                      |
+| Role-Based Procedures  | tRPC procedures enforce auth (`protectedProcedure`, `orgProcedure`, `adminProcedure`) |
+| WebSocket Auth         | Real-time connections authenticated via connection params                             |
+| Tenant Isolation       | Database queries filter by `orgId` to prevent cross-tenant access                     |
+
+### Required Environment Variables
+
+**Backend (`apps/server/.env`):**
+
+```bash
+CLERK_SECRET_KEY=sk_test_...      # Backend JWT verification
+CLERK_PUBLISHABLE_KEY=pk_test_... # Clerk API calls
+```
+
+**Frontend (`apps/web/.env`):**
+
+```bash
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+```
+
+For detailed setup instructions, see [docs/clerk-setup.md](./docs/clerk-setup.md).
