@@ -8,6 +8,7 @@ import { analyticsRouter } from './analytics';
 import { artifactsRouter } from './artifacts';
 import { projectsRouter } from './projects';
 import { tasksRouter } from './tasks';
+import { cacheRouter } from './cache';
 
 export const appRouter = router({
   greeting: greetingRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
   artifacts: artifactsRouter,
   projects: projectsRouter,
   tasks: tasksRouter,
+  cache: cacheRouter,
 });
 
 export type AppRouter = typeof appRouter;

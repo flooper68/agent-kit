@@ -1,5 +1,6 @@
 import type { db as DbType } from '../../db';
 import type { Project } from '../../db/schema';
+import type { CacheInvalidationService } from '../../lib/redis/cache-invalidation-service';
 import {
   CreateProjectCommand,
   UpdateProjectCommand,
@@ -33,6 +34,7 @@ export class ProjectsFeature {
   private listProjectsQuery: ListProjectsQuery;
   private searchProjectsQuery: SearchProjectsQuery;
   private getProjectStatsQuery: GetProjectStatsQuery;
+  private cacheInvalidation?: CacheInvalidationService;
 
   constructor(db: typeof DbType) {
     this.createProjectCommand = new CreateProjectCommand(db);
@@ -44,21 +46,41 @@ export class ProjectsFeature {
     this.getProjectStatsQuery = new GetProjectStatsQuery(db);
   }
 
+  setCacheInvalidation(service: CacheInvalidationService): void {
+    this.cacheInvalidation = service;
+  }
+
   // Commands
-  create(input: CreateProjectInput): Promise<Project> {
-    return this.createProjectCommand.execute(input);
+  async create(input: CreateProjectInput): Promise<Project> {
+    const project = await this.createProjectCommand.execute(input);
+    await this.cacheInvalidation?.publishProjectCreated(
+      input.orgId,
+      project.id
+    );
+    return project;
   }
 
-  update(input: UpdateProjectInput): Promise<Project | undefined> {
-    return this.updateProjectCommand.execute(input);
+  async update(input: UpdateProjectInput): Promise<Project | undefined> {
+    const project = await this.updateProjectCommand.execute(input);
+    if (project) {
+      await this.cacheInvalidation?.publishProjectUpdated(
+        input.orgId,
+        project.id
+      );
+    }
+    return project;
   }
 
-  delete(
+  async delete(
     id: string,
     userId: string,
     orgId: string
   ): Promise<Project | undefined> {
-    return this.deleteProjectCommand.execute(id, userId, orgId);
+    const project = await this.deleteProjectCommand.execute(id, userId, orgId);
+    if (project) {
+      await this.cacheInvalidation?.publishProjectDeleted(orgId, project.id);
+    }
+    return project;
   }
 
   // Queries

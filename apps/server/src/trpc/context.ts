@@ -7,6 +7,7 @@ import type { AnalyticsFeature } from '../features/analytics';
 import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
+import type { PubSubManager } from '../lib/redis/pubsub';
 
 export type ClerkClient = ReturnType<typeof createClerkClient>;
 
@@ -18,6 +19,7 @@ export interface ContextDeps {
   projectsFeature: ProjectsFeature;
   tasksFeature: TasksFeature;
   sessionManager: AgentSessionManager;
+  pubsub: PubSubManager;
 }
 
 export function createContext(deps: ContextDeps) {
@@ -40,6 +42,7 @@ export function createContext(deps: ContextDeps) {
       projectsFeature: deps.projectsFeature,
       tasksFeature: deps.tasksFeature,
       sessionManager: deps.sessionManager,
+      pubsub: deps.pubsub,
     };
   };
 }
