@@ -383,9 +383,9 @@ export function TaskDetailDialog({
           </button>
           {isHistoryExpanded && (
             <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
-              {task.events.map((event) => (
+              {task.events.map((event, index) => (
                 <div
-                  key={`${event.type}-${event.timestamp}`}
+                  key={`${event.type}-${event.timestamp}-${index}`}
                   className="flex items-start gap-3 text-xs"
                 >
                   <div className="w-2 h-2 mt-1.5 rounded-full bg-border flex-shrink-0" />
@@ -616,9 +616,9 @@ export function TaskDetailDialog({
           </button>
           {isHistoryExpanded && (
             <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
-              {task.events.map((event) => (
+              {task.events.map((event, index) => (
                 <div
-                  key={`${event.type}-${event.timestamp}`}
+                  key={`${event.type}-${event.timestamp}-${index}`}
                   className="flex items-start gap-3 text-xs"
                 >
                   <div className="w-2 h-2 mt-1.5 rounded-full bg-border flex-shrink-0" />

@@ -1,15 +1,10 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, orgProcedure, adminProcedure } from '../trpc';
-
-const TaskStatusSchema = z.enum([
-  'backlog',
-  'todo',
-  'in_progress',
-  'review',
-  'done',
-]);
-const TaskPrioritySchema = z.enum(['low', 'medium', 'high', 'urgent']);
+import {
+  TaskStatusSchema,
+  TaskPrioritySchema,
+} from '../../features/tasks/schemas';
 
 export const tasksRouter = router({
   // List tasks for a project with filters

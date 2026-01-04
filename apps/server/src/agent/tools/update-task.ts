@@ -2,8 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../types';
 import type { TasksFeature } from '../../features/tasks';
-
-const TaskPrioritySchema = z.enum(['low', 'medium', 'high', 'urgent']);
+import { TaskPrioritySchema } from '../../features/tasks/schemas';
 
 export interface UpdateTaskContext {
   userId: string;

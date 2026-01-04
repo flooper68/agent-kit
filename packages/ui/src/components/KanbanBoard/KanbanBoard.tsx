@@ -72,8 +72,8 @@ function SortableTask({ task, onClick }: SortableTaskProps) {
   );
 }
 
+// Backlog is excluded from Kanban view - it has its own separate tab
 const columnConfig: { id: TaskStatus; title: string }[] = [
-  { id: 'backlog', title: 'Backlog' },
   { id: 'todo', title: 'Todo' },
   { id: 'in_progress', title: 'In Progress' },
   { id: 'review', title: 'Review' },

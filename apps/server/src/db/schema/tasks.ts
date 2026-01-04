@@ -75,6 +75,9 @@ export const tasks = pgTable(
     // Position for ordering within a column
     position: integer('position').notNull().default(0),
 
+    // Due date for the task
+    dueDate: timestamp('due_date', { withTimezone: true }),
+
     // Completion timestamp
     completedAt: timestamp('completed_at', { withTimezone: true }),
 

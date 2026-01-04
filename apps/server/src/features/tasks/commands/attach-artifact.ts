@@ -20,76 +20,70 @@ export class AttachArtifactCommand {
     userId: string,
     orgId: string
   ): Promise<boolean> {
-    // Verify task ownership
-    const [task] = await this.db
-      .select()
-      .from(tasks)
-      .where(
-        and(
-          eq(tasks.id, taskId),
-          eq(tasks.userId, userId),
-          eq(tasks.orgId, orgId)
+    return await this.db.transaction(async (tx) => {
+      // Verify task ownership
+      const [task] = await tx
+        .select()
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.id, taskId),
+            eq(tasks.userId, userId),
+            eq(tasks.orgId, orgId)
+          )
         )
-      )
-      .limit(1);
+        .limit(1);
 
-    if (!task) {
-      throw new Error('Task not found');
-    }
+      if (!task) {
+        throw new Error('Task not found');
+      }
 
-    // Verify artifact ownership
-    const [artifact] = await this.db
-      .select({ id: artifacts.id })
-      .from(artifacts)
-      .where(
-        and(
-          eq(artifacts.id, artifactId),
-          eq(artifacts.userId, userId),
-          eq(artifacts.orgId, orgId)
+      // Verify artifact ownership
+      const [artifact] = await tx
+        .select({ id: artifacts.id })
+        .from(artifacts)
+        .where(
+          and(
+            eq(artifacts.id, artifactId),
+            eq(artifacts.userId, userId),
+            eq(artifacts.orgId, orgId)
+          )
         )
-      )
-      .limit(1);
+        .limit(1);
 
-    if (!artifact) {
-      throw new Error('Artifact not found');
-    }
+      if (!artifact) {
+        throw new Error('Artifact not found');
+      }
 
-    // Check if already attached
-    const [existing] = await this.db
-      .select({ id: taskArtifacts.id })
-      .from(taskArtifacts)
-      .where(
-        and(
-          eq(taskArtifacts.taskId, taskId),
-          eq(taskArtifacts.artifactId, artifactId)
-        )
-      )
-      .limit(1);
+      // Use INSERT ... ON CONFLICT DO NOTHING for atomic upsert
+      const result = await tx
+        .insert(taskArtifacts)
+        .values({
+          taskId,
+          artifactId,
+        })
+        .onConflictDoNothing()
+        .returning();
 
-    if (existing) {
-      return false; // Already attached
-    }
+      if (result.length === 0) {
+        return false; // Already attached
+      }
 
-    // Create the attachment
-    await this.db.insert(taskArtifacts).values({
-      taskId,
-      artifactId,
+      // Add event to task
+      const events: TaskEvent[] = [...(task.events ?? [])];
+      events.push({
+        type: 'artifact_attached',
+        timestamp: new Date().toISOString(),
+        userId,
+        details: { artifactId },
+      });
+
+      await tx
+        .update(tasks)
+        .set({ events, updatedAt: new Date() })
+        .where(eq(tasks.id, taskId));
+
+      return true;
     });
-
-    // Add event to task
-    const events: TaskEvent[] = [...(task.events ?? [])];
-    events.push({
-      type: 'artifact_attached',
-      timestamp: new Date().toISOString(),
-      userId,
-      details: { artifactId },
-    });
-
-    await this.db
-      .update(tasks)
-      .set({ events, updatedAt: new Date() })
-      .where(eq(tasks.id, taskId));
-
-    return true;
   }
 }

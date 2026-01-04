@@ -2,14 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../types';
 import type { TasksFeature } from '../../features/tasks';
-
-const TaskStatusSchema = z.enum([
-  'backlog',
-  'todo',
-  'in_progress',
-  'review',
-  'done',
-]);
+import { TaskStatusSchema } from '../../features/tasks/schemas';
 
 export interface MoveTaskContext {
   userId: string;

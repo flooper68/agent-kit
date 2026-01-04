@@ -16,6 +16,7 @@ import {
   ToggleGroup,
   Tooltip,
   TooltipProvider,
+  useToast,
   type TaskFiltersState,
   type TaskData,
   type PlanningTaskStatus,
@@ -46,6 +47,7 @@ export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { setActions, setMenuItems, clearActions } = useHeaderActions();
+  const { addToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'backlog' | 'kanban' | 'list'>(
     'kanban'
@@ -75,14 +77,21 @@ export function ProjectDetailPage() {
 
   const utils = trpc.useUtils();
 
+  // Redirect to projects list if no projectId
+  useEffect(() => {
+    if (!projectId) {
+      navigate('/app/projects');
+    }
+  }, [projectId, navigate]);
+
   const projectQuery = trpc.projects.get.useQuery(
-    { id: projectId! },
+    { id: projectId ?? '' },
     { enabled: !!projectId }
   );
 
   const tasksQuery = trpc.tasks.list.useQuery(
     {
-      projectId: projectId!,
+      projectId: projectId ?? '',
       priority: filters.priority,
       status: filters.status,
       hasArtifacts: filters.hasArtifacts,
@@ -91,40 +100,43 @@ export function ProjectDetailPage() {
   );
 
   const tasksByStatusQuery = trpc.tasks.getByStatus.useQuery(
-    { projectId: projectId! },
+    { projectId: projectId ?? '' },
     { enabled: !!projectId }
   );
 
   const createTaskMutation = trpc.tasks.create.useMutation({
     onSuccess: () => {
+      if (!projectId) return;
       setIsCreateTaskOpen(false);
       resetNewTaskForm();
-      utils.tasks.list.invalidate({ projectId: projectId! });
-      utils.tasks.getByStatus.invalidate({ projectId: projectId! });
-      utils.projects.get.invalidate({ id: projectId! });
+      utils.tasks.list.invalidate({ projectId });
+      utils.tasks.getByStatus.invalidate({ projectId });
+      utils.projects.get.invalidate({ id: projectId });
     },
   });
 
   const updateTaskMutation = trpc.tasks.update.useMutation({
     onSuccess: () => {
-      utils.tasks.list.invalidate({ projectId: projectId! });
-      utils.tasks.getByStatus.invalidate({ projectId: projectId! });
-      utils.projects.get.invalidate({ id: projectId! });
+      if (!projectId) return;
+      utils.tasks.list.invalidate({ projectId });
+      utils.tasks.getByStatus.invalidate({ projectId });
+      utils.projects.get.invalidate({ id: projectId });
     },
   });
 
   const moveTaskMutation = trpc.tasks.move.useMutation({
     onMutate: async ({ id, status, position }) => {
+      if (!projectId) return;
       // Cancel any outgoing refetches
-      await utils.tasks.getByStatus.cancel({ projectId: projectId! });
+      await utils.tasks.getByStatus.cancel({ projectId });
 
       // Snapshot the previous value
       const previousData = utils.tasks.getByStatus.getData({
-        projectId: projectId!,
+        projectId,
       });
 
       // Optimistically update the cache
-      utils.tasks.getByStatus.setData({ projectId: projectId! }, (old) => {
+      utils.tasks.getByStatus.setData({ projectId }, (old) => {
         if (!old) return old;
 
         // Find the task in any column
@@ -168,34 +180,38 @@ export function ProjectDetailPage() {
     },
     onError: (_err, _variables, context) => {
       // Rollback on error
-      if (context?.previousData) {
-        utils.tasks.getByStatus.setData(
-          { projectId: projectId! },
-          context.previousData
-        );
+      if (context?.previousData && projectId) {
+        utils.tasks.getByStatus.setData({ projectId }, context.previousData);
       }
+      addToast({
+        message: 'Failed to move task. Please try again.',
+        variant: 'error',
+      });
     },
     onSettled: () => {
+      if (!projectId) return;
       // Refetch after mutation settles
-      utils.tasks.list.invalidate({ projectId: projectId! });
-      utils.tasks.getByStatus.invalidate({ projectId: projectId! });
-      utils.projects.get.invalidate({ id: projectId! });
+      utils.tasks.list.invalidate({ projectId });
+      utils.tasks.getByStatus.invalidate({ projectId });
+      utils.projects.get.invalidate({ id: projectId });
     },
   });
 
   const deleteTaskMutation = trpc.tasks.delete.useMutation({
     onSuccess: () => {
+      if (!projectId) return;
       setSelectedTask(null);
-      utils.tasks.list.invalidate({ projectId: projectId! });
-      utils.tasks.getByStatus.invalidate({ projectId: projectId! });
-      utils.projects.get.invalidate({ id: projectId! });
+      utils.tasks.list.invalidate({ projectId });
+      utils.tasks.getByStatus.invalidate({ projectId });
+      utils.projects.get.invalidate({ id: projectId });
     },
   });
 
   const updateProjectMutation = trpc.projects.update.useMutation({
     onSuccess: () => {
+      if (!projectId) return;
       setIsEditProjectOpen(false);
-      utils.projects.get.invalidate({ id: projectId! });
+      utils.projects.get.invalidate({ id: projectId });
     },
   });
 

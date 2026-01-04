@@ -1,4 +1,4 @@
-import { eq, and, inArray, sql, type SQL } from 'drizzle-orm';
+import { eq, and, inArray, sql, type SQL, gt } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { tasks, taskArtifacts } from '../../../db/schema';
 import type { ListTasksInput, TaskListItem } from '../types';
@@ -27,7 +27,17 @@ export class ListTasksByProjectQuery {
       conditions.push(inArray(tasks.priority, input.priority));
     }
 
-    // Base query with artifact count
+    // Build HAVING clause for hasArtifacts filter
+    const havingConditions: SQL[] = [];
+    if (input.hasArtifacts !== undefined) {
+      if (input.hasArtifacts) {
+        havingConditions.push(gt(sql<number>`count(${taskArtifacts.id})`, 0));
+      } else {
+        havingConditions.push(sql`count(${taskArtifacts.id}) = 0`);
+      }
+    }
+
+    // Base query with artifact count and HAVING clause
     const results = await this.db
       .select({
         id: tasks.id,
@@ -46,16 +56,11 @@ export class ListTasksByProjectQuery {
       .leftJoin(taskArtifacts, eq(tasks.id, taskArtifacts.taskId))
       .where(and(...conditions))
       .groupBy(tasks.id)
+      .having(
+        havingConditions.length > 0 ? and(...havingConditions) : undefined
+      )
       .orderBy(tasks.status, tasks.position);
 
-    // Filter by hasArtifacts if specified
-    let filteredResults = results;
-    if (input.hasArtifacts !== undefined) {
-      filteredResults = results.filter((r) =>
-        input.hasArtifacts ? r.artifactCount > 0 : r.artifactCount === 0
-      );
-    }
-
-    return filteredResults;
+    return results;
   }
 }
