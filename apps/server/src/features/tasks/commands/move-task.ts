@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, ne, sql } from 'drizzle-orm';
+import { eq, and, gte, lte, ne, sql, asc, inArray } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import {
   tasks,
@@ -13,6 +13,38 @@ export class MoveTaskCommand {
 
   constructor(db: typeof DbType) {
     this.db = db;
+  }
+
+  /**
+   * Normalize positions for a status column to ensure sequential values (0, 1, 2, ...)
+   * This fixes any gaps or duplicates in positions using a single batch update.
+   */
+  private async normalizePositions(
+    tx: Parameters<Parameters<typeof this.db.transaction>[0]>[0],
+    projectId: string,
+    status: TaskStatus
+  ): Promise<void> {
+    // Get all tasks in this column ordered by position, then createdAt for stability
+    const columnTasks = await tx
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(and(eq(tasks.projectId, projectId), eq(tasks.status, status)))
+      .orderBy(asc(tasks.position), asc(tasks.createdAt));
+
+    if (columnTasks.length === 0) return;
+
+    // Build CASE expression for batch update: SET position = CASE id WHEN ... END
+    const caseConditions = columnTasks
+      .map((task, index) => `WHEN '${task.id}' THEN ${index}`)
+      .join(' ');
+    const taskIds = columnTasks.map((t) => t.id);
+
+    await tx
+      .update(tasks)
+      .set({
+        position: sql.raw(`CASE id ${caseConditions} END`),
+      })
+      .where(inArray(tasks.id, taskIds));
   }
 
   async execute(input: MoveTaskInput): Promise<Task | undefined> {
@@ -35,11 +67,35 @@ export class MoveTaskCommand {
       }
 
       const oldStatus = currentTask.status;
-      const oldPosition = currentTask.position;
       const newStatus = input.status;
       const newPosition = input.position;
 
-      const events: TaskEvent[] = [...(currentTask.events ?? [])];
+      // Normalize positions in the source column to handle duplicates/gaps
+      await this.normalizePositions(tx, currentTask.projectId, oldStatus);
+
+      // If moving to a different column, normalize that too
+      if (oldStatus !== newStatus) {
+        await this.normalizePositions(
+          tx,
+          currentTask.projectId,
+          newStatus as TaskStatus
+        );
+      }
+
+      // Re-fetch the task to get its normalized position
+      const [normalizedTask] = await tx
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, input.id))
+        .limit(1);
+
+      if (!normalizedTask) {
+        return undefined;
+      }
+
+      const oldPosition = normalizedTask.position;
+
+      const events: TaskEvent[] = [...(normalizedTask.events ?? [])];
 
       // Track status change
       if (oldStatus !== newStatus) {

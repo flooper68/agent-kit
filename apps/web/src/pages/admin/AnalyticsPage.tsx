@@ -16,6 +16,7 @@ import {
   UsageChart,
   AgentDistributionChart,
   CostBreakdownChart,
+  TokensByProviderChart,
   TokensPerUserChart,
   WebSearchCallsChart,
   RecentActivityTable,
@@ -240,7 +241,7 @@ export function AnalyticsPage() {
           </ChartErrorBoundary>
         </div>
 
-        {/* Cost Breakdown & Tokens Per User */}
+        {/* Provider Analytics */}
         <div className="grid gap-6 lg:grid-cols-2 mb-8">
           <ChartErrorBoundary chartName="Cost Breakdown">
             <CostBreakdownChart
@@ -248,6 +249,16 @@ export function AnalyticsPage() {
               isLoading={providerDistQuery.isLoading}
             />
           </ChartErrorBoundary>
+          <ChartErrorBoundary chartName="Tokens by Provider">
+            <TokensByProviderChart
+              data={providerDistQuery.data ?? []}
+              isLoading={providerDistQuery.isLoading}
+            />
+          </ChartErrorBoundary>
+        </div>
+
+        {/* User Analytics */}
+        <div className="grid gap-6 lg:grid-cols-2 mb-8">
           <ChartErrorBoundary chartName="Tokens Per User">
             <TokensPerUserChart
               data={tokensPerUserQuery.data ?? []}

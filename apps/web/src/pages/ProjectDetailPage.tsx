@@ -295,20 +295,29 @@ export function ProjectDetailPage() {
     }));
   }, [tasksByStatusQuery.data]);
 
-  // Transform tasks for Backlog view
+  // Transform tasks for Backlog view (sorted by position for DnD)
+  // Use createdAt as secondary sort to handle duplicate positions
   const backlogTasks = useMemo(() => {
     if (!tasksByStatusQuery.data?.backlog) return [];
-    return tasksByStatusQuery.data.backlog.map((task) => ({
-      id: task.id,
-      title: task.title,
-      description: task.description,
-      status: task.status as PlanningTaskStatus,
-      priority: task.priority as Priority,
-      completedAt: task.completedAt ? new Date(task.completedAt) : null,
-      artifactCount: task.artifactCount,
-      createdAt: new Date(task.createdAt),
-      updatedAt: new Date(task.updatedAt),
-    }));
+    return tasksByStatusQuery.data.backlog
+      .map((task) => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        status: task.status as PlanningTaskStatus,
+        priority: task.priority as Priority,
+        completedAt: task.completedAt ? new Date(task.completedAt) : null,
+        artifactCount: task.artifactCount,
+        createdAt: new Date(task.createdAt),
+        updatedAt: new Date(task.updatedAt),
+        position: task.position,
+      }))
+      .sort((a, b) => {
+        // Primary sort by position, secondary by createdAt for deterministic order
+        const positionDiff = a.position - b.position;
+        if (positionDiff !== 0) return positionDiff;
+        return a.createdAt.getTime() - b.createdAt.getTime();
+      });
   }, [tasksByStatusQuery.data]);
 
   // Transform tasks for TaskListView
@@ -336,6 +345,14 @@ export function ProjectDetailPage() {
       });
     },
     [moveTaskMutation]
+  );
+
+  // Handler for backlog DnD reordering (status stays 'backlog')
+  const handleBacklogMove = useCallback(
+    (taskId: string, newPosition: number) => {
+      handleTaskMove(taskId, 'backlog', newPosition);
+    },
+    [handleTaskMove]
   );
 
   const handleTaskClick = useCallback(
@@ -510,6 +527,8 @@ export function ProjectDetailPage() {
               tasks={backlogTasks}
               onTaskClick={handleTaskClick}
               emptyMessage="No tasks in backlog"
+              sortable
+              onTaskMove={handleBacklogMove}
             />
           )}
           {activeTab === 'kanban' && (
@@ -643,8 +662,9 @@ export function ProjectDetailPage() {
         </Dialog.Content>
       </Dialog>
 
-      {/* Task Detail Dialog */}
+      {/* Task Detail Dialog - key ensures complete state reset when switching tasks */}
       <TaskDetailDialog
+        key={selectedTask?.id ?? 'new'}
         open={!!selectedTask}
         onOpenChange={(open) => {
           if (!open) {

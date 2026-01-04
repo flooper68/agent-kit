@@ -1,8 +1,31 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { cn } from '../../lib/utils';
 import { PriorityBadge, type Priority } from '../PriorityBadge';
 import { StatusBadge, type TaskStatus } from '../StatusBadge';
-import { Paperclip, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import {
+  Paperclip,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  GripVertical,
+} from 'lucide-react';
 
 export interface TaskListItem {
   id: string;
@@ -15,6 +38,7 @@ export interface TaskListItem {
   artifactCount?: number;
   createdAt: Date;
   updatedAt: Date;
+  position?: number;
 }
 
 export type SortField = 'title' | 'status' | 'priority' | 'createdAt';
@@ -28,6 +52,10 @@ export interface TaskListViewProps {
   className?: string;
   defaultSort?: SortField;
   defaultSortDirection?: SortDirection;
+  /** Enable drag-and-drop reordering */
+  sortable?: boolean;
+  /** Callback when a task is moved via drag-and-drop */
+  onTaskMove?: (taskId: string, newPosition: number) => void;
 }
 
 const priorityOrder: Record<Priority, number> = {
@@ -45,6 +73,109 @@ const statusOrder: Record<TaskStatus, number> = {
   done: 5,
 };
 
+interface SortableTaskRowProps {
+  task: TaskListItem;
+  onTaskClick?: (taskId: string) => void;
+}
+
+function SortableTaskRow({ task, onTaskClick }: SortableTaskRowProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useSortable({
+      id: task.id,
+    });
+
+  const style = {
+    transform: isDragging ? undefined : CSS.Transform.toString(transform),
+    transition: transform ? 'transform 200ms ease' : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'grid grid-cols-[32px_1fr_100px_100px_80px] gap-4 px-4 py-3 items-center bg-background',
+        isDragging && 'opacity-50',
+        onTaskClick && 'cursor-pointer hover:bg-muted/30 transition-colors'
+      )}
+      data-task-id={task.id}
+    >
+      <div
+        className="flex items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
+      <div
+        className="min-w-0"
+        onClick={() => onTaskClick?.(task.id)}
+        role={onTaskClick ? 'button' : undefined}
+        tabIndex={onTaskClick ? 0 : undefined}
+        onKeyDown={
+          onTaskClick
+            ? (e) => e.key === 'Enter' && onTaskClick(task.id)
+            : undefined
+        }
+      >
+        <p className="font-medium text-sm truncate">{task.title}</p>
+        {task.description && (
+          <p className="text-xs text-muted-foreground truncate mt-0.5">
+            {task.description}
+          </p>
+        )}
+      </div>
+      <div onClick={() => onTaskClick?.(task.id)}>
+        <StatusBadge status={task.status} />
+      </div>
+      <div onClick={() => onTaskClick?.(task.id)}>
+        <PriorityBadge priority={task.priority} />
+      </div>
+      <div className="text-right" onClick={() => onTaskClick?.(task.id)}>
+        {task.artifactCount && task.artifactCount > 0 ? (
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <Paperclip className="h-3 w-3" />
+            {task.artifactCount}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">-</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TaskRowContent({ task }: { task: TaskListItem }) {
+  return (
+    <>
+      <div className="min-w-0">
+        <p className="font-medium text-sm truncate">{task.title}</p>
+        {task.description && (
+          <p className="text-xs text-muted-foreground truncate mt-0.5">
+            {task.description}
+          </p>
+        )}
+      </div>
+      <div>
+        <StatusBadge status={task.status} />
+      </div>
+      <div>
+        <PriorityBadge priority={task.priority} />
+      </div>
+      <div className="text-right">
+        {task.artifactCount && task.artifactCount > 0 ? (
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <Paperclip className="h-3 w-3" />
+            {task.artifactCount}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">-</span>
+        )}
+      </div>
+    </>
+  );
+}
+
 export function TaskListView({
   tasks,
   onTaskClick,
@@ -53,12 +184,26 @@ export function TaskListView({
   className,
   defaultSort = 'createdAt',
   defaultSortDirection = 'desc',
+  sortable = false,
+  onTaskMove,
 }: TaskListViewProps) {
   const [sortField, setSortField] = useState<SortField>(defaultSort);
   const [sortDirection, setSortDirection] =
     useState<SortDirection>(defaultSortDirection);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor)
+  );
 
   const handleSort = (field: SortField) => {
+    if (sortable) return; // Disable column sorting when in sortable mode
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -67,7 +212,12 @@ export function TaskListView({
     }
   };
 
-  const sortedTasks = useMemo(() => {
+  // In sortable mode, use tasks as-is (sorted by position from backend)
+  // Otherwise, apply client-side sorting
+  const displayTasks = useMemo(() => {
+    if (sortable) {
+      return tasks;
+    }
     return [...tasks].sort((a, b) => {
       let comparison = 0;
 
@@ -88,9 +238,35 @@ export function TaskListView({
 
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [tasks, sortField, sortDirection]);
+  }, [tasks, sortField, sortDirection, sortable]);
+
+  const activeTask = activeId ? tasks.find((t) => t.id === activeId) : null;
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      setActiveId(null);
+
+      if (!over || active.id === over.id) return;
+
+      const overIndex = displayTasks.findIndex((t) => t.id === over.id);
+
+      if (overIndex === -1) return;
+
+      // The overIndex is the target position where the task should be moved
+      onTaskMove?.(active.id as string, overIndex);
+    },
+    [displayTasks, onTaskMove]
+  );
 
   const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortable) {
+      return <ArrowUpDown className="h-3 w-3 opacity-30" />;
+    }
     if (sortField !== field) {
       return <ArrowUpDown className="h-3 w-3 opacity-50" />;
     }
@@ -114,7 +290,11 @@ export function TaskListView({
     );
   }
 
-  return (
+  const gridCols = sortable
+    ? 'grid-cols-[32px_1fr_100px_100px_80px]'
+    : 'grid-cols-[1fr_100px_100px_80px]';
+
+  const content = (
     <div
       className={cn(
         'rounded-lg border border-border overflow-hidden',
@@ -122,76 +302,116 @@ export function TaskListView({
       )}
     >
       {/* Header */}
-      <div className="grid grid-cols-[1fr_100px_100px_80px] gap-4 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground border-b border-border">
-        <button
-          className="flex items-center gap-1 hover:text-foreground transition-colors text-left"
-          onClick={() => handleSort('title')}
-        >
-          Title <SortIcon field="title" />
-        </button>
-        <button
-          className="flex items-center gap-1 hover:text-foreground transition-colors text-left"
-          onClick={() => handleSort('status')}
-        >
-          Status <SortIcon field="status" />
-        </button>
-        <button
-          className="flex items-center gap-1 hover:text-foreground transition-colors text-left"
-          onClick={() => handleSort('priority')}
-        >
-          Priority <SortIcon field="priority" />
-        </button>
-        <div className="text-right">Attachments</div>
+      <div
+        className={cn(
+          'grid gap-4 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground border-b border-border',
+          gridCols
+        )}
+      >
+        {sortable ? (
+          <>
+            <div />
+            <div>Title</div>
+            <div>Status</div>
+            <div>Priority</div>
+            <div className="text-right">Attachments</div>
+          </>
+        ) : (
+          <>
+            <button
+              className="flex items-center gap-1 hover:text-foreground transition-colors text-left cursor-pointer"
+              onClick={() => handleSort('title')}
+            >
+              Title <SortIcon field="title" />
+            </button>
+            <button
+              className="flex items-center gap-1 hover:text-foreground transition-colors text-left cursor-pointer"
+              onClick={() => handleSort('status')}
+            >
+              Status <SortIcon field="status" />
+            </button>
+            <button
+              className="flex items-center gap-1 hover:text-foreground transition-colors text-left cursor-pointer"
+              onClick={() => handleSort('priority')}
+            >
+              Priority <SortIcon field="priority" />
+            </button>
+            <div className="text-right">Attachments</div>
+          </>
+        )}
       </div>
 
       {/* Rows */}
       <div className="divide-y divide-border">
-        {sortedTasks.map((task) => (
-          <div
-            key={task.id}
-            className={cn(
-              'grid grid-cols-[1fr_100px_100px_80px] gap-4 px-4 py-3 items-center',
-              onTaskClick &&
-                'cursor-pointer hover:bg-muted/30 transition-colors'
-            )}
-            onClick={() => onTaskClick?.(task.id)}
-            role={onTaskClick ? 'button' : undefined}
-            tabIndex={onTaskClick ? 0 : undefined}
-            onKeyDown={
-              onTaskClick
-                ? (e) => e.key === 'Enter' && onTaskClick(task.id)
-                : undefined
-            }
+        {sortable ? (
+          <SortableContext
+            items={displayTasks.map((t) => t.id)}
+            strategy={verticalListSortingStrategy}
           >
-            <div className="min-w-0">
-              <p className="font-medium text-sm truncate">{task.title}</p>
-              {task.description && (
-                <p className="text-xs text-muted-foreground truncate mt-0.5">
-                  {task.description}
-                </p>
+            {displayTasks.map((task) => (
+              <SortableTaskRow
+                key={task.id}
+                task={task}
+                onTaskClick={onTaskClick}
+              />
+            ))}
+          </SortableContext>
+        ) : (
+          displayTasks.map((task) => (
+            <div
+              key={task.id}
+              className={cn(
+                'grid gap-4 px-4 py-3 items-center',
+                gridCols,
+                onTaskClick &&
+                  'cursor-pointer hover:bg-muted/30 transition-colors'
               )}
+              onClick={() => onTaskClick?.(task.id)}
+              role={onTaskClick ? 'button' : undefined}
+              tabIndex={onTaskClick ? 0 : undefined}
+              onKeyDown={
+                onTaskClick
+                  ? (e) => e.key === 'Enter' && onTaskClick(task.id)
+                  : undefined
+              }
+            >
+              <TaskRowContent task={task} />
             </div>
-            <div>
-              <StatusBadge status={task.status} />
-            </div>
-            <div>
-              <PriorityBadge priority={task.priority} />
-            </div>
-            <div className="text-right">
-              {task.artifactCount && task.artifactCount > 0 ? (
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                  <Paperclip className="h-3 w-3" />
-                  {task.artifactCount}
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground">-</span>
-              )}
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
+
+  if (sortable) {
+    return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        {content}
+        <DragOverlay dropAnimation={null}>
+          {activeTask && (
+            <div
+              className={cn(
+                'grid gap-4 px-4 py-3 items-center bg-background border border-border rounded-lg shadow-lg',
+                gridCols
+              )}
+            >
+              <div className="flex items-center justify-center text-muted-foreground">
+                <GripVertical className="h-4 w-4" />
+              </div>
+              <TaskRowContent task={activeTask} />
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
+    );
+  }
+
+  return content;
 }
 
 TaskListView.displayName = 'TaskListView';
