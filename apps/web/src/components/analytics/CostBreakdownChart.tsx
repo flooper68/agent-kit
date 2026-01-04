@@ -8,13 +8,8 @@ import {
 } from 'recharts';
 import { Heading, Text } from '@agent-kit/ui';
 import { DollarSign } from 'lucide-react';
-
-interface ProviderDistributionItem {
-  provider: string;
-  sessions: number;
-  tokens: number;
-  cost: number;
-}
+import { ProviderDistributionItem } from './types';
+import { formatProvider } from './utils';
 
 interface CostBreakdownChartProps {
   data: ProviderDistributionItem[];
@@ -41,16 +36,6 @@ function getProviderColor(provider: string, index: number): string {
   if (providerColor) return providerColor;
   const fallbackColor = FALLBACK_COLORS[index % FALLBACK_COLORS.length];
   return fallbackColor ?? '#6b7280';
-}
-
-function formatProvider(provider: string): string {
-  const names: Record<string, string> = {
-    openai: 'OpenAI',
-    anthropic: 'Anthropic',
-    gemini: 'Google',
-    unknown: 'Unknown',
-  };
-  return names[provider.toLowerCase()] ?? provider;
 }
 
 export function CostBreakdownChart({

@@ -10,29 +10,12 @@ import {
 } from 'recharts';
 import { Heading, Text } from '@agent-kit/ui';
 import { Layers } from 'lucide-react';
-
-interface ProviderDistributionItem {
-  provider: string;
-  sessions: number;
-  tokens: number;
-  promptTokens: number;
-  completionTokens: number;
-  cost: number;
-}
+import { ProviderDistributionItem } from './types';
+import { formatProvider } from './utils';
 
 interface TokensByProviderChartProps {
   data: ProviderDistributionItem[];
   isLoading?: boolean;
-}
-
-function formatProvider(provider: string): string {
-  const names: Record<string, string> = {
-    openai: 'OpenAI',
-    anthropic: 'Anthropic',
-    gemini: 'Google',
-    unknown: 'Unknown',
-  };
-  return names[provider.toLowerCase()] ?? provider;
 }
 
 function formatTokenCount(value: number): string {
