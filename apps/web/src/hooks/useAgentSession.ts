@@ -294,10 +294,17 @@ export function useAgentSession({
         // Filter out messages with no parts (empty assistant placeholders)
         .filter((msg) => msg.parts.length > 0);
       setMessages(loadedMessages);
-      // Session loaded successfully, set status to ready
-      setStatus('ready');
+
+      // Set status based on whether streaming is in progress
+      // This restores the interrupt button when client reloads during streaming
+      if (sessionQuery.data.isStreaming) {
+        setStatus('streaming');
+        setThinkingStatus({ isThinking: true });
+      } else {
+        setStatus('ready');
+      }
     }
-  }, [sessionId, sessionQuery.data?.messages]);
+  }, [sessionId, sessionQuery.data?.messages, sessionQuery.data?.isStreaming]);
 
   // Subscribe to session events
   // Historical messages are loaded via sessionQuery, subscription resumes from lastStreamId

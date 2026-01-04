@@ -1,4 +1,10 @@
-import { Dialog, Text, Button, MarkdownRenderer } from '@agent-kit/ui';
+import {
+  Dialog,
+  Text,
+  Button,
+  MarkdownRenderer,
+  CopyButton,
+} from '@agent-kit/ui';
 import { Download, FileText } from 'lucide-react';
 import { trpc } from '../../lib/trpc';
 
@@ -86,6 +92,7 @@ export function ArtifactDetailModal({
         </div>
 
         <Dialog.Footer>
+          <CopyButton content={artifactQuery.data?.content ?? ''} />
           <Button
             variant="outline"
             onClick={handleDownload}

@@ -98,6 +98,13 @@ function DashboardLayoutInner({
     appLayoutRef.current?.togglePanel();
   }, []);
 
+  // Handle panel expand (open if collapsed)
+  const handleExpandPanel = useCallback(() => {
+    if (appLayoutRef.current?.isPanelCollapsed()) {
+      appLayoutRef.current?.expandPanel();
+    }
+  }, []);
+
   // Handle panel width change from command palette
   const handleSetPanelWidth = useCallback(
     (width: number) => {
@@ -162,7 +169,8 @@ function DashboardLayoutInner({
 
   const handleNewSession = useCallback(() => {
     clearSession();
-  }, [clearSession]);
+    handleExpandPanel();
+  }, [clearSession, handleExpandPanel]);
 
   const projects: Project[] = useMemo(() => {
     if (!userMemberships?.data) return [];
@@ -413,6 +421,7 @@ function DashboardLayoutInner({
         onOpenChange={setIsCommandPaletteOpen}
         onTogglePanel={showAgentPanel ? handleTogglePanel : undefined}
         onSetPanelWidth={showAgentPanel ? handleSetPanelWidth : undefined}
+        onExpandPanel={showAgentPanel ? handleExpandPanel : undefined}
       />
     </>
   );

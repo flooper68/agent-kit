@@ -67,6 +67,7 @@ interface AppCommandPaletteProps {
   onOpenChange: (open: boolean) => void;
   onTogglePanel?: () => void;
   onSetPanelWidth?: (width: number) => void;
+  onExpandPanel?: () => void;
 }
 
 export function AppCommandPalette({
@@ -74,6 +75,7 @@ export function AppCommandPalette({
   onOpenChange,
   onTogglePanel,
   onSetPanelWidth,
+  onExpandPanel,
 }: AppCommandPaletteProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -184,6 +186,7 @@ export function AppCommandPalette({
         onSelect: () => {
           trackUsage('new-chat');
           clearSession();
+          onExpandPanel?.();
           if (shouldNavigateOnChatOpen) {
             navigate('/app');
           }
@@ -382,6 +385,7 @@ export function AppCommandPalette({
       shouldNavigateOnChatOpen,
       onTogglePanel,
       onSetPanelWidth,
+      onExpandPanel,
     ]
   );
 
