@@ -1,4 +1,5 @@
 import { eq, or, ilike, and, desc, sql } from 'drizzle-orm';
+import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
 import { artifacts } from '../../../db/schema';
 import type { SearchArtifactsInput, SearchArtifactsResult } from '../types';
@@ -24,8 +25,8 @@ export class SearchArtifactsQuery {
         : and(
             baseCondition,
             or(
-              ilike(artifacts.title, `%${query}%`),
-              ilike(artifacts.summary, `%${query}%`)
+              ilike(artifacts.title, `%${escapeLikePattern(query.trim())}%`),
+              ilike(artifacts.summary, `%${escapeLikePattern(query.trim())}%`)
             )
           );
 

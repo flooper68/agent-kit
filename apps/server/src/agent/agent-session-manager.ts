@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import type { AgentsFeature } from '../features/agents';
 import type { ArtifactsFeature } from '../features/artifacts';
+import type { ProjectsFeature } from '../features/projects';
+import type { TasksFeature } from '../features/tasks';
 import type {
   MessageWithParts,
   AgentSessionMessageStatus,
@@ -142,13 +144,17 @@ export class AgentSessionManager {
   private createSubscriptionConnection: RedisConnectionFactory;
   private agentsFeature: AgentsFeature;
   private _artifactsFeature: ArtifactsFeature;
+  private _projectsFeature?: ProjectsFeature;
+  private _tasksFeature?: TasksFeature;
 
   constructor(
     redis: Redis,
     agentsFeature: AgentsFeature,
     artifactsFeature: ArtifactsFeature,
     workerRedis?: Redis,
-    createSubscriptionConnection?: RedisConnectionFactory
+    createSubscriptionConnection?: RedisConnectionFactory,
+    projectsFeature?: ProjectsFeature,
+    tasksFeature?: TasksFeature
   ) {
     this.redis = redis;
     // Use dedicated worker connection for blocking XREADGROUP operations
@@ -159,6 +165,8 @@ export class AgentSessionManager {
       createSubscriptionConnection ?? (() => redis);
     this.agentsFeature = agentsFeature;
     this._artifactsFeature = artifactsFeature;
+    this._projectsFeature = projectsFeature;
+    this._tasksFeature = tasksFeature;
   }
 
   // ============= Agent Access =============
@@ -175,6 +183,20 @@ export class AgentSessionManager {
    */
   get artifactsFeature() {
     return this._artifactsFeature;
+  }
+
+  /**
+   * Get projects feature for tool context
+   */
+  get projectsFeature() {
+    return this._projectsFeature;
+  }
+
+  /**
+   * Get tasks feature for tool context
+   */
+  get tasksFeature() {
+    return this._tasksFeature;
   }
 
   // ============= Message Operations =============

@@ -13,3 +13,5 @@ export { SessionMetadataHeader } from './SessionMetadataHeader';
 export { SessionEventsTimeline } from './SessionEventsTimeline';
 export { EventTypeBadge } from './EventTypeBadge';
 export { ChartErrorBoundary } from './ChartErrorBoundary';
+export { TasksByStatusChart } from './TasksByStatusChart';
+export { TasksByPriorityChart } from './TasksByPriorityChart';

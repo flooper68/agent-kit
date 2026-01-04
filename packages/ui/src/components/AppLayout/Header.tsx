@@ -37,6 +37,7 @@ export const Header = ({ mainMenu, moreMenu, slots }: HeaderProps) => {
           <>
             <span className="text-muted-foreground/50 text-lg">/</span>
             {slots.projectSwitcher}
+            <div className="h-4 w-px bg-border ml-2" />
           </>
         )}
 
@@ -44,10 +45,7 @@ export const Header = ({ mainMenu, moreMenu, slots }: HeaderProps) => {
         <div className="flex-1" />
 
         {slots?.toolButtons && (
-          <>
-            <div className="h-4 w-px bg-border mx-1" />
-            <div className="flex items-center gap-1">{slots.toolButtons}</div>
-          </>
+          <div className="flex items-center gap-1">{slots.toolButtons}</div>
         )}
 
         {hasPanel && (
@@ -68,7 +66,12 @@ export const Header = ({ mainMenu, moreMenu, slots }: HeaderProps) => {
       <div className="flex-1 flex items-center h-full relative">
         {/* Navigation (left-aligned within main content area) */}
         {slots?.navigation && (
-          <div className="flex items-center px-2">{slots.navigation}</div>
+          <>
+            <div className="h-4 w-px bg-border" />
+            <div className="flex items-center gap-1 px-2">
+              {slots.navigation}
+            </div>
+          </>
         )}
 
         {/* Status (centered in main content area) */}

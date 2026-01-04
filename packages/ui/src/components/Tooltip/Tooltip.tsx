@@ -21,7 +21,7 @@ const TooltipContent = forwardRef<
     ref={ref}
     sideOffset={sideOffset}
     className={cn(
-      'z-50 overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground',
+      'z-[100] overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground',
       'animate-in fade-in-0 zoom-in-95',
       'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
       'data-[side=bottom]:slide-in-from-top-2',
@@ -35,6 +35,18 @@ const TooltipContent = forwardRef<
 ));
 
 TooltipContent.displayName = 'TooltipContent';
+
+export const TooltipProvider = ({
+  children,
+  delayDuration = 200,
+}: {
+  children: React.ReactNode;
+  delayDuration?: number;
+}) => (
+  <TooltipPrimitive.Provider delayDuration={delayDuration}>
+    {children}
+  </TooltipPrimitive.Provider>
+);
 
 export const Tooltip = ({
   children,
@@ -52,6 +64,7 @@ export const Tooltip = ({
         open={open}
         defaultOpen={defaultOpen}
         onOpenChange={onOpenChange}
+        delayDuration={delayDuration}
       >
         <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>

@@ -8,3 +8,5 @@ export { MembersSectionSkeleton } from './MembersSectionSkeleton';
 export { SSOCallbackSkeleton } from './SSOCallbackSkeleton';
 export { SettingsPageSkeleton } from './SettingsPageSkeleton';
 export { AnalyticsPageSkeleton } from './AnalyticsPageSkeleton';
+export { ProjectsPageSkeleton } from './ProjectsPageSkeleton';
+export { ProjectDetailPageSkeleton } from './ProjectDetailPageSkeleton';

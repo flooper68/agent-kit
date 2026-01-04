@@ -5,6 +5,8 @@ import type { AgentSessionManager } from '../agent/agent-session-manager';
 import type { AgentsFeature } from '../features/agents';
 import type { AnalyticsFeature } from '../features/analytics';
 import type { ArtifactsFeature } from '../features/artifacts';
+import type { ProjectsFeature } from '../features/projects';
+import type { TasksFeature } from '../features/tasks';
 
 export type ClerkClient = ReturnType<typeof createClerkClient>;
 
@@ -13,6 +15,8 @@ export interface ContextDeps {
   agentsFeature: AgentsFeature;
   analyticsFeature: AnalyticsFeature;
   artifactsFeature: ArtifactsFeature;
+  projectsFeature: ProjectsFeature;
+  tasksFeature: TasksFeature;
   sessionManager: AgentSessionManager;
 }
 
@@ -33,6 +37,8 @@ export function createContext(deps: ContextDeps) {
       agentsFeature: deps.agentsFeature,
       analyticsFeature: deps.analyticsFeature,
       artifactsFeature: deps.artifactsFeature,
+      projectsFeature: deps.projectsFeature,
+      tasksFeature: deps.tasksFeature,
       sessionManager: deps.sessionManager,
     };
   };

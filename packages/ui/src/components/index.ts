@@ -33,7 +33,7 @@ export type {
   DialogFooterProps,
 } from './Dialog';
 
-export { Tooltip } from './Tooltip';
+export { Tooltip, TooltipProvider } from './Tooltip';
 export type { TooltipProps } from './Tooltip';
 
 export { StatusIndicator } from './StatusIndicator';
@@ -53,6 +53,13 @@ export type { SkeletonProps } from './Skeleton';
 
 export { Select } from './Select';
 export type { SelectProps, SelectOption } from './Select';
+
+export { ToggleGroup, ToggleGroupItem } from './ToggleGroup';
+export type {
+  ToggleGroupProps,
+  ToggleGroupItemProps,
+  ToggleGroupItemColorScheme,
+} from './ToggleGroup';
 
 export { Input } from './Input';
 export type { InputProps } from './Input';
@@ -139,3 +146,44 @@ export type {
   MenuItem,
   MenuSection,
 } from './AppLayout';
+
+// Planning components
+export { PriorityBadge } from './PriorityBadge';
+export type { PriorityBadgeProps, Priority } from './PriorityBadge';
+
+export { StatusBadge } from './StatusBadge';
+export type { StatusBadgeProps } from './StatusBadge';
+export type { TaskStatus as PlanningTaskStatus } from './StatusBadge';
+
+export { DueDateIndicator } from './DueDateIndicator';
+export type { DueDateIndicatorProps } from './DueDateIndicator';
+
+export { ProjectCard } from './ProjectCard';
+export type { ProjectCardProps, TaskCounts } from './ProjectCard';
+
+export { TaskCard } from './TaskCard';
+export type { TaskCardProps } from './TaskCard';
+
+export { KanbanColumn } from './KanbanColumn';
+export type { KanbanColumnProps } from './KanbanColumn';
+
+export { KanbanBoard } from './KanbanBoard';
+export type { KanbanBoardProps, KanbanTask } from './KanbanBoard';
+
+export { TaskFilters } from './TaskFilters';
+export type { TaskFiltersProps, TaskFiltersState } from './TaskFilters';
+
+export { TaskListView } from './TaskListView';
+export type { TaskListViewProps, TaskListItem } from './TaskListView';
+
+export { TaskDetailDialog } from './TaskDetailDialog';
+export type {
+  TaskDetailDialogProps,
+  TaskData,
+  TaskEvent,
+  TaskArtifact,
+  AutoSaveStatus,
+} from './TaskDetailDialog';
+
+export { Toast, ToastProvider, useToast } from './Toast';
+export type { ToastData, ToastVariant } from './Toast';

@@ -32,7 +32,20 @@ async function reset() {
   );
   await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
 
-  console.log('All tables dropped');
+  // Drop all enum types in public schema
+  await db.execute(sql`
+    DO $$ DECLARE
+      r RECORD;
+    BEGIN
+      FOR r IN (SELECT typname FROM pg_type t
+                JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+                WHERE n.nspname = 'public' AND t.typtype = 'e') LOOP
+        EXECUTE 'DROP TYPE IF EXISTS ' || quote_ident(r.typname) || ' CASCADE';
+      END LOOP;
+    END $$;
+  `);
+
+  console.log('All tables and types dropped');
 
   await client.end();
 

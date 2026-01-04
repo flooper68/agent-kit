@@ -12,9 +12,11 @@ import {
   HistoryToggleButton,
   NewTaskButton,
   TaskHistorySidebar,
+  IconButton,
+  Tooltip,
 } from '@agent-kit/ui';
 import type { Project, MenuSection } from '@agent-kit/ui';
-import { Bot, BarChart3, Users } from 'lucide-react';
+import { Bot, BarChart3, Users, FileText, FolderKanban } from 'lucide-react';
 import { checkIsAdmin } from '../lib/auth';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useSession } from '../contexts/SessionContext';
@@ -136,6 +138,25 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
                   active: currentPath === '/app',
                 },
                 {
+                  id: 'artifacts',
+                  label: 'Artifacts',
+                  icon: <FileText className="h-4 w-4" />,
+                  onClick: () => navigate('/app/artifacts'),
+                  active: currentPath === '/app/artifacts',
+                },
+                {
+                  id: 'projects',
+                  label: 'Projects',
+                  icon: <FolderKanban className="h-4 w-4" />,
+                  onClick: () => navigate('/app/projects'),
+                  active: currentPath.startsWith('/app/projects'),
+                },
+              ],
+            },
+            {
+              id: 'admin',
+              items: [
+                {
                   id: 'analytics',
                   label: 'Analytics',
                   icon: <BarChart3 className="h-4 w-4" />,
@@ -166,8 +187,40 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
             ) : null,
           toolButtons: (
             <>
-              <NewTaskButton onClick={handleNewSession} />
               <HistoryToggleButton onClick={() => setIsHistoryOpen(true)} />
+              <NewTaskButton onClick={handleNewSession} />
+            </>
+          ),
+          navigation: (
+            <>
+              <Tooltip content="Artifacts">
+                <IconButton
+                  icon={<FileText className="h-4 w-4" />}
+                  label="Artifacts"
+                  onClick={() => navigate('/app/artifacts')}
+                  variant="ghost"
+                  size="sm"
+                  className={
+                    currentPath === '/app/artifacts'
+                      ? 'bg-accent text-accent-foreground'
+                      : undefined
+                  }
+                />
+              </Tooltip>
+              <Tooltip content="Projects">
+                <IconButton
+                  icon={<FolderKanban className="h-4 w-4" />}
+                  label="Projects"
+                  onClick={() => navigate('/app/projects')}
+                  variant="ghost"
+                  size="sm"
+                  className={
+                    currentPath.startsWith('/app/projects')
+                      ? 'bg-accent text-accent-foreground'
+                      : undefined
+                  }
+                />
+              </Tooltip>
             </>
           ),
         }}
