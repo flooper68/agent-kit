@@ -391,7 +391,7 @@ export function KanbanBoard({
         })}
       </div>
 
-      <DragOverlay dropAnimation={null} style={{ zIndex: 9999 }}>
+      <DragOverlay dropAnimation={null} className="z-[9999]">
         {activeTask && (
           <div className="w-72">
             <TaskCard
