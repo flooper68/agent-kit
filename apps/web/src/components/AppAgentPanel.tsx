@@ -1,8 +1,13 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/clerk-react';
-import { AgentPanel } from '@agent-kit/ui';
-import type { AgentType, TaskHistoryItem, SuggestionChip } from '@agent-kit/ui';
-import { trpc } from '../lib/trpc';
+import { AgentPanel, ConnectionSnackbar } from '@agent-kit/ui';
+import type {
+  AgentType,
+  TaskHistoryItem,
+  SuggestionChip,
+  ConnectionStatus,
+} from '@agent-kit/ui';
+import { trpc, subscribeToConnectionState } from '../lib/trpc';
 import { useAgentSession } from '../hooks/useAgentSession';
 import { useSession } from '../contexts/SessionContext';
 
@@ -37,6 +42,26 @@ export function AppAgentPanel({
   const { sessionId, setSessionId, clearSession } = useSession();
   const { user } = useUser();
   const [selectedAgent, setSelectedAgent] = useState<AgentType | null>(null);
+
+  // Track WebSocket connection state for debugging snackbar
+  const [connectionStatus, setConnectionStatus] =
+    useState<ConnectionStatus>('disconnected');
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToConnectionState((state) => {
+      // Map WSConnectionStatus to ConnectionStatus
+      const statusMap: Record<string, ConnectionStatus> = {
+        connecting: 'reconnecting',
+        connected: 'connected',
+        disconnected: 'disconnected',
+        reconnecting: 'reconnecting',
+      };
+      setConnectionStatus(statusMap[state.status] ?? 'disconnected');
+      setReconnectAttempts(state.reconnectAttempts);
+    });
+    return unsubscribe;
+  }, []);
 
   // Create session mutation
   const createSessionMutation = trpc.sessions.create.useMutation();
@@ -185,31 +210,37 @@ export function AppAgentPanel({
   );
 
   return (
-    <AgentPanel
-      className={className}
-      ref={setMessageListRef}
-      messages={messages}
-      status={status}
-      thinkingStatus={thinkingStatus}
-      avatars={avatars}
-      agents={agents}
-      selectedAgent={selectedAgent || undefined}
-      isAgentSelectorDisabled={!!sessionId}
-      contextUsage={contextUsage ?? undefined}
-      emptyStateConfig={emptyStateConfig}
-      suggestions={suggestions}
-      onSuggestionClick={handleSuggestionClick}
-      recentChats={recentChats}
-      error={error ?? undefined}
-      onSend={handleSend}
-      onInterrupt={handleInterrupt}
-      onAgentSelect={handleAgentSelect}
-      onRecentChatClick={onRecentChatClick}
-      onRecentChatDelete={onRecentChatDelete}
-      onCreateNewTask={onNewChat}
-      onRetry={handleRetry}
-      onErrorDismiss={handleErrorDismiss}
-      onScrollPositionChange={handleScrollPositionChange}
-    />
+    <>
+      <AgentPanel
+        className={className}
+        ref={setMessageListRef}
+        messages={messages}
+        status={status}
+        thinkingStatus={thinkingStatus}
+        avatars={avatars}
+        agents={agents}
+        selectedAgent={selectedAgent || undefined}
+        isAgentSelectorDisabled={!!sessionId}
+        contextUsage={contextUsage ?? undefined}
+        emptyStateConfig={emptyStateConfig}
+        suggestions={suggestions}
+        onSuggestionClick={handleSuggestionClick}
+        recentChats={recentChats}
+        error={error ?? undefined}
+        onSend={handleSend}
+        onInterrupt={handleInterrupt}
+        onAgentSelect={handleAgentSelect}
+        onRecentChatClick={onRecentChatClick}
+        onRecentChatDelete={onRecentChatDelete}
+        onCreateNewTask={onNewChat}
+        onRetry={handleRetry}
+        onErrorDismiss={handleErrorDismiss}
+        onScrollPositionChange={handleScrollPositionChange}
+      />
+      <ConnectionSnackbar
+        status={connectionStatus}
+        reconnectAttempt={reconnectAttempts}
+      />
+    </>
   );
 }

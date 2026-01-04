@@ -150,6 +150,12 @@ const start = async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       wss: wss as any,
       router: appRouter,
+      // Keep connections alive with ping/pong to detect dead connections
+      keepAlive: {
+        enabled: true,
+        pingMs: 5000, // Send ping every 30 seconds
+        pongWaitMs: 5000, // Wait 5 seconds for pong response
+      },
       createContext: async (opts) => {
         // Extract token from connection params
         const params = opts.info.connectionParams as

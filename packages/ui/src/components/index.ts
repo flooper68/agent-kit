@@ -39,6 +39,12 @@ export type { TooltipProps } from './Tooltip';
 export { StatusIndicator } from './StatusIndicator';
 export type { StatusIndicatorProps, StatusType } from './StatusIndicator';
 
+export { ConnectionSnackbar } from './ConnectionSnackbar';
+export type {
+  ConnectionSnackbarProps,
+  ConnectionStatus,
+} from './ConnectionSnackbar';
+
 export { Spinner } from './Spinner';
 export type { SpinnerProps } from './Spinner';
 
