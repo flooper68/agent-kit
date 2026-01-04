@@ -13,6 +13,14 @@ import { useSession } from '../contexts/SessionContext';
 
 const STORAGE_KEY_AGENT = 'agent-kit:lastAgentId';
 
+// Map WebSocket connection status to UI ConnectionStatus
+const WS_TO_CONNECTION_STATUS_MAP: Record<string, ConnectionStatus> = {
+  connecting: 'reconnecting',
+  connected: 'connected',
+  disconnected: 'disconnected',
+  reconnecting: 'reconnecting',
+};
+
 interface AppAgentPanelProps {
   /** Available agents passed from parent */
   agents: AgentType[];
@@ -45,22 +53,22 @@ export function AppAgentPanel({
 
   // Track WebSocket connection state for debugging snackbar
   const [connectionStatus, setConnectionStatus] =
-    useState<ConnectionStatus>('disconnected');
+    useState<ConnectionStatus>('reconnecting');
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
   useEffect(() => {
+    let mounted = true;
     const unsubscribe = subscribeToConnectionState((state) => {
-      // Map WSConnectionStatus to ConnectionStatus
-      const statusMap: Record<string, ConnectionStatus> = {
-        connecting: 'reconnecting',
-        connected: 'connected',
-        disconnected: 'disconnected',
-        reconnecting: 'reconnecting',
-      };
-      setConnectionStatus(statusMap[state.status] ?? 'disconnected');
+      if (!mounted) return;
+      setConnectionStatus(
+        WS_TO_CONNECTION_STATUS_MAP[state.status] ?? 'disconnected'
+      );
       setReconnectAttempts(state.reconnectAttempts);
     });
-    return unsubscribe;
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, []);
 
   // Create session mutation

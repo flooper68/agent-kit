@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { trpc } from '../lib/trpc';
+import { trpc, getConnectionState } from '../lib/trpc';
 import type {
   TaskMessage,
   TaskStatus,
@@ -626,12 +626,18 @@ export function useAgentSession({
 
         // Don't show error for temporary WebSocket disconnects
         // The WebSocket client will auto-reconnect with retryDelayMs
+        // But DO show error if reconnection has been failing for too long
         if (errorMessage.includes('WebSocket closed')) {
-          console.log(
-            '[AgentSession] WebSocket closed, waiting for reconnection...'
-          );
-          setThinkingStatus({ isThinking: false });
-          return;
+          const wsState = getConnectionState();
+          // Show error after 5+ failed reconnection attempts
+          if (wsState.reconnectAttempts < 5) {
+            console.log(
+              '[AgentSession] WebSocket closed, waiting for reconnection...'
+            );
+            setThinkingStatus({ isThinking: false });
+            return;
+          }
+          // Fall through to show error after too many attempts
         }
 
         setError({

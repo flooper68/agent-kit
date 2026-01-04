@@ -108,11 +108,8 @@ function getWSClient(getToken: () => Promise<string | null>) {
       },
       onClose: (cause) => {
         console.log('[tRPC] WebSocket closed:', cause);
-        // Only set to disconnected if not already reconnecting
-        // (retryDelayMs will set to reconnecting before onClose completes)
-        if (connectionState.status !== 'reconnecting') {
-          updateConnectionState({ status: 'disconnected' });
-        }
+        // Always set to disconnected - retryDelayMs will set to reconnecting if retrying
+        updateConnectionState({ status: 'disconnected' });
       },
     });
   }
