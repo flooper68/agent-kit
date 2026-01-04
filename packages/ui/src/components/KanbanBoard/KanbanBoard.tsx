@@ -1,8 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
+  closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -10,6 +10,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
+  type DragCancelEvent,
 } from '@dnd-kit/core';
 import { useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -53,12 +54,20 @@ function SortableTask({ task, onClick }: SortableTaskProps) {
     });
 
   const style = {
-    // Apply transform for drag preview, but no transition to disable drop animation
-    transform: CSS.Transform.toString(transform),
+    // Only apply transform when not dragging - DragOverlay handles the visual preview during drag
+    transform: isDragging ? undefined : CSS.Transform.toString(transform),
+    transition: transform ? 'transform 200ms ease' : undefined,
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="select-none"
+      data-task-id={task.id}
+      {...attributes}
+      {...listeners}
+    >
       <TaskCard
         id={task.id}
         title={task.title}
@@ -70,6 +79,13 @@ function SortableTask({ task, onClick }: SortableTaskProps) {
       />
     </div>
   );
+}
+
+// Invisible placeholder element rendered in destination column during cross-column drag
+function SortablePlaceholder({ id, height }: { id: string; height: number }) {
+  const { setNodeRef } = useSortable({ id });
+
+  return <div ref={setNodeRef} style={{ height }} />;
 }
 
 // Backlog is excluded from Kanban view - it has its own separate tab
@@ -87,6 +103,33 @@ export function KanbanBoard({
   className,
 }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [overColumn, setOverColumn] = useState<TaskStatus | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  // Refs to track current values and prevent race conditions
+  const overColumnRef = useRef<TaskStatus | null>(null);
+  const overIndexRef = useRef<number | null>(null);
+  const overTaskIdRef = useRef<string | null>(null);
+  const [lastDroppedId, setLastDroppedId] = useState<string | null>(null);
+
+  // Scroll dropped task into view
+  useEffect(() => {
+    if (lastDroppedId) {
+      // Small delay to allow DOM to update after drop
+      const timer = setTimeout(() => {
+        const element = document.querySelector(
+          `[data-task-id="${lastDroppedId}"]`
+        );
+        element?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'nearest',
+        });
+        setLastDroppedId(null);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [lastDroppedId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -117,7 +160,17 @@ export function KanbanBoard({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
+
+      // Capture current cross-column state before resetting
+      const crossColumnTarget = overColumnRef.current;
+      const crossColumnIndex = overIndexRef.current;
+
       setActiveId(null);
+      setOverColumn(null);
+      setOverIndex(null);
+      overColumnRef.current = null;
+      overIndexRef.current = null;
+      overTaskIdRef.current = null;
 
       if (!over) return;
 
@@ -132,8 +185,13 @@ export function KanbanBoard({
       let targetStatus: TaskStatus;
       let targetPosition: number;
 
+      // If we have cross-column state (dropped on placeholder or tracked position)
+      if (crossColumnTarget && crossColumnIndex !== null) {
+        targetStatus = crossColumnTarget;
+        targetPosition = crossColumnIndex;
+      }
       // Check if dropped on a column
-      if (columnConfig.some((col) => col.id === overId)) {
+      else if (columnConfig.some((col) => col.id === overId)) {
         targetStatus = overId as TaskStatus;
         targetPosition = tasksByStatus[targetStatus].length;
       } else {
@@ -143,76 +201,208 @@ export function KanbanBoard({
 
         targetStatus = overTask.status;
         const tasksInColumn = tasksByStatus[targetStatus];
-        const overIndex = tasksInColumn.findIndex((t) => t.id === overId);
+        const overTaskIndex = tasksInColumn.findIndex((t) => t.id === overId);
 
         // If same column, use arrayMove to calculate new position
         if (activeTask.status === targetStatus) {
           const activeIndex = tasksInColumn.findIndex(
             (t) => t.id === activeTaskId
           );
-          if (activeIndex === overIndex) return; // No change
+          if (activeIndex === overTaskIndex) return; // No change
 
           // Calculate the new position based on reordering
-          const reordered = arrayMove(tasksInColumn, activeIndex, overIndex);
+          const reordered = arrayMove(
+            tasksInColumn,
+            activeIndex,
+            overTaskIndex
+          );
           targetPosition = reordered.findIndex((t) => t.id === activeTaskId);
         } else {
           // Moving to different column
-          targetPosition = overIndex;
+          targetPosition = overTaskIndex;
         }
       }
 
-      // Always call onTaskMove for any drag completion
-      onTaskMove?.(activeTaskId, targetStatus, targetPosition);
+      // Only call onTaskMove if there's an actual change
+      if (
+        targetStatus !== activeTask.status ||
+        targetPosition !== (activeTask.position ?? 0)
+      ) {
+        onTaskMove?.(activeTaskId, targetStatus, targetPosition);
+        setLastDroppedId(activeTaskId);
+      }
     },
     [tasks, tasksByStatus, onTaskMove]
   );
 
-  const handleDragOver = useCallback((_event: DragOverEvent) => {
-    // Could be used for preview updates
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
+      const { active, over } = event;
+      if (!over || !active) {
+        if (overColumnRef.current !== null) {
+          overColumnRef.current = null;
+          overIndexRef.current = null;
+          overTaskIdRef.current = null;
+          setOverColumn(null);
+          setOverIndex(null);
+        }
+        return;
+      }
+
+      const activeTaskId = active.id as string;
+      const overId = over.id as string;
+
+      // If hovering over our own placeholder, keep current state
+      if (overId === activeTaskId) {
+        return;
+      }
+
+      // If still hovering over the same task/column, don't recalculate
+      // This prevents oscillation when items shift
+      if (overId === overTaskIdRef.current) {
+        return;
+      }
+
+      const activeTask = tasks.find((t) => t.id === activeTaskId);
+      if (!activeTask) return;
+
+      // Determine which column we're over
+      let targetColumn: TaskStatus | null = null;
+      let targetIndex: number | null = null;
+
+      if (columnConfig.some((col) => col.id === overId)) {
+        // Over a column directly (empty area)
+        targetColumn = overId as TaskStatus;
+        targetIndex = tasksByStatus[targetColumn].length;
+      } else {
+        // Over a task
+        const overTask = tasks.find((t) => t.id === overId);
+        if (overTask) {
+          targetColumn = overTask.status;
+          const tasksInColumn = tasksByStatus[targetColumn];
+          const taskIndex = tasksInColumn.findIndex((t) => t.id === overId);
+
+          // If hovering over the last task and we were previously at end position,
+          // stay at end position to prevent oscillation at column bottom
+          if (
+            overColumnRef.current === targetColumn &&
+            overIndexRef.current === tasksInColumn.length &&
+            taskIndex === tasksInColumn.length - 1
+          ) {
+            // Keep the "append to end" position
+            targetIndex = tasksInColumn.length;
+          } else {
+            targetIndex = taskIndex;
+          }
+        }
+      }
+
+      // Only track cross-column drags
+      if (targetColumn && targetColumn === activeTask.status) {
+        targetColumn = null;
+        targetIndex = null;
+      }
+
+      // Update tracked task ID and state
+      overTaskIdRef.current = overId;
+      overColumnRef.current = targetColumn;
+      overIndexRef.current = targetIndex;
+      setOverColumn(targetColumn);
+      setOverIndex(targetIndex);
+    },
+    [tasks, tasksByStatus]
+  );
+
+  const handleDragCancel = useCallback((_event: DragCancelEvent) => {
+    setActiveId(null);
+    setOverColumn(null);
+    setOverIndex(null);
+    overColumnRef.current = null;
+    overIndexRef.current = null;
+    overTaskIdRef.current = null;
   }, []);
+
+  // Calculate item IDs for each column, including placeholder for cross-column drag
+  const getColumnItemIds = useCallback(
+    (columnId: TaskStatus): string[] => {
+      const columnTasks = tasksByStatus[columnId];
+      const baseIds = columnTasks.map((t) => t.id);
+
+      // If dragging to this column from another column, insert the active ID
+      if (activeId && overColumn === columnId && overIndex !== null) {
+        const newIds = [...baseIds];
+        newIds.splice(overIndex, 0, activeId);
+        return newIds;
+      }
+
+      return baseIds;
+    },
+    [tasksByStatus, activeId, overColumn, overIndex]
+  );
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={closestCenter}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
+      onDragCancel={handleDragCancel}
     >
       <div className={cn('flex gap-4 overflow-x-auto pb-4 h-full', className)}>
         {columnConfig.map((col) => {
           const columnTasks = tasksByStatus[col.id];
+          const itemIds = getColumnItemIds(col.id);
+          const isDropTarget = overColumn === col.id && activeId;
+
           return (
             <div key={col.id} className="w-72 flex-shrink-0 h-full">
               <KanbanColumn
                 id={col.id}
                 title={col.title}
                 count={columnTasks.length}
-                itemIds={columnTasks.map((t) => t.id)}
+                itemIds={itemIds}
               >
-                {columnTasks.map((task) => (
-                  <SortableTask
-                    key={task.id}
-                    task={task}
-                    onClick={() => onTaskClick?.(task.id)}
-                  />
-                ))}
+                {itemIds.map((id) => {
+                  // Render placeholder for the dragged item in destination column
+                  if (isDropTarget && id === activeId) {
+                    return (
+                      <SortablePlaceholder
+                        key={`placeholder-${id}`}
+                        id={id}
+                        height={80}
+                      />
+                    );
+                  }
+                  // Render actual task
+                  const task = columnTasks.find((t) => t.id === id);
+                  if (!task) return null;
+                  return (
+                    <SortableTask
+                      key={task.id}
+                      task={task}
+                      onClick={() => onTaskClick?.(task.id)}
+                    />
+                  );
+                })}
               </KanbanColumn>
             </div>
           );
         })}
       </div>
 
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay dropAnimation={null} className="z-[9999]">
         {activeTask && (
-          <TaskCard
-            id={activeTask.id}
-            title={activeTask.title}
-            description={activeTask.description}
-            priority={activeTask.priority}
-            artifactCount={activeTask.artifactCount}
-            isDragging
-          />
+          <div className="w-72">
+            <TaskCard
+              id={activeTask.id}
+              title={activeTask.title}
+              description={activeTask.description}
+              priority={activeTask.priority}
+              artifactCount={activeTask.artifactCount}
+              className="shadow-lg ring-2 ring-primary/20"
+            />
+          </div>
         )}
       </DragOverlay>
     </DndContext>

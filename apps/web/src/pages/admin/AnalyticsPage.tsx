@@ -192,7 +192,7 @@ export function AnalyticsPage() {
     <div className="h-full overflow-auto p-6">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <Heading as="h1" size="24">
               Analytics
