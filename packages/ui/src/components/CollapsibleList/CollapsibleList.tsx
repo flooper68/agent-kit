@@ -23,8 +23,7 @@ export const useCollapsibleListItem = () => {
 };
 
 // Root
-export interface CollapsibleListProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+export interface CollapsibleListProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 
@@ -47,8 +46,7 @@ const CollapsibleListRoot = forwardRef<HTMLDivElement, CollapsibleListProps>(
 CollapsibleListRoot.displayName = 'CollapsibleList';
 
 // Item
-export interface CollapsibleListItemProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+export interface CollapsibleListItemProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   defaultOpen?: boolean;
 }
@@ -78,8 +76,7 @@ const CollapsibleListItem = forwardRef<
 CollapsibleListItem.displayName = 'CollapsibleListItem';
 
 // Trigger
-export interface CollapsibleListTriggerProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface CollapsibleListTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
   showChevron?: boolean;
 }
@@ -121,8 +118,7 @@ const CollapsibleListTrigger = forwardRef<
 CollapsibleListTrigger.displayName = 'CollapsibleListTrigger';
 
 // Content
-export interface CollapsibleListContentProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+export interface CollapsibleListContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 
@@ -148,8 +144,7 @@ const CollapsibleListContent = forwardRef<
 CollapsibleListContent.displayName = 'CollapsibleListContent';
 
 // Empty
-export interface CollapsibleListEmptyProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+export interface CollapsibleListEmptyProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 

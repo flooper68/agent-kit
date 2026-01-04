@@ -8,8 +8,7 @@ import {
 } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { cn } from '../../../../lib/utils';
 
-export interface MarkdownRendererProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+export interface MarkdownRendererProps extends React.HTMLAttributes<HTMLDivElement> {
   content: string;
 }
 

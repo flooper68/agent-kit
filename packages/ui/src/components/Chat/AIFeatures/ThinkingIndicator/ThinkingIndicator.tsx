@@ -1,8 +1,7 @@
 import { forwardRef } from 'react';
 import { cn } from '../../../../lib/utils';
 
-export interface ThinkingIndicatorProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+export interface ThinkingIndicatorProps extends React.HTMLAttributes<HTMLDivElement> {
   status?: string;
   detail?: string;
   variant?: 'dots' | 'text' | 'spinner';

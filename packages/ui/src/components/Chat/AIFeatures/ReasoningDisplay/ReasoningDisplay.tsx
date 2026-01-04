@@ -3,8 +3,7 @@ import { cn } from '../../../../lib/utils';
 import { Collapsible } from '../../../Collapsible';
 import { Text } from '../../../Typography';
 
-export interface ReasoningDisplayProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+export interface ReasoningDisplayProps extends React.HTMLAttributes<HTMLDivElement> {
   content: string;
   label?: string;
   defaultExpanded?: boolean;

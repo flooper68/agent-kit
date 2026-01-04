@@ -2,8 +2,7 @@ import { forwardRef } from 'react';
 import { cn } from '../../../../lib/utils';
 import { IconButton } from '../../../IconButton';
 
-export interface RetryButtonProps
-  extends React.HTMLAttributes<HTMLButtonElement> {
+export interface RetryButtonProps extends React.HTMLAttributes<HTMLButtonElement> {
   onRetry?: () => void;
 }
 
@@ -38,8 +37,7 @@ export const RetryButton = forwardRef<HTMLButtonElement, RetryButtonProps>(
 
 RetryButton.displayName = 'RetryButton';
 
-export interface RegenerateButtonProps
-  extends React.HTMLAttributes<HTMLButtonElement> {
+export interface RegenerateButtonProps extends React.HTMLAttributes<HTMLButtonElement> {
   onRegenerate?: () => void;
 }
 

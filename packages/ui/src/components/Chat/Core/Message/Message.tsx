@@ -52,7 +52,8 @@ const useMessage = () => {
 };
 
 export interface MessageProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof messageVariants> {
   role: MessageRole;
 }

@@ -3,8 +3,9 @@ import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { cn } from '../../lib/utils';
 
 // Tabs Root
-export interface TabsProps
-  extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.Root> {
+export interface TabsProps extends React.ComponentPropsWithoutRef<
+  typeof TabsPrimitive.Root
+> {
   children: React.ReactNode;
 }
 
@@ -22,8 +23,9 @@ const TabsRoot = forwardRef<
 TabsRoot.displayName = 'Tabs';
 
 // Tabs List
-export interface TabsListProps
-  extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> {
+export interface TabsListProps extends React.ComponentPropsWithoutRef<
+  typeof TabsPrimitive.List
+> {
   children: React.ReactNode;
 }
 
@@ -44,8 +46,9 @@ const TabsList = forwardRef<
 TabsList.displayName = 'TabsList';
 
 // Tabs Trigger
-export interface TabsTriggerProps
-  extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> {
+export interface TabsTriggerProps extends React.ComponentPropsWithoutRef<
+  typeof TabsPrimitive.Trigger
+> {
   children: React.ReactNode;
 }
 
@@ -73,8 +76,9 @@ const TabsTrigger = forwardRef<
 TabsTrigger.displayName = 'TabsTrigger';
 
 // Tabs Content
-export interface TabsContentProps
-  extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content> {
+export interface TabsContentProps extends React.ComponentPropsWithoutRef<
+  typeof TabsPrimitive.Content
+> {
   children: React.ReactNode;
 }
 

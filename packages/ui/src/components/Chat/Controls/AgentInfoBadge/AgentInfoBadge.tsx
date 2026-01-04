@@ -3,8 +3,10 @@ import { cn } from '../../../../lib/utils';
 import type { AgentType } from '../../../../types/chat';
 import { AgentInfoDialog } from './AgentInfoDialog';
 
-export interface AgentInfoBadgeProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
+export interface AgentInfoBadgeProps extends Omit<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  'children'
+> {
   /** The agent to display */
   agent: AgentType;
 }

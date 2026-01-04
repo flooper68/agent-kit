@@ -151,8 +151,10 @@ const ResultDisplay = ({
   );
 };
 
-export interface ToolBadgeProps
-  extends Omit<VariantProps<typeof toolBadgeVariants>, 'interactive'> {
+export interface ToolBadgeProps extends Omit<
+  VariantProps<typeof toolBadgeVariants>,
+  'interactive'
+> {
   toolName: string;
   state: ToolState;
   /** Tool arguments - when provided, clicking the badge opens a detail dialog */

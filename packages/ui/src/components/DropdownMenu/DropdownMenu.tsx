@@ -6,8 +6,9 @@ import { cn } from '../../lib/utils';
 const DropdownMenuRoot = DropdownMenuPrimitive.Root;
 
 // DropdownMenu Trigger
-export interface DropdownMenuTriggerProps
-  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger> {
+export interface DropdownMenuTriggerProps extends React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.Trigger
+> {
   asChild?: boolean;
 }
 
@@ -25,8 +26,9 @@ const DropdownMenuTrigger = forwardRef<
 DropdownMenuTrigger.displayName = 'DropdownMenuTrigger';
 
 // DropdownMenu Content
-export interface DropdownMenuContentProps
-  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
+export interface DropdownMenuContentProps extends React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.Content
+> {
   sideOffset?: number;
 }
 
@@ -51,8 +53,9 @@ const DropdownMenuContent = forwardRef<
 DropdownMenuContent.displayName = 'DropdownMenuContent';
 
 // DropdownMenu Item
-export interface DropdownMenuItemProps
-  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> {
+export interface DropdownMenuItemProps extends React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.Item
+> {
   variant?: 'default' | 'destructive';
 }
 
