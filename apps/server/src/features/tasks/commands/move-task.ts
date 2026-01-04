@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, ne, sql, asc } from 'drizzle-orm';
+import { eq, and, gte, lte, ne, sql, asc, inArray } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import {
   tasks,
@@ -17,7 +17,7 @@ export class MoveTaskCommand {
 
   /**
    * Normalize positions for a status column to ensure sequential values (0, 1, 2, ...)
-   * This fixes any gaps or duplicates in positions.
+   * This fixes any gaps or duplicates in positions using a single batch update.
    */
   private async normalizePositions(
     tx: Parameters<Parameters<typeof this.db.transaction>[0]>[0],
@@ -31,16 +31,20 @@ export class MoveTaskCommand {
       .where(and(eq(tasks.projectId, projectId), eq(tasks.status, status)))
       .orderBy(asc(tasks.position), asc(tasks.createdAt));
 
-    // Update each task to have sequential position
-    for (let i = 0; i < columnTasks.length; i++) {
-      const task = columnTasks[i];
-      if (task) {
-        await tx
-          .update(tasks)
-          .set({ position: i })
-          .where(eq(tasks.id, task.id));
-      }
-    }
+    if (columnTasks.length === 0) return;
+
+    // Build CASE expression for batch update: SET position = CASE id WHEN ... END
+    const caseConditions = columnTasks
+      .map((task, index) => `WHEN '${task.id}' THEN ${index}`)
+      .join(' ');
+    const taskIds = columnTasks.map((t) => t.id);
+
+    await tx
+      .update(tasks)
+      .set({
+        position: sql.raw(`CASE id ${caseConditions} END`),
+      })
+      .where(inArray(tasks.id, taskIds));
   }
 
   async execute(input: MoveTaskInput): Promise<Task | undefined> {
@@ -91,7 +95,7 @@ export class MoveTaskCommand {
 
       const oldPosition = normalizedTask.position;
 
-      const events: TaskEvent[] = [...(currentTask.events ?? [])];
+      const events: TaskEvent[] = [...(normalizedTask.events ?? [])];
 
       // Track status change
       if (oldStatus !== newStatus) {

@@ -290,6 +290,8 @@ export function AppAgentPanel({
   }, []);
 
   // Register focus input command
+  // Note: onSelect is a no-op because getFocusTarget handles the focus behavior.
+  // The CommandPalette will focus the returned element after closing.
   const focusInputCommand = useMemo(
     () => ({
       id: 'focus-chat-input',

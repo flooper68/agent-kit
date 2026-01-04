@@ -14,7 +14,6 @@ import {
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
-  arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '../../lib/utils';
@@ -254,18 +253,12 @@ export function TaskListView({
 
       if (!over || active.id === over.id) return;
 
-      const activeIndex = displayTasks.findIndex((t) => t.id === active.id);
       const overIndex = displayTasks.findIndex((t) => t.id === over.id);
 
-      if (activeIndex === -1 || overIndex === -1) return;
+      if (overIndex === -1) return;
 
-      // Calculate new position using arrayMove logic
-      // The position we send must match what the optimistic update expects:
-      // it splices at `position` after removing the task from the array
-      const reordered = arrayMove(displayTasks, activeIndex, overIndex);
-      const newPosition = reordered.findIndex((t) => t.id === active.id);
-
-      onTaskMove?.(active.id as string, newPosition);
+      // The overIndex is the target position where the task should be moved
+      onTaskMove?.(active.id as string, overIndex);
     },
     [displayTasks, onTaskMove]
   );

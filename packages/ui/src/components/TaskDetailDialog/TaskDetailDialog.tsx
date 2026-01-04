@@ -205,6 +205,10 @@ export function TaskDetailDialog({
     pendingFormDataRef.current = null;
     setShowDeleteConfirm(false);
     setInternalAutoSaveStatus('idle');
+    // Intentionally omitting `task` from deps - we only want to reset form when
+    // task ID or mode changes, not when the task object reference changes (e.g.,
+    // after cache invalidation following a save). Including `task` would cause
+    // the form to reset and lose pending autosave changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, mode]);
 
