@@ -13,9 +13,9 @@ import type {
   CreateArtifactInput,
   ListArtifactsInput,
   SearchArtifactsInput,
+  SearchArtifactsResult,
   TimeRange,
   PaginatedArtifacts,
-  ArtifactListItem,
   ArtifactStats,
   ArtifactsOverTimePoint,
   ArtifactsByAgent,
@@ -74,7 +74,7 @@ export class ArtifactsFeature {
     return this.listArtifactsQuery.execute(input);
   }
 
-  search(input: SearchArtifactsInput): Promise<ArtifactListItem[]> {
+  search(input: SearchArtifactsInput): Promise<SearchArtifactsResult> {
     return this.searchArtifactsQuery.execute(input);
   }
 

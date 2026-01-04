@@ -24,6 +24,12 @@ export interface SearchArtifactsInput {
   orgId: string;
   query: string;
   limit: number;
+  offset: number;
+}
+
+export interface SearchArtifactsResult {
+  results: ArtifactListItem[];
+  totalCount: number;
 }
 
 export interface ArtifactListItem {

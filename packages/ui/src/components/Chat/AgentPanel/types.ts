@@ -3,7 +3,6 @@ import type {
   TaskStatus,
   SuggestionChip,
   ContextUsage,
-  ThinkingStatus,
   AgentType,
   TaskHistoryItem,
 } from '../../../types/chat';
@@ -83,6 +82,9 @@ export interface AgentPanelCallbacks {
 
   /** Called when a recent chat is deleted in the empty state */
   onRecentChatDelete?: (chat: TaskHistoryItem) => void;
+
+  /** Called when user clicks the inspect button to view session details */
+  onInspect?: () => void;
 }
 
 /**
@@ -106,9 +108,6 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
 
   /** Avatar configuration for user and assistant */
   avatars?: AvatarConfig;
-
-  /** Thinking status information */
-  thinkingStatus?: ThinkingStatus;
 
   /** Whether attachments are enabled */
   enableAttachments?: boolean;

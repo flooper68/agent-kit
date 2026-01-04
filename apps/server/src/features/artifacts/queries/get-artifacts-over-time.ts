@@ -34,16 +34,21 @@ export class GetArtifactsOverTimeQuery {
       conditions.push(gte(artifacts.createdAt, startDate));
     }
 
+    // Build the date_trunc expression with literal granularity (already validated above)
+    const dateTruncExpr = sql.raw(
+      `date_trunc('${granularity}', "artifacts"."created_at")`
+    );
+
     const results = await this.db
       .select({
-        date: sql<string>`date_trunc(${granularity}, ${artifacts.createdAt})::text`,
+        date: sql<string>`${dateTruncExpr}::text`,
         count: sql<number>`count(*)::int`,
         sizeBytes: sql<number>`coalesce(sum(${artifacts.sizeBytes}), 0)::int`,
       })
       .from(artifacts)
       .where(and(...conditions))
-      .groupBy(sql`date_trunc(${granularity}, ${artifacts.createdAt})`)
-      .orderBy(sql`date_trunc(${granularity}, ${artifacts.createdAt})`);
+      .groupBy(dateTruncExpr)
+      .orderBy(dateTruncExpr);
 
     return results;
   }

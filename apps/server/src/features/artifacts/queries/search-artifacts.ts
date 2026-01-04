@@ -1,7 +1,7 @@
-import { eq, or, ilike, and, desc } from 'drizzle-orm';
+import { eq, or, ilike, and, desc, sql } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { artifacts } from '../../../db/schema';
-import type { SearchArtifactsInput, ArtifactListItem } from '../types';
+import type { SearchArtifactsInput, SearchArtifactsResult } from '../types';
 
 export class SearchArtifactsQuery {
   private db: typeof DbType;
@@ -10,34 +10,50 @@ export class SearchArtifactsQuery {
     this.db = db;
   }
 
-  async execute(input: SearchArtifactsInput): Promise<ArtifactListItem[]> {
-    const { userId, orgId, query, limit } = input;
-    const searchPattern = `%${query}%`;
+  async execute(input: SearchArtifactsInput): Promise<SearchArtifactsResult> {
+    const { userId, orgId, query, limit, offset } = input;
 
-    const results = await this.db
-      .select({
-        id: artifacts.id,
-        title: artifacts.title,
-        summary: artifacts.summary,
-        format: artifacts.format,
-        sizeBytes: artifacts.sizeBytes,
-        createdAt: artifacts.createdAt,
-        updatedAt: artifacts.updatedAt,
-      })
-      .from(artifacts)
-      .where(
-        and(
-          eq(artifacts.orgId, orgId),
-          eq(artifacts.userId, userId),
-          or(
-            ilike(artifacts.title, searchPattern),
-            ilike(artifacts.summary, searchPattern)
-          )
-        )
-      )
-      .orderBy(desc(artifacts.createdAt))
-      .limit(limit);
+    const baseCondition = and(
+      eq(artifacts.orgId, orgId),
+      eq(artifacts.userId, userId)
+    );
 
-    return results;
+    const searchCondition =
+      query.trim() === ''
+        ? baseCondition
+        : and(
+            baseCondition,
+            or(
+              ilike(artifacts.title, `%${query}%`),
+              ilike(artifacts.summary, `%${query}%`)
+            )
+          );
+
+    const [results, countResult] = await Promise.all([
+      this.db
+        .select({
+          id: artifacts.id,
+          title: artifacts.title,
+          summary: artifacts.summary,
+          format: artifacts.format,
+          sizeBytes: artifacts.sizeBytes,
+          createdAt: artifacts.createdAt,
+          updatedAt: artifacts.updatedAt,
+        })
+        .from(artifacts)
+        .where(searchCondition)
+        .orderBy(desc(artifacts.createdAt))
+        .limit(limit)
+        .offset(offset),
+      this.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(artifacts)
+        .where(searchCondition),
+    ]);
+
+    return {
+      results,
+      totalCount: countResult[0]?.count ?? 0,
+    };
   }
 }

@@ -3,6 +3,7 @@ export type {
   CreateArtifactInput,
   ListArtifactsInput,
   SearchArtifactsInput,
+  SearchArtifactsResult,
   TimeRange,
   ArtifactListItem,
   PaginatedArtifacts,
