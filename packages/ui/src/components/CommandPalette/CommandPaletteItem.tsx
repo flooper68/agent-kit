@@ -26,7 +26,11 @@ export function CommandPaletteItem({
   return (
     <button
       ref={ref}
+      id={`command-${command.id}`}
       type="button"
+      role="option"
+      aria-selected={isSelected}
+      aria-disabled={command.disabled}
       className={cn(
         'w-full flex items-center gap-3 px-3 py-2 rounded-sm text-sm',
         'transition-colors cursor-pointer text-left',

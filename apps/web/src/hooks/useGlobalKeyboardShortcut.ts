@@ -5,7 +5,13 @@ interface KeyboardShortcutOptions {
   ctrlKey?: boolean;
   shiftKey?: boolean;
   altKey?: boolean;
+  /** Use metaKey on Mac, ctrlKey on Windows/Linux */
+  cmdOrCtrl?: boolean;
 }
+
+const isMac =
+  typeof navigator !== 'undefined' &&
+  navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
 export function useGlobalKeyboardShortcut(
   key: string,
@@ -23,6 +29,12 @@ export function useGlobalKeyboardShortcut(
       if (options.shiftKey && !e.shiftKey) return;
       if (options.altKey && !e.altKey) return;
 
+      // Handle cross-platform Cmd/Ctrl
+      if (options.cmdOrCtrl) {
+        const expectedModifier = isMac ? e.metaKey : e.ctrlKey;
+        if (!expectedModifier) return;
+      }
+
       // Prevent default (e.g., browser print dialog for Cmd+P)
       e.preventDefault();
       callback();
@@ -37,5 +49,6 @@ export function useGlobalKeyboardShortcut(
     options.ctrlKey,
     options.shiftKey,
     options.altKey,
+    options.cmdOrCtrl,
   ]);
 }

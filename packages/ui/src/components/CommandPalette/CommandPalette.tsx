@@ -1,4 +1,11 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+  useEffect,
+  useId,
+} from 'react';
 import { Search } from 'lucide-react';
 import { Dialog } from '../Dialog';
 import { cn } from '../../lib/utils';
@@ -38,6 +45,7 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const listboxId = useId();
 
   const filteredCommands = useMemo(
     () => filterCommands(commands, query),
@@ -87,10 +95,22 @@ export function CommandPalette({
       >
         {/* Search Input */}
         <div className="flex items-center border-b border-border px-3">
-          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Search
+            className="h-4 w-4 text-muted-foreground shrink-0"
+            aria-hidden="true"
+          />
           <input
             ref={inputRef}
             type="text"
+            role="combobox"
+            aria-expanded={filteredCommands.length > 0}
+            aria-controls={listboxId}
+            aria-activedescendant={
+              filteredCommands[selectedIndex]
+                ? `command-${filteredCommands[selectedIndex].id}`
+                : undefined
+            }
+            aria-autocomplete="list"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -104,7 +124,12 @@ export function CommandPalette({
         </div>
 
         {/* Command List */}
-        <div className="max-h-[300px] overflow-y-auto p-1">
+        <div
+          id={listboxId}
+          role="listbox"
+          aria-label="Commands"
+          className="max-h-[300px] overflow-y-auto p-1"
+        >
           {filteredCommands.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground">
               {emptyMessage}

@@ -123,7 +123,9 @@ export const AgentPanel = memo(
       // Combine internal refs with external callback refs
       const setInputRef = useCallback(
         (node: HTMLTextAreaElement | null) => {
-          (internalInputRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = node;
+          (
+            internalInputRef as React.MutableRefObject<HTMLTextAreaElement | null>
+          ).current = node;
           inputRefProp?.(node);
         },
         [inputRefProp]
@@ -131,7 +133,9 @@ export const AgentPanel = memo(
 
       const setScrollRef = useCallback(
         (node: HTMLDivElement | null) => {
-          (internalScrollRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          (
+            internalScrollRef as React.MutableRefObject<HTMLDivElement | null>
+          ).current = node;
           scrollContainerRefProp?.(node);
         },
         [scrollContainerRefProp]

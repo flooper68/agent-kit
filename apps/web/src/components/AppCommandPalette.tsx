@@ -33,7 +33,18 @@ function getStoredUsage(): CommandUsage {
   try {
     const stored = localStorage.getItem(USAGE_STORAGE_KEY);
     if (stored) {
-      return JSON.parse(stored) as CommandUsage;
+      const parsed: unknown = JSON.parse(stored);
+      // Validate structure: must be a non-array object
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        // Filter to only valid entries (string keys with number values)
+        const validated: CommandUsage = {};
+        for (const [key, value] of Object.entries(parsed)) {
+          if (typeof value === 'number') {
+            validated[key] = value;
+          }
+        }
+        return validated;
+      }
     }
   } catch {
     // Ignore parse errors
@@ -84,7 +95,9 @@ export function AppCommandPalette({
   const shouldNavigateOnChatOpen = useMemo(() => {
     const path = location.pathname;
     // Don't navigate away from projects or artifacts pages
-    return !path.startsWith('/app/projects') && !path.startsWith('/app/artifacts');
+    return (
+      !path.startsWith('/app/projects') && !path.startsWith('/app/artifacts')
+    );
   }, [location.pathname]);
 
   // Reset mode when palette closes

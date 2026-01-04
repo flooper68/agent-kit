@@ -53,11 +53,11 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
   const isAdmin = checkIsAdmin(membership?.role);
   const currentPath = location.pathname;
 
-  // Register Cmd+P keyboard shortcut for command palette
+  // Register Cmd+P / Ctrl+P keyboard shortcut for command palette
   const openCommandPalette = useCallback(() => {
     setIsCommandPaletteOpen(true);
   }, []);
-  useGlobalKeyboardShortcut('p', openCommandPalette, { metaKey: true });
+  useGlobalKeyboardShortcut('p', openCommandPalette, { cmdOrCtrl: true });
 
   // Fetch chat history for the sidebar
   const { sessions, refetch: refetchSessions } = useChatHistory({ limit: 50 });

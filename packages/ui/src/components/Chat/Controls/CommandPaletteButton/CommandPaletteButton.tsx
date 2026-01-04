@@ -3,6 +3,12 @@ import { Command } from 'lucide-react';
 import { IconButton } from '../../../IconButton';
 import { Tooltip } from '../../../Tooltip';
 
+const isMac =
+  typeof navigator !== 'undefined' &&
+  navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
+const defaultTooltip = `Command palette (${isMac ? '⌘' : 'Ctrl+'}P)`;
+
 export interface CommandPaletteButtonProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
   tooltip?: string;
@@ -11,7 +17,7 @@ export interface CommandPaletteButtonProps
 export const CommandPaletteButton = forwardRef<
   HTMLButtonElement,
   CommandPaletteButtonProps
->(({ tooltip = 'Command palette (⌘P)', ...props }, ref) => {
+>(({ tooltip = defaultTooltip, ...props }, ref) => {
   return (
     <Tooltip content={tooltip}>
       <IconButton

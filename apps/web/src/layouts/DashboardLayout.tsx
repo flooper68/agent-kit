@@ -18,7 +18,12 @@ import {
   Button,
   ToastProvider,
 } from '@agent-kit/ui';
-import type { Project, MenuSection, AgentType, AppLayoutRef } from '@agent-kit/ui';
+import type {
+  Project,
+  MenuSection,
+  AgentType,
+  AppLayoutRef,
+} from '@agent-kit/ui';
 import {
   Bot,
   BarChart3,
@@ -102,11 +107,11 @@ function DashboardLayoutInner({
     [handlePanelWidthChange]
   );
 
-  // Register Cmd+P keyboard shortcut for command palette
+  // Register Cmd+P / Ctrl+P keyboard shortcut for command palette
   const openCommandPalette = useCallback(() => {
     setIsCommandPaletteOpen(true);
   }, []);
-  useGlobalKeyboardShortcut('p', openCommandPalette, { metaKey: true });
+  useGlobalKeyboardShortcut('p', openCommandPalette, { cmdOrCtrl: true });
 
   // Fetch chat history for the sidebar
   const { sessions, refetch: refetchSessions } = useChatHistory({ limit: 50 });
