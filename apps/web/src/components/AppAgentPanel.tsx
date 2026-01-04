@@ -297,9 +297,8 @@ export function AppAgentPanel({
       description: 'Move cursor to the chat input field',
       icon: <MessageSquareText className="h-4 w-4" />,
       keywords: ['focus', 'input', 'chat', 'type', 'message'],
-      onSelect: () => {
-        inputRef.current?.focus();
-      },
+      onSelect: () => {},
+      getFocusTarget: () => inputRef.current,
     }),
     []
   );

@@ -39,7 +39,7 @@ export class GetTasksByStatusQuery {
         )
       )
       .groupBy(tasks.id)
-      .orderBy(tasks.position);
+      .orderBy(tasks.position, tasks.createdAt);
 
     // Group by status
     const tasksByStatus: TasksByStatus = {

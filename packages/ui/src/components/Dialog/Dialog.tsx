@@ -140,6 +140,7 @@ export interface DialogContentProps
   showOverlay?: boolean;
   onEscapeKeyDown?: (event: KeyboardEvent) => void;
   onPointerDownOutside?: (event: Event) => void;
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
@@ -152,6 +153,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
       showOverlay = true,
       onEscapeKeyDown,
       onPointerDownOutside,
+      onCloseAutoFocus,
     },
     ref
   ) => {
@@ -163,6 +165,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
           className={cn(contentVariants({ position, size }), className)}
           onEscapeKeyDown={onEscapeKeyDown}
           onPointerDownOutside={onPointerDownOutside}
+          onCloseAutoFocus={onCloseAutoFocus}
         >
           {children}
         </DialogPrimitive.Content>

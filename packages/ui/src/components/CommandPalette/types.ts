@@ -11,6 +11,10 @@ export interface Command {
   disabled?: boolean;
   /** If true, the palette will stay open after selecting this command */
   keepOpen?: boolean;
+  /** Optional function that returns the element to focus after the command palette closes.
+   * Use this when the command needs to focus a specific element, to prevent
+   * the dialog's default focus restoration from overriding it. */
+  getFocusTarget?: () => HTMLElement | null;
 }
 
 export interface CommandPaletteProps {

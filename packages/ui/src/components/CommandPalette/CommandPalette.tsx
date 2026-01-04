@@ -45,6 +45,7 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const focusTargetRef = useRef<HTMLElement | null>(null);
   const listboxId = useId();
 
   const filteredCommands = useMemo(
@@ -54,6 +55,8 @@ export function CommandPalette({
 
   const handleSelect = useCallback(
     (cmd: Command) => {
+      // Store focus target before closing so we can focus it after dialog closes
+      focusTargetRef.current = cmd.getFocusTarget?.() ?? null;
       cmd.onSelect();
       if (!cmd.keepOpen) {
         onOpenChange(false);
@@ -64,9 +67,20 @@ export function CommandPalette({
   );
 
   const handleClose = useCallback(() => {
+    focusTargetRef.current = null;
     onOpenChange(false);
     setQuery('');
   }, [onOpenChange]);
+
+  const handleCloseAutoFocus = useCallback((event: Event) => {
+    // If a command specified a focus target, prevent default focus restoration
+    // and focus the target element instead
+    if (focusTargetRef.current) {
+      event.preventDefault();
+      focusTargetRef.current.focus();
+      focusTargetRef.current = null;
+    }
+  }, []);
 
   const { selectedIndex, setSelectedIndex, handleKeyDown } =
     useCommandPaletteKeyboard(filteredCommands, handleSelect, handleClose);
@@ -92,6 +106,7 @@ export function CommandPalette({
           className
         )}
         onEscapeKeyDown={handleClose}
+        onCloseAutoFocus={handleCloseAutoFocus}
       >
         {/* Search Input */}
         <div className="flex items-center border-b border-border px-3">

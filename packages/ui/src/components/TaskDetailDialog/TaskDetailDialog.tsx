@@ -159,10 +159,38 @@ export function TaskDetailDialog({
   const idleResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialFormDataRef = useRef<Partial<TaskData>>({});
   const hasChangedRef = useRef(false);
+  const pendingFormDataRef = useRef<Partial<TaskData> | null>(null);
+  const latestFormDataRef = useRef<Partial<TaskData>>(formData);
 
   const autoSaveStatus = externalAutoSaveStatus ?? internalAutoSaveStatus;
 
-  // Reset formData when task or mode changes
+  // Flush pending changes and call onOpenChange
+  const handleOpenChange = useCallback(
+    (newOpen: boolean) => {
+      // If closing, flush any pending changes first
+      if (
+        !newOpen &&
+        autoSave &&
+        onSave &&
+        pendingFormDataRef.current &&
+        mode !== 'create'
+      ) {
+        // Clear debounce timer since we're saving immediately
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+          debounceTimerRef.current = null;
+        }
+        onSave(pendingFormDataRef.current);
+        pendingFormDataRef.current = null;
+      }
+      onOpenChange(newOpen);
+    },
+    [autoSave, mode, onOpenChange, onSave]
+  );
+
+  // Reset formData when task ID or mode changes (not on every task object change)
+  // Using task object changes would reset pending changes when cache invalidates after save
+  const taskId = task?.id;
   useEffect(() => {
     const initial = {
       title: task?.title ?? '',
@@ -172,10 +200,13 @@ export function TaskDetailDialog({
     };
     setFormData(initial);
     initialFormDataRef.current = initial;
+    latestFormDataRef.current = initial;
     hasChangedRef.current = false;
+    pendingFormDataRef.current = null;
     setShowDeleteConfirm(false);
     setInternalAutoSaveStatus('idle');
-  }, [task, mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskId, mode]);
 
   // Cleanup timers on unmount or dialog close
   useEffect(() => {
@@ -230,27 +261,33 @@ export function TaskDetailDialog({
 
       if (!hasChanges) {
         setInternalAutoSaveStatus('idle');
+        pendingFormDataRef.current = null;
         return;
       }
 
       hasChangedRef.current = true;
+      pendingFormDataRef.current = data;
 
       // Set debounce timer
       debounceTimerRef.current = setTimeout(async () => {
+        // Use the most current pending data, not stale closure
+        const dataToSave = pendingFormDataRef.current ?? data;
+
         // Delay showing "saving" indicator to avoid blinking on fast saves
         savingIndicatorTimerRef.current = setTimeout(() => {
           setInternalAutoSaveStatus('saving');
         }, 300);
 
         try {
-          await onSave(data);
+          await onSave(dataToSave);
           // Clear the saving indicator timer if save completed fast
           if (savingIndicatorTimerRef.current) {
             clearTimeout(savingIndicatorTimerRef.current);
             savingIndicatorTimerRef.current = null;
           }
           setInternalAutoSaveStatus('saved');
-          initialFormDataRef.current = data;
+          initialFormDataRef.current = dataToSave;
+          pendingFormDataRef.current = null;
           // Clear any existing idle reset timer
           if (idleResetTimerRef.current) {
             clearTimeout(idleResetTimerRef.current);
@@ -293,7 +330,9 @@ export function TaskDetailDialog({
   };
 
   const handleInputChange = (field: keyof TaskData, value: unknown) => {
-    const newFormData = { ...formData, [field]: value };
+    // Use ref to get latest state, avoiding stale closure issue with rapid changes
+    const newFormData = { ...latestFormDataRef.current, [field]: value };
+    latestFormDataRef.current = newFormData;
     setFormData(newFormData);
 
     // Trigger autosave if enabled
@@ -670,7 +709,7 @@ export function TaskDetailDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <Dialog.Content
         size={showDeleteConfirm ? 'sm' : 'lg'}
         className={cn(
