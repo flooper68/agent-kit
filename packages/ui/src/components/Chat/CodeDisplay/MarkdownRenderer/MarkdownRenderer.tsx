@@ -7,6 +7,7 @@ import {
   oneLight,
 } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { cn } from '../../../../lib/utils';
+import { useTheme } from '../../../../theme';
 import { MermaidDiagram } from '../MermaidDiagram';
 
 export interface MarkdownRendererProps
@@ -143,10 +144,9 @@ CodeBlock.displayName = 'CodeBlock';
 export const MarkdownRenderer = memo(
   forwardRef<HTMLDivElement, MarkdownRendererProps>(
     ({ content, className, ...props }, ref) => {
-      // Detect dark mode
-      const isDark =
-        typeof window !== 'undefined' &&
-        document.documentElement.classList.contains('dark');
+      // Use theme context for reactive dark mode detection
+      const { resolvedTheme } = useTheme();
+      const isDark = resolvedTheme === 'dark';
 
       return (
         <div ref={ref} className={cn(proseClasses, className)} {...props}>

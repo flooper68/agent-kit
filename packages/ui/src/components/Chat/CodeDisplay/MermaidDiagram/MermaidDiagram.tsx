@@ -1,11 +1,19 @@
 import { memo, useEffect, useRef, useState, useId } from 'react';
 import mermaid from 'mermaid';
+import DOMPurify from 'dompurify';
 import { cn } from '../../../../lib/utils';
+import { useTheme } from '../../../../theme';
 
 export interface MermaidDiagramProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+  extends Omit<
+    React.HTMLAttributes<HTMLDivElement>,
+    'dangerouslySetInnerHTML' | 'children'
+  > {
   chart: string;
 }
+
+// Track mermaid initialization state at module level
+let currentTheme: string | null = null;
 
 export const MermaidDiagram = memo(
   ({ chart, className, ...props }: MermaidDiagramProps) => {
@@ -14,45 +22,66 @@ export const MermaidDiagram = memo(
     const [error, setError] = useState<string | null>(null);
     const uniqueId = useId().replace(/:/g, '-');
 
+    // Use theme context for reactive dark mode detection
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
+
     useEffect(() => {
+      let isMounted = true;
+
       const renderDiagram = async () => {
         if (!containerRef.current) return;
 
-        // Detect dark mode
-        const isDark =
-          typeof window !== 'undefined' &&
-          document.documentElement.classList.contains('dark');
+        const theme = isDark ? 'dark' : 'default';
 
-        // Initialize mermaid with current theme
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: isDark ? 'dark' : 'default',
-          fontFamily: 'var(--font-sans)',
-          securityLevel: 'strict',
-        });
+        // Only reinitialize mermaid if theme changed
+        if (currentTheme !== theme) {
+          mermaid.initialize({
+            startOnLoad: false,
+            theme,
+            fontFamily: 'var(--font-sans)',
+            securityLevel: 'strict',
+          });
+          currentTheme = theme;
+        }
 
         try {
           const { svg: renderedSvg } = await mermaid.render(
             `mermaid-${uniqueId}`,
             chart.trim()
           );
-          setSvg(renderedSvg);
-          setError(null);
+
+          // Sanitize SVG as defense-in-depth against XSS
+          const sanitizedSvg = DOMPurify.sanitize(renderedSvg, {
+            USE_PROFILES: { svg: true, svgFilters: true },
+          });
+
+          if (isMounted) {
+            setSvg(sanitizedSvg);
+            setError(null);
+          }
         } catch (err) {
-          console.error('Mermaid rendering error:', err);
-          setError(
-            err instanceof Error ? err.message : 'Failed to render diagram'
-          );
-          setSvg('');
+          if (isMounted) {
+            console.error('Mermaid rendering error:', err);
+            setError(
+              err instanceof Error ? err.message : 'Failed to render diagram'
+            );
+            setSvg('');
+          }
         }
       };
 
       renderDiagram();
-    }, [chart, uniqueId]);
+
+      return () => {
+        isMounted = false;
+      };
+    }, [chart, uniqueId, isDark]);
 
     if (error) {
       return (
         <div
+          role="alert"
           className={cn(
             'not-prose my-2 p-4 rounded-lg border border-destructive/50 bg-destructive/10 text-destructive text-sm',
             className
@@ -76,6 +105,8 @@ export const MermaidDiagram = memo(
     return (
       <div
         ref={containerRef}
+        role="img"
+        aria-label="Mermaid diagram"
         className={cn(
           'not-prose my-2 flex justify-center overflow-x-auto',
           '[&_svg]:max-w-full [&_svg]:h-auto',

@@ -114,6 +114,7 @@
         "@radix-ui/react-tooltip": "1.2.8",
         "class-variance-authority": "0.7.1",
         "clsx": "2.1.1",
+        "dompurify": "^3.3.1",
         "lucide-react": "0.562.0",
         "mermaid": "^11.12.2",
         "react-markdown": "10.1.0",
@@ -129,6 +130,7 @@
         "@radix-ui/react-tabs": "1.1.13",
         "@storybook/test": "8.4.7",
         "@tailwindcss/typography": "0.5.19",
+        "@types/dompurify": "^3.2.0",
         "@types/react": "18.3.18",
         "@types/react-dom": "18.3.5",
         "@types/react-syntax-highlighter": "15.5.13",
@@ -678,6 +680,8 @@
     "@types/debug": ["@types/debug@4.1.12", "", { "dependencies": { "@types/ms": "*" } }, "sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ=="],
 
     "@types/doctrine": ["@types/doctrine@0.0.9", "", {}, "sha512-eOIHzCUSH7SMfonMG1LsC2f8vxBFtho6NGBznK41R84YzPuvSBzrhEps33IsQiOW9+VL6NQ9DbjQJznk/S4uRA=="],
+
+    "@types/dompurify": ["@types/dompurify@3.2.0", "", { "dependencies": { "dompurify": "*" } }, "sha512-Fgg31wv9QbLDA0SpTOXO3MaxySc4DKGLi8sna4/Utjo4r3ZRPdCt4UQee8BWr+Q5z21yifghREPJGYaEOEIACg=="],
 
     "@types/estree": ["@types/estree@1.0.8", "", {}, "sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w=="],
 
