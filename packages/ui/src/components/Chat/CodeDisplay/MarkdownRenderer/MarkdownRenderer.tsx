@@ -7,6 +7,7 @@ import {
   oneLight,
 } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { cn } from '../../../../lib/utils';
+import { MermaidDiagram } from '../MermaidDiagram';
 
 export interface MarkdownRendererProps
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -154,6 +155,7 @@ export const MarkdownRenderer = memo(
             components={{
               code({ className, children, ...codeProps }) {
                 const match = /language-(\w+)/.exec(className || '');
+                const language = match?.[1];
                 // Check if inline: either no parent pre element, or content has no newlines
                 const codeContent = String(children);
                 const hasNewlines = codeContent.includes('\n');
@@ -168,10 +170,16 @@ export const MarkdownRenderer = memo(
                   );
                 }
 
-                // Code block with syntax highlighting
                 const codeString = String(children).replace(/\n$/, '');
+
+                // Handle mermaid diagrams
+                if (language === 'mermaid') {
+                  return <MermaidDiagram chart={codeString} />;
+                }
+
+                // Code block with syntax highlighting
                 return (
-                  <CodeBlock language={match?.[1]} isDark={isDark}>
+                  <CodeBlock language={language} isDark={isDark}>
                     {codeString}
                   </CodeBlock>
                 );

@@ -143,3 +143,32 @@ And more \`inline code\` after the diagram.
 `,
   },
 };
+
+export const MermaidDiagram: Story = {
+  args: {
+    content: `# System Architecture
+
+Here's the flow of data through our system:
+
+\`\`\`mermaid
+flowchart LR
+    A[User] --> B[Web App]
+    B --> C[API Server]
+    C --> D[(Database)]
+    C --> E[Cache]
+\`\`\`
+
+And here's the sequence of operations:
+
+\`\`\`mermaid
+sequenceDiagram
+    User->>+WebApp: Click button
+    WebApp->>+API: POST /action
+    API->>+DB: Insert record
+    DB-->>-API: Success
+    API-->>-WebApp: 200 OK
+    WebApp-->>-User: Show success
+\`\`\`
+`,
+  },
+};
