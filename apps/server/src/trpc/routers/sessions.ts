@@ -54,6 +54,12 @@ export const sessionsRouter = router({
         input.sessionId
       );
 
+      // Check if session currently has an active streaming job
+      // This allows the client to restore streaming status on reload
+      const isStreaming = await ctx.sessionManager.hasActiveJob(
+        input.sessionId
+      );
+
       const session = await ctx.agentsFeature.sessions.getWithMessages(
         input.sessionId
       );
@@ -68,6 +74,7 @@ export const sessionsRouter = router({
       return {
         ...session,
         lastStreamId,
+        isStreaming,
       };
     }),
 
