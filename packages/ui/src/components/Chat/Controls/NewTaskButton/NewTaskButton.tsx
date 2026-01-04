@@ -3,8 +3,10 @@ import { Plus } from 'lucide-react';
 import { IconButton } from '../../../IconButton';
 import { Tooltip } from '../../../Tooltip';
 
-export interface NewTaskButtonProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
+export interface NewTaskButtonProps extends Omit<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  'children'
+> {
   tooltip?: string;
 }
 

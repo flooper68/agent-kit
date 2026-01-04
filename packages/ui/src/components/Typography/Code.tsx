@@ -21,7 +21,8 @@ const codeVariants = cva('font-mono rounded px-1.5 py-0.5', {
 });
 
 export interface CodeProps
-  extends React.HTMLAttributes<HTMLElement>,
+  extends
+    React.HTMLAttributes<HTMLElement>,
     VariantProps<typeof codeVariants> {}
 
 export const Code = forwardRef<HTMLElement, CodeProps>(

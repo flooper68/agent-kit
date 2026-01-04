@@ -29,7 +29,8 @@ const labelVariants = cva('font-sans text-foreground inline-block', {
 });
 
 export interface LabelProps
-  extends React.LabelHTMLAttributes<HTMLLabelElement>,
+  extends
+    React.LabelHTMLAttributes<HTMLLabelElement>,
     VariantProps<typeof labelVariants> {}
 
 export const Label = forwardRef<HTMLLabelElement, LabelProps>(

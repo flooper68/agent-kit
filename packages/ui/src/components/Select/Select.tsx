@@ -30,8 +30,9 @@ export interface SelectOption {
   disabled?: boolean;
 }
 
-export interface SelectProps
-  extends VariantProps<typeof selectTriggerVariants> {
+export interface SelectProps extends VariantProps<
+  typeof selectTriggerVariants
+> {
   options: SelectOption[];
   placeholder?: string;
   value?: string;
