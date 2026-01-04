@@ -6,6 +6,7 @@ import {
   DollarSign,
   Coins,
   FileText,
+  FolderKanban,
 } from 'lucide-react';
 import { trpc } from '../../lib/trpc';
 import {
@@ -20,6 +21,8 @@ import {
   RecentActivityTable,
   SessionDetailModal,
   ChartErrorBoundary,
+  TasksByStatusChart,
+  TasksByPriorityChart,
 } from '../../components/analytics';
 import { ArtifactsCreationChart } from '../../components/analytics/ArtifactsCreationChart';
 import { ArtifactsByAgentChart } from '../../components/analytics/ArtifactsByAgentChart';
@@ -123,6 +126,10 @@ export function AnalyticsPage() {
     timeRange,
   });
 
+  // Fetch project and task analytics
+  const projectStatsQuery = trpc.analytics.getProjectStats.useQuery();
+  const taskStatsQuery = trpc.analytics.getTaskStats.useQuery();
+
   const handleNextPage = () => {
     if (recentActivityQuery.data?.nextCursor) {
       setCursors([...cursors, recentActivityQuery.data.nextCursor]);
@@ -170,6 +177,14 @@ export function AnalyticsPage() {
         : formatNumber(artifactsStatsQuery.data?.totalCount ?? 0),
       trend: undefined,
       icon: FileText,
+    },
+    {
+      label: 'Projects',
+      value: projectStatsQuery.isLoading
+        ? '-'
+        : formatNumber(projectStatsQuery.data?.totalProjects ?? 0),
+      trend: undefined,
+      icon: FolderKanban,
     },
   ];
 
@@ -263,6 +278,22 @@ export function AnalyticsPage() {
             <ArtifactsByAgentChart
               data={artifactsByAgentQuery.data ?? []}
               isLoading={artifactsByAgentQuery.isLoading}
+            />
+          </ChartErrorBoundary>
+        </div>
+
+        {/* Task Analytics */}
+        <div className="grid gap-6 lg:grid-cols-2 mb-8">
+          <ChartErrorBoundary chartName="Tasks by Status">
+            <TasksByStatusChart
+              data={taskStatsQuery.data}
+              isLoading={taskStatsQuery.isLoading}
+            />
+          </ChartErrorBoundary>
+          <ChartErrorBoundary chartName="Tasks by Priority">
+            <TasksByPriorityChart
+              data={taskStatsQuery.data}
+              isLoading={taskStatsQuery.isLoading}
             />
           </ChartErrorBoundary>
         </div>

@@ -41,7 +41,7 @@ export const ConnectionSnackbar = ({
   return (
     <div
       className={cn(
-        'fixed top-16 right-4 z-50',
+        'absolute top-2 right-2 z-50',
         'px-2 py-1 rounded-full',
         'text-xs text-muted-foreground',
         'bg-background/80 backdrop-blur-sm',

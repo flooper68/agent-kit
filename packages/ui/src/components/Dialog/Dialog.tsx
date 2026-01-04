@@ -122,7 +122,7 @@ const contentVariants = cva(
         lg: 'w-full max-w-lg p-6',
         xl: 'w-full max-w-xl p-6',
         '2xl': 'w-full max-w-4xl p-6',
-        viewport: 'w-[90vw] h-[90vh] max-w-none p-6 flex flex-col',
+        viewport: 'w-full h-[90vh] max-w-5xl p-6 flex flex-col',
         full: 'w-full h-full max-w-none rounded-none',
       },
     },
@@ -191,11 +191,17 @@ DialogHeader.displayName = 'DialogHeader';
 // Dialog Footer
 interface DialogFooterProps {
   children: React.ReactNode;
+  className?: string;
 }
 
-const DialogFooter = ({ children }: DialogFooterProps) => {
+const DialogFooter = ({ children, className }: DialogFooterProps) => {
   return (
-    <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
+    <div
+      className={cn(
+        'flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4',
+        className
+      )}
+    >
       {children}
     </div>
   );

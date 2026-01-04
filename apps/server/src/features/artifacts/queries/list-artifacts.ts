@@ -1,4 +1,5 @@
 import { eq, desc, lt, and, or, ilike, type SQL } from 'drizzle-orm';
+import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
 import { artifacts } from '../../../db/schema';
 import type { ListArtifactsInput, PaginatedArtifacts } from '../types';
@@ -42,7 +43,7 @@ export class ListArtifactsQuery {
 
     // Add search filter if provided
     if (search?.trim()) {
-      const searchPattern = `%${search.trim()}%`;
+      const searchPattern = `%${escapeLikePattern(search.trim())}%`;
       conditions.push(
         or(
           ilike(artifacts.title, searchPattern),

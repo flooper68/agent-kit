@@ -180,13 +180,15 @@ export class AgentJobHandler {
         await this.sessionManager.getSessionMessages(sessionId);
       const messages = convertToAIMessages(dbMessages);
 
-      // Get tools for this agent (with context for artifact tools)
+      // Get tools for this agent (with context for artifact and planning tools)
       const tools = getToolsById(agent.tools, {
         userId,
         orgId,
         sessionId,
         agentId,
         artifactsFeature: this.sessionManager.artifactsFeature,
+        projectsFeature: this.sessionManager.projectsFeature,
+        tasksFeature: this.sessionManager.tasksFeature,
       });
 
       // Publish message start event

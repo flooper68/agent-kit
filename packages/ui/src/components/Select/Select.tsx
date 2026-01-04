@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils';
 const selectTriggerVariants = cva(
   [
     'flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm',
-    'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+    'focus:outline-none focus:ring-1 focus:ring-ring',
     'disabled:cursor-not-allowed disabled:opacity-50',
     'cursor-pointer',
     '[&>span]:line-clamp-1',

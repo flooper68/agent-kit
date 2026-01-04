@@ -6,6 +6,8 @@ import { sessionsRouter } from './sessions';
 import { messagesRouter } from './messages';
 import { analyticsRouter } from './analytics';
 import { artifactsRouter } from './artifacts';
+import { projectsRouter } from './projects';
+import { tasksRouter } from './tasks';
 
 export const appRouter = router({
   greeting: greetingRouter,
@@ -15,6 +17,8 @@ export const appRouter = router({
   messages: messagesRouter,
   analytics: analyticsRouter,
   artifacts: artifactsRouter,
+  projects: projectsRouter,
+  tasks: tasksRouter,
 });
 
 export type AppRouter = typeof appRouter;

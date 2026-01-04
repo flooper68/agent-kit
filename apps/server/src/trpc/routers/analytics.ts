@@ -190,4 +190,13 @@ export const analyticsRouter = router({
 
       return enrichWithClerkUserInfo(ctx.clerk, data);
     }),
+
+  // Project & Task Analytics
+  getProjectStats: adminProcedure.query(async ({ ctx }) => {
+    return ctx.projectsFeature.getStats(ctx.auth.orgId);
+  }),
+
+  getTaskStats: adminProcedure.query(async ({ ctx }) => {
+    return ctx.tasksFeature.getStats(ctx.auth.orgId);
+  }),
 });

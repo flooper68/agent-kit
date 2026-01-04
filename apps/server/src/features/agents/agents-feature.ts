@@ -40,12 +40,30 @@ import type {
 
 // Standard tools available to all agents
 const STANDARD_TOOLS = [
+  // Utility tools
   'getTime',
   'webSearch',
   'extractContent',
+  // Artifact tools
   'writeArtifact',
   'searchArtifacts',
   'readArtifact',
+  // Planning tools - projects
+  'listProjects',
+  'searchProjects',
+  'getProject',
+  'createProject',
+  'updateProject',
+  // Planning tools - tasks
+  'listTasks',
+  'searchTasks',
+  'getTask',
+  'createTask',
+  'updateTask',
+  'moveTask',
+  'reorderTask',
+  'attachArtifactToTask',
+  'detachArtifactFromTask',
 ];
 
 // Standard system prompt for all assistants
@@ -59,6 +77,20 @@ When using tools:
 - Use searchArtifacts to find previously saved documents by title or summary
 - Use readArtifact to retrieve the full content of a saved document
 - Explain what you're doing when using tools
+
+For project and task management:
+- Use listProjects to see all available projects
+- Use searchProjects to find projects by name or description
+- Use getProject to get details about a specific project
+- Use listTasks to see tasks in a project (can filter by status, priority, overdue, etc.)
+- Use searchTasks to find tasks across all projects
+- Use getTask to see full task details including attached artifacts
+- Use createTask to add new tasks to a project
+- Use updateTask to modify task title, description, priority, or due date
+- Use moveTask to change a task's status (todo, in_progress, review, done)
+- Use reorderTask to change a task's position within its current column
+- Use attachArtifactToTask to link a document to a task
+- Use detachArtifactFromTask to remove a document link from a task
 
 Be friendly but professional.`;
 
