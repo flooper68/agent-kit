@@ -16,13 +16,13 @@ export interface MarkdownRendererProps
 // Default styling for markdown prose - uses theme colors
 // Uses text-base and leading-relaxed to match chat message styling
 const proseClasses = `
-  prose dark:prose-invert max-w-none
-  overflow-hidden break-words text-base leading-relaxed
+  prose prose-sm dark:prose-invert max-w-none
+  overflow-hidden break-words text-sm leading-normal
   prose-headings:text-foreground prose-headings:font-semibold
-  prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
-  prose-p:text-foreground prose-p:my-3 prose-p:leading-relaxed
-  prose-ul:my-3 prose-ol:my-3 prose-li:text-foreground
-  prose-li:my-1
+  prose-h1:text-lg prose-h2:text-base prose-h3:text-sm
+  prose-p:text-foreground prose-p:my-1.5 prose-p:leading-normal
+  prose-ul:my-1.5 prose-ol:my-1.5 prose-li:text-foreground
+  prose-li:my-0
   prose-strong:text-foreground prose-strong:font-semibold
   prose-code:text-foreground prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
   prose-code:before:content-none prose-code:after:content-none
@@ -101,9 +101,9 @@ const CodeBlock = memo(({ children, language, isDark }: CodeBlockProps) => {
   const style = isDark ? oneDark : oneLight;
 
   return (
-    <div className="not-prose relative group rounded-lg overflow-hidden my-2 w-full">
+    <div className="not-prose relative group rounded-lg overflow-hidden my-1.5 w-full">
       {/* Header with language label and copy button */}
-      <div className="flex items-center justify-between px-4 py-2 bg-code-header border-b border-code-border">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-code-header border-b border-code-border">
         <span className="text-xs font-mono text-muted-foreground">
           {language || 'text'}
         </span>
@@ -116,10 +116,10 @@ const CodeBlock = memo(({ children, language, isDark }: CodeBlockProps) => {
           style={style}
           customStyle={{
             margin: 0,
-            padding: '1rem',
+            padding: '0.75rem',
             background: 'hsl(var(--code-background))',
-            fontSize: '1rem',
-            lineHeight: '1.625',
+            fontSize: '0.875rem',
+            lineHeight: '1.5',
             whiteSpace: 'pre',
             wordBreak: 'normal',
             overflowWrap: 'normal',

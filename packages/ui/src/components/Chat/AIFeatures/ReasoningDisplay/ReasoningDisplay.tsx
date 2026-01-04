@@ -1,7 +1,7 @@
 import { forwardRef, useState, useEffect } from 'react';
 import { cn } from '../../../../lib/utils';
 import { Collapsible } from '../../../Collapsible';
-import { Text } from '../../../Typography';
+import { MarkdownRenderer } from '../../CodeDisplay/MarkdownRenderer';
 
 export interface ReasoningDisplayProps
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -49,8 +49,8 @@ export const ReasoningDisplay = forwardRef<
 
     return (
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <div ref={ref} className={cn('text-sm mb-3', className)} {...props}>
-          <Collapsible.Trigger className="py-1 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+        <div ref={ref} className={cn('text-sm mb-6', className)} {...props}>
+          <Collapsible.Trigger className="py-0.5 flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
             <svg
               className="h-4 w-4"
               fill="none"
@@ -81,14 +81,11 @@ export const ReasoningDisplay = forwardRef<
           </Collapsible.Trigger>
 
           <Collapsible.Content>
-            <div className="px-3 py-2 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20">
-              <Text
-                size="13"
-                variant="muted"
-                className="whitespace-pre-wrap italic"
-              >
-                {content}
-              </Text>
+            <div className="mt-1 px-2 py-1.5 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/50">
+              <MarkdownRenderer
+                content={content}
+                className="text-xs leading-tight text-muted-foreground/60 bg-transparent prose-code:text-xs prose-pre:text-xs"
+              />
             </div>
           </Collapsible.Content>
         </div>

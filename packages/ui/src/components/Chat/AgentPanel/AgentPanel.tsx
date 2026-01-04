@@ -225,6 +225,23 @@ export const AgentPanel = memo(
       // Render a single message (memoized)
       const renderMessage = useCallback(
         (message: TaskMessage, index: number) => {
+          // Check if this is a placeholder (assistant with no parts)
+          const isPlaceholder =
+            message.role === 'assistant' && message.parts.length === 0;
+
+          if (isPlaceholder) {
+            // Render invisible placeholder with min-height for scroll target.
+            // 60px ensures the placeholder is tall enough to trigger scrollIntoView
+            // positioning correctly, matching approximate height of a minimal message.
+            return (
+              <div
+                key={message.id}
+                className="min-h-[60px]"
+                aria-hidden="true"
+              />
+            );
+          }
+
           const avatar = getAvatar(message.role as 'user' | 'assistant');
           const isUser = message.role === 'user';
           const isLastMessage = index === messages.length - 1;
