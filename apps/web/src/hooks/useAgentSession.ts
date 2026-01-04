@@ -138,6 +138,8 @@ export function useAgentSession({
     content: string;
     sessionId: string;
   } | null>(null);
+  // Track the current placeholder ID to avoid race conditions when replacing
+  const currentPlaceholderIdRef = useRef<string | null>(null);
 
   // Get session data
   const sessionQuery = trpc.sessions.get.useQuery(
@@ -171,6 +173,7 @@ export function useAgentSession({
     needsNewReasoningPartRef.current = {};
     lastMessageRef.current = null;
     hasInitialScrolledRef.current = false;
+    currentPlaceholderIdRef.current = null;
   }, [sessionId]);
 
   // Handle invalid session (e.g., persisted session that no longer exists)
@@ -350,10 +353,13 @@ export function useAgentSession({
             accumulatedReasoningRef.current[event.messageId] = '';
             needsNewTextPartRef.current[event.messageId] = false;
             needsNewReasoningPartRef.current[event.messageId] = false;
-            // Replace placeholder with real message ID
+            // Replace placeholder with real message ID using tracked placeholder ID
             setMessages((prev) => {
-              const placeholderIndex = prev.findIndex((m) =>
-                m.id.startsWith('placeholder-')
+              const placeholderId = currentPlaceholderIdRef.current;
+              if (!placeholderId) return prev;
+
+              const placeholderIndex = prev.findIndex(
+                (m) => m.id === placeholderId
               );
               if (placeholderIndex !== -1) {
                 const updated = [...prev];
@@ -364,6 +370,7 @@ export function useAgentSession({
                     id: event.messageId,
                   };
                 }
+                currentPlaceholderIdRef.current = null;
                 return updated;
               }
               return prev;
@@ -646,6 +653,7 @@ export function useAgentSession({
           case 'interrupted':
             setStatus('ready');
             setThinkingStatus({ isThinking: false });
+            currentPlaceholderIdRef.current = null;
             // Clean up empty placeholder messages (no content was streamed)
             setMessages((prev) =>
               prev.filter(
@@ -738,6 +746,7 @@ export function useAgentSession({
           );
           if (!hasPlaceholder) {
             const placeholderId = `placeholder-${Date.now()}`;
+            currentPlaceholderIdRef.current = placeholderId;
             const placeholderMessage: TaskMessage = {
               id: placeholderId,
               role: 'assistant',
@@ -757,6 +766,7 @@ export function useAgentSession({
         };
         // Add placeholder assistant message for immediate scroll target
         const placeholderId = `placeholder-${Date.now()}`;
+        currentPlaceholderIdRef.current = placeholderId;
         const placeholderMessage: TaskMessage = {
           id: placeholderId,
           role: 'assistant',
@@ -846,6 +856,7 @@ export function useAgentSession({
         };
         // Add placeholder assistant message for immediate scroll target
         const placeholderId = `placeholder-${Date.now()}`;
+        currentPlaceholderIdRef.current = placeholderId;
         const placeholderMessage: TaskMessage = {
           id: placeholderId,
           role: 'assistant',

@@ -230,7 +230,9 @@ export const AgentPanel = memo(
             message.role === 'assistant' && message.parts.length === 0;
 
           if (isPlaceholder) {
-            // Render invisible placeholder with min-height for scroll target
+            // Render invisible placeholder with min-height for scroll target.
+            // 60px ensures the placeholder is tall enough to trigger scrollIntoView
+            // positioning correctly, matching approximate height of a minimal message.
             return (
               <div
                 key={message.id}
