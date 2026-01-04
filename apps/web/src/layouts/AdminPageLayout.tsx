@@ -10,6 +10,7 @@ import {
   AppLayout,
   ProjectSwitcher,
   HistoryToggleButton,
+  CommandPaletteButton,
   NewTaskButton,
   TaskHistorySidebar,
   IconButton,
@@ -26,8 +27,11 @@ import {
 } from 'lucide-react';
 import { checkIsAdmin } from '../lib/auth';
 import { useChatHistory } from '../hooks/useChatHistory';
+import { useGlobalKeyboardShortcut } from '../hooks/useGlobalKeyboardShortcut';
 import { useSession } from '../contexts/SessionContext';
 import { trpc } from '../lib/trpc';
+import { AppCommandPalette } from '../components/AppCommandPalette';
+import { CommandRegistryProvider } from '../contexts/CommandRegistryContext';
 
 interface AdminPageLayoutProps {
   children: React.ReactNode;
@@ -45,8 +49,15 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
   const { setSessionId, clearSession } = useSession();
   const [isSwitching, setIsSwitching] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const isAdmin = checkIsAdmin(membership?.role);
   const currentPath = location.pathname;
+
+  // Register Cmd+P / Ctrl+P keyboard shortcut for command palette
+  const openCommandPalette = useCallback(() => {
+    setIsCommandPaletteOpen(true);
+  }, []);
+  useGlobalKeyboardShortcut('p', openCommandPalette, { cmdOrCtrl: true });
 
   // Fetch chat history for the sidebar
   const { sessions, refetch: refetchSessions } = useChatHistory({ limit: 50 });
@@ -122,7 +133,7 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
   }
 
   return (
-    <>
+    <CommandRegistryProvider>
       <AppLayout
         mainMenu={{
           appName: 'Agent Kit',
@@ -201,6 +212,9 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
             ) : null,
           toolButtons: (
             <>
+              <CommandPaletteButton
+                onClick={() => setIsCommandPaletteOpen(true)}
+              />
               <HistoryToggleButton onClick={() => setIsHistoryOpen(true)} />
               <NewTaskButton onClick={handleNewSession} />
             </>
@@ -262,6 +276,10 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
         onTaskSelect={handleSessionSelect}
         onTaskDelete={handleSessionDelete}
       />
-    </>
+      <AppCommandPalette
+        open={isCommandPaletteOpen}
+        onOpenChange={setIsCommandPaletteOpen}
+      />
+    </CommandRegistryProvider>
   );
 }

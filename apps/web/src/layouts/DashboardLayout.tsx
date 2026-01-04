@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   useUser,
   useClerk,
@@ -10,6 +10,7 @@ import {
   AppLayout,
   ProjectSwitcher,
   HistoryToggleButton,
+  CommandPaletteButton,
   NewTaskButton,
   TaskHistorySidebar,
   IconButton,
@@ -17,7 +18,12 @@ import {
   Button,
   ToastProvider,
 } from '@agent-kit/ui';
-import type { Project, MenuSection, AgentType } from '@agent-kit/ui';
+import type {
+  Project,
+  MenuSection,
+  AgentType,
+  AppLayoutRef,
+} from '@agent-kit/ui';
 import {
   Bot,
   BarChart3,
@@ -28,13 +34,16 @@ import {
 } from 'lucide-react';
 import { checkIsAdmin } from '../lib/auth';
 import { useChatHistory } from '../hooks/useChatHistory';
+import { useGlobalKeyboardShortcut } from '../hooks/useGlobalKeyboardShortcut';
 import { useSession } from '../contexts/SessionContext';
 import {
   HeaderActionsProvider,
   useHeaderActions,
 } from '../contexts/HeaderActionsContext';
+import { CommandRegistryProvider } from '../contexts/CommandRegistryContext';
 import { trpc } from '../lib/trpc';
 import { AppAgentPanel } from '../components/AppAgentPanel';
+import { AppCommandPalette } from '../components/AppCommandPalette';
 
 const PANEL_WIDTH_STORAGE_KEY = 'agent-kit-panel-width';
 
@@ -73,6 +82,8 @@ function DashboardLayoutInner({
   const [isSwitching, setIsSwitching] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [panelWidth, setPanelWidth] = useState(getDefaultPanelWidth);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const appLayoutRef = useRef<AppLayoutRef>(null);
   const isAdmin = checkIsAdmin(membership?.role);
   const currentPath = location.pathname;
 
@@ -81,6 +92,26 @@ function DashboardLayoutInner({
     setPanelWidth(width);
     localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(width));
   }, []);
+
+  // Handle panel toggle from command palette
+  const handleTogglePanel = useCallback(() => {
+    appLayoutRef.current?.togglePanel();
+  }, []);
+
+  // Handle panel width change from command palette
+  const handleSetPanelWidth = useCallback(
+    (width: number) => {
+      appLayoutRef.current?.setPanelWidth(width);
+      handlePanelWidthChange(width);
+    },
+    [handlePanelWidthChange]
+  );
+
+  // Register Cmd+P / Ctrl+P keyboard shortcut for command palette
+  const openCommandPalette = useCallback(() => {
+    setIsCommandPaletteOpen(true);
+  }, []);
+  useGlobalKeyboardShortcut('p', openCommandPalette, { cmdOrCtrl: true });
 
   // Fetch chat history for the sidebar
   const { sessions, refetch: refetchSessions } = useChatHistory({ limit: 50 });
@@ -169,6 +200,7 @@ function DashboardLayoutInner({
   return (
     <>
       <AppLayout
+        ref={appLayoutRef}
         mainMenu={{
           appName: 'Agent Kit',
           appIcon: <Bot className="h-4 w-4" />,
@@ -264,6 +296,9 @@ function DashboardLayoutInner({
             ) : null,
           toolButtons: (
             <>
+              <CommandPaletteButton
+                onClick={() => setIsCommandPaletteOpen(true)}
+              />
               <HistoryToggleButton onClick={() => setIsHistoryOpen(true)} />
               <NewTaskButton onClick={handleNewSession} />
             </>
@@ -373,6 +408,12 @@ function DashboardLayoutInner({
         onTaskSelect={handleSessionSelect}
         onTaskDelete={handleSessionDelete}
       />
+      <AppCommandPalette
+        open={isCommandPaletteOpen}
+        onOpenChange={setIsCommandPaletteOpen}
+        onTogglePanel={showAgentPanel ? handleTogglePanel : undefined}
+        onSetPanelWidth={showAgentPanel ? handleSetPanelWidth : undefined}
+      />
     </>
   );
 }
@@ -380,9 +421,11 @@ function DashboardLayoutInner({
 export function DashboardLayout(props: DashboardLayoutProps) {
   return (
     <ToastProvider>
-      <HeaderActionsProvider>
-        <DashboardLayoutInner {...props} />
-      </HeaderActionsProvider>
+      <CommandRegistryProvider>
+        <HeaderActionsProvider>
+          <DashboardLayoutInner {...props} />
+        </HeaderActionsProvider>
+      </CommandRegistryProvider>
     </ToastProvider>
   );
 }

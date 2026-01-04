@@ -104,8 +104,9 @@ export const AppLayout = forwardRef<AppLayoutRef, AppLayoutProps>(
         expandPanel: () => setPanelCollapsed(false),
         togglePanel,
         setPanelWidth,
+        isPanelCollapsed: () => isCollapsed,
       }),
-      [setPanelCollapsed, togglePanel, setPanelWidth]
+      [setPanelCollapsed, togglePanel, setPanelWidth, isCollapsed]
     );
 
     const hasPanel = Boolean(assistantPanel);
