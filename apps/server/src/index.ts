@@ -21,6 +21,8 @@ import { AnalyticsFeature } from './features/analytics';
 import { ArtifactsFeature } from './features/artifacts';
 import { ProjectsFeature } from './features/projects';
 import { TasksFeature } from './features/tasks';
+import { CacheInvalidationService } from './lib/redis/cache-invalidation-service';
+import type { PubSubManager } from './lib/redis/pubsub';
 
 const clerk = createClerkClient({
   secretKey: env.CLERK_SECRET_KEY,
@@ -79,8 +81,9 @@ const projectsFeature = new ProjectsFeature(db);
 // Create tasks feature
 const tasksFeature = new TasksFeature(db);
 
-// Will be initialized after Redis is ready
-let sessionManager: AgentSessionManager;
+// Will be initialized after Redis is ready (in onReady hook, before listen)
+let sessionManager!: AgentSessionManager;
+let pubsub!: PubSubManager;
 
 // Hook to initialize Redis-dependent services after Redis plugin is registered
 fastify.addHook('onReady', async () => {
@@ -88,6 +91,14 @@ fastify.addHook('onReady', async () => {
   const workerRedis = fastify.redis.worker;
   const createSubscriptionConnection =
     fastify.redis.createSubscriptionConnection;
+
+  // Store pubsub reference for tRPC context
+  pubsub = fastify.redis.pubsub;
+
+  // Create cache invalidation service and attach to features
+  const cacheInvalidation = new CacheInvalidationService(pubsub);
+  projectsFeature.setCacheInvalidation(cacheInvalidation);
+  tasksFeature.setCacheInvalidation(cacheInvalidation);
 
   // Create session manager with Redis and AgentsFeature
   // Pass dedicated worker connection for job processing and factory for subscriptions
@@ -129,6 +140,7 @@ fastify.register(fastifyTRPCPlugin, {
         projectsFeature,
         tasksFeature,
         sessionManager,
+        pubsub,
       })(opts);
     },
     onError({ path, error }) {
@@ -225,6 +237,7 @@ const start = async () => {
           projectsFeature,
           tasksFeature,
           sessionManager,
+          pubsub,
         };
       },
     });

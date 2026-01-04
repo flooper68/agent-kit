@@ -2,6 +2,11 @@ import { eq, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { tasks, taskArtifacts, type TaskEvent } from '../../../db/schema';
 
+export interface DetachArtifactResult {
+  success: boolean;
+  projectId?: string;
+}
+
 export class DetachArtifactCommand {
   private db: typeof DbType;
 
@@ -14,7 +19,7 @@ export class DetachArtifactCommand {
     artifactId: string,
     userId: string,
     orgId: string
-  ): Promise<boolean> {
+  ): Promise<DetachArtifactResult> {
     return await this.db.transaction(async (tx) => {
       // Verify task ownership
       const [task] = await tx
@@ -45,7 +50,7 @@ export class DetachArtifactCommand {
         .returning();
 
       if (!deleted) {
-        return false; // Wasn't attached
+        return { success: false, projectId: task.projectId }; // Wasn't attached
       }
 
       // Add event to task
@@ -62,7 +67,7 @@ export class DetachArtifactCommand {
         .set({ events, updatedAt: new Date() })
         .where(eq(tasks.id, taskId));
 
-      return true;
+      return { success: true, projectId: task.projectId };
     });
   }
 }

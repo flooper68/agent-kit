@@ -7,6 +7,11 @@ import {
   type TaskEvent,
 } from '../../../db/schema';
 
+export interface AttachArtifactResult {
+  success: boolean;
+  projectId?: string;
+}
+
 export class AttachArtifactCommand {
   private db: typeof DbType;
 
@@ -19,7 +24,7 @@ export class AttachArtifactCommand {
     artifactId: string,
     userId: string,
     orgId: string
-  ): Promise<boolean> {
+  ): Promise<AttachArtifactResult> {
     return await this.db.transaction(async (tx) => {
       // Verify task ownership
       const [task] = await tx
@@ -66,7 +71,7 @@ export class AttachArtifactCommand {
         .returning();
 
       if (result.length === 0) {
-        return false; // Already attached
+        return { success: false, projectId: task.projectId }; // Already attached
       }
 
       // Add event to task
@@ -83,7 +88,7 @@ export class AttachArtifactCommand {
         .set({ events, updatedAt: new Date() })
         .where(eq(tasks.id, taskId));
 
-      return true;
+      return { success: true, projectId: task.projectId };
     });
   }
 }

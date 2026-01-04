@@ -1,6 +1,12 @@
 import { useAuth, useOrganization } from '@clerk/clerk-react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ProtectedLayoutSkeleton } from '../components/skeletons';
+import { useCacheInvalidation } from '../hooks/useCacheInvalidation';
+
+function CacheInvalidationSubscriber() {
+  useCacheInvalidation();
+  return null;
+}
 
 export function ProtectedLayout() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -26,5 +32,10 @@ export function ProtectedLayout() {
   }
 
   // Layout wrapping is now handled by each route's element
-  return <Outlet />;
+  return (
+    <>
+      <CacheInvalidationSubscriber />
+      <Outlet />
+    </>
+  );
 }

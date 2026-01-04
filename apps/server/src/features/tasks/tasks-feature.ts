@@ -1,5 +1,6 @@
 import type { db as DbType } from '../../db';
 import type { Task } from '../../db/schema';
+import type { CacheInvalidationService } from '../../lib/redis/cache-invalidation-service';
 import {
   CreateTaskCommand,
   UpdateTaskCommand,
@@ -42,6 +43,7 @@ export class TasksFeature {
   private getTasksByStatusQuery: GetTasksByStatusQuery;
   private searchTasksQuery: SearchTasksQuery;
   private getTaskStatsQuery: GetTaskStatsQuery;
+  private cacheInvalidation?: CacheInvalidationService;
 
   constructor(db: typeof DbType) {
     this.createTaskCommand = new CreateTaskCommand(db);
@@ -57,49 +59,103 @@ export class TasksFeature {
     this.getTaskStatsQuery = new GetTaskStatsQuery(db);
   }
 
+  setCacheInvalidation(service: CacheInvalidationService): void {
+    this.cacheInvalidation = service;
+  }
+
   // Commands
-  create(input: CreateTaskInput): Promise<Task> {
-    return this.createTaskCommand.execute(input);
+  async create(input: CreateTaskInput): Promise<Task> {
+    const task = await this.createTaskCommand.execute(input);
+    await this.cacheInvalidation?.publishTaskCreated(
+      input.orgId,
+      task.id,
+      task.projectId
+    );
+    return task;
   }
 
-  update(input: UpdateTaskInput): Promise<Task | undefined> {
-    return this.updateTaskCommand.execute(input);
+  async update(input: UpdateTaskInput): Promise<Task | undefined> {
+    const task = await this.updateTaskCommand.execute(input);
+    if (task) {
+      await this.cacheInvalidation?.publishTaskUpdated(
+        input.orgId,
+        task.id,
+        task.projectId
+      );
+    }
+    return task;
   }
 
-  delete(id: string, userId: string, orgId: string): Promise<Task | undefined> {
-    return this.deleteTaskCommand.execute(id, userId, orgId);
+  async delete(
+    id: string,
+    userId: string,
+    orgId: string
+  ): Promise<Task | undefined> {
+    const task = await this.deleteTaskCommand.execute(id, userId, orgId);
+    if (task) {
+      await this.cacheInvalidation?.publishTaskDeleted(
+        orgId,
+        task.id,
+        task.projectId
+      );
+    }
+    return task;
   }
 
-  move(input: MoveTaskInput): Promise<Task | undefined> {
-    return this.moveTaskCommand.execute(input);
+  async move(input: MoveTaskInput): Promise<Task | undefined> {
+    const task = await this.moveTaskCommand.execute(input);
+    if (task) {
+      await this.cacheInvalidation?.publishTaskMoved(
+        input.orgId,
+        task.id,
+        task.projectId
+      );
+    }
+    return task;
   }
 
-  attachArtifact(
+  async attachArtifact(
     taskId: string,
     artifactId: string,
     userId: string,
     orgId: string
   ): Promise<boolean> {
-    return this.attachArtifactCommand.execute(
+    const result = await this.attachArtifactCommand.execute(
       taskId,
       artifactId,
       userId,
       orgId
     );
+    if (result.success && result.projectId) {
+      await this.cacheInvalidation?.publishTaskUpdated(
+        orgId,
+        taskId,
+        result.projectId
+      );
+    }
+    return result.success;
   }
 
-  detachArtifact(
+  async detachArtifact(
     taskId: string,
     artifactId: string,
     userId: string,
     orgId: string
   ): Promise<boolean> {
-    return this.detachArtifactCommand.execute(
+    const result = await this.detachArtifactCommand.execute(
       taskId,
       artifactId,
       userId,
       orgId
     );
+    if (result.success && result.projectId) {
+      await this.cacheInvalidation?.publishTaskUpdated(
+        orgId,
+        taskId,
+        result.projectId
+      );
+    }
+    return result.success;
   }
 
   // Queries
