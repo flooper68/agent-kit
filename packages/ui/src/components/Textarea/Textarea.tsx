@@ -1,7 +1,8 @@
 import { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
 import { cn } from '../../lib/utils';
 
-export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+export interface TextareaProps
+  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   autoResize?: boolean;
   maxHeight?: number;
 }

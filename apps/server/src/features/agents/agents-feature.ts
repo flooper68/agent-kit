@@ -26,6 +26,7 @@ import {
   ListSessionsByUserQuery,
   VerifySessionOwnershipQuery,
   GetMessagesBySessionIdQuery,
+  GetSessionResourcesQuery,
 } from './queries';
 import type {
   AgentDefinition,
@@ -321,6 +322,7 @@ export class AgentsFeature {
   private listSessionsByUserQuery: ListSessionsByUserQuery;
   private verifySessionOwnershipQuery: VerifySessionOwnershipQuery;
   private getMessagesBySessionIdQuery: GetMessagesBySessionIdQuery;
+  private getSessionResourcesQuery: GetSessionResourcesQuery;
 
   constructor(db: typeof DbType) {
     // Initialize agents map with defaults
@@ -355,6 +357,7 @@ export class AgentsFeature {
     this.listSessionsByUserQuery = new ListSessionsByUserQuery(db);
     this.verifySessionOwnershipQuery = new VerifySessionOwnershipQuery(db);
     this.getMessagesBySessionIdQuery = new GetMessagesBySessionIdQuery(db);
+    this.getSessionResourcesQuery = new GetSessionResourcesQuery(db);
   }
 
   /**
@@ -404,6 +407,8 @@ export class AgentsFeature {
         this.getAgentIdForSessionQuery.execute(sessionId),
       verifyOwnership: (sessionId: string, userId: string, orgId?: string) =>
         this.verifySessionOwnershipQuery.execute(sessionId, userId, orgId),
+      getResources: (sessionId: string) =>
+        this.getSessionResourcesQuery.execute(sessionId),
     };
   }
 

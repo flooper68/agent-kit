@@ -4,7 +4,8 @@ import { IconButton } from '../../../IconButton';
 import { Text } from '../../../Typography';
 import type { Attachment } from '../../../../types/chat';
 
-export interface AttachmentPreviewProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface AttachmentPreviewProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   attachments: Attachment[];
   onRemove?: (id: string) => void;
   removable?: boolean;

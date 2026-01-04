@@ -133,9 +133,8 @@ const contentVariants = cva(
   }
 );
 
-export interface DialogContentProps extends VariantProps<
-  typeof contentVariants
-> {
+export interface DialogContentProps
+  extends VariantProps<typeof contentVariants> {
   children: React.ReactNode;
   className?: string;
   showOverlay?: boolean;

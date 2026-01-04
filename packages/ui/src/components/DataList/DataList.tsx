@@ -25,7 +25,8 @@ const DataListRoot = forwardRef<HTMLDivElement, DataListProps>(
 DataListRoot.displayName = 'DataList';
 
 // DataList Item
-export interface DataListItemProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface DataListItemProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 
@@ -50,7 +51,8 @@ const DataListItem = forwardRef<HTMLDivElement, DataListItemProps>(
 DataListItem.displayName = 'DataListItem';
 
 // DataList Cell - for grouping content in items
-export interface DataListCellProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface DataListCellProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   grow?: boolean;
   shrink?: boolean;
@@ -76,7 +78,8 @@ const DataListCell = forwardRef<HTMLDivElement, DataListCellProps>(
 DataListCell.displayName = 'DataListCell';
 
 // DataList Empty
-export interface DataListEmptyProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface DataListEmptyProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 

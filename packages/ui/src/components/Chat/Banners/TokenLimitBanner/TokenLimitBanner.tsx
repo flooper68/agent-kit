@@ -20,9 +20,8 @@ const bannerVariants = cva(
   }
 );
 
-export interface TokenLimitBannerProps extends VariantProps<
-  typeof bannerVariants
-> {
+export interface TokenLimitBannerProps
+  extends VariantProps<typeof bannerVariants> {
   usage: ContextUsage;
   warningThreshold?: number;
   onDismiss?: () => void;

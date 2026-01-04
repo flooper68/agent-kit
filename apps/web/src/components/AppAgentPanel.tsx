@@ -6,11 +6,13 @@ import type {
   TaskHistoryItem,
   SuggestionChip,
   ConnectionStatus,
+  SessionResourcesCounts,
 } from '@agent-kit/ui';
 import { trpc, subscribeToConnectionState } from '../lib/trpc';
 import { useAgentSession } from '../hooks/useAgentSession';
 import { useSession } from '../contexts/SessionContext';
 import { SessionDetailModal } from './analytics/SessionDetailModal';
+import { SessionResourcesDialog } from './SessionResourcesDialog';
 
 const STORAGE_KEY_AGENT = 'agent-kit:lastAgentId';
 
@@ -60,6 +62,9 @@ export function AppAgentPanel({
   // State for session inspect modal
   const [isInspectModalOpen, setIsInspectModalOpen] = useState(false);
 
+  // State for session resources dialog
+  const [isResourcesDialogOpen, setIsResourcesDialogOpen] = useState(false);
+
   useEffect(() => {
     let mounted = true;
     const unsubscribe = subscribeToConnectionState((state) => {
@@ -77,6 +82,29 @@ export function AppAgentPanel({
 
   // Create session mutation
   const createSessionMutation = trpc.sessions.create.useMutation();
+
+  // Query for session resources (for the resources button)
+  const resourcesQuery = trpc.sessions.getResources.useQuery(
+    { sessionId: sessionId! },
+    { enabled: !!sessionId }
+  );
+
+  // Compute resource counts for the button tooltip
+  const sessionResourcesCounts: SessionResourcesCounts | undefined =
+    useMemo(() => {
+      if (!resourcesQuery.data) return undefined;
+      const { artifacts, websites } = resourcesQuery.data;
+      const artifactCount = artifacts.length;
+      const websiteCount = websites.length;
+      if (artifactCount === 0 && websiteCount === 0) return undefined;
+
+      const previewTitles = [
+        ...artifacts.slice(0, 2).map((a) => a.title),
+        ...websites.slice(0, 2).map((w) => w.title),
+      ].slice(0, 3);
+
+      return { artifactCount, websiteCount, previewTitles };
+    }, [resourcesQuery.data]);
 
   // Handle invalid persisted session
   const handleSessionInvalid = useCallback(() => {
@@ -239,6 +267,14 @@ export function AppAgentPanel({
     setIsInspectModalOpen(false);
   }, []);
 
+  const handleSessionResources = useCallback(() => {
+    setIsResourcesDialogOpen(true);
+  }, []);
+
+  const handleResourcesClose = useCallback(() => {
+    setIsResourcesDialogOpen(false);
+  }, []);
+
   return (
     <>
       <AgentPanel
@@ -266,6 +302,8 @@ export function AppAgentPanel({
         onErrorDismiss={handleErrorDismiss}
         onScrollPositionChange={handleScrollPositionChange}
         onInspect={sessionId ? handleInspect : undefined}
+        onSessionResources={sessionId ? handleSessionResources : undefined}
+        sessionResourcesCounts={sessionResourcesCounts}
       />
       <ConnectionSnackbar
         status={connectionStatus}
@@ -274,6 +312,10 @@ export function AppAgentPanel({
       <SessionDetailModal
         sessionId={isInspectModalOpen ? sessionId : null}
         onClose={handleInspectClose}
+      />
+      <SessionResourcesDialog
+        sessionId={isResourcesDialogOpen ? sessionId : null}
+        onClose={handleResourcesClose}
       />
     </>
   );

@@ -10,10 +10,8 @@ import {
 import { cn } from '../../../../lib/utils';
 import type { AgentType } from '../../../../types/chat';
 
-export interface AgentSelectorProps extends Omit<
-  React.HTMLAttributes<HTMLDivElement>,
-  'onSelect'
-> {
+export interface AgentSelectorProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onSelect'> {
   /** List of available agents to select from */
   agents: AgentType[];
   /** Currently selected agent */

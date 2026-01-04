@@ -28,8 +28,7 @@ const providerIconVariants = cva('inline-flex items-center justify-center', {
 });
 
 export interface ProviderIconProps
-  extends
-    Omit<React.SVGAttributes<SVGElement>, 'ref'>,
+  extends Omit<React.SVGAttributes<SVGElement>, 'ref'>,
     VariantProps<typeof providerIconVariants> {
   provider: AIProvider | string;
   showFallback?: boolean;

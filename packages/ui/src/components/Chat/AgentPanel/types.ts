@@ -6,6 +6,7 @@ import type {
   AgentType,
   TaskHistoryItem,
 } from '../../../types/chat';
+import type { SessionResourcesCounts } from '../Controls/SessionResourcesButton';
 
 /**
  * Error information for the task
@@ -85,6 +86,9 @@ export interface AgentPanelCallbacks {
 
   /** Called when user clicks the inspect button to view session details */
   onInspect?: () => void;
+
+  /** Called when user clicks the session resources button */
+  onSessionResources?: () => void;
 }
 
 /**
@@ -144,6 +148,9 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
 
   /** Recent chats to display in the empty state */
   recentChats?: TaskHistoryItem[];
+
+  /** Resource counts for session resources button tooltip */
+  sessionResourcesCounts?: SessionResourcesCounts;
 
   /** Callback when scroll position changes (at bottom vs scrolled up) */
   onScrollPositionChange?: (isAtBottom: boolean) => void;

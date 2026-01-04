@@ -36,8 +36,7 @@ const chipVariants = cva(
 );
 
 export interface SuggestionChipsProps
-  extends
-    VariantProps<typeof containerVariants>,
+  extends VariantProps<typeof containerVariants>,
     VariantProps<typeof chipVariants> {
   suggestions: SuggestionChip[];
   onSuggestionClick?: (suggestion: SuggestionChip) => void;

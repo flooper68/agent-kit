@@ -21,6 +21,7 @@ TAVILY_API_KEY=tvly-your-api-key-here
 The Tavily client is located in `src/lib/tavily/`:
 
 - **Search**: Find current information from the web
+
   - Topics: `general`, `news`, `finance`
   - Up to 10 results per query
 

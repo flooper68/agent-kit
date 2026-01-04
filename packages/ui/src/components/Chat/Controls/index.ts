@@ -30,3 +30,9 @@ export type { HistoryToggleButtonProps } from './HistoryToggleButton';
 
 export { NewTaskButton } from './NewTaskButton';
 export type { NewTaskButtonProps } from './NewTaskButton';
+
+export { SessionResourcesButton } from './SessionResourcesButton';
+export type {
+  SessionResourcesButtonProps,
+  SessionResourcesCounts,
+} from './SessionResourcesButton';

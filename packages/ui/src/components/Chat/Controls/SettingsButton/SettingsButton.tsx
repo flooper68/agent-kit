@@ -1,10 +1,8 @@
 import { forwardRef } from 'react';
 import { IconButton } from '../../../IconButton';
 
-export interface SettingsButtonProps extends Omit<
-  React.ButtonHTMLAttributes<HTMLButtonElement>,
-  'children'
-> {
+export interface SettingsButtonProps
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
   label?: string;
 }
 

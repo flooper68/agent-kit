@@ -31,6 +31,7 @@ import {
   AgentSelectorSkeleton,
 } from '../Controls/AgentSelector';
 import { AgentInfoBadge } from '../Controls/AgentInfoBadge';
+import { SessionResourcesButton } from '../Controls/SessionResourcesButton';
 import type { AgentPanelProps } from './types';
 
 /**
@@ -102,6 +103,8 @@ export const AgentPanel = memo(
         onRecentChatDelete,
         onScrollPositionChange,
         onInspect,
+        onSessionResources,
+        sessionResourcesCounts,
       },
       ref
     ) => {
@@ -329,6 +332,12 @@ export const AgentPanel = memo(
                     label="Inspect session"
                     size="sm"
                     onClick={onInspect}
+                  />
+                )}
+                {onSessionResources && sessionResourcesCounts && (
+                  <SessionResourcesButton
+                    counts={sessionResourcesCounts}
+                    onClick={onSessionResources}
                   />
                 )}
               </>
