@@ -83,6 +83,9 @@ export function AppAgentPanel({
   // Create session mutation
   const createSessionMutation = trpc.sessions.create.useMutation();
 
+  // Get tRPC utils for query invalidation
+  const utils = trpc.useUtils();
+
   // Query for session resources (for the resources button)
   const resourcesQuery = trpc.sessions.getResources.useQuery(
     { sessionId: sessionId! },
@@ -111,6 +114,13 @@ export function AppAgentPanel({
     clearSession();
   }, [clearSession]);
 
+  // Handle resource creation (artifacts, web search, extract content) - refetch resources to update the icon
+  const handleResourceCreated = useCallback(() => {
+    if (sessionId) {
+      utils.sessions.getResources.invalidate({ sessionId });
+    }
+  }, [sessionId, utils.sessions.getResources]);
+
   // Use the agent session hook
   const {
     setMessageListRef,
@@ -127,6 +137,7 @@ export function AppAgentPanel({
   } = useAgentSession({
     sessionId,
     onSessionInvalid: handleSessionInvalid,
+    onResourceCreated: handleResourceCreated,
   });
 
   // Restore last selected agent from localStorage, or fallback to first agent

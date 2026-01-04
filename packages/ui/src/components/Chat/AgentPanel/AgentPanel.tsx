@@ -236,13 +236,7 @@ export const AgentPanel = memo(
             // Render invisible placeholder with min-height for scroll target.
             // 60px ensures the placeholder is tall enough to trigger scrollIntoView
             // positioning correctly, matching approximate height of a minimal message.
-            return (
-              <div
-                key={message.id}
-                className="min-h-[60px]"
-                aria-hidden="true"
-              />
-            );
+            return <div key={message.id} className="min-h-[60px]" />;
           }
 
           const avatar = getAvatar(message.role as 'user' | 'assistant');

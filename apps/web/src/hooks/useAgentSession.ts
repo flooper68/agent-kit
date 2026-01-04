@@ -16,6 +16,7 @@ import type {
 interface UseAgentSessionOptions {
   sessionId: string | null;
   onSessionInvalid?: () => void;
+  onResourceCreated?: () => void;
 }
 
 interface UseAgentSessionReturn {
@@ -106,6 +107,7 @@ function createToolResultPart(
 export function useAgentSession({
   sessionId,
   onSessionInvalid,
+  onResourceCreated,
 }: UseAgentSessionOptions): UseAgentSessionReturn {
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const hasInitialScrolledRef = useRef<boolean>(false);
@@ -140,6 +142,8 @@ export function useAgentSession({
   } | null>(null);
   // Track the current placeholder ID to avoid race conditions when replacing
   const currentPlaceholderIdRef = useRef<string | null>(null);
+  // Track tool names by callId to identify resource-creating tools
+  const toolNamesByCallIdRef = useRef<Record<string, string>>({});
 
   // Get session data
   const sessionQuery = trpc.sessions.get.useQuery(
@@ -174,6 +178,7 @@ export function useAgentSession({
     lastMessageRef.current = null;
     hasInitialScrolledRef.current = false;
     currentPlaceholderIdRef.current = null;
+    toolNamesByCallIdRef.current = {};
   }, [sessionId]);
 
   // Handle invalid session (e.g., persisted session that no longer exists)
@@ -526,6 +531,8 @@ export function useAgentSession({
             // Mark that next text_delta/reasoning_delta needs a new part
             needsNewTextPartRef.current[event.messageId] = true;
             needsNewReasoningPartRef.current[event.messageId] = true;
+            // Track tool name for artifact detection
+            toolNamesByCallIdRef.current[event.toolCallId] = event.toolName;
             setMessages((prev) => {
               const existing = prev.find((m) => m.id === event.messageId);
               const newPart = createToolInvocationPart(
@@ -601,6 +608,22 @@ export function useAgentSession({
                 ];
               }
             });
+            // Check if this was a resource-creating tool and notify
+            {
+              const toolName = toolNamesByCallIdRef.current[event.toolCallId];
+              const resourceTools = [
+                'writeArtifact',
+                'webSearch',
+                'extractContent',
+              ];
+              if (
+                toolName &&
+                resourceTools.includes(toolName) &&
+                !event.isError
+              ) {
+                onResourceCreated?.();
+              }
+            }
             break;
 
           case 'message_complete':
