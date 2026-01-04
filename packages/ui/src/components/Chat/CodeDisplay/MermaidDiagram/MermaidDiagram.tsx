@@ -1,8 +1,8 @@
 import { memo, useEffect, useRef, useState, useId } from 'react';
 import mermaid from 'mermaid';
-import DOMPurify from 'dompurify';
 import { cn } from '../../../../lib/utils';
 import { useTheme } from '../../../../theme';
+import { CodeBlock } from '../CodeBlock';
 
 export interface MermaidDiagramProps
   extends Omit<
@@ -27,6 +27,12 @@ export const MermaidDiagram = memo(
     const isDark = resolvedTheme === 'dark';
 
     useEffect(() => {
+      // Skip rendering if chart is empty
+      if (!chart) {
+        console.error('Mermaid error: Empty diagram');
+        setError('Empty diagram');
+        return;
+      }
       let isMounted = true;
 
       const renderDiagram = async () => {
@@ -39,30 +45,24 @@ export const MermaidDiagram = memo(
           mermaid.initialize({
             startOnLoad: false,
             theme,
-            fontFamily: 'var(--font-sans)',
+            fontFamily: 'inherit',
             securityLevel: 'strict',
           });
           currentTheme = theme;
         }
 
-        try {
-          const { svg: renderedSvg } = await mermaid.render(
-            `mermaid-${uniqueId}`,
-            chart.trim()
-          );
+        const renderId = `mermaid-${uniqueId}`;
 
-          // Sanitize SVG as defense-in-depth against XSS
-          const sanitizedSvg = DOMPurify.sanitize(renderedSvg, {
-            USE_PROFILES: { svg: true, svgFilters: true },
-          });
+        try {
+          const { svg: renderedSvg } = await mermaid.render(renderId, chart);
 
           if (isMounted) {
-            setSvg(sanitizedSvg);
+            setSvg(renderedSvg);
             setError(null);
           }
         } catch (err) {
+          console.error('Mermaid error:', err);
           if (isMounted) {
-            console.error('Mermaid rendering error:', err);
             setError(
               err instanceof Error ? err.message : 'Failed to render diagram'
             );
@@ -79,26 +79,11 @@ export const MermaidDiagram = memo(
     }, [chart, uniqueId, isDark]);
 
     if (error) {
+      // Fallback to syntax-highlighted code block when mermaid parsing fails
       return (
-        <div
-          role="alert"
-          className={cn(
-            'not-prose my-2 p-4 rounded-lg border border-destructive/50 bg-destructive/10 text-destructive text-sm',
-            className
-          )}
-          {...props}
-        >
-          <div className="font-medium mb-1">Diagram Error</div>
-          <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
-            {error}
-          </pre>
-          <details className="mt-2">
-            <summary className="cursor-pointer text-xs text-muted-foreground">
-              View source
-            </summary>
-            <pre className="mt-1 text-xs overflow-x-auto">{chart}</pre>
-          </details>
-        </div>
+        <CodeBlock language="mermaid" isDark={isDark}>
+          {chart}
+        </CodeBlock>
       );
     }
 

@@ -66,7 +66,8 @@ export const GitGraph: Story = {
   },
 };
 
-export const InvalidSyntax: Story = {
+export const FallbackCodeBlock: Story = {
+  name: 'Fallback Code Block (Invalid Syntax)',
   args: {
     chart: `flowchart INVALID
     This is not valid mermaid syntax [[[]]]`,
