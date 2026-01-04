@@ -59,6 +59,12 @@ bun run format:check  # Check formatting
 bun run typecheck
 ```
 
+### Checks
+
+```bash
+bun run check         # Format, lint, typecheck and build
+```
+
 ## Package Scripts
 
 | Script            | Description                      |

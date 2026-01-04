@@ -71,6 +71,13 @@ export const sessionsRouter = router({
       };
     }),
 
+  getResources: sessionProcedure
+    .input(z.object({ sessionId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      // Session ownership already verified by sessionProcedure middleware
+      return ctx.agentsFeature.sessions.getResources(input.sessionId);
+    }),
+
   updateTitle: sessionProcedure
     .input(
       z.object({

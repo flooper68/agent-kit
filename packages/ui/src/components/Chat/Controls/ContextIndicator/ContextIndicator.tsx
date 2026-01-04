@@ -3,7 +3,8 @@ import { cn } from '../../../../lib/utils';
 import type { ContextUsage } from '../../../../types/chat';
 import { Tooltip } from '../../../Tooltip';
 
-export interface ContextIndicatorProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ContextIndicatorProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   usage: ContextUsage;
   warningThreshold?: number;
   dangerThreshold?: number;

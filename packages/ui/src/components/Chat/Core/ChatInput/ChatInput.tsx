@@ -29,10 +29,8 @@ const useChatInput = () => {
   return context;
 };
 
-export interface ChatInputProps extends Omit<
-  React.HTMLAttributes<HTMLFormElement>,
-  'onSubmit'
-> {
+export interface ChatInputProps
+  extends Omit<React.HTMLAttributes<HTMLFormElement>, 'onSubmit'> {
   value?: string;
   onValueChange?: (value: string) => void;
   onSubmit?: (value: string) => void;

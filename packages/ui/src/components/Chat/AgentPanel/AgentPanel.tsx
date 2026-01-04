@@ -31,6 +31,7 @@ import {
   AgentSelectorSkeleton,
 } from '../Controls/AgentSelector';
 import { AgentInfoBadge } from '../Controls/AgentInfoBadge';
+import { SessionResourcesButton } from '../Controls/SessionResourcesButton';
 import type { AgentPanelProps } from './types';
 
 /**
@@ -102,6 +103,8 @@ export const AgentPanel = memo(
         onRecentChatDelete,
         onScrollPositionChange,
         onInspect,
+        onSessionResources,
+        sessionResourcesCounts,
       },
       ref
     ) => {
@@ -233,13 +236,7 @@ export const AgentPanel = memo(
             // Render invisible placeholder with min-height for scroll target.
             // 60px ensures the placeholder is tall enough to trigger scrollIntoView
             // positioning correctly, matching approximate height of a minimal message.
-            return (
-              <div
-                key={message.id}
-                className="min-h-[60px]"
-                aria-hidden="true"
-              />
-            );
+            return <div key={message.id} className="min-h-[60px]" />;
           }
 
           const avatar = getAvatar(message.role as 'user' | 'assistant');
@@ -329,6 +326,12 @@ export const AgentPanel = memo(
                     label="Inspect session"
                     size="sm"
                     onClick={onInspect}
+                  />
+                )}
+                {onSessionResources && sessionResourcesCounts && (
+                  <SessionResourcesButton
+                    counts={sessionResourcesCounts}
+                    onClick={onSessionResources}
                   />
                 )}
               </>

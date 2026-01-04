@@ -7,6 +7,7 @@
     "apps/*"
   ],
   "scripts": {
+    "check": "bun run lint && bun run format:check && bun run typecheck && bun run build",
     "dev": "bun run --filter '*' dev",
     "dev:server": "bun run --cwd apps/server dev",
     "dev:web": "bun run --cwd apps/web dev",

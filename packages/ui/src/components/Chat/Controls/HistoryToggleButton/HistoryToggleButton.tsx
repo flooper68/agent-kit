@@ -3,10 +3,8 @@ import { History } from 'lucide-react';
 import { IconButton } from '../../../IconButton';
 import { Tooltip } from '../../../Tooltip';
 
-export interface HistoryToggleButtonProps extends Omit<
-  React.ButtonHTMLAttributes<HTMLButtonElement>,
-  'children'
-> {
+export interface HistoryToggleButtonProps
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
   tooltip?: string;
 }
 

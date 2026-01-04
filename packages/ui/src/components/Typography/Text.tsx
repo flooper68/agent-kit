@@ -35,8 +35,7 @@ const textVariants = cva('font-sans text-foreground', {
 type TextElement = 'p' | 'span' | 'div';
 
 export interface TextProps
-  extends
-    React.HTMLAttributes<HTMLParagraphElement>,
+  extends React.HTMLAttributes<HTMLParagraphElement>,
     VariantProps<typeof textVariants> {
   as?: TextElement;
 }
