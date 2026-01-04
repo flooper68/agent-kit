@@ -29,7 +29,7 @@ export function KanbanColumn({
   itemIds,
   className,
 }: KanbanColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({ id });
+  const { setNodeRef } = useDroppable({ id });
 
   return (
     <div
@@ -37,7 +37,6 @@ export function KanbanColumn({
       className={cn(
         'flex flex-col rounded-lg bg-muted/30 border-t-2 h-full',
         columnColors[id] || 'border-t-gray-400',
-        isOver && 'ring-2 ring-primary/50',
         className
       )}
     >

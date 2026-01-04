@@ -287,7 +287,7 @@ export function AppAgentPanel({
   }, []);
 
   return (
-    <>
+    <div className="relative h-full">
       <AgentPanel
         className={className}
         ref={setMessageListRef}
@@ -328,6 +328,6 @@ export function AppAgentPanel({
         sessionId={isResourcesDialogOpen ? sessionId : null}
         onClose={handleResourcesClose}
       />
-    </>
+    </div>
   );
 }

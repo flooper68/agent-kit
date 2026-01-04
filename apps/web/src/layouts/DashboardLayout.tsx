@@ -18,7 +18,14 @@ import {
   ToastProvider,
 } from '@agent-kit/ui';
 import type { Project, MenuSection, AgentType } from '@agent-kit/ui';
-import { Bot, BarChart3, Users, FileText, FolderKanban } from 'lucide-react';
+import {
+  Bot,
+  BarChart3,
+  Users,
+  FileText,
+  FolderKanban,
+  Home,
+} from 'lucide-react';
 import { checkIsAdmin } from '../lib/auth';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useSession } from '../contexts/SessionContext';
@@ -124,8 +131,7 @@ function DashboardLayoutInner({
 
   const handleNewSession = useCallback(() => {
     clearSession();
-    navigate('/app');
-  }, [clearSession, navigate]);
+  }, [clearSession]);
 
   const projects: Project[] = useMemo(() => {
     if (!userMemberships?.data) return [];
@@ -176,6 +182,13 @@ function DashboardLayoutInner({
             {
               id: 'navigation',
               items: [
+                {
+                  id: 'home',
+                  label: 'Home',
+                  icon: <Home className="h-4 w-4" />,
+                  onClick: () => navigate('/app'),
+                  active: currentPath === '/app',
+                },
                 {
                   id: 'agents',
                   label: 'Agents',
@@ -257,6 +270,20 @@ function DashboardLayoutInner({
           ),
           navigation: (
             <>
+              <Tooltip content="Home">
+                <IconButton
+                  icon={<Home className="h-4 w-4" />}
+                  label="Home"
+                  onClick={() => navigate('/app')}
+                  variant="ghost"
+                  size="sm"
+                  className={
+                    currentPath === '/app'
+                      ? 'bg-accent text-accent-foreground'
+                      : undefined
+                  }
+                />
+              </Tooltip>
               <Tooltip content="Artifacts">
                 <IconButton
                   icon={<FileText className="h-4 w-4" />}
