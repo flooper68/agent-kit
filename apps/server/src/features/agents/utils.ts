@@ -50,11 +50,11 @@ export function reconstructPartsFromEvents(
         );
       }
 
-      // Historical messages have finished streaming, so collapse reasoning
+      // Keep reasoning blocks expanded in historical messages
       parts.push({
         type: 'reasoning',
         content: currentReasoningContent,
-        isCollapsed: true,
+        isCollapsed: false,
         durationSeconds,
       });
       currentReasoningContent = '';
