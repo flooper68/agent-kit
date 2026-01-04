@@ -154,4 +154,20 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
 
   /** Callback when scroll position changes (at bottom vs scrolled up) */
   onScrollPositionChange?: (isAtBottom: boolean) => void;
+
+  /** Callback when scroll container ref changes */
+  scrollContainerRef?: (node: HTMLDivElement | null) => void;
+
+  /** Callback when input ref changes (for external focus control) */
+  inputRef?: (node: HTMLTextAreaElement | null) => void;
+}
+
+/**
+ * Ref handle for AgentPanel
+ */
+export interface AgentPanelRef {
+  /** Focus the chat input textarea */
+  focusInput: () => void;
+  /** Get the scroll container element */
+  getScrollContainer: () => HTMLDivElement | null;
 }

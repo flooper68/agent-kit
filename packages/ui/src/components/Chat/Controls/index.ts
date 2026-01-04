@@ -28,6 +28,9 @@ export type {
 export { HistoryToggleButton } from './HistoryToggleButton';
 export type { HistoryToggleButtonProps } from './HistoryToggleButton';
 
+export { CommandPaletteButton } from './CommandPaletteButton';
+export type { CommandPaletteButtonProps } from './CommandPaletteButton';
+
 export { NewTaskButton } from './NewTaskButton';
 export type { NewTaskButtonProps } from './NewTaskButton';
 

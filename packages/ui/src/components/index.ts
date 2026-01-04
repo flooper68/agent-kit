@@ -187,3 +187,6 @@ export type {
 
 export { Toast, ToastProvider, useToast } from './Toast';
 export type { ToastData, ToastVariant } from './Toast';
+
+export { CommandPalette, CommandPaletteItem } from './CommandPalette';
+export type { Command, CommandPaletteProps } from './CommandPalette';

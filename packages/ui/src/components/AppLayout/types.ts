@@ -123,6 +123,7 @@ export interface AppLayoutRef {
   expandPanel: () => void;
   togglePanel: () => void;
   setPanelWidth: (width: number) => void;
+  isPanelCollapsed: () => boolean;
 }
 
 // Internal component props

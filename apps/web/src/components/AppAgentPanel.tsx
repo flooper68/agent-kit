@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { AgentPanel, ConnectionSnackbar } from '@agent-kit/ui';
 import type {
@@ -8,6 +8,8 @@ import type {
   ConnectionStatus,
   SessionResourcesCounts,
 } from '@agent-kit/ui';
+import { MessageSquareText } from 'lucide-react';
+import { useRegisterCommand } from '../contexts/CommandRegistryContext';
 import { trpc, subscribeToConnectionState } from '../lib/trpc';
 import { useAgentSession } from '../hooks/useAgentSession';
 import { useSession } from '../contexts/SessionContext';
@@ -51,6 +53,7 @@ export function AppAgentPanel({
   className,
 }: AppAgentPanelProps) {
   const { sessionId, setSessionId, clearSession } = useSession();
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const { user } = useUser();
   const [selectedAgent, setSelectedAgent] = useState<AgentType | null>(null);
 
@@ -286,11 +289,34 @@ export function AppAgentPanel({
     setIsResourcesDialogOpen(false);
   }, []);
 
+  // Register focus input command
+  const focusInputCommand = useMemo(
+    () => ({
+      id: 'focus-chat-input',
+      label: 'Focus chat input',
+      description: 'Move cursor to the chat input field',
+      icon: <MessageSquareText className="h-4 w-4" />,
+      keywords: ['focus', 'input', 'chat', 'type', 'message'],
+      onSelect: () => {
+        inputRef.current?.focus();
+      },
+    }),
+    []
+  );
+
+  useRegisterCommand(focusInputCommand);
+
+  // Callback ref for input
+  const handleInputRef = useCallback((node: HTMLTextAreaElement | null) => {
+    inputRef.current = node;
+  }, []);
+
   return (
     <div className="relative h-full">
       <AgentPanel
         className={className}
-        ref={setMessageListRef}
+        scrollContainerRef={setMessageListRef}
+        inputRef={handleInputRef}
         messages={messages}
         status={status}
         avatars={avatars}

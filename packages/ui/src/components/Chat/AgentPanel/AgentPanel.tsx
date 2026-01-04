@@ -1,4 +1,11 @@
-import { forwardRef, memo, useRef, useCallback, useMemo } from 'react';
+import {
+  forwardRef,
+  memo,
+  useRef,
+  useCallback,
+  useMemo,
+  useImperativeHandle,
+} from 'react';
 import { ScanSearch } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import type {
@@ -32,7 +39,7 @@ import {
 } from '../Controls/AgentSelector';
 import { AgentInfoBadge } from '../Controls/AgentInfoBadge';
 import { SessionResourcesButton } from '../Controls/SessionResourcesButton';
-import type { AgentPanelProps } from './types';
+import type { AgentPanelProps, AgentPanelRef } from './types';
 
 /**
  * Get text content from a message for copying
@@ -72,7 +79,7 @@ function formatFullTimestamp(date: Date): string {
  * Handles all states: empty, loading, streaming, error, and normal conversation.
  */
 export const AgentPanel = memo(
-  forwardRef<HTMLDivElement, AgentPanelProps>(
+  forwardRef<AgentPanelRef, AgentPanelProps>(
     (
       {
         messages,
@@ -105,10 +112,42 @@ export const AgentPanel = memo(
         onInspect,
         onSessionResources,
         sessionResourcesCounts,
+        scrollContainerRef: scrollContainerRefProp,
+        inputRef: inputRefProp,
       },
       ref
     ) => {
-      const inputRef = useRef<HTMLTextAreaElement>(null);
+      const internalInputRef = useRef<HTMLTextAreaElement>(null);
+      const internalScrollRef = useRef<HTMLDivElement>(null);
+
+      // Combine internal refs with external callback refs
+      const setInputRef = useCallback(
+        (node: HTMLTextAreaElement | null) => {
+          (internalInputRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = node;
+          inputRefProp?.(node);
+        },
+        [inputRefProp]
+      );
+
+      const setScrollRef = useCallback(
+        (node: HTMLDivElement | null) => {
+          (internalScrollRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          scrollContainerRefProp?.(node);
+        },
+        [scrollContainerRefProp]
+      );
+
+      // Expose methods via ref
+      useImperativeHandle(
+        ref,
+        () => ({
+          focusInput: () => {
+            internalInputRef.current?.focus();
+          },
+          getScrollContainer: () => internalScrollRef.current,
+        }),
+        []
+      );
 
       // Derived state (memoized)
       const isEmpty = useMemo(() => messages.length === 0, [messages.length]);
@@ -369,7 +408,7 @@ export const AgentPanel = memo(
               inputElement={
                 <ChatInput isSubmitting={isSubmitting} onSubmit={handleSubmit}>
                   <ChatInput.Textarea
-                    ref={inputRef}
+                    ref={setInputRef}
                     placeholder={inputPlaceholder}
                     autoFocus
                   />
@@ -379,7 +418,7 @@ export const AgentPanel = memo(
             />
           ) : (
             <MessageList
-              ref={ref}
+              ref={setScrollRef}
               onScrollPositionChange={onScrollPositionChange}
             >
               {messages.map(renderMessage)}
@@ -418,7 +457,7 @@ export const AgentPanel = memo(
             <div className="max-w-3xl mx-auto w-full px-4 pb-4 pt-2">
               <ChatInput isSubmitting={isSubmitting} onSubmit={handleSubmit}>
                 <ChatInput.Textarea
-                  ref={inputRef}
+                  ref={setInputRef}
                   placeholder={inputPlaceholder}
                   autoFocus
                 />
