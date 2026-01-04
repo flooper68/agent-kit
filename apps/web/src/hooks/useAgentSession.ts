@@ -237,8 +237,8 @@ export function useAgentSession({
                 textContent = p.content;
                 break;
               case 'reasoning':
-                // Collapse reasoning blocks by default when loading from DB
-                parts.push(createReasoningPart(p.content, true));
+                // Keep reasoning blocks expanded when loading from DB
+                parts.push(createReasoningPart(p.content, false));
                 reasoningContent = p.content;
                 break;
               case 'tool_invocation':
@@ -369,10 +369,8 @@ export function useAgentSession({
                 return prev.map((m) => {
                   if (m.id !== event.messageId) return m;
 
-                  // Collapse any reasoning parts when text starts streaming
-                  const newParts = m.parts.map((p) =>
-                    p.type === 'reasoning' ? { ...p, isCollapsed: true } : p
-                  );
+                  // Keep reasoning parts as-is when text starts streaming
+                  const newParts = [...m.parts];
 
                   if (needsNewPart) {
                     // Create new text part at the end (after tool results)
@@ -489,11 +487,8 @@ export function useAgentSession({
               if (existing) {
                 return prev.map((m) => {
                   if (m.id !== event.messageId) return m;
-                  // Collapse any reasoning parts when tool call starts
-                  const updatedParts = m.parts.map((p) =>
-                    p.type === 'reasoning' ? { ...p, isCollapsed: true } : p
-                  );
-                  return { ...m, parts: [...updatedParts, newPart] };
+                  // Keep reasoning parts as-is when tool call starts
+                  return { ...m, parts: [...m.parts, newPart] };
                 });
               } else {
                 // Create assistant message if it doesn't exist (missed message_start)
@@ -565,18 +560,8 @@ export function useAgentSession({
             delete accumulatedReasoningRef.current[event.messageId];
             delete needsNewTextPartRef.current[event.messageId];
 
-            // Collapse reasoning parts now that streaming is complete
-            setMessages((prev) =>
-              prev.map((m) => {
-                if (m.id !== event.messageId) return m;
-                return {
-                  ...m,
-                  parts: m.parts.map((p) =>
-                    p.type === 'reasoning' ? { ...p, isCollapsed: true } : p
-                  ),
-                };
-              })
-            );
+            // Keep reasoning parts expanded after streaming is complete
+            // (no auto-collapse)
 
             // Accumulate usage from this message
             if (event.usage) {
