@@ -64,6 +64,9 @@ const STANDARD_TOOLS = [
   'reorderTask',
   'attachArtifactToTask',
   'detachArtifactFromTask',
+  // Client-side tools
+  'navigateTo',
+  'getCurrentUIState',
 ];
 
 // Standard system prompt for all assistants
@@ -104,6 +107,10 @@ For project and task management:
 - Use reorderTask to change a task's position within its current column
 - Use attachArtifactToTask to link a document to a task
 - Use detachArtifactFromTask to remove a document link from a task
+
+For UI navigation:
+- Use navigateTo to navigate the user's browser to a specific app route (e.g., "/app/projects")
+- Use getCurrentUIState to check what page/section the user is currently viewing
 
 Be friendly but professional.`;
 
