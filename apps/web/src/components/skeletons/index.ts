@@ -10,3 +10,4 @@ export { SettingsPageSkeleton } from './SettingsPageSkeleton';
 export { AnalyticsPageSkeleton } from './AnalyticsPageSkeleton';
 export { ProjectsPageSkeleton } from './ProjectsPageSkeleton';
 export { ProjectDetailPageSkeleton } from './ProjectDetailPageSkeleton';
+export { AgentsPageSkeleton } from './AgentsPageSkeleton';

@@ -6,8 +6,8 @@ import {
   jsonb,
   integer,
   text,
+  boolean,
 } from 'drizzle-orm/pg-core';
-import { agents } from './agents';
 
 export type AgentSessionStatus = 'active' | 'completed' | 'cancelled';
 
@@ -40,9 +40,8 @@ export const agentSessions = pgTable('agent_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: varchar('user_id', { length: 255 }).notNull(),
   orgId: varchar('org_id', { length: 255 }).notNull(),
-  agentId: varchar('agent_id', { length: 64 })
-    .notNull()
-    .references(() => agents.id),
+  agentId: varchar('agent_id', { length: 64 }).notNull(),
+  isLocalAgent: boolean('is_local_agent').notNull().default(false),
   title: varchar('title', { length: 255 }),
   description: text('description'),
   status: varchar('status', { length: 32 })

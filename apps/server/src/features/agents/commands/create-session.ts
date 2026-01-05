@@ -17,6 +17,7 @@ export class CreateSessionCommand {
         orgId: input.orgId,
         agentId: input.agentId,
         title: input.title,
+        isLocalAgent: input.isLocalAgent ?? false,
       })
       .returning();
 

@@ -457,6 +457,8 @@ export class AgentsFeature {
         this.listSessionsByUserQuery.execute(userId, limit),
       getAgentId: (sessionId: string) =>
         this.getAgentIdForSessionQuery.execute(sessionId),
+      getAgentInfo: (sessionId: string) =>
+        this.getAgentIdForSessionQuery.executeWithLocalFlag(sessionId),
       verifyOwnership: (sessionId: string, userId: string, orgId?: string) =>
         this.verifySessionOwnershipQuery.execute(sessionId, userId, orgId),
       getResources: (sessionId: string) =>

@@ -10,6 +10,7 @@ import { projectsRouter } from './projects';
 import { tasksRouter } from './tasks';
 import { cacheRouter } from './cache';
 import { clientToolsRouter } from './client-tools';
+import { localAgentsRouter } from './local-agents';
 
 export const appRouter = router({
   greeting: greetingRouter,
@@ -23,6 +24,7 @@ export const appRouter = router({
   tasks: tasksRouter,
   cache: cacheRouter,
   clientTools: clientToolsRouter,
+  localAgents: localAgentsRouter,
 });
 
 export type AppRouter = typeof appRouter;

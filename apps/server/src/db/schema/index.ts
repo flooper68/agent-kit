@@ -6,3 +6,4 @@ export * from './artifacts';
 export * from './projects';
 export * from './tasks';
 export * from './task-artifacts';
+export * from './local-agents';

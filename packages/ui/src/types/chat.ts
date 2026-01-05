@@ -184,4 +184,5 @@ export interface AgentType {
   tools?: string[];
   model?: string;
   provider?: string;
+  isLocal?: boolean;
 }

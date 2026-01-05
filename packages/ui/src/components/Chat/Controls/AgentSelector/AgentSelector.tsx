@@ -10,6 +10,41 @@ import {
 import { cn } from '../../../../lib/utils';
 import type { AgentType } from '../../../../types/chat';
 
+const AGENT_USAGE_STORAGE_KEY = 'agent-kit:agent-selector-usage';
+
+interface AgentUsage {
+  [agentId: string]: number; // timestamp of last use
+}
+
+function getStoredAgentUsage(): AgentUsage {
+  try {
+    const stored = localStorage.getItem(AGENT_USAGE_STORAGE_KEY);
+    if (stored) {
+      const parsed: unknown = JSON.parse(stored);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const validated: AgentUsage = {};
+        for (const [key, value] of Object.entries(parsed)) {
+          if (typeof value === 'number') {
+            validated[key] = value;
+          }
+        }
+        return validated;
+      }
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return {};
+}
+
+function saveAgentUsage(usage: AgentUsage): void {
+  try {
+    localStorage.setItem(AGENT_USAGE_STORAGE_KEY, JSON.stringify(usage));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export interface AgentSelectorProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onSelect'> {
   /** List of available agents to select from */
@@ -40,11 +75,28 @@ export const AgentSelector = memo(
     ) => {
       const [isOpen, setIsOpen] = useState(false);
       const [searchQuery, setSearchQuery] = useState('');
+      const [agentUsage, setAgentUsage] =
+        useState<AgentUsage>(getStoredAgentUsage);
       const searchInputRef = useRef<HTMLInputElement>(null);
 
       const handleClose = useCallback(() => {
         setIsOpen(false);
         setSearchQuery('');
+      }, []);
+
+      // Reload usage from storage when dropdown opens
+      useEffect(() => {
+        if (isOpen) {
+          setAgentUsage(getStoredAgentUsage());
+        }
+      }, [isOpen]);
+
+      const trackAgentUsage = useCallback((agentId: string) => {
+        setAgentUsage((prev) => {
+          const updated = { ...prev, [agentId]: Date.now() };
+          saveAgentUsage(updated);
+          return updated;
+        });
       }, []);
 
       // Normalize text for fuzzy matching
@@ -58,15 +110,24 @@ export const AgentSelector = memo(
           .trim();
       }, []);
 
+      // Sort agents by recency (most recently used first)
+      const sortedAgents = useMemo(() => {
+        return [...agents].sort((a, b) => {
+          const aUsage = agentUsage[a.id] ?? 0;
+          const bUsage = agentUsage[b.id] ?? 0;
+          return bUsage - aUsage; // Most recent first
+        });
+      }, [agents, agentUsage]);
+
       // Filter agents based on fuzzy search
       const filteredAgents = useMemo(() => {
-        if (!searchQuery.trim()) return agents;
+        if (!searchQuery.trim()) return sortedAgents;
 
         // Split query into tokens
         const tokens = normalize(searchQuery).split(' ').filter(Boolean);
-        if (tokens.length === 0) return agents;
+        if (tokens.length === 0) return sortedAgents;
 
-        return agents.filter((agent) => {
+        return sortedAgents.filter((agent) => {
           // Build searchable text from all fields
           const searchableText = normalize(
             [agent.name, agent.model, agent.provider, agent.description]
@@ -77,7 +138,7 @@ export const AgentSelector = memo(
           // All tokens must match somewhere in the searchable text
           return tokens.every((token) => searchableText.includes(token));
         });
-      }, [agents, searchQuery, normalize]);
+      }, [sortedAgents, searchQuery, normalize]);
 
       // Close dropdown on Escape key
       useEffect(() => {
@@ -101,6 +162,7 @@ export const AgentSelector = memo(
       }, [isOpen]);
 
       const handleSelect = (agent: AgentType) => {
+        trackAgentUsage(agent.id);
         onSelect?.(agent);
         handleClose();
       };
@@ -181,7 +243,14 @@ export const AgentSelector = memo(
                             </span>
                           )}
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium">{agent.name}</div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium">{agent.name}</span>
+                              {agent.isLocal && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                                  Local
+                                </span>
+                              )}
+                            </div>
                             {agent.description && (
                               <div className="text-xs text-muted-foreground truncate">
                                 {agent.description}

@@ -8,15 +8,36 @@ export const sessionsRouter = router({
       z.object({
         agentId: z.string(),
         title: z.string().optional(),
+        isLocalAgent: z.boolean().optional().default(false),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // Validate agent exists
-      if (!ctx.agentsFeature.agents.has(input.agentId)) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: `Agent not found: ${input.agentId}`,
-        });
+      if (input.isLocalAgent) {
+        // Validate local agent exists and belongs to user
+        const localAgent = await ctx.localAgentsFeature.getById(
+          input.agentId,
+          ctx.auth.userId
+        );
+        if (!localAgent) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Local agent not found',
+          });
+        }
+        if (localAgent.disabled) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Cannot create session with disabled agent',
+          });
+        }
+      } else {
+        // Validate built-in agent exists
+        if (!ctx.agentsFeature.agents.has(input.agentId)) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: `Agent not found: ${input.agentId}`,
+          });
+        }
       }
 
       return ctx.agentsFeature.sessions.create({
@@ -24,6 +45,7 @@ export const sessionsRouter = router({
         orgId: ctx.auth.orgId,
         agentId: input.agentId,
         title: input.title,
+        isLocalAgent: input.isLocalAgent,
       });
     }),
 

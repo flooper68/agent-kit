@@ -32,7 +32,7 @@ export function createNavigateToTool(context: ClientToolContext): Tool {
           'Path cannot contain protocol or double slashes'
         )
         .describe(
-          'Application route path (e.g., "/app/projects", "/app/artifacts", "/app/analytics")'
+          'Application route path (e.g., "/app/projects", "/app/artifacts", "/app/agents", "/app/analytics")'
         ),
     }),
     execute: async ({ path }: { path: string }) => {

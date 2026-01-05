@@ -12,12 +12,12 @@ export const messagesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Session ownership already verified by sessionProcedure middleware
-      // Get the agentId for the session
-      const agentId = await ctx.agentsFeature.sessions.getAgentId(
+      // Get the agent info for the session (includes isLocalAgent flag)
+      const agentInfo = await ctx.agentsFeature.sessions.getAgentInfo(
         input.sessionId
       );
 
-      if (!agentId) {
+      if (!agentInfo) {
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'Session not found',
@@ -31,10 +31,25 @@ export const messagesRouter = router({
         });
       }
 
+      // Check if this is a local agent session
+      if (agentInfo.isLocalAgent) {
+        // For now, just log the message - will be forwarded to external worker later
+        console.log('[LocalAgent] Forwarding message:', {
+          sessionId: input.sessionId,
+          agentId: agentInfo.agentId,
+          userId: ctx.auth.userId,
+          orgId: ctx.auth.orgId,
+          content: input.content,
+        });
+
+        // TODO: Implement actual forwarding to local agent worker
+        return { sessionId: input.sessionId };
+      }
+
       // Enqueue job for processing - message creation happens in job handler
       await ctx.sessionManager.sendMessage(
         input.sessionId,
-        agentId,
+        agentInfo.agentId,
         ctx.auth.userId,
         ctx.auth.orgId,
         input.content

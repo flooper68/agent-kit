@@ -226,6 +226,7 @@ export function AppAgentPanel({
           try {
             const session = await createSessionMutation.mutateAsync({
               agentId: agentToUse.id,
+              isLocalAgent: agentToUse.isLocal ?? false,
             });
             if (session) {
               currentSessionId = session.id;

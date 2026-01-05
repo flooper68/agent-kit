@@ -21,6 +21,7 @@ import { AnalyticsFeature } from './features/analytics';
 import { ArtifactsFeature } from './features/artifacts';
 import { ProjectsFeature } from './features/projects';
 import { TasksFeature } from './features/tasks';
+import { LocalAgentsFeature } from './features/local-agents';
 import { CacheInvalidationService } from './lib/redis/cache-invalidation-service';
 import type { PubSubManager } from './lib/redis/pubsub';
 
@@ -81,6 +82,9 @@ const projectsFeature = new ProjectsFeature(db);
 // Create tasks feature
 const tasksFeature = new TasksFeature(db);
 
+// Create local agents feature
+const localAgentsFeature = new LocalAgentsFeature(db);
+
 // Will be initialized after Redis is ready (in onReady hook, before listen)
 let sessionManager!: AgentSessionManager;
 let pubsub!: PubSubManager;
@@ -139,6 +143,7 @@ fastify.register(fastifyTRPCPlugin, {
         artifactsFeature,
         projectsFeature,
         tasksFeature,
+        localAgentsFeature,
         sessionManager,
         pubsub,
       })(opts);
@@ -236,6 +241,7 @@ const start = async () => {
           artifactsFeature,
           projectsFeature,
           tasksFeature,
+          localAgentsFeature,
           sessionManager,
           pubsub,
         };

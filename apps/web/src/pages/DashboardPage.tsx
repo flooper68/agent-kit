@@ -29,10 +29,11 @@ export function DashboardPage() {
     return (agentsQuery.data || []).map((agent) => ({
       id: agent.id,
       name: agent.name,
-      description: agent.description,
+      description: agent.description ?? undefined,
       tools: agent.tools,
       model: agent.model,
       provider: agent.provider,
+      isLocal: agent.isLocal,
     }));
   }, [agentsQuery.data]);
 

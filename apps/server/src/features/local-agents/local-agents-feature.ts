@@ -1,0 +1,197 @@
+import { eq, and } from 'drizzle-orm';
+import type { db as DbType } from '../../db';
+import { localAgents, type LocalAgent } from '../../db/schema';
+
+export interface CreateLocalAgentInput {
+  userId: string;
+  name: string;
+  description?: string;
+  systemPrompt: string;
+  provider: string;
+  model: string;
+  tools?: string[];
+}
+
+export interface UpdateLocalAgentInput {
+  name?: string;
+  description?: string;
+  systemPrompt?: string;
+  provider?: string;
+  model?: string;
+  tools?: string[];
+}
+
+export interface LocalAgentListItem {
+  id: string;
+  name: string;
+  description: string | null;
+  systemPrompt: string;
+  provider: string;
+  model: string;
+  tools: string[];
+  disabled: boolean;
+  secretKey: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * LocalAgentsFeature - manages user-created local agents
+ */
+export class LocalAgentsFeature {
+  private db: typeof DbType;
+
+  constructor(db: typeof DbType) {
+    this.db = db;
+  }
+
+  /**
+   * Generate a new secret key with the ak_local_ prefix
+   */
+  private generateSecretKey(): string {
+    return `ak_local_${crypto.randomUUID()}`;
+  }
+
+  /**
+   * Create a new local agent with auto-generated secret key
+   * Returns the agent AND the plaintext secret key (only returned once)
+   */
+  async create(
+    input: CreateLocalAgentInput
+  ): Promise<{ agent: LocalAgent; secretKey: string }> {
+    const secretKey = this.generateSecretKey();
+
+    const [agent] = await this.db
+      .insert(localAgents)
+      .values({
+        userId: input.userId,
+        name: input.name,
+        description: input.description,
+        systemPrompt: input.systemPrompt,
+        provider: input.provider,
+        model: input.model,
+        tools: input.tools ?? [],
+        secretKey,
+      })
+      .returning();
+
+    if (!agent) {
+      throw new Error('Failed to create local agent');
+    }
+
+    return { agent, secretKey };
+  }
+
+  /**
+   * List all local agents for a user
+   */
+  async list(userId: string): Promise<LocalAgentListItem[]> {
+    const agents = await this.db
+      .select({
+        id: localAgents.id,
+        name: localAgents.name,
+        description: localAgents.description,
+        systemPrompt: localAgents.systemPrompt,
+        provider: localAgents.provider,
+        model: localAgents.model,
+        tools: localAgents.tools,
+        disabled: localAgents.disabled,
+        secretKey: localAgents.secretKey,
+        createdAt: localAgents.createdAt,
+        updatedAt: localAgents.updatedAt,
+      })
+      .from(localAgents)
+      .where(eq(localAgents.userId, userId))
+      .orderBy(localAgents.createdAt);
+
+    return agents;
+  }
+
+  /**
+   * Get a single local agent by ID (verifies ownership)
+   */
+  async getById(id: string, userId: string): Promise<LocalAgent | null> {
+    const [agent] = await this.db
+      .select()
+      .from(localAgents)
+      .where(and(eq(localAgents.id, id), eq(localAgents.userId, userId)));
+
+    return agent ?? null;
+  }
+
+  /**
+   * Update a local agent's configuration
+   */
+  async update(
+    id: string,
+    userId: string,
+    updates: UpdateLocalAgentInput
+  ): Promise<LocalAgent | null> {
+    const [agent] = await this.db
+      .update(localAgents)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(localAgents.id, id), eq(localAgents.userId, userId)))
+      .returning();
+
+    return agent ?? null;
+  }
+
+  /**
+   * Enable or disable a local agent (soft delete)
+   */
+  async setDisabled(
+    id: string,
+    userId: string,
+    disabled: boolean
+  ): Promise<LocalAgent | null> {
+    const [agent] = await this.db
+      .update(localAgents)
+      .set({
+        disabled,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(localAgents.id, id), eq(localAgents.userId, userId)))
+      .returning();
+
+    return agent ?? null;
+  }
+
+  /**
+   * Regenerate the secret key for a local agent
+   * Returns the new plaintext key
+   */
+  async regenerateKey(id: string, userId: string): Promise<string | null> {
+    const newSecretKey = this.generateSecretKey();
+
+    const [agent] = await this.db
+      .update(localAgents)
+      .set({
+        secretKey: newSecretKey,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(localAgents.id, id), eq(localAgents.userId, userId)))
+      .returning();
+
+    if (!agent) {
+      return null;
+    }
+
+    return newSecretKey;
+  }
+
+  /**
+   * Validate a secret key and return the associated agent
+   * Used for webhook authentication
+   */
+  async validateKey(secretKey: string): Promise<LocalAgent | null> {
+    const [agent] = await this.db
+      .select()
+      .from(localAgents)
+      .where(eq(localAgents.secretKey, secretKey));
+
+    return agent ?? null;
+  }
+}
