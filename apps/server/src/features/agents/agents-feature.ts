@@ -44,6 +44,7 @@ const STANDARD_TOOLS = [
   'getTime',
   'webSearch',
   'extractContent',
+  'fetch',
   // Artifact tools
   'writeArtifact',
   'searchArtifacts',
@@ -86,6 +87,7 @@ When using tools:
 - Use getTime when asked about the current date or time
 - Use webSearch to find current information from the web
 - Use extractContent to get full article text from URLs
+- Use fetch to retrieve raw content from any URL
 - Use searchArtifacts to find previously saved documents by title or summary
 - Use readArtifact to retrieve the full content of a saved document
 - Use writeArtifact to save documents, notes, or any content the user asks you to save
