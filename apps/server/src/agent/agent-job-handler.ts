@@ -3,6 +3,7 @@ import type {
   StreamEvent,
   AgentJob,
 } from './agent-session-manager';
+import type { PubSubManager } from '../lib/redis/pubsub';
 import type { MessagePart } from '../db/schema/agent-session-messages';
 import { getProvider } from './providers';
 import { getToolsById } from './tools';
@@ -74,14 +75,20 @@ export interface DbMessage {
  */
 export class AgentJobHandler {
   private sessionManager: AgentSessionManager;
+  private pubsub: PubSubManager;
   private workerId: string;
   private eventSequence = 0;
   private eventBuffer = new EventBuffer();
   private log: ReturnType<typeof logger.child>;
   private summarizer: SessionSummarizer;
 
-  constructor(sessionManager: AgentSessionManager, workerId: string) {
+  constructor(
+    sessionManager: AgentSessionManager,
+    pubsub: PubSubManager,
+    workerId: string
+  ) {
     this.sessionManager = sessionManager;
+    this.pubsub = pubsub;
     this.workerId = workerId;
     this.log = logger.child({ workerId });
     this.summarizer = new SessionSummarizer();
@@ -180,15 +187,18 @@ export class AgentJobHandler {
         await this.sessionManager.getSessionMessages(sessionId);
       const messages = convertToAIMessages(dbMessages);
 
-      // Get tools for this agent (with context for artifact and planning tools)
+      // Get tools for this agent (with context for artifact, planning, and client-side tools)
       const tools = getToolsById(agent.tools, {
         userId,
         orgId,
         sessionId,
+        messageId,
         agentId,
         artifactsFeature: this.sessionManager.artifactsFeature,
         projectsFeature: this.sessionManager.projectsFeature,
         tasksFeature: this.sessionManager.tasksFeature,
+        sessionManager: this.sessionManager,
+        pubsub: this.pubsub,
       });
 
       // Publish message start event

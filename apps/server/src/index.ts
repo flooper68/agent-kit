@@ -113,7 +113,7 @@ fastify.addHook('onReady', async () => {
   );
 
   // Create the agent worker
-  const agentWorker = new AgentWorker(sessionManager);
+  const agentWorker = new AgentWorker(sessionManager, pubsub);
 
   fastify.log.info('Starting agent worker...');
 

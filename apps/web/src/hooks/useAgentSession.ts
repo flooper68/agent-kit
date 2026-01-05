@@ -13,10 +13,31 @@ import type {
   ContextUsage,
 } from '@agent-kit/ui';
 
+/**
+ * Request from the AI agent to execute a client-side tool.
+ *
+ * Client tools enable the agent to interact with the user's browser,
+ * such as navigating to pages or querying the current UI state.
+ *
+ * @see /docs/architecture/client-tool-relaying.md for full documentation
+ */
+export interface ClientToolRequest {
+  /** Tool identifier (e.g., 'navigateTo', 'getCurrentUIState') */
+  toolName: string;
+  /** UUID for correlating responses (used by stateful tools) */
+  requestId: string;
+  /** Tool-specific parameters */
+  params: Record<string, unknown>;
+  /** Whether the client must send a response back via tRPC */
+  requiresResponse: boolean;
+}
+
 interface UseAgentSessionOptions {
   sessionId: string | null;
   onSessionInvalid?: () => void;
   onResourceCreated?: () => void;
+  /** Called when the agent requests a client-side tool execution */
+  onClientToolRequest?: (request: ClientToolRequest) => void;
 }
 
 interface UseAgentSessionReturn {
@@ -108,6 +129,7 @@ export function useAgentSession({
   sessionId,
   onSessionInvalid,
   onResourceCreated,
+  onClientToolRequest,
 }: UseAgentSessionOptions): UseAgentSessionReturn {
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const hasInitialScrolledRef = useRef<boolean>(false);
@@ -690,6 +712,16 @@ export function useAgentSession({
                 (m) => !(m.role === 'assistant' && m.parts.length === 0)
               )
             );
+            break;
+
+          case 'client_tool_request':
+            // Handle client-side tool request from agent
+            onClientToolRequest?.({
+              toolName: event.toolName,
+              requestId: event.requestId,
+              params: event.params,
+              requiresResponse: event.requiresResponse,
+            });
             break;
         }
       },

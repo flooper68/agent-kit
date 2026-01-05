@@ -2,6 +2,8 @@ import type { Tool } from '../types';
 import type { ArtifactsFeature } from '../../features/artifacts';
 import type { ProjectsFeature } from '../../features/projects';
 import type { TasksFeature } from '../../features/tasks';
+import type { AgentSessionManager } from '../agent-session-manager';
+import type { PubSubManager } from '../../lib/redis/pubsub';
 import { getTimeTool } from './get-time';
 import { webSearchTool } from './web-search';
 import { extractContentTool } from './extract-content';
@@ -22,6 +24,10 @@ import { createMoveTaskTool } from './move-task';
 import { createReorderTaskTool } from './reorder-task';
 import { createAttachArtifactToTaskTool } from './attach-artifact-to-task';
 import { createDetachArtifactFromTaskTool } from './detach-artifact-from-task';
+import {
+  createNavigateToTool,
+  createGetCurrentUIStateTool,
+} from './client-tools';
 
 // Static tools (no context needed)
 const STATIC_TOOLS: Record<string, Tool> = {
@@ -52,6 +58,9 @@ const CONTEXT_TOOL_IDS = [
   'reorderTask',
   'attachArtifactToTask',
   'detachArtifactFromTask',
+  // Client-side tools
+  'navigateTo',
+  'getCurrentUIState',
 ] as const;
 
 export type StaticToolId = keyof typeof STATIC_TOOLS;
@@ -65,10 +74,15 @@ export interface ToolContext {
   userId: string;
   orgId: string;
   sessionId?: string;
+  messageId?: string;
   agentId?: string;
   artifactsFeature: ArtifactsFeature;
   projectsFeature?: ProjectsFeature;
   tasksFeature?: TasksFeature;
+  /** Session manager for client-side tools */
+  sessionManager?: AgentSessionManager;
+  /** Pub/Sub manager for stateful client-side tools */
+  pubsub?: PubSubManager;
 }
 
 /**
@@ -226,6 +240,27 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
+            });
+          }
+          break;
+        // Client-side tools
+        case 'navigateTo':
+          if (context.sessionManager && context.sessionId && context.messageId && context.pubsub) {
+            result[id] = createNavigateToTool({
+              sessionId: context.sessionId,
+              messageId: context.messageId,
+              sessionManager: context.sessionManager,
+              pubsub: context.pubsub,
+            });
+          }
+          break;
+        case 'getCurrentUIState':
+          if (context.sessionManager && context.sessionId && context.messageId && context.pubsub) {
+            result[id] = createGetCurrentUIStateTool({
+              sessionId: context.sessionId,
+              messageId: context.messageId,
+              sessionManager: context.sessionManager,
+              pubsub: context.pubsub,
             });
           }
           break;

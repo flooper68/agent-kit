@@ -12,6 +12,7 @@ import { MessageSquareText } from 'lucide-react';
 import { useRegisterCommand } from '../contexts/CommandRegistryContext';
 import { trpc, subscribeToConnectionState } from '../lib/trpc';
 import { useAgentSession } from '../hooks/useAgentSession';
+import { useClientToolCommands } from '../hooks/useClientToolCommands';
 import { useSession } from '../contexts/SessionContext';
 import { SessionDetailModal } from './analytics/SessionDetailModal';
 import { SessionResourcesDialog } from './SessionResourcesDialog';
@@ -67,6 +68,9 @@ export function AppAgentPanel({
 
   // State for session resources dialog
   const [isResourcesDialogOpen, setIsResourcesDialogOpen] = useState(false);
+
+  // Client tool commands handler (for navigateTo, getCurrentUIState, etc.)
+  const { handleClientToolRequest } = useClientToolCommands({ sessionId });
 
   useEffect(() => {
     let mounted = true;
@@ -141,6 +145,7 @@ export function AppAgentPanel({
     sessionId,
     onSessionInvalid: handleSessionInvalid,
     onResourceCreated: handleResourceCreated,
+    onClientToolRequest: handleClientToolRequest,
   });
 
   // Restore last selected agent from localStorage, or fallback to first agent

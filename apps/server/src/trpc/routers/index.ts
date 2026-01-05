@@ -9,6 +9,7 @@ import { artifactsRouter } from './artifacts';
 import { projectsRouter } from './projects';
 import { tasksRouter } from './tasks';
 import { cacheRouter } from './cache';
+import { clientToolsRouter } from './client-tools';
 
 export const appRouter = router({
   greeting: greetingRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   projects: projectsRouter,
   tasks: tasksRouter,
   cache: cacheRouter,
+  clientTools: clientToolsRouter,
 });
 
 export type AppRouter = typeof appRouter;
