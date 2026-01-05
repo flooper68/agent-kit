@@ -21,7 +21,10 @@ const UIStateResponseSchema = z.object({
     .record(z.string(), z.string())
     .optional()
     .describe('Route parameters'),
-  breadcrumbs: z.array(z.string()).optional().describe('Navigation breadcrumbs'),
+  breadcrumbs: z
+    .array(z.string())
+    .optional()
+    .describe('Navigation breadcrumbs'),
   activeSection: z.string().optional().describe('Active sidebar/tab section'),
 });
 
@@ -41,11 +44,20 @@ type UIStateResponse = z.infer<typeof UIStateResponseSchema>;
 export function createGetCurrentUIStateTool(context: ClientToolContext): Tool {
   return tool({
     description:
-      'Get the current UI state of the user\'s browser, including the current path, ' +
+      "Get the current UI state of the user's browser, including the current path, " +
       'page title, and route parameters. Use this to understand what the user is ' +
       'currently looking at in the application.',
     inputSchema: z.object({}),
     execute: async () => {
+      // Stateful tools require pubsub for response handling
+      if (!context.pubsub) {
+        return {
+          error: 'Configuration error',
+          message: 'PubSub manager not available for stateful tool',
+        };
+      }
+      const pubsub = context.pubsub;
+
       const requestId = randomUUID();
       const responseChannel = getClientToolResponseChannel(
         context.sessionId,
@@ -54,21 +66,23 @@ export function createGetCurrentUIStateTool(context: ClientToolContext): Tool {
 
       // Set up response listener
       let responseHandler: ((message: PubSubMessage) => void) | null = null;
-      const responsePromise = new Promise<UIStateResponse>((resolve, reject) => {
-        responseHandler = (message: PubSubMessage) => {
-          // Validate the response
-          const parseResult = UIStateResponseSchema.safeParse(message.data);
-          if (parseResult.success) {
-            resolve(parseResult.data);
-          } else {
-            reject(
-              new Error(
-                `Invalid UI state response: ${parseResult.error.message}`
-              )
-            );
-          }
-        };
-      });
+      const responsePromise = new Promise<UIStateResponse>(
+        (resolve, reject) => {
+          responseHandler = (message: PubSubMessage) => {
+            // Validate the response
+            const parseResult = UIStateResponseSchema.safeParse(message.data);
+            if (parseResult.success) {
+              resolve(parseResult.data);
+            } else {
+              reject(
+                new Error(
+                  `Invalid UI state response: ${parseResult.error.message}`
+                )
+              );
+            }
+          };
+        }
+      );
 
       // Set up timeout with cleanup capability
       let timeoutId: NodeJS.Timeout | null = null;
@@ -79,15 +93,10 @@ export function createGetCurrentUIStateTool(context: ClientToolContext): Tool {
       });
 
       try {
-        // Subscribe to response channel FIRST
-        await context.pubsub.subscribe(responseChannel, responseHandler!);
+        // Subscribe to response channel FIRST (awaits Redis ACK)
+        await pubsub.subscribe(responseChannel, responseHandler!);
 
-        // Small delay to ensure subscription is fully established in Redis
-        // This mitigates a race condition where the client could respond
-        // before the subscription is ready
-        await new Promise((resolve) => setTimeout(resolve, 50));
-
-        // NOW publish request event to client
+        // Publish request event to client
         await context.sessionManager.publishEvent(context.sessionId, {
           type: 'client_tool_request',
           sessionId: context.sessionId,
@@ -124,14 +133,12 @@ export function createGetCurrentUIStateTool(context: ClientToolContext): Tool {
         return {
           error: 'Failed to get UI state',
           message:
-            error instanceof Error
-              ? error.message
-              : 'Unknown error occurred',
+            error instanceof Error ? error.message : 'Unknown error occurred',
         };
       } finally {
         // Always clean up subscription
         if (responseHandler) {
-          await context.pubsub.unsubscribe(responseChannel, responseHandler);
+          await pubsub.unsubscribe(responseChannel, responseHandler);
         }
       }
     },

@@ -15,6 +15,6 @@ export interface ClientToolContext {
   messageId: string;
   /** Session manager for publishing events */
   sessionManager: AgentSessionManager;
-  /** Pub/Sub manager for subscribing to responses (stateful tools only) */
-  pubsub: PubSubManager;
+  /** Pub/Sub manager for subscribing to responses (required for stateful tools only) */
+  pubsub?: PubSubManager;
 }

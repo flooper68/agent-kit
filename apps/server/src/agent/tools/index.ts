@@ -245,17 +245,26 @@ export function getToolsById(
           break;
         // Client-side tools
         case 'navigateTo':
-          if (context.sessionManager && context.sessionId && context.messageId && context.pubsub) {
+          // Fire-and-forget tool - doesn't need pubsub
+          if (
+            context.sessionManager &&
+            context.sessionId &&
+            context.messageId
+          ) {
             result[id] = createNavigateToTool({
               sessionId: context.sessionId,
               messageId: context.messageId,
               sessionManager: context.sessionManager,
-              pubsub: context.pubsub,
             });
           }
           break;
         case 'getCurrentUIState':
-          if (context.sessionManager && context.sessionId && context.messageId && context.pubsub) {
+          if (
+            context.sessionManager &&
+            context.sessionId &&
+            context.messageId &&
+            context.pubsub
+          ) {
             result[id] = createGetCurrentUIStateTool({
               sessionId: context.sessionId,
               messageId: context.messageId,

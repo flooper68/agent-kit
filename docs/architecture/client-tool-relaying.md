@@ -5,6 +5,7 @@ This document describes the architecture for enabling AI agents to execute actio
 ## Overview
 
 Client-side tool relaying allows the AI agent to:
+
 - Navigate users to specific pages
 - Query the current UI state
 - Execute browser-side actions that cannot be performed server-side
@@ -13,10 +14,10 @@ Client-side tool relaying allows the AI agent to:
 
 The system supports two patterns for client-side tools:
 
-| Pattern | Description | Blocks LLM? | Example |
-|---------|-------------|-------------|---------|
-| **Fire-and-Forget** | Execute action, return immediately | No | `navigateTo` |
-| **Stateful** | Request data, wait for response | Yes (with timeout) | `getCurrentUIState` |
+| Pattern             | Description                        | Blocks LLM?        | Example             |
+| ------------------- | ---------------------------------- | ------------------ | ------------------- |
+| **Fire-and-Forget** | Execute action, return immediately | No                 | `navigateTo`        |
+| **Stateful**        | Request data, wait for response    | Yes (with timeout) | `getCurrentUIState` |
 
 ## Architecture Components
 
@@ -109,14 +110,14 @@ Published to Redis Stream, received by client via WebSocket subscription.
 ```typescript
 interface ClientToolRequestEvent {
   type: 'client_tool_request';
-  id: string;              // Event ID
-  sessionId: string;       // Agent session ID
-  messageId: string;       // Current message ID
-  timestamp: string;       // ISO timestamp
-  toolName: string;        // Tool identifier
-  requestId: string;       // UUID for response correlation
-  params: Record<string, unknown>;  // Tool-specific parameters
-  requiresResponse: boolean;        // Fire-and-forget vs stateful
+  id: string; // Event ID
+  sessionId: string; // Agent session ID
+  messageId: string; // Current message ID
+  timestamp: string; // ISO timestamp
+  toolName: string; // Tool identifier
+  requestId: string; // UUID for response correlation
+  params: Record<string, unknown>; // Tool-specific parameters
+  requiresResponse: boolean; // Fire-and-forget vs stateful
 }
 ```
 
@@ -128,7 +129,7 @@ Sent by client via tRPC mutation, published to Redis Pub/Sub.
 interface ClientToolResponse {
   sessionId: string;
   requestId: string;
-  response: unknown;  // Tool-specific response data
+  response: unknown; // Tool-specific response data
 }
 ```
 
@@ -139,16 +140,21 @@ interface ClientToolResponse {
 Navigate the user's browser to a specific application route.
 
 **Input:**
+
 ```typescript
-{ path: string }  // Must start with '/'
+{
+  path: string;
+} // Must start with '/'
 ```
 
 **Output:**
+
 ```typescript
 { success: true, message: 'Navigation to /app/projects initiated' }
 ```
 
 **Example:**
+
 ```
 Agent: "I'll take you to the projects page."
 Tool call: navigateTo({ path: '/app/projects' })
@@ -159,11 +165,14 @@ Tool call: navigateTo({ path: '/app/projects' })
 Query the current UI state including path, title, and context.
 
 **Input:**
+
 ```typescript
-{}  // No parameters
+{
+} // No parameters
 ```
 
 **Output:**
+
 ```typescript
 {
   path: string;                      // Current route path
@@ -175,6 +184,7 @@ Query the current UI state including path, title, and context.
 ```
 
 **Example:**
+
 ```
 Agent: "Let me check what page you're on."
 Tool call: getCurrentUIState()
@@ -195,7 +205,9 @@ import type { ClientToolContext } from './types';
 export function createMyTool(context: ClientToolContext) {
   return tool({
     description: 'Description for the LLM',
-    inputSchema: z.object({ /* params */ }),
+    inputSchema: z.object({
+      /* params */
+    }),
     execute: async (params) => {
       // For fire-and-forget:
       await context.sessionManager.publishEvent(context.sessionId, {
@@ -216,12 +228,14 @@ export function createMyTool(context: ClientToolContext) {
 ### 2. Register Tool
 
 Add to `apps/server/src/agent/tools/index.ts`:
+
 - Add tool ID to `CONTEXT_TOOL_IDS`
 - Add case in `getToolsById` switch
 
 ### 3. Add Client Handler
 
 Update `apps/web/src/hooks/useClientToolCommands.ts`:
+
 ```typescript
 case 'myTool': {
   // Execute client-side action
@@ -237,7 +251,9 @@ case 'myTool': {
 If the client doesn't respond within 5 seconds:
 
 ```typescript
-{ error: 'Client did not respond in time' }
+{
+  error: 'Client did not respond in time';
+}
 ```
 
 The LLM receives this and can retry or inform the user.
@@ -259,15 +275,18 @@ Invalid parameters result in tool execution failure.
 The `navigateTo` tool validates paths on both server and client:
 
 **Server-side (Zod schema):**
+
 - Must start with `/` but not `//` or `/\`
 - Cannot contain `://` (no protocol injection)
 - Uses regex: `/^\/(?![/\\])/`
 
 **Client-side (defense in depth):**
+
 - Same checks repeated before executing navigation
 - Logs suspicious paths for monitoring
 
 For highly sensitive applications, consider allowlisting specific path prefixes:
+
 ```typescript
 const ALLOWED_PREFIXES = ['/app/', '/settings/'];
 ```
@@ -275,6 +294,7 @@ const ALLOWED_PREFIXES = ['/app/', '/settings/'];
 ### Prompt Injection
 
 Client-side tools should never:
+
 - Execute arbitrary JavaScript
 - Navigate to external URLs
 - Access sensitive browser APIs without validation

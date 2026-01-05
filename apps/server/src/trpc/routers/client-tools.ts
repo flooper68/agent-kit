@@ -36,16 +36,25 @@ export const clientToolsRouter = router({
       z.object({
         sessionId: z.string().uuid(),
         requestId: z.string().uuid(),
-        response: z.unknown().refine(
-          (val) => {
-            try {
-              return JSON.stringify(val).length <= MAX_RESPONSE_SIZE;
-            } catch {
-              return false;
+        response: z
+          .unknown()
+          .refine(
+            (val) => {
+              try {
+                JSON.stringify(val);
+                return true;
+              } catch {
+                return false;
+              }
+            },
+            {
+              message:
+                'Response must be JSON serializable (no circular references)',
             }
-          },
-          { message: `Response payload exceeds maximum size of ${MAX_RESPONSE_SIZE} bytes` }
-        ),
+          )
+          .refine((val) => JSON.stringify(val).length <= MAX_RESPONSE_SIZE, {
+            message: `Response payload exceeds maximum size of ${MAX_RESPONSE_SIZE} bytes`,
+          }),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -60,7 +69,11 @@ export const clientToolsRouter = router({
         return { success: true as const };
       } catch (error) {
         ctx.req.log.error(
-          { err: error, sessionId: input.sessionId, requestId: input.requestId },
+          {
+            err: error,
+            sessionId: input.sessionId,
+            requestId: input.requestId,
+          },
           'Failed to publish client tool response'
         );
         throw new TRPCError({

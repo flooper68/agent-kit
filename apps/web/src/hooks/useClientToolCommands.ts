@@ -157,10 +157,7 @@ export function useClientToolCommands({
         }
 
         default:
-          console.warn(
-            '[ClientToolCommands] Unknown tool:',
-            request.toolName
-          );
+          console.warn('[ClientToolCommands] Unknown tool:', request.toolName);
       }
     },
     [navigate, sessionId, respondMutation]
