@@ -1,6 +1,6 @@
 {
-  "id": "3fa68c74-33f5-4f6f-931f-974c9e28d9f5",
-  "prevId": "b4eee1b6-56c6-455d-b811-89c03a5fbdaf",
+  "id": "d135a265-7a1f-4e31-b14b-e4005362b207",
+  "prevId": "3fa68c74-33f5-4f6f-931f-974c9e28d9f5",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -939,6 +939,12 @@
         "secret_key": {
           "name": "secret_key",
           "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "secret_key_prefix": {
+          "name": "secret_key_prefix",
+          "type": "varchar(32)",
           "primaryKey": false,
           "notNull": true
         },

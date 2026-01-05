@@ -1,46 +1,35 @@
-import { useState } from 'react';
 import {
   Bot,
   Pencil,
   RefreshCw,
   Power,
   PowerOff,
-  Copy,
-  Check,
   MoreVertical,
+  Loader2,
 } from 'lucide-react';
 import { ActionCard, IconButton, DropdownMenu } from '@agent-kit/ui';
 
 export interface LocalAgentCardProps {
-  id: string;
   name: string;
   description: string | null;
-  secretKey: string;
+  secretKeyPrefix: string;
   disabled: boolean;
+  isLoading?: boolean;
   onEdit: () => void;
   onRegenerateKey: () => void;
   onToggleDisabled: () => void;
 }
 
 export function LocalAgentCard({
-  id: _id,
   name,
   description,
-  secretKey,
+  secretKeyPrefix,
   disabled,
+  isLoading,
   onEdit,
   onRegenerateKey,
   onToggleDisabled,
 }: LocalAgentCardProps) {
-  const [copied, setCopied] = useState(false);
-  const maskedKey = 'ak_local_••••••••';
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(secretKey);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <ActionCard disabled={disabled}>
       <ActionCard.Header
@@ -61,10 +50,14 @@ export function LocalAgentCard({
                 label="More options"
                 size="sm"
                 variant="ghost"
+                disabled={isLoading}
               />
             </DropdownMenu.Trigger>
             <DropdownMenu.Content align="end">
-              <DropdownMenu.Item onClick={onToggleDisabled}>
+              <DropdownMenu.Item
+                onClick={onToggleDisabled}
+                disabled={isLoading}
+              >
                 {disabled ? (
                   <>
                     <Power className="h-4 w-4" />
@@ -90,30 +83,24 @@ export function LocalAgentCard({
         </ActionCard.Content>
       )}
 
-      {/* Secret key display */}
+      {/* Secret key prefix display */}
       <div className="mx-4 mb-3 flex items-center gap-2 rounded border border-border px-2 py-1.5 bg-muted/50">
         <code className="text-xs font-mono text-muted-foreground flex-1 truncate">
-          {maskedKey}
+          {secretKeyPrefix}
         </code>
         <IconButton
           icon={
-            copied ? (
-              <Check className="h-3 w-3" />
+            isLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
             ) : (
-              <Copy className="h-3 w-3" />
+              <RefreshCw className="h-3 w-3" />
             )
           }
-          onClick={handleCopy}
-          label={copied ? 'Copied' : 'Copy key'}
-          size="sm"
-          variant="ghost"
-        />
-        <IconButton
-          icon={<RefreshCw className="h-3 w-3" />}
           onClick={onRegenerateKey}
           label="Regenerate key"
           size="sm"
           variant="ghost"
+          disabled={isLoading}
         />
       </div>
 
@@ -125,6 +112,7 @@ export function LocalAgentCard({
             label="Edit"
             size="sm"
             variant="outline"
+            disabled={isLoading}
           />
         }
       />

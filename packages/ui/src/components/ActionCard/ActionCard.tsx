@@ -133,26 +133,32 @@ export interface ActionCardFooterProps
 }
 
 const ActionCardFooter = forwardRef<HTMLDivElement, ActionCardFooterProps>(
-  ({ className, leftActions, rightActions, children, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        'flex items-center justify-between gap-2 px-4 pb-4',
-        className
-      )}
-      {...props}
-    >
-      {/* If using leftActions/rightActions props */}
-      {(leftActions || rightActions) && (
-        <>
-          <div className="flex items-center gap-2">{leftActions}</div>
-          <div className="flex items-center gap-2">{rightActions}</div>
-        </>
-      )}
-      {/* If using children directly */}
-      {children}
-    </div>
-  )
+  ({ className, leftActions, rightActions, children, ...props }, ref) => {
+    const hasActions = leftActions || rightActions;
+
+    // Don't render anything if no content provided
+    if (!hasActions && !children) return null;
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          'flex items-center justify-between gap-2 px-4 pb-4',
+          className
+        )}
+        {...props}
+      >
+        {hasActions ? (
+          <>
+            <div className="flex items-center gap-2">{leftActions}</div>
+            <div className="flex items-center gap-2">{rightActions}</div>
+          </>
+        ) : (
+          children
+        )}
+      </div>
+    );
+  }
 );
 
 ActionCardFooter.displayName = 'ActionCardFooter';

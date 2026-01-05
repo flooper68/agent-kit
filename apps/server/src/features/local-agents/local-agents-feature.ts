@@ -1,4 +1,5 @@
 import { eq, and } from 'drizzle-orm';
+import { createHash } from 'crypto';
 import type { db as DbType } from '../../db';
 import { localAgents, type LocalAgent } from '../../db/schema';
 
@@ -18,7 +19,7 @@ export interface LocalAgentListItem {
   name: string;
   description: string | null;
   disabled: boolean;
-  secretKey: string;
+  secretKeyPrefix: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,6 +42,20 @@ export class LocalAgentsFeature {
   }
 
   /**
+   * Hash a secret key using SHA256
+   */
+  private hashSecretKey(key: string): string {
+    return createHash('sha256').update(key).digest('hex');
+  }
+
+  /**
+   * Generate a display prefix from a secret key (e.g., "ak_local_abc1...")
+   */
+  private generateKeyPrefix(key: string): string {
+    return key.substring(0, 20) + '...';
+  }
+
+  /**
    * Create a new local agent with auto-generated secret key
    * Returns the agent AND the plaintext secret key (only returned once)
    */
@@ -48,6 +63,8 @@ export class LocalAgentsFeature {
     input: CreateLocalAgentInput
   ): Promise<{ agent: LocalAgent; secretKey: string }> {
     const secretKey = this.generateSecretKey();
+    const secretKeyHash = this.hashSecretKey(secretKey);
+    const secretKeyPrefix = this.generateKeyPrefix(secretKey);
 
     const [agent] = await this.db
       .insert(localAgents)
@@ -55,7 +72,8 @@ export class LocalAgentsFeature {
         userId: input.userId,
         name: input.name,
         description: input.description,
-        secretKey,
+        secretKey: secretKeyHash,
+        secretKeyPrefix,
       })
       .returning();
 
@@ -63,11 +81,13 @@ export class LocalAgentsFeature {
       throw new Error('Failed to create local agent');
     }
 
+    // Return plaintext key - this is the only time it's available
     return { agent, secretKey };
   }
 
   /**
    * List all local agents for a user
+   * Returns only the key prefix, not the full key (which is hashed in DB)
    */
   async list(userId: string): Promise<LocalAgentListItem[]> {
     const agents = await this.db
@@ -76,7 +96,7 @@ export class LocalAgentsFeature {
         name: localAgents.name,
         description: localAgents.description,
         disabled: localAgents.disabled,
-        secretKey: localAgents.secretKey,
+        secretKeyPrefix: localAgents.secretKeyPrefix,
         createdAt: localAgents.createdAt,
         updatedAt: localAgents.updatedAt,
       })
@@ -141,15 +161,18 @@ export class LocalAgentsFeature {
 
   /**
    * Regenerate the secret key for a local agent
-   * Returns the new plaintext key
+   * Returns the new plaintext key (only returned once)
    */
   async regenerateKey(id: string, userId: string): Promise<string | null> {
     const newSecretKey = this.generateSecretKey();
+    const secretKeyHash = this.hashSecretKey(newSecretKey);
+    const secretKeyPrefix = this.generateKeyPrefix(newSecretKey);
 
     const [agent] = await this.db
       .update(localAgents)
       .set({
-        secretKey: newSecretKey,
+        secretKey: secretKeyHash,
+        secretKeyPrefix,
         updatedAt: new Date(),
       })
       .where(and(eq(localAgents.id, id), eq(localAgents.userId, userId)))
@@ -159,18 +182,27 @@ export class LocalAgentsFeature {
       return null;
     }
 
+    // Return plaintext key - this is the only time it's available
     return newSecretKey;
   }
 
   /**
    * Validate a secret key and return the associated agent
    * Used for webhook authentication
+   * Only returns enabled agents (disabled agents cannot authenticate)
    */
   async validateKey(secretKey: string): Promise<LocalAgent | null> {
+    const secretKeyHash = this.hashSecretKey(secretKey);
+
     const [agent] = await this.db
       .select()
       .from(localAgents)
-      .where(eq(localAgents.secretKey, secretKey));
+      .where(
+        and(
+          eq(localAgents.secretKey, secretKeyHash),
+          eq(localAgents.disabled, false)
+        )
+      );
 
     return agent ?? null;
   }

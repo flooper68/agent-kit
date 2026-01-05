@@ -29,7 +29,27 @@ export const agentsRouter = router({
 
   get: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .query(({ ctx, input }) => {
-      return ctx.agentsFeature.agents.get(input.id);
+    .query(async ({ ctx, input }) => {
+      // Try built-in agents first
+      const builtIn = ctx.agentsFeature.agents.get(input.id);
+      if (builtIn) {
+        return { ...builtIn, isLocal: false as const };
+      }
+
+      // Try local agent
+      const localAgent = await ctx.localAgentsFeature.getById(
+        input.id,
+        ctx.auth.userId
+      );
+      if (localAgent) {
+        return {
+          id: localAgent.id,
+          name: localAgent.name,
+          description: localAgent.description ?? undefined,
+          isLocal: true as const,
+        };
+      }
+
+      return undefined;
     }),
 });

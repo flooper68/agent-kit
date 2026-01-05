@@ -33,13 +33,25 @@ export const messagesRouter = router({
 
       // Check if this is a local agent session
       if (agentInfo.isLocalAgent) {
-        // For now, just log the message - will be forwarded to external worker later
-        console.log('[LocalAgent] Forwarding message:', {
+        // Create the user message (same pattern as agent-job-handler.ts)
+        const userMessage = await ctx.sessionManager.createMessage({
+          sessionId: input.sessionId,
+          role: 'user',
+          status: 'complete',
+        });
+
+        // Insert user message content event
+        await ctx.sessionManager.insertEvent({
+          sessionId: input.sessionId,
+          messageId: userMessage.id,
+          sequence: 0,
+          type: 'text_delta',
+          content: input.content,
+        });
+
+        console.log('[LocalAgent] Message stored, forwarding pending:', {
           sessionId: input.sessionId,
           agentId: agentInfo.agentId,
-          userId: ctx.auth.userId,
-          orgId: ctx.auth.orgId,
-          content: input.content,
         });
 
         // TODO: Implement actual forwarding to local agent worker

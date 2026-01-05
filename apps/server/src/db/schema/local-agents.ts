@@ -20,8 +20,11 @@ export const localAgents = pgTable(
     name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
 
-    // Secret key with prefix ak_local_
+    // Secret key hash (SHA256) - the actual key is only returned on create/regenerate
     secretKey: varchar('secret_key', { length: 255 }).notNull().unique(),
+
+    // Display prefix for identification (e.g., "ak_local_abc1...")
+    secretKeyPrefix: varchar('secret_key_prefix', { length: 32 }).notNull(),
 
     // Soft delete - disabled agents are hidden from agent selector
     disabled: boolean('disabled').notNull().default(false),

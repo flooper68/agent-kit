@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Heading, Text, Button, Dialog, Select } from '@agent-kit/ui';
-import { Plus, Bot, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Heading, Text, Button, Dialog, Select, Input } from '@agent-kit/ui';
+import { Plus, Bot, AlertTriangle, Copy, Check } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { useHeaderActions } from '../contexts/HeaderActionsContext';
 import { LocalAgentCard } from '../components/local-agents/LocalAgentCard';
@@ -24,6 +24,14 @@ export function AgentsPage() {
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'enabled' | 'disabled'
   >('enabled');
+  // Track loading state for individual agent operations
+  const [loadingAgentId, setLoadingAgentId] = useState<string | null>(null);
+  // Show secret key after create/regenerate (only time it's visible)
+  const [revealedSecretKey, setRevealedSecretKey] = useState<{
+    key: string;
+    agentName: string;
+  } | null>(null);
+  const [copiedKey, setCopiedKey] = useState(false);
 
   const utils = trpc.useUtils();
 
@@ -45,6 +53,19 @@ export function AgentsPage() {
   }, [setActions, clearActions]);
 
   const agentsQuery = trpc.localAgents.list.useQuery();
+
+  // Clear error when dialogs open
+  useEffect(() => {
+    if (isCreateDialogOpen) {
+      setError(null);
+    }
+  }, [isCreateDialogOpen]);
+
+  useEffect(() => {
+    if (editingAgent) {
+      setError(null);
+    }
+  }, [editingAgent]);
 
   // Filter agents based on status filter
   const filteredAgents = useMemo(() => {
@@ -70,9 +91,14 @@ export function AgentsPage() {
   }, [agentsQuery.data]);
 
   const createMutation = trpc.localAgents.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       setIsCreateDialogOpen(false);
       setError(null);
+      // Show the secret key (only time it's available)
+      setRevealedSecretKey({
+        key: data.secretKey,
+        agentName: data.agent.name,
+      });
       utils.localAgents.list.invalidate();
       utils.agents.list.invalidate();
     },
@@ -95,15 +121,29 @@ export function AgentsPage() {
 
   const setDisabledMutation = trpc.localAgents.setDisabled.useMutation({
     onSuccess: () => {
+      setLoadingAgentId(null);
       utils.localAgents.list.invalidate();
       utils.agents.list.invalidate();
+    },
+    onError: () => {
+      setLoadingAgentId(null);
     },
   });
 
   const regenerateKeyMutation = trpc.localAgents.regenerateKey.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
+      const agentName = regenerateTarget?.name ?? 'Agent';
       setRegenerateTarget(null);
+      setLoadingAgentId(null);
+      // Show the new secret key (only time it's available)
+      setRevealedSecretKey({
+        key: data.secretKey,
+        agentName,
+      });
       utils.localAgents.list.invalidate();
+    },
+    onError: () => {
+      setLoadingAgentId(null);
     },
   });
 
@@ -124,7 +164,24 @@ export function AgentsPage() {
   };
 
   const handleToggleDisabled = (id: string, currentDisabled: boolean) => {
+    setLoadingAgentId(id);
     setDisabledMutation.mutate({ id, disabled: !currentDisabled });
+  };
+
+  const handleCopyKey = useCallback(async () => {
+    if (!revealedSecretKey) return;
+    try {
+      await navigator.clipboard.writeText(revealedSecretKey.key);
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 2000);
+    } catch {
+      // Clipboard access failed
+    }
+  }, [revealedSecretKey]);
+
+  const handleCloseSecretKeyDialog = () => {
+    setRevealedSecretKey(null);
+    setCopiedKey(false);
   };
 
   const handleCloseCreateDialog = (open: boolean) => {
@@ -218,11 +275,11 @@ export function AgentsPage() {
             {filteredAgents.map((agent) => (
               <LocalAgentCard
                 key={agent.id}
-                id={agent.id}
                 name={agent.name}
                 description={agent.description}
-                secretKey={agent.secretKey}
+                secretKeyPrefix={agent.secretKeyPrefix}
                 disabled={agent.disabled}
+                isLoading={loadingAgentId === agent.id}
                 onEdit={() =>
                   setEditingAgent({
                     id: agent.id,
@@ -299,6 +356,53 @@ export function AgentsPage() {
             >
               Regenerate Key
             </Button>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog>
+
+      {/* Secret Key Reveal Dialog */}
+      <Dialog
+        open={!!revealedSecretKey}
+        onOpenChange={(open) => !open && handleCloseSecretKeyDialog()}
+      >
+        <Dialog.Content size="md">
+          <Dialog.Header>
+            <Dialog.Title>Secret Key Created</Dialog.Title>
+            <Dialog.Description>
+              Save this secret key for &ldquo;{revealedSecretKey?.agentName}
+              &rdquo;. You won&apos;t be able to see it again.
+            </Dialog.Description>
+          </Dialog.Header>
+          <div className="my-4">
+            <div className="flex items-start gap-2 rounded-md bg-yellow-500/10 border border-yellow-500/50 p-3 mb-4">
+              <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0" />
+              <Text className="text-sm text-yellow-600 dark:text-yellow-400">
+                This is the only time this key will be shown. Copy it now and
+                store it securely.
+              </Text>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={revealedSecretKey?.key ?? ''}
+                readOnly
+                className="font-mono text-sm"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleCopyKey}
+                className="flex-shrink-0"
+              >
+                {copiedKey ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+          <Dialog.Footer>
+            <Button onClick={handleCloseSecretKeyDialog}>Done</Button>
           </Dialog.Footer>
         </Dialog.Content>
       </Dialog>

@@ -3,7 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../trpc';
 
 export const localAgentsRouter = router({
-  // List user's local agents (includes secret keys for copy functionality)
+  // List user's local agents (returns key prefixes only, not full keys)
   list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.localAgentsFeature.list(ctx.auth.userId);
   }),
@@ -29,7 +29,7 @@ export const localAgentsRouter = router({
   create: protectedProcedure
     .input(
       z.object({
-        name: z.string().min(1).max(255),
+        name: z.string().trim().min(1).max(255),
         description: z.string().optional(),
       })
     )
@@ -58,7 +58,7 @@ export const localAgentsRouter = router({
     .input(
       z.object({
         id: z.string().uuid(),
-        name: z.string().min(1).max(255).optional(),
+        name: z.string().trim().min(1).max(255).optional(),
         description: z.string().optional(),
       })
     )

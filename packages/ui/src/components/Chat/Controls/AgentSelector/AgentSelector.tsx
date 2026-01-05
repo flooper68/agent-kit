@@ -92,11 +92,11 @@ export const AgentSelector = memo(
       }, [isOpen]);
 
       const trackAgentUsage = useCallback((agentId: string) => {
-        setAgentUsage((prev) => {
-          const updated = { ...prev, [agentId]: Date.now() };
-          saveAgentUsage(updated);
-          return updated;
-        });
+        // Read fresh data from localStorage to avoid race conditions with other tabs
+        const current = getStoredAgentUsage();
+        const updated = { ...current, [agentId]: Date.now() };
+        saveAgentUsage(updated);
+        setAgentUsage(updated);
       }, []);
 
       // Normalize text for fuzzy matching
