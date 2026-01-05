@@ -1,15 +1,15 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure } from '../trpc';
+import { router, protectedProcedureWithErrors } from '../trpc';
 
 export const localAgentsRouter = router({
   // List user's local agents (returns key prefixes only, not full keys)
-  list: protectedProcedure.query(async ({ ctx }) => {
+  list: protectedProcedureWithErrors.query(async ({ ctx }) => {
     return ctx.localAgentsFeature.list(ctx.auth.userId);
   }),
 
   // Get single local agent by ID
-  get: protectedProcedure
+  get: protectedProcedureWithErrors
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const agent = await ctx.localAgentsFeature.getById(
@@ -26,7 +26,7 @@ export const localAgentsRouter = router({
     }),
 
   // Create new local agent (returns plaintext secret key ONCE)
-  create: protectedProcedure
+  create: protectedProcedureWithErrors
     .input(
       z.object({
         name: z.string().trim().min(1).max(255),
@@ -54,7 +54,7 @@ export const localAgentsRouter = router({
     }),
 
   // Update local agent
-  update: protectedProcedure
+  update: protectedProcedureWithErrors
     .input(
       z.object({
         id: z.string().uuid(),
@@ -88,7 +88,7 @@ export const localAgentsRouter = router({
     }),
 
   // Enable or disable local agent
-  setDisabled: protectedProcedure
+  setDisabled: protectedProcedureWithErrors
     .input(
       z.object({
         id: z.string().uuid(),
@@ -113,7 +113,7 @@ export const localAgentsRouter = router({
     }),
 
   // Regenerate secret key (returns new plaintext key)
-  regenerateKey: protectedProcedure
+  regenerateKey: protectedProcedureWithErrors
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const secretKey = await ctx.localAgentsFeature.regenerateKey(

@@ -36,12 +36,12 @@ export const agentsRouter = router({
         return { ...builtIn, isLocal: false as const };
       }
 
-      // Try local agent
+      // Try local agent (exclude disabled agents for consistency with list)
       const localAgent = await ctx.localAgentsFeature.getById(
         input.id,
         ctx.auth.userId
       );
-      if (localAgent) {
+      if (localAgent && !localAgent.disabled) {
         return {
           id: localAgent.id,
           name: localAgent.name,
