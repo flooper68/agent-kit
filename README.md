@@ -144,3 +144,8 @@ VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
 ```
 
 For detailed setup instructions, see [docs/clerk-setup.md](./docs/clerk-setup.md).
+
+## Documentation
+
+- [Clerk Setup](./docs/clerk-setup.md) - Authentication and multi-tenancy configuration
+- [Cache Invalidation](./docs/cache-invalidation.md) - Real-time UI updates and tRPC query invalidation patterns
