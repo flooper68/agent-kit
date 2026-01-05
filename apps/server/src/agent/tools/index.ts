@@ -7,6 +7,7 @@ import type { PubSubManager } from '../../lib/redis/pubsub';
 import { getTimeTool } from './get-time';
 import { webSearchTool } from './web-search';
 import { extractContentTool } from './extract-content';
+import { fetchTool } from './fetch';
 import { createWriteArtifactTool } from './write-artifact';
 import { createSearchArtifactsTool } from './search-artifacts';
 import { createReadArtifactTool } from './read-artifact';
@@ -34,6 +35,7 @@ const STATIC_TOOLS: Record<string, Tool> = {
   getTime: getTimeTool,
   webSearch: webSearchTool,
   extractContent: extractContentTool,
+  fetch: fetchTool,
 };
 
 // Context-aware tool IDs
