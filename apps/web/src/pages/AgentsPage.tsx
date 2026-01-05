@@ -1,5 +1,13 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Heading, Text, Button, Dialog, Select, Input } from '@agent-kit/ui';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import {
+  Heading,
+  Text,
+  Button,
+  Dialog,
+  Select,
+  Input,
+  useToast,
+} from '@agent-kit/ui';
 import { Plus, Bot, AlertTriangle, Copy, Check } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { useHeaderActions } from '../contexts/HeaderActionsContext';
@@ -32,6 +40,8 @@ export function AgentsPage() {
     agentName: string;
   } | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
+  const hasAutoCopied = useRef(false);
+  const { addToast } = useToast();
 
   const utils = trpc.useUtils();
 
@@ -66,6 +76,29 @@ export function AgentsPage() {
       setError(null);
     }
   }, [editingAgent]);
+
+  // Auto-copy secret key to clipboard when dialog opens
+  useEffect(() => {
+    if (revealedSecretKey && !hasAutoCopied.current) {
+      hasAutoCopied.current = true;
+      navigator.clipboard.writeText(revealedSecretKey.key).then(
+        () => {
+          setCopiedKey(true);
+          addToast({
+            message: 'Secret key copied to clipboard',
+            variant: 'success',
+          });
+          setTimeout(() => setCopiedKey(false), 2000);
+        },
+        () => {
+          // Clipboard access failed - user can still copy manually
+        }
+      );
+    }
+    if (!revealedSecretKey) {
+      hasAutoCopied.current = false;
+    }
+  }, [revealedSecretKey, addToast]);
 
   // Filter agents based on status filter
   const filteredAgents = useMemo(() => {
@@ -381,17 +414,18 @@ export function AgentsPage() {
                 store it securely.
               </Text>
             </div>
-            <div className="flex gap-2">
+            <div className="relative">
               <Input
+                type="password"
                 value={revealedSecretKey?.key ?? ''}
                 readOnly
-                className="font-mono text-sm"
+                className="w-full font-mono text-sm pr-10"
               />
               <Button
-                variant="outline"
+                variant="ghost"
                 size="icon"
                 onClick={handleCopyKey}
-                className="flex-shrink-0"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
               >
                 {copiedKey ? (
                   <Check className="h-4 w-4 text-green-500" />
