@@ -1,5 +1,4 @@
 import { router } from '../trpc';
-import { greetingRouter } from './greeting';
 import { membersRouter } from './members';
 import { agentsRouter } from './agents';
 import { sessionsRouter } from './sessions';
@@ -10,9 +9,9 @@ import { projectsRouter } from './projects';
 import { tasksRouter } from './tasks';
 import { cacheRouter } from './cache';
 import { clientToolsRouter } from './client-tools';
+import { localAgentsRouter } from './local-agents';
 
 export const appRouter = router({
-  greeting: greetingRouter,
   members: membersRouter,
   agents: agentsRouter,
   sessions: sessionsRouter,
@@ -23,6 +22,7 @@ export const appRouter = router({
   tasks: tasksRouter,
   cache: cacheRouter,
   clientTools: clientToolsRouter,
+  localAgents: localAgentsRouter,
 });
 
 export type AppRouter = typeof appRouter;

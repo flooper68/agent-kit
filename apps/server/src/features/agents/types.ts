@@ -35,6 +35,7 @@ export interface CreateSessionInput {
   orgId: string;
   agentId: string;
   title?: string;
+  isLocalAgent?: boolean;
 }
 
 export interface UpdateSessionTitleInput {

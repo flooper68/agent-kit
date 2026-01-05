@@ -17,6 +17,7 @@ import {
   AnalyticsPageSkeleton,
   ProjectsPageSkeleton,
   ProjectDetailPageSkeleton,
+  AgentsPageSkeleton,
 } from '../components/skeletons';
 import { ArtifactsPageSkeleton } from '../components/skeletons/ArtifactsPageSkeleton';
 
@@ -65,6 +66,11 @@ const ProjectsPage = lazy(() =>
 const ProjectDetailPage = lazy(() =>
   import('../pages/ProjectDetailPage').then((m) => ({
     default: m.ProjectDetailPage,
+  }))
+);
+const AgentsPage = lazy(() =>
+  import('../pages/AgentsPage').then((m) => ({
+    default: m.AgentsPage,
   }))
 );
 const NotFoundPage = lazy(() =>
@@ -213,6 +219,16 @@ const router = createBrowserRouter([
                   <DashboardLayout showAgentPanel>
                     <Suspense fallback={<ProjectDetailPageSkeleton />}>
                       <ProjectDetailPage />
+                    </Suspense>
+                  </DashboardLayout>
+                ),
+              },
+              {
+                path: 'agents',
+                element: (
+                  <DashboardLayout showAgentPanel>
+                    <Suspense fallback={<AgentsPageSkeleton />}>
+                      <AgentsPage />
                     </Suspense>
                   </DashboardLayout>
                 ),

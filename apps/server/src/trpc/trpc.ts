@@ -169,6 +169,9 @@ const ownsSession = middleware(async (opts) => {
 
 // Protected procedures
 export const protectedProcedure = t.procedure.use(isAuthenticated);
+export const protectedProcedureWithErrors = t.procedure
+  .use(isAuthenticated)
+  .use(handleErrors);
 export const orgProcedure = t.procedure.use(hasOrganization).use(handleErrors);
 export const adminProcedure = t.procedure.use(isOrgAdmin).use(handleErrors);
 

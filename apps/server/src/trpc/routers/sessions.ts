@@ -8,22 +8,16 @@ export const sessionsRouter = router({
       z.object({
         agentId: z.string(),
         title: z.string().optional(),
+        isLocalAgent: z.boolean().optional().default(false),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // Validate agent exists
-      if (!ctx.agentsFeature.agents.has(input.agentId)) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: `Agent not found: ${input.agentId}`,
-        });
-      }
-
       return ctx.agentsFeature.sessions.create({
         userId: ctx.auth.userId,
         orgId: ctx.auth.orgId,
         agentId: input.agentId,
         title: input.title,
+        isLocalAgent: input.isLocalAgent,
       });
     }),
 

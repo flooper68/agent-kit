@@ -17,6 +17,7 @@ import {
   Folder,
   PanelLeft,
   Columns2,
+  Bot,
 } from 'lucide-react';
 import { useSession } from '../contexts/SessionContext';
 import { useChatHistory } from '../hooks/useChatHistory';
@@ -249,6 +250,17 @@ export function AppCommandPalette({
         onSelect: () => {
           trackUsage('nav-projects');
           navigate('/app/projects');
+        },
+      },
+      {
+        id: 'nav-agents',
+        label: 'Navigate to agents',
+        description: 'Manage local agents',
+        icon: <Bot className="h-4 w-4" />,
+        keywords: ['agents', 'local', 'ai', 'bots'],
+        onSelect: () => {
+          trackUsage('nav-agents');
+          navigate('/app/agents');
         },
       },
       {

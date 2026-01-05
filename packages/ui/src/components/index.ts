@@ -67,6 +67,15 @@ export type { InputProps } from './Input';
 export { FormCard } from './FormCard';
 export type { FormCardProps } from './FormCard';
 
+export { ActionCard } from './ActionCard';
+export type {
+  ActionCardProps,
+  ActionCardHeaderProps,
+  ActionCardSeparatorProps,
+  ActionCardContentProps,
+  ActionCardFooterProps,
+} from './ActionCard';
+
 export { ProjectSwitcher } from './ProjectSwitcher';
 export type { ProjectSwitcherProps, Project } from './ProjectSwitcher';
 

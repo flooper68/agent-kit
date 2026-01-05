@@ -29,10 +29,16 @@ export function DashboardPage() {
     return (agentsQuery.data || []).map((agent) => ({
       id: agent.id,
       name: agent.name,
-      description: agent.description,
-      tools: agent.tools,
-      model: agent.model,
-      provider: agent.provider,
+      description: agent.description ?? undefined,
+      isLocal: agent.isLocal,
+      // Built-in agents have tools, model, provider; local agents don't
+      ...(agent.isLocal
+        ? {}
+        : {
+            tools: agent.tools,
+            model: agent.model,
+            provider: agent.provider,
+          }),
     }));
   }, [agentsQuery.data]);
 

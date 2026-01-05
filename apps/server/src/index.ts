@@ -21,6 +21,7 @@ import { AnalyticsFeature } from './features/analytics';
 import { ArtifactsFeature } from './features/artifacts';
 import { ProjectsFeature } from './features/projects';
 import { TasksFeature } from './features/tasks';
+import { LocalAgentsFeature } from './features/local-agents';
 import { CacheInvalidationService } from './lib/redis/cache-invalidation-service';
 import type { PubSubManager } from './lib/redis/pubsub';
 
@@ -60,8 +61,11 @@ fastify.addHook('onRequest', async (request, reply) => {
   }
 });
 
+// Create local agents feature (needed by agents feature)
+const localAgentsFeature = new LocalAgentsFeature(db);
+
 // Create agents feature (single instance)
-const agentsFeature = new AgentsFeature(db);
+const agentsFeature = new AgentsFeature(db, localAgentsFeature);
 
 // Create agent names map for analytics display
 const agentNameMap = new Map<string, string>();
@@ -139,6 +143,7 @@ fastify.register(fastifyTRPCPlugin, {
         artifactsFeature,
         projectsFeature,
         tasksFeature,
+        localAgentsFeature,
         sessionManager,
         pubsub,
       })(opts);
@@ -236,6 +241,7 @@ const start = async () => {
           artifactsFeature,
           projectsFeature,
           tasksFeature,
+          localAgentsFeature,
           sessionManager,
           pubsub,
         };
