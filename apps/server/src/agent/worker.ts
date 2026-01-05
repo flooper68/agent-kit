@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import type { AgentSessionManager } from './agent-session-manager';
+import type { PubSubManager } from '../lib/redis/pubsub';
 import { AgentJobHandler } from './agent-job-handler';
 
 /**
@@ -8,11 +9,13 @@ import { AgentJobHandler } from './agent-job-handler';
  */
 export class AgentWorker {
   private sessionManager: AgentSessionManager;
+  private pubsub: PubSubManager;
   private workerId: string;
   private isRunning = false;
 
-  constructor(sessionManager: AgentSessionManager) {
+  constructor(sessionManager: AgentSessionManager, pubsub: PubSubManager) {
     this.sessionManager = sessionManager;
+    this.pubsub = pubsub;
     this.workerId = `worker-${randomUUID().slice(0, 8)}`;
   }
 
@@ -33,6 +36,7 @@ export class AgentWorker {
           );
           const handler = new AgentJobHandler(
             this.sessionManager,
+            this.pubsub,
             this.workerId
           );
           await handler.handle(job);

@@ -24,6 +24,7 @@ const StreamEventTypeSchema = z.enum([
   'message_complete',
   'error',
   'interrupted',
+  'client_tool_request',
 ]);
 
 const BaseStreamEventSchema = z.object({
@@ -96,6 +97,14 @@ const InterruptedEventSchema = BaseStreamEventSchema.extend({
   type: z.literal('interrupted'),
 });
 
+const ClientToolRequestEventSchema = BaseStreamEventSchema.extend({
+  type: z.literal('client_tool_request'),
+  toolName: z.string().min(1),
+  requestId: z.string().uuid(),
+  params: z.record(z.string(), z.unknown()),
+  requiresResponse: z.boolean(),
+});
+
 export const StreamEventSchema = z.discriminatedUnion('type', [
   UserMessageCreatedEventSchema,
   MessageStartEventSchema,
@@ -107,6 +116,7 @@ export const StreamEventSchema = z.discriminatedUnion('type', [
   MessageCompleteEventSchema,
   ErrorEventSchema,
   InterruptedEventSchema,
+  ClientToolRequestEventSchema,
 ]);
 
 export type StreamEvent = z.infer<typeof StreamEventSchema>;
