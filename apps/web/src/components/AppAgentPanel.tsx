@@ -122,7 +122,9 @@ export function AppAgentPanel({
     if (sessionId) {
       utils.sessions.getResources.invalidate({ sessionId });
     }
-  }, [sessionId, utils.sessions.getResources]);
+    // Also invalidate artifacts list so ArtifactsPage updates when artifacts are created via tool calls
+    utils.artifacts.list.invalidate();
+  }, [sessionId, utils.sessions.getResources, utils.artifacts.list]);
 
   // Use the agent session hook
   const {
