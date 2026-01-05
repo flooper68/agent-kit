@@ -99,7 +99,6 @@ sequenceDiagram
 - 5-second timeout with graceful error handling
 - Client must call tRPC mutation to send response
 - Only first response is processed (handles multiple tabs)
-- Small delay (50ms) after subscribe to ensure Redis subscription is established before publishing request
 
 ## Event Schema
 
