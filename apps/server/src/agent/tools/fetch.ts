@@ -1,9 +1,30 @@
 import { tool } from 'ai';
+import ipaddr from 'ipaddr.js';
 import { z } from 'zod';
 import type { Tool } from '../types';
 
 const REQUEST_TIMEOUT_MS = 10000;
 const MAX_RESPONSE_SIZE = 1024 * 1024; // 1MB
+
+// IP ranges that are not allowed for SSRF protection
+const BLOCKED_IP_RANGES = new Set([
+  'unspecified',
+  'broadcast',
+  'multicast',
+  'linkLocal',
+  'loopback',
+  'carrierGradeNat',
+  'private',
+  'reserved',
+  // IPv6 specific
+  'uniqueLocal',
+  'ipv4Mapped',
+  'rfc6145',
+  'rfc6052',
+  '6to4',
+  'teredo',
+  'discard',
+]);
 
 /**
  * Validates a URL to prevent SSRF attacks.
@@ -26,12 +47,8 @@ function isUrlAllowed(urlString: string): {
 
     const hostname = url.hostname.toLowerCase();
 
-    // Block localhost
-    if (
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1' ||
-      hostname === '::1'
-    ) {
+    // Block localhost by name
+    if (hostname === 'localhost') {
       return { allowed: false, reason: 'Localhost URLs are not allowed' };
     }
 
@@ -46,38 +63,15 @@ function isUrlAllowed(urlString: string): {
       };
     }
 
-    // Block private IP ranges
-    const ipv4Match = hostname.match(
-      /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
-    );
-    if (ipv4Match) {
-      const [, a, b] = ipv4Match.map(Number);
-      // 10.0.0.0/8
-      if (a === 10) {
+    // Check if hostname is an IP address and validate its range
+    if (ipaddr.isValid(hostname)) {
+      const ip = ipaddr.process(hostname);
+      const range = ip.range();
+
+      if (BLOCKED_IP_RANGES.has(range)) {
         return {
           allowed: false,
-          reason: 'Private IP addresses are not allowed',
-        };
-      }
-      // 172.16.0.0/12
-      if (a === 172 && b !== undefined && b >= 16 && b <= 31) {
-        return {
-          allowed: false,
-          reason: 'Private IP addresses are not allowed',
-        };
-      }
-      // 192.168.0.0/16
-      if (a === 192 && b === 168) {
-        return {
-          allowed: false,
-          reason: 'Private IP addresses are not allowed',
-        };
-      }
-      // 169.254.0.0/16 (link-local)
-      if (a === 169 && b === 254) {
-        return {
-          allowed: false,
-          reason: 'Link-local addresses are not allowed',
+          reason: `IP address range '${range}' is not allowed`,
         };
       }
     }
@@ -114,8 +108,10 @@ export const fetchTool: Tool = tool({
     try {
       const response = await fetch(url, {
         signal: controller.signal,
+        redirect: 'error', // Forbid redirects to prevent SSRF bypass
         headers: {
           'User-Agent': 'AgentKit/1.0',
+          Accept: 'application/json, text/plain, text/*',
         },
       });
 
@@ -140,44 +136,35 @@ export const fetchTool: Tool = tool({
         };
       }
 
-      // Read response with size limit
-      const reader = response.body?.getReader();
-      if (!reader) {
+      // Only allow text-based content types
+      const isTextContent =
+        contentType.includes('text/') ||
+        contentType.includes('application/json') ||
+        contentType.includes('application/xml') ||
+        contentType.includes('+json') ||
+        contentType.includes('+xml');
+
+      if (!isTextContent && contentType !== '') {
         return {
-          error: 'Failed to read response',
-          message: 'Response body is not readable',
+          error: 'Unsupported content type',
+          message: `Only text and JSON content types are supported. Received: ${contentType}`,
         };
       }
 
-      const chunks: Uint8Array[] = [];
-      let totalSize = 0;
+      const content = await response.text();
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        totalSize += value.length;
-        if (totalSize > MAX_RESPONSE_SIZE) {
-          reader.cancel();
-          return {
-            error: 'Response too large',
-            message: `Response exceeded limit of ${MAX_RESPONSE_SIZE} bytes`,
-          };
-        }
-        chunks.push(value);
+      if (content.length > MAX_RESPONSE_SIZE) {
+        return {
+          error: 'Response too large',
+          message: `Response size (${content.length} bytes) exceeds limit of ${MAX_RESPONSE_SIZE} bytes`,
+        };
       }
-
-      const content = new TextDecoder().decode(
-        new Uint8Array(
-          chunks.reduce((acc, chunk) => [...acc, ...chunk], [] as number[])
-        )
-      );
 
       return {
         content,
         contentType,
         status: response.status,
-        size: totalSize,
+        size: content.length,
       };
     } catch (error) {
       clearTimeout(timeoutId);
@@ -186,6 +173,14 @@ export const fetchTool: Tool = tool({
         return {
           error: 'Request timeout',
           message: `Request timed out after ${REQUEST_TIMEOUT_MS}ms`,
+        };
+      }
+
+      // Handle redirect errors specifically
+      if (error instanceof TypeError && error.message.includes('redirect')) {
+        return {
+          error: 'Redirect not allowed',
+          message: 'The URL attempted to redirect, which is not permitted',
         };
       }
 
