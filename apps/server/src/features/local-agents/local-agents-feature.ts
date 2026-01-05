@@ -6,29 +6,17 @@ export interface CreateLocalAgentInput {
   userId: string;
   name: string;
   description?: string;
-  systemPrompt: string;
-  provider: string;
-  model: string;
-  tools?: string[];
 }
 
 export interface UpdateLocalAgentInput {
   name?: string;
   description?: string;
-  systemPrompt?: string;
-  provider?: string;
-  model?: string;
-  tools?: string[];
 }
 
 export interface LocalAgentListItem {
   id: string;
   name: string;
   description: string | null;
-  systemPrompt: string;
-  provider: string;
-  model: string;
-  tools: string[];
   disabled: boolean;
   secretKey: string;
   createdAt: Date;
@@ -67,10 +55,6 @@ export class LocalAgentsFeature {
         userId: input.userId,
         name: input.name,
         description: input.description,
-        systemPrompt: input.systemPrompt,
-        provider: input.provider,
-        model: input.model,
-        tools: input.tools ?? [],
         secretKey,
       })
       .returning();
@@ -91,10 +75,6 @@ export class LocalAgentsFeature {
         id: localAgents.id,
         name: localAgents.name,
         description: localAgents.description,
-        systemPrompt: localAgents.systemPrompt,
-        provider: localAgents.provider,
-        model: localAgents.model,
-        tools: localAgents.tools,
         disabled: localAgents.disabled,
         secretKey: localAgents.secretKey,
         createdAt: localAgents.createdAt,

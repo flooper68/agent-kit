@@ -61,8 +61,11 @@ fastify.addHook('onRequest', async (request, reply) => {
   }
 });
 
+// Create local agents feature (needed by agents feature)
+const localAgentsFeature = new LocalAgentsFeature(db);
+
 // Create agents feature (single instance)
-const agentsFeature = new AgentsFeature(db);
+const agentsFeature = new AgentsFeature(db, localAgentsFeature);
 
 // Create agent names map for analytics display
 const agentNameMap = new Map<string, string>();
@@ -81,9 +84,6 @@ const projectsFeature = new ProjectsFeature(db);
 
 // Create tasks feature
 const tasksFeature = new TasksFeature(db);
-
-// Create local agents feature
-const localAgentsFeature = new LocalAgentsFeature(db);
 
 // Will be initialized after Redis is ready (in onReady hook, before listen)
 let sessionManager!: AgentSessionManager;

@@ -4,6 +4,10 @@ export { HasAgentQuery } from './has-agent';
 export { GetSessionByIdQuery } from './get-session-by-id';
 export { GetSessionByIdForUserQuery } from './get-session-by-id-for-user';
 export { GetAgentIdForSessionQuery } from './get-agent-id-for-session';
+export {
+  GetSessionAgentInfoQuery,
+  type SessionAgentInfo,
+} from './get-session-agent-info';
 export { GetSessionWithMessagesQuery } from './get-session-with-messages';
 export { ListSessionsByUserQuery } from './list-sessions-by-user';
 export { VerifySessionOwnershipQuery } from './verify-session-ownership';

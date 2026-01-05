@@ -23,6 +23,7 @@ export interface LocalAgentCardProps {
 }
 
 export function LocalAgentCard({
+  id: _id,
   name,
   description,
   secretKey,

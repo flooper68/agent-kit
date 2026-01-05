@@ -1,4 +1,5 @@
 import type { db as DbType } from '../../db';
+import type { LocalAgentsFeature } from '../local-agents';
 import {
   RegisterAgentCommand,
   UpdateAgentCommand,
@@ -22,6 +23,7 @@ import {
   GetSessionByIdQuery,
   GetSessionByIdForUserQuery,
   GetAgentIdForSessionQuery,
+  GetSessionAgentInfoQuery,
   GetSessionWithMessagesQuery,
   ListSessionsByUserQuery,
   VerifySessionOwnershipQuery,
@@ -370,13 +372,14 @@ export class AgentsFeature {
   private getSessionByIdQuery: GetSessionByIdQuery;
   private getSessionByIdForUserQuery: GetSessionByIdForUserQuery;
   private getAgentIdForSessionQuery: GetAgentIdForSessionQuery;
+  private getSessionAgentInfoQuery: GetSessionAgentInfoQuery;
   private getSessionWithMessagesQuery: GetSessionWithMessagesQuery;
   private listSessionsByUserQuery: ListSessionsByUserQuery;
   private verifySessionOwnershipQuery: VerifySessionOwnershipQuery;
   private getMessagesBySessionIdQuery: GetMessagesBySessionIdQuery;
   private getSessionResourcesQuery: GetSessionResourcesQuery;
 
-  constructor(db: typeof DbType) {
+  constructor(db: typeof DbType, localAgentsFeature: LocalAgentsFeature) {
     // Initialize agents map with defaults
     this.agentsMap = new Map();
     for (const agent of DEFAULT_AGENTS) {
@@ -387,7 +390,10 @@ export class AgentsFeature {
     this.registerAgentCommand = new RegisterAgentCommand(this.agentsMap);
     this.updateAgentCommand = new UpdateAgentCommand(this.agentsMap);
     this.deleteAgentCommand = new DeleteAgentCommand(this.agentsMap);
-    this.createSessionCommand = new CreateSessionCommand(db);
+    this.createSessionCommand = new CreateSessionCommand(db, {
+      hasBuiltInAgent: (id) => this.agentsMap.has(id),
+      getLocalAgent: (id, userId) => localAgentsFeature.getById(id, userId),
+    });
     this.updateSessionTitleCommand = new UpdateSessionTitleCommand(db);
     this.updateSessionTimestampCommand = new UpdateSessionTimestampCommand(db);
     this.updateSessionSummaryCommand = new UpdateSessionSummaryCommand(db);
@@ -405,6 +411,7 @@ export class AgentsFeature {
     this.getSessionByIdQuery = new GetSessionByIdQuery(db);
     this.getSessionByIdForUserQuery = new GetSessionByIdForUserQuery(db);
     this.getAgentIdForSessionQuery = new GetAgentIdForSessionQuery(db);
+    this.getSessionAgentInfoQuery = new GetSessionAgentInfoQuery(db);
     this.getSessionWithMessagesQuery = new GetSessionWithMessagesQuery(db);
     this.listSessionsByUserQuery = new ListSessionsByUserQuery(db);
     this.verifySessionOwnershipQuery = new VerifySessionOwnershipQuery(db);
@@ -458,7 +465,7 @@ export class AgentsFeature {
       getAgentId: (sessionId: string) =>
         this.getAgentIdForSessionQuery.execute(sessionId),
       getAgentInfo: (sessionId: string) =>
-        this.getAgentIdForSessionQuery.executeWithLocalFlag(sessionId),
+        this.getSessionAgentInfoQuery.execute(sessionId),
       verifyOwnership: (sessionId: string, userId: string, orgId?: string) =>
         this.verifySessionOwnershipQuery.execute(sessionId, userId, orgId),
       getResources: (sessionId: string) =>

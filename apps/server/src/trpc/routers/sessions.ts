@@ -12,34 +12,6 @@ export const sessionsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (input.isLocalAgent) {
-        // Validate local agent exists and belongs to user
-        const localAgent = await ctx.localAgentsFeature.getById(
-          input.agentId,
-          ctx.auth.userId
-        );
-        if (!localAgent) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Local agent not found',
-          });
-        }
-        if (localAgent.disabled) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Cannot create session with disabled agent',
-          });
-        }
-      } else {
-        // Validate built-in agent exists
-        if (!ctx.agentsFeature.agents.has(input.agentId)) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: `Agent not found: ${input.agentId}`,
-          });
-        }
-      }
-
       return ctx.agentsFeature.sessions.create({
         userId: ctx.auth.userId,
         orgId: ctx.auth.orgId,

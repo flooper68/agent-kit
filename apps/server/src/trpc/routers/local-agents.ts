@@ -3,7 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../trpc';
 
 export const localAgentsRouter = router({
-  // List user's local agents (does not include secret keys)
+  // List user's local agents (includes secret keys for copy functionality)
   list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.localAgentsFeature.list(ctx.auth.userId);
   }),
@@ -38,10 +38,6 @@ export const localAgentsRouter = router({
         userId: ctx.auth.userId,
         name: input.name,
         description: input.description,
-        // Use sensible defaults for internal fields
-        systemPrompt: 'You are a helpful AI assistant.',
-        provider: 'openai',
-        model: 'gpt-5-mini',
       });
 
       return {
@@ -49,10 +45,6 @@ export const localAgentsRouter = router({
           id: result.agent.id,
           name: result.agent.name,
           description: result.agent.description,
-          systemPrompt: result.agent.systemPrompt,
-          provider: result.agent.provider,
-          model: result.agent.model,
-          tools: result.agent.tools,
           disabled: result.agent.disabled,
           createdAt: result.agent.createdAt,
           updatedAt: result.agent.updatedAt,
@@ -89,10 +81,6 @@ export const localAgentsRouter = router({
         id: agent.id,
         name: agent.name,
         description: agent.description,
-        systemPrompt: agent.systemPrompt,
-        provider: agent.provider,
-        model: agent.model,
-        tools: agent.tools,
         disabled: agent.disabled,
         createdAt: agent.createdAt,
         updatedAt: agent.updatedAt,

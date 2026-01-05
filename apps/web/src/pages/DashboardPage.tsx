@@ -30,10 +30,15 @@ export function DashboardPage() {
       id: agent.id,
       name: agent.name,
       description: agent.description ?? undefined,
-      tools: agent.tools,
-      model: agent.model,
-      provider: agent.provider,
       isLocal: agent.isLocal,
+      // Built-in agents have tools, model, provider; local agents don't
+      ...(agent.isLocal
+        ? {}
+        : {
+            tools: agent.tools,
+            model: agent.model,
+            provider: agent.provider,
+          }),
     }));
   }, [agentsQuery.data]);
 

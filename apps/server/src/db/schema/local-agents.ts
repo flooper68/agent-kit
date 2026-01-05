@@ -4,7 +4,6 @@ import {
   varchar,
   text,
   timestamp,
-  jsonb,
   boolean,
   index,
 } from 'drizzle-orm/pg-core';
@@ -17,13 +16,9 @@ export const localAgents = pgTable(
     // Ownership - per-user (not shared with org)
     userId: varchar('user_id', { length: 255 }).notNull(),
 
-    // Agent configuration
+    // Agent identity
     name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
-    systemPrompt: text('system_prompt').notNull(),
-    provider: varchar('provider', { length: 64 }).notNull().default('openai'),
-    model: varchar('model', { length: 64 }).notNull().default('gpt-5-mini'),
-    tools: jsonb('tools').$type<string[]>().notNull().default([]),
 
     // Secret key with prefix ak_local_
     secretKey: varchar('secret_key', { length: 255 }).notNull().unique(),
