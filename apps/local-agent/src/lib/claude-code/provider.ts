@@ -9,10 +9,14 @@ import type {
 import { SDKMessageMapper } from './message-mapper';
 import { reconstructConversationFromEvents } from './conversation-builder';
 import { createLogger } from '../logger';
+import { createArtifactMcpServer } from '../artifact-mcp-server';
+import type { ArtifactToolRelay } from '../artifact-tool-relay';
 
 export interface ClaudeCodeProviderConfig extends ClaudeCodeHandlerConfig {
   /** Logger name prefix */
   loggerName: string;
+  /** Artifact tool relay for communicating with the server (optional) */
+  artifactRelay?: ArtifactToolRelay;
 }
 
 /**
@@ -85,7 +89,6 @@ export class ClaudeCodeProvider {
       const queryOptions: Record<string, unknown> = {
         cwd: this.config.cwd,
         allowedTools: this.config.allowedTools,
-        permissionMode: 'bypassPermissions',
         abortController,
       };
 
@@ -101,10 +104,29 @@ export class ClaudeCodeProvider {
       queryOptions.includePartialMessages =
         this.config.includePartialMessages ?? true;
 
+      // Add system prompt options
+      if (this.config.customSystemPrompt) {
+        queryOptions.customSystemPrompt = this.config.customSystemPrompt;
+      } else if (this.config.appendSystemPrompt) {
+        queryOptions.appendSystemPrompt = this.config.appendSystemPrompt;
+      }
+
+      // Add in-process MCP server for artifact tools if enabled
+      if (this.config.enableArtifactTools && this.config.artifactRelay) {
+        const artifactServer = createArtifactMcpServer(
+          this.config.artifactRelay
+        );
+        queryOptions.mcpServers = {
+          'agent-kit-artifacts': artifactServer,
+        };
+        this.log.debug('In-process MCP server configured for artifact tools');
+      }
+
       this.log.debug('Query options configured', {
         hasModel: !!this.config.model,
         hasMaxThinkingTokens: this.config.maxThinkingTokens !== undefined,
         hasIncludePartialMessages: !!this.config.includePartialMessages,
+        hasMcpServers: !!queryOptions.mcpServers,
       });
 
       const queryResult = query({

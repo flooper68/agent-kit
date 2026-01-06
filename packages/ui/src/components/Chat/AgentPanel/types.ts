@@ -123,6 +123,9 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
   /** Context usage information for token limit display */
   contextUsage?: ContextUsage;
 
+  /** Timestamp when streaming started (for running time indicator) */
+  streamingStartTime?: number | null;
+
   /** Placeholder text for input */
   inputPlaceholder?: string;
 
@@ -158,6 +161,9 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
 
   /** Callback when scroll position changes (at bottom vs scrolled up) */
   onScrollPositionChange?: (isAtBottom: boolean) => void;
+
+  /** Whether the scroll-to-bottom button should be shown */
+  showScrollButton?: boolean;
 
   /** Callback when scroll container ref changes */
   scrollContainerRef?: (node: HTMLDivElement | null) => void;

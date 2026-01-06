@@ -154,8 +154,10 @@ export function AppAgentPanel({
     dismissError,
     contextUsage,
     handleScrollPositionChange,
+    showScrollButton,
     sessionAgentId,
     todos,
+    streamingStartTime,
   } = useAgentSession({
     sessionId,
     onSessionInvalid: handleSessionInvalid,
@@ -393,10 +395,12 @@ export function AppAgentPanel({
         onRetry={handleRetry}
         onErrorDismiss={handleErrorDismiss}
         onScrollPositionChange={handleScrollPositionChange}
+        showScrollButton={showScrollButton}
         onInspect={sessionId ? handleInspect : undefined}
         onSessionResources={sessionId ? handleSessionResources : undefined}
         sessionResourcesCounts={sessionResourcesCounts}
         todos={todos}
+        streamingStartTime={streamingStartTime}
       />
       <ConnectionSnackbar
         status={connectionStatus}

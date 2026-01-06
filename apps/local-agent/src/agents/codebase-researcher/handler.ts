@@ -1,4 +1,5 @@
 import { ClaudeCodeProvider } from '../../lib/claude-code';
+import type { HandlerContext } from '../../lib/handlers';
 import type {
   AgentHandler,
   AgentRunParams,
@@ -15,11 +16,12 @@ export class CodebaseResearcherHandler implements AgentHandler {
   readonly id = 'codebase-researcher';
   private provider: ClaudeCodeProvider;
 
-  constructor(config: ClaudeCodeHandlerConfig) {
+  constructor(config: ClaudeCodeHandlerConfig, context?: HandlerContext) {
     this.provider = new ClaudeCodeProvider({
       ...config,
       loggerName: 'CodebaseResearcher',
       errorCodePrefix: 'CODEBASE_RESEARCHER',
+      artifactRelay: context?.artifactRelay,
     });
   }
 

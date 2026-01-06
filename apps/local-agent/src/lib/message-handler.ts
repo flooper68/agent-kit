@@ -2,6 +2,7 @@ import type WebSocket from 'ws';
 import { createHandler } from './handlers';
 import { createLogger } from './logger';
 import { EventBufferQueue } from './event-buffer-queue';
+import { ArtifactToolRelay } from './artifact-tool-relay';
 import type { AgentHandler } from './types';
 import {
   ServerToAgentMessageSchema,
@@ -10,6 +11,7 @@ import {
   type StreamEvent,
   type UserMessagePayload,
   type InterruptPayload,
+  type ArtifactToolResponsePayload,
 } from './types';
 
 const log = createLogger('Handler');
@@ -29,19 +31,31 @@ export class MessageHandler {
   private activeSessions: Map<string, ActiveSession> = new Map();
   private eventsSentCount: Map<string, number> = new Map();
   private eventBuffer: EventBufferQueue;
+  private artifactRelay: ArtifactToolRelay;
 
   constructor(ws: WebSocket, options: MessageHandlerOptions) {
     this.ws = ws;
     this.eventBuffer = options.eventBuffer;
+    this.artifactRelay = new ArtifactToolRelay();
     // Create handler once and reuse for all messages
     // This allows stateful providers (like ClaudeCliProvider) to persist session data
-    this.handler = createHandler(options.handlerType, options.config);
+    // Pass artifact relay to handler for server artifact operations
+    this.handler = createHandler(options.handlerType, options.config, {
+      artifactRelay: this.artifactRelay,
+    });
     log.debug('MessageHandler constructed', {
       handlerType: options.handlerType,
       handlerId: this.handler.id,
       cwd: options.config.cwd,
       allowedTools: options.config.allowedTools,
     });
+  }
+
+  /**
+   * Get the artifact tool relay for handlers to use.
+   */
+  getArtifactRelay(): ArtifactToolRelay {
+    return this.artifactRelay;
   }
 
   async handleMessage(data: string): Promise<void> {
@@ -84,6 +98,13 @@ export class MessageHandler {
         });
         await this.handleInterrupt(message);
         break;
+      case 'artifact_tool_response':
+        log.debug('Received artifact_tool_response', {
+          requestId: message.requestId.slice(0, 8) + '...',
+          isError: message.isError,
+        });
+        this.handleArtifactToolResponse(message);
+        break;
     }
   }
 
@@ -98,6 +119,9 @@ export class MessageHandler {
       messagesCount: messages.length,
       eventsCount: events.length,
     });
+
+    // Set artifact relay connection for this session
+    this.artifactRelay.setConnection(this.ws, sessionId);
 
     // Create abort controller for this session
     const abortController = new AbortController();
@@ -322,5 +346,18 @@ export class MessageHandler {
 
     log.info('Buffer flush completed', { count: flushedCount });
     return { flushed: flushedCount, failed: false };
+  }
+
+  /**
+   * Handle an artifact tool response from the server.
+   */
+  private handleArtifactToolResponse(
+    message: ArtifactToolResponsePayload
+  ): void {
+    this.artifactRelay.handleResponse(
+      message.requestId,
+      message.result,
+      message.isError
+    );
   }
 }

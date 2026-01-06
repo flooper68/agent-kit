@@ -53,6 +53,10 @@ export interface SDKResultMessage {
   usage?: {
     input_tokens: number;
     output_tokens: number;
+    /** Cache read tokens (prompt cache hits) */
+    cache_read_input_tokens?: number;
+    /** Cache write tokens (prompt cache creation) */
+    cache_creation_input_tokens?: number;
   };
   total_cost_usd?: number;
   errors?: string[];

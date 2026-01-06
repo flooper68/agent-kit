@@ -57,10 +57,12 @@ export const AgentPanel = memo(
         onRecentChatClick,
         onRecentChatDelete,
         onScrollPositionChange,
+        showScrollButton,
         onInspect,
         onSessionResources,
         sessionResourcesCounts,
         todos,
+        streamingStartTime,
         scrollContainerRef: scrollContainerRefProp,
         inputRef: inputRefProp,
       },
@@ -186,6 +188,8 @@ export const AgentPanel = memo(
                       onSessionResources={onSessionResources}
                       sessionResourcesCounts={sessionResourcesCounts}
                       contextUsage={contextUsage}
+                      status={status}
+                      streamingStartTime={streamingStartTime}
                     />
                   </ChatInput.Actions>
                 </ChatInput>
@@ -195,6 +199,7 @@ export const AgentPanel = memo(
             <MessageList
               ref={setScrollRef}
               onScrollPositionChange={onScrollPositionChange}
+              showScrollButton={showScrollButton}
             >
               {messages.map((message, index) => (
                 <MessageListItem
@@ -267,6 +272,8 @@ export const AgentPanel = memo(
                     onSessionResources={onSessionResources}
                     sessionResourcesCounts={sessionResourcesCounts}
                     contextUsage={contextUsage}
+                    status={status}
+                    streamingStartTime={streamingStartTime}
                   />
                 </ChatInput.Actions>
               </ChatInput>

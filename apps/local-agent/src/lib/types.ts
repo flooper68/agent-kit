@@ -58,9 +58,24 @@ export const InterruptPayloadSchema = z.object({
 
 export type InterruptPayload = z.infer<typeof InterruptPayloadSchema>;
 
+// Artifact tool response from server (after agent sends request)
+export const ArtifactToolResponsePayloadSchema = z.object({
+  type: z.literal('artifact_tool_response'),
+  requestId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  result: z.unknown(),
+  isError: z.boolean().optional(),
+  timestamp: z.string(),
+});
+
+export type ArtifactToolResponsePayload = z.infer<
+  typeof ArtifactToolResponsePayloadSchema
+>;
+
 export const ServerToAgentMessageSchema = z.discriminatedUnion('type', [
   UserMessagePayloadSchema,
   InterruptPayloadSchema,
+  ArtifactToolResponsePayloadSchema,
 ]);
 
 export type ServerToAgentMessage = z.infer<typeof ServerToAgentMessageSchema>;
@@ -124,6 +139,11 @@ export const MessageCompleteEventSchema = z.object({
       promptTokens: z.number(),
       completionTokens: z.number(),
       estimatedCost: z.number().optional(),
+      cacheReadTokens: z.number().optional(),
+      cacheWriteTokens: z.number().optional(),
+      durationMs: z.number().optional(),
+      durationApiMs: z.number().optional(),
+      numTurns: z.number().optional(),
     })
     .optional(),
   finishReason: z.string().optional(),
@@ -165,9 +185,32 @@ export const EventPayloadSchema = z.object({
 
 export type EventPayload = z.infer<typeof EventPayloadSchema>;
 
+// Artifact tool request sent from agent to server
+export const ArtifactToolNameSchema = z.enum([
+  'writeArtifact',
+  'readArtifact',
+  'searchArtifacts',
+]);
+
+export type ArtifactToolName = z.infer<typeof ArtifactToolNameSchema>;
+
+export const ArtifactToolRequestPayloadSchema = z.object({
+  type: z.literal('artifact_tool_request'),
+  requestId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  tool: ArtifactToolNameSchema,
+  params: z.record(z.string(), z.unknown()),
+  timestamp: z.string(),
+});
+
+export type ArtifactToolRequestPayload = z.infer<
+  typeof ArtifactToolRequestPayloadSchema
+>;
+
 // Agent to server message types
 export const AgentToServerMessageSchema = z.discriminatedUnion('type', [
   EventPayloadSchema,
+  ArtifactToolRequestPayloadSchema,
 ]);
 
 export type AgentToServerMessage = z.infer<typeof AgentToServerMessageSchema>;
@@ -200,10 +243,14 @@ export interface ClaudeCodeHandlerConfig extends AgentHandlerConfig {
   maxTokens?: number;
   /** Tools to block */
   disallowedTools?: string[];
-  /** Custom system prompt to append */
+  /** Custom system prompt to append to the default */
   appendSystemPrompt?: string;
+  /** Custom system prompt to replace the default entirely */
+  customSystemPrompt?: string;
   /** Permission handling mode (for Claude CLI) */
   permissionMode?: 'dangerously-skip-permissions' | 'allowed-tools';
+  /** Enable server artifact tools via WebSocket relay */
+  enableArtifactTools?: boolean;
 }
 
 /**
@@ -231,6 +278,16 @@ export interface AgentUsage {
   promptTokens: number;
   completionTokens: number;
   estimatedCost?: number;
+  /** Cache read tokens (prompt cache hits) */
+  cacheReadTokens?: number;
+  /** Cache write tokens (prompt cache creation) */
+  cacheWriteTokens?: number;
+  /** Total execution duration in milliseconds */
+  durationMs?: number;
+  /** API call duration in milliseconds */
+  durationApiMs?: number;
+  /** Number of conversation turns */
+  numTurns?: number;
 }
 
 /**
