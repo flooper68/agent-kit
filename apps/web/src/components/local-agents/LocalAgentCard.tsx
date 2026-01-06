@@ -50,7 +50,7 @@ export function LocalAgentCard({
   };
 
   return (
-    <ActionCard disabled={disabled}>
+    <ActionCard disabled={disabled} className="min-w-[320px]">
       <ActionCard.Header
         icon={<Bot className="h-5 w-5" />}
         title={name}

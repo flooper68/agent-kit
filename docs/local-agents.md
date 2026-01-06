@@ -80,6 +80,8 @@ The local agent system uses a WebSocket-based architecture where agents running 
 - Only the first 20 characters (prefix) are displayed in the UI
 - Plaintext keys are shown once at creation time only
 - Keys cannot be recovered, only regenerated
+- **HMAC mutual authentication** - both agent and server prove their identity
+- See [Local Agent Authentication](./local-agent-authentication.md) for protocol details
 
 **Tool Restrictions**:
 
@@ -89,8 +91,9 @@ The local agent system uses a WebSocket-based architecture where agents running 
 
 **Connection Security**:
 
-- Each connection is validated on WebSocket handshake
-- Invalid or disabled agents are rejected with 401 Unauthorized
+- **WSS required** for non-localhost connections (TLS encryption)
+- HMAC challenge-response prevents man-in-the-middle attacks
+- Invalid or disabled agents are rejected with authentication error
 - Connections are tracked in Redis for distributed systems
 - Ping/pong keepalive detects and cleans up stale connections
 
@@ -275,7 +278,9 @@ stateDiagram-v2
     end note
 ```
 
-### Diagram 4: Authentication Flow
+### Diagram 4: Authentication Flow (HMAC Mutual Auth)
+
+For detailed protocol documentation, see [Local Agent Authentication](./local-agent-authentication.md).
 
 ```mermaid
 sequenceDiagram
@@ -302,24 +307,33 @@ sequenceDiagram
     end
 
     rect rgb(255, 250, 240)
-        Note over Agent,DB: Step 2: Connection & Authentication
+        Note over Agent,WSH: Step 2: HMAC Mutual Authentication
         Agent->>Agent: Load AGENT_API_KEY<br/>from environment
-        Agent->>WSH: WebSocket upgrade<br/>GET /agents?key=ak_local_xxx
-        WSH->>Feature: validateKey(secretKey)
-        Feature->>Feature: SHA256 hash of<br/>provided key
-        Feature->>DB: SELECT * FROM local_agents<br/>WHERE secretKey = hash<br/>AND disabled = false
+        Agent->>Agent: Validate WSS for<br/>non-localhost
+        Agent->>WSH: WebSocket Connect<br/>to /agents
 
-        alt Key Valid & Agent Enabled
-            DB-->>Feature: Agent record
-            Feature-->>WSH: { id, userId, name }
-            WSH->>WSH: Accept WebSocket upgrade
-            WSH->>Agent: HTTP 101 Switching Protocols
-            Note over Agent,WSH: Connection established
-        else Key Invalid or Agent Disabled
-            DB-->>Feature: null
-            Feature-->>WSH: null
-            WSH->>Agent: HTTP 401 Unauthorized
-            Agent->>Agent: Connection destroyed
+        WSH->>Agent: server_challenge<br/>{serverNonce, timestamp}
+
+        Agent->>Agent: Derive sharedSecret<br/>= SHA256(apiKey)
+        Agent->>Agent: Generate clientNonce
+        Agent->>Agent: Compute serverNonceHmac
+        Agent->>WSH: auth_challenge<br/>{keyPrefix, clientNonce,<br/>serverNonceHmac, timestamp}
+
+        WSH->>Feature: findByKeyPrefix(prefix)
+        Feature->>DB: SELECT by prefix
+        DB-->>Feature: Agent record
+
+        WSH->>WSH: Verify timestamp<br/>(within 30s)
+        WSH->>WSH: Verify agent HMAC<br/>(proves agent identity)
+
+        alt HMAC Valid
+            WSH->>WSH: Compute clientNonceHmac<br/>(proves server identity)
+            WSH->>Agent: auth_success<br/>{agentId, clientNonceHmac}
+            Agent->>Agent: Verify server HMAC
+            Note over Agent,WSH: Mutual auth complete
+        else HMAC Invalid or Expired
+            WSH->>Agent: auth_error
+            Agent->>Agent: Connection closed
             Note over Agent: Will retry with<br/>exponential backoff
         end
     end
