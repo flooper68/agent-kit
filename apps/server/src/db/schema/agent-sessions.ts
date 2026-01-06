@@ -12,13 +12,37 @@ import {
 export type AgentSessionStatus = 'active' | 'completed' | 'cancelled';
 
 /**
+ * Token breakdown for context visualization
+ */
+export interface TokenBreakdown {
+  // Input context breakdown (estimated)
+  systemPrompt: number; // System prompt tokens
+  toolDefinitions: number; // Tool definitions tokens
+  conversationHistory: number; // Previous messages tokens (excluding tool results)
+  toolResults: number; // Tool result tokens (web search, etc.)
+  userInput: number; // Latest user message tokens
+  // Output (from provider)
+  completion?: number; // Model response tokens
+}
+
+/**
  * Session usage metrics - accumulated across all messages
  */
 export interface AgentSessionUsage {
-  // Token counts
-  promptTokens: number; // Total input tokens
-  completionTokens: number; // Total output tokens
+  // Token counts (accumulated for billing)
+  promptTokens: number; // Total input tokens (accumulated)
+  completionTokens: number; // Total output tokens (accumulated)
   totalTokens: number; // promptTokens + completionTokens
+
+  // Cache tokens (accumulated for billing insights)
+  cacheReadTokens?: number; // Total tokens read from cache
+  cacheWriteTokens?: number; // Total tokens written to cache
+
+  // Current context snapshot (not accumulated - overwritten each message)
+  currentContextTokens?: number; // Latest promptTokens from most recent call
+
+  // Token breakdown for current context (snapshot, not accumulated)
+  tokenBreakdown?: TokenBreakdown;
 
   // Cost tracking (in USD, using provider pricing)
   estimatedCost: number;

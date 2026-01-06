@@ -11,11 +11,41 @@ export interface AgentDefinition {
   tools: string[];
 }
 
-// Message type for conversation history
-export interface Message {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-}
+// Message types compatible with AI SDK's streamText() function
+// These match the structure expected by the AI SDK without direct imports
+
+export type TextContentPart = { type: 'text'; text: string };
+export type ToolCallContentPart = {
+  type: 'tool-call';
+  toolCallId: string;
+  toolName: string;
+  input: Record<string, unknown>;
+};
+// AI SDK v6 ToolResultOutput format - must have type discriminator
+export type ToolResultOutput =
+  | { type: 'text'; value: string }
+  | { type: 'json'; value: unknown }
+  | { type: 'error-text'; value: string }
+  | { type: 'error-json'; value: unknown }
+  | { type: 'content'; value: Array<{ type: 'text'; text: string }> };
+
+export type ToolResultContentPart = {
+  type: 'tool-result';
+  toolCallId: string;
+  toolName: string;
+  output: ToolResultOutput;
+};
+
+export type AssistantContentPart =
+  | TextContentPart
+  | ToolCallContentPart
+  | ToolResultContentPart;
+
+// Message type for conversation history (structurally compatible with AI SDK)
+export type Message =
+  | { role: 'user'; content: string }
+  | { role: 'assistant'; content: string | AssistantContentPart[] }
+  | { role: 'system'; content: string };
 
 // Tool type - using unknown to allow any tool shape
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -54,7 +84,12 @@ export type ProviderStreamEvent =
   | {
       type: 'done';
       text: string;
-      usage?: { promptTokens: number; completionTokens: number };
+      usage?: {
+        promptTokens: number;
+        completionTokens: number;
+        cacheReadTokens?: number;
+        cacheWriteTokens?: number;
+      };
       finishReason?: string;
     }
   | { type: 'error'; error: AgentError };

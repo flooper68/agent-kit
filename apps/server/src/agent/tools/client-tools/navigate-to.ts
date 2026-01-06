@@ -2,7 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import type { Tool } from '../../types';
-import type { StreamEvent } from '../../agent-session-manager';
+import type { StreamEvent } from '../../event-stream-manager';
 import type { ClientToolContext } from './types';
 
 /**
@@ -40,7 +40,7 @@ export function createNavigateToTool(context: ClientToolContext): Tool {
 
       try {
         // Fire and forget - publish event and return immediately
-        await context.sessionManager.publishEvent(context.sessionId, {
+        await context.eventStreamManager.publish(context.sessionId, {
           type: 'client_tool_request',
           sessionId: context.sessionId,
           messageId: context.messageId,

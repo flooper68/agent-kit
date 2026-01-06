@@ -1,4 +1,5 @@
-import { CollapsibleList, Text, Code } from '@agent-kit/ui';
+import { useMemo } from 'react';
+import { CollapsibleList, CopyButton, Text, Code } from '@agent-kit/ui';
 import { EventTypeBadge } from './EventTypeBadge';
 
 type EventType =
@@ -8,6 +9,32 @@ type EventType =
   | 'tool_result'
   | 'error'
   | 'unknown';
+
+type MessageRole = 'user' | 'assistant' | 'system';
+type MessageStatus =
+  | 'pending'
+  | 'streaming'
+  | 'complete'
+  | 'error'
+  | 'interrupted';
+
+interface MessageMetadata {
+  model?: string;
+  tokensUsed?: number;
+  latency?: number;
+  finishReason?: string;
+  contextTokens?: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+}
+
+interface SessionMessage {
+  id: string;
+  role: MessageRole;
+  status: MessageStatus;
+  metadata: MessageMetadata | null;
+  createdAt: Date | string;
+}
 
 interface SessionEvent {
   id: string;
@@ -30,6 +57,12 @@ interface SessionEvent {
 }
 
 interface SessionEventsTimelineProps {
+  events: SessionEvent[];
+  messages: SessionMessage[];
+}
+
+interface MessageGroup {
+  message: SessionMessage;
   events: SessionEvent[];
 }
 
@@ -193,7 +226,150 @@ function getEventPreview(event: SessionEvent): string {
   }
 }
 
-export function SessionEventsTimeline({ events }: SessionEventsTimelineProps) {
+function formatLatency(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
+function getRoleBadge(role: MessageRole) {
+  const styles: Record<MessageRole, string> = {
+    user: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    assistant:
+      'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    system: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${styles[role]}`}
+    >
+      {role}
+    </span>
+  );
+}
+
+function getStatusBadge(status: MessageStatus) {
+  const styles: Record<MessageStatus, string> = {
+    pending:
+      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+    streaming:
+      'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+    complete:
+      'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    error: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+    interrupted:
+      'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${styles[status]}`}
+    >
+      {status}
+    </span>
+  );
+}
+
+function MessageHeader({
+  message,
+  events,
+}: {
+  message: SessionMessage;
+  events: SessionEvent[];
+}) {
+  const meta = message.metadata;
+
+  const copyContent = JSON.stringify({ message, events }, null, 2);
+
+  return (
+    <div className="bg-muted/30 rounded-lg p-3 mb-2">
+      <div className="flex items-center gap-2 mb-2">
+        {getRoleBadge(message.role)}
+        {getStatusBadge(message.status)}
+        <div className="ml-auto flex items-center gap-2">
+          <CopyButton content={copyContent} />
+          <Text className="text-xs text-muted-foreground font-mono">
+            {formatTime(message.createdAt)}
+          </Text>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span>
+          ID: <Code className="text-xs">{message.id}</Code>
+        </span>
+        {meta?.tokensUsed !== undefined && (
+          <span>Tokens: {meta.tokensUsed.toLocaleString()}</span>
+        )}
+        {meta?.contextTokens !== undefined && (
+          <span>Context: {meta.contextTokens.toLocaleString()}</span>
+        )}
+        {meta?.latency !== undefined && (
+          <span>Latency: {formatLatency(meta.latency)}</span>
+        )}
+        {meta?.model && <span>Model: {meta.model}</span>}
+        {(meta?.cacheReadTokens !== undefined ||
+          meta?.cacheWriteTokens !== undefined) && (
+          <span>
+            Cache: {(meta.cacheReadTokens ?? 0).toLocaleString()} read /{' '}
+            {(meta.cacheWriteTokens ?? 0).toLocaleString()} written
+          </span>
+        )}
+        {meta?.finishReason && <span>Finish: {meta.finishReason}</span>}
+      </div>
+    </div>
+  );
+}
+
+export function SessionEventsTimeline({
+  events,
+  messages,
+}: SessionEventsTimelineProps) {
+  // Group events by message
+  const messageGroups = useMemo(() => {
+    const messageMap = new Map<string, SessionMessage>();
+    for (const msg of messages) {
+      messageMap.set(msg.id, msg);
+    }
+
+    const groups: MessageGroup[] = [];
+    const eventsByMessage = new Map<string, SessionEvent[]>();
+
+    for (const event of events) {
+      const existing = eventsByMessage.get(event.messageId);
+      if (existing) {
+        existing.push(event);
+      } else {
+        eventsByMessage.set(event.messageId, [event]);
+      }
+    }
+
+    // Create groups in message order
+    for (const msg of messages) {
+      const msgEvents = eventsByMessage.get(msg.id);
+      if (msgEvents && msgEvents.length > 0) {
+        groups.push({ message: msg, events: msgEvents });
+      }
+    }
+
+    // Handle orphan events (events without matching message)
+    for (const [msgId, msgEvents] of eventsByMessage) {
+      if (!messageMap.has(msgId)) {
+        groups.push({
+          message: {
+            id: msgId,
+            role: 'assistant',
+            status: 'complete',
+            metadata: null,
+            createdAt: msgEvents[0]?.createdAt ?? new Date(),
+          },
+          events: msgEvents,
+        });
+      }
+    }
+
+    return groups;
+  }, [events, messages]);
+
   if (events.length === 0) {
     return (
       <CollapsibleList>
@@ -205,26 +381,46 @@ export function SessionEventsTimeline({ events }: SessionEventsTimelineProps) {
   }
 
   return (
-    <CollapsibleList>
-      {events.map((event) => (
-        <CollapsibleList.Item key={event.id}>
-          <CollapsibleList.Trigger>
-            <EventTypeBadge
-              type={event.type}
-              isError={event.isError ?? undefined}
-            />
-            <Text className="flex-1 min-w-0 text-sm truncate text-muted-foreground">
-              {getEventPreview(event)}
-            </Text>
-            <Text className="shrink-0 text-xs text-muted-foreground font-mono">
-              {formatTime(event.createdAt)}
-            </Text>
-          </CollapsibleList.Trigger>
-          <CollapsibleList.Content>
-            <EventContent event={event} />
-          </CollapsibleList.Content>
-        </CollapsibleList.Item>
+    <div className="space-y-4">
+      {messageGroups.map((group) => (
+        <div key={group.message.id}>
+          <MessageHeader message={group.message} events={group.events} />
+          <CollapsibleList>
+            {group.events.map((event) => (
+              <CollapsibleList.Item key={event.id}>
+                <CollapsibleList.Trigger>
+                  <Text className="shrink-0 text-xs text-muted-foreground font-mono w-8">
+                    #{event.sequence}
+                  </Text>
+                  <EventTypeBadge
+                    type={event.type}
+                    isError={event.isError ?? undefined}
+                  />
+                  <Text className="flex-1 min-w-0 text-sm truncate text-muted-foreground">
+                    {getEventPreview(event)}
+                  </Text>
+                  <Text className="shrink-0 text-xs text-muted-foreground font-mono">
+                    {formatTime(event.createdAt)}
+                  </Text>
+                </CollapsibleList.Trigger>
+                <CollapsibleList.Content>
+                  <div className="mb-3 pb-3 border-b border-border">
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground flex-1">
+                        <span>
+                          Event ID: <Code className="text-xs">{event.id}</Code>
+                        </span>
+                      </div>
+                      <CopyButton content={JSON.stringify(event, null, 2)} />
+                    </div>
+                  </div>
+                  <EventContent event={event} />
+                </CollapsibleList.Content>
+              </CollapsibleList.Item>
+            ))}
+          </CollapsibleList>
+        </div>
       ))}
-    </CollapsibleList>
+    </div>
   );
 }

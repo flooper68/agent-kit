@@ -37,11 +37,27 @@ export type MessagePart =
 
 export type AgentSessionMessageRole = 'user' | 'assistant' | 'system';
 
+/**
+ * Per-message token breakdown for context visualization
+ */
+export type ContextBreakdown = {
+  systemPrompt: number;
+  toolDefinitions: number;
+  conversationHistory: number;
+  userInput: number;
+};
+
 export type AgentSessionMessageMetadata = {
   model?: string;
   tokensUsed?: number;
   latency?: number;
   finishReason?: string;
+  // Context tracking per-message
+  contextTokens?: number; // promptTokens for this call (= current context size)
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  // Detailed context breakdown for this message
+  contextBreakdown?: ContextBreakdown;
 };
 
 export type AgentSessionMessageStatus =

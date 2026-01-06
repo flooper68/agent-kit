@@ -1,16 +1,22 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { trpc, getConnectionState } from '../lib/trpc';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { trpc } from '../lib/trpc';
+import { useSession } from '../contexts/SessionContext';
+import { getDefaultDependencies } from './useAgentSessionDependencies';
+import type {
+  AgentSessionDependencies,
+  StreamEvent,
+} from './useAgentSession.types';
 import type {
   TaskMessage,
   TaskStatus,
   TaskError,
   ThinkingStatus,
-  MessagePart,
   TextPart,
   ReasoningPart,
   ToolInvocationPart,
   ToolResultPart,
   ContextUsage,
+  TodoItem,
 } from '@agent-kit/ui';
 
 /**
@@ -54,6 +60,7 @@ interface UseAgentSessionReturn {
   contextUsage: ContextUsage | null;
   handleScrollPositionChange: (isAtBottom: boolean) => void;
   sessionAgentId: string | null;
+  todos: TodoItem[];
 }
 
 // Map server error codes to TaskError types
@@ -125,12 +132,18 @@ function createToolResultPart(
   };
 }
 
-export function useAgentSession({
-  sessionId,
-  onSessionInvalid,
-  onResourceCreated,
-  onClientToolRequest,
-}: UseAgentSessionOptions): UseAgentSessionReturn {
+export function useAgentSession(
+  {
+    sessionId,
+    onSessionInvalid,
+    onResourceCreated,
+    onClientToolRequest,
+  }: UseAgentSessionOptions,
+  injectedDeps?: AgentSessionDependencies
+): UseAgentSessionReturn {
+  // Use injected dependencies or defaults
+  const deps = injectedDeps ?? getDefaultDependencies();
+  const { setSessionStreaming } = useSession();
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const hasInitialScrolledRef = useRef<boolean>(false);
 
@@ -141,12 +154,11 @@ export function useAgentSession({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<TaskError | null>(null);
-  const [accumulatedUsage, setAccumulatedUsage] = useState<{
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-    estimatedCost: number;
-  } | null>(null);
+  // Current context tokens from latest streaming event (snapshot, not accumulated)
+  // This is separate from sessionQuery.data.usage which has accumulated server-side values
+  const [currentContextTokens, setCurrentContextTokens] = useState<number>(0);
+  // Track todos from TodoWrite tool events
+  const [todos, setTodos] = useState<TodoItem[]>([]);
 
   // Track accumulated text for streaming
   const accumulatedTextRef = useRef<Record<string, string>>({});
@@ -162,22 +174,51 @@ export function useAgentSession({
     content: string;
     sessionId: string;
   } | null>(null);
+  // Timeout for pending message - clear if message never sends
+  const pendingMessageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
   // Track the current placeholder ID to avoid race conditions when replacing
   const currentPlaceholderIdRef = useRef<string | null>(null);
   // Track tool names by callId to identify resource-creating tools
   const toolNamesByCallIdRef = useRef<Record<string, string>>({});
+  // Track processed event IDs to prevent duplicate processing on subscription reconnect
+  const processedEventIdsRef = useRef<Set<string>>(new Set());
+  // Track lastStreamId from session query for subscription resumption
+  const lastStreamIdRef = useRef<string | undefined>(undefined);
+  // Track message IDs loaded from DB to skip historical terminal events during replay
+  const loadedMessageIdsRef = useRef<Set<string>>(new Set());
+
+  // Clear pending message timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (pendingMessageTimeoutRef.current) {
+        clearTimeout(pendingMessageTimeoutRef.current);
+        pendingMessageTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  // Sync streaming status to SessionContext for chat history/command palette
+  // This eliminates race conditions with pub/sub event propagation
+  useEffect(() => {
+    if (!sessionId) return;
+
+    if (status === 'streaming' || status === 'submitted') {
+      setSessionStreaming(sessionId, true);
+    } else {
+      setSessionStreaming(sessionId, false);
+    }
+  }, [sessionId, status, setSessionStreaming]);
 
   // Get session data
-  const sessionQuery = trpc.sessions.get.useQuery(
-    { sessionId: sessionId! },
-    { enabled: !!sessionId }
-  );
+  const sessionQuery = deps.useSessionQuery(sessionId);
 
   // Send message mutation
-  const sendMutation = trpc.messages.send.useMutation();
+  const sendMutation = deps.useSendMutation();
 
   // Interrupt mutation
-  const interruptMutation = trpc.messages.interrupt.useMutation();
+  const interruptMutation = deps.useInterruptMutation();
 
   // Reset state when sessionId changes
   useEffect(() => {
@@ -192,7 +233,8 @@ export function useAgentSession({
     setStatus(sessionId ? 'loading' : 'ready');
     setThinkingStatus({ isThinking: false });
     setError(null);
-    setAccumulatedUsage(null);
+    setCurrentContextTokens(0);
+    setTodos([]); // Reset todos when switching sessions
     accumulatedTextRef.current = {};
     accumulatedReasoningRef.current = {};
     needsNewTextPartRef.current = {};
@@ -201,6 +243,9 @@ export function useAgentSession({
     hasInitialScrolledRef.current = false;
     currentPlaceholderIdRef.current = null;
     toolNamesByCallIdRef.current = {};
+    processedEventIdsRef.current = new Set();
+    lastStreamIdRef.current = undefined;
+    loadedMessageIdsRef.current = new Set();
   }, [sessionId]);
 
   // Handle invalid session (e.g., persisted session that no longer exists)
@@ -217,131 +262,71 @@ export function useAgentSession({
     }
   }, [sessionQuery.data]);
 
-  const setMessageListRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (!node) return;
+  const setMessageListRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
 
-      messageListRef.current = node;
+    messageListRef.current = node;
+  }, []);
 
-      // Only scroll on initial load of an existing session, not on subsequent updates
-      if (sessionQuery.data && !hasInitialScrolledRef.current) {
-        hasInitialScrolledRef.current = true;
-        const lastMessage = node.children[node.children.length - 1];
-
-        setTimeout(() => {
-          lastMessage?.scrollIntoView({ behavior: 'instant' });
-        });
-      }
-    },
-    [sessionQuery.data]
-  );
-
-  // Initialize accumulated usage from session data when it loads
   useEffect(() => {
-    if (sessionQuery.data?.usage) {
-      const usage = sessionQuery.data.usage;
-      setAccumulatedUsage({
-        promptTokens: usage.promptTokens ?? 0,
-        completionTokens: usage.completionTokens ?? 0,
-        totalTokens: usage.totalTokens ?? 0,
-        estimatedCost: usage.estimatedCost ?? 0,
-      });
-    }
-  }, [sessionQuery.data?.usage]);
+    hasInitialScrolledRef.current = false;
+  }, [sessionId]);
 
-  // Load initial messages when session loads
-  useEffect(() => {
-    // Skip if we have a pending message (waiting for subscription to be ready)
-    if (pendingMessageRef.current) {
-      return;
-    }
+  const debouncedScrollToBottom = useMemo(() => {
+    const callback = () => {
+      console.log('[AgentSession] Scrolling to bottom');
 
-    if (sessionQuery.data?.messages) {
-      const loadedMessages: TaskMessage[] = sessionQuery.data.messages
-        .map((msg) => {
-          // Convert server parts to UI parts
-          const parts: MessagePart[] = [];
-          let textContent = '';
-          let reasoningContent = '';
+      const lastMessage = messageListRef.current?.children[
+        messageListRef.current.children.length - 1
+      ] as HTMLDivElement | undefined;
 
-          for (const p of msg.parts) {
-            switch (p.type) {
-              case 'text':
-                parts.push(createTextPart(p.content));
-                textContent = p.content;
-                break;
-              case 'reasoning':
-                // Keep reasoning blocks expanded when loading from DB
-                parts.push(createReasoningPart(p.content, false));
-                reasoningContent = p.content;
-                break;
-              case 'tool_invocation':
-                parts.push(
-                  createToolInvocationPart(
-                    p.toolCallId,
-                    p.toolName,
-                    p.args,
-                    p.state
-                  )
-                );
-                break;
-              case 'tool_result':
-                parts.push(
-                  createToolResultPart(p.toolCallId, p.result, p.isError)
-                );
-                break;
-              // Skip unknown types
-            }
-          }
+      lastMessage?.scrollIntoView({ behavior: 'smooth' });
+    };
 
-          // IMPORTANT: Initialize accumulators with loaded content for assistant messages
-          // This ensures that when subscription events arrive, they APPEND to existing
-          // content rather than REPLACING it (which would cause content loss on refresh)
-          if (msg.role === 'assistant') {
-            if (textContent) {
-              accumulatedTextRef.current[msg.id] = textContent;
-            }
-            if (reasoningContent) {
-              accumulatedReasoningRef.current[msg.id] = reasoningContent;
-            }
-          }
+    let timeout: NodeJS.Timeout | null = null;
 
-          return {
-            id: msg.id,
-            role: msg.role as 'user' | 'assistant',
-            parts,
-            createdAt: new Date(msg.createdAt),
-          };
-        })
-        // Filter out messages with no parts (empty assistant placeholders)
-        .filter((msg) => msg.parts.length > 0);
-      setMessages(loadedMessages);
-
-      // Set status based on whether streaming is in progress
-      // This restores the interrupt button when client reloads during streaming
-      if (sessionQuery.data.isStreaming) {
-        setStatus('streaming');
-        setThinkingStatus({ isThinking: true });
-      } else {
-        setStatus('ready');
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
       }
-    }
-  }, [sessionId, sessionQuery.data?.messages, sessionQuery.data?.isStreaming]);
+
+      timeout = setTimeout(callback, 200);
+    };
+  }, []);
 
   // Subscribe to session events
-  // Historical messages are loaded via sessionQuery, subscription resumes from lastStreamId
-  // to ensure no events are missed between the HTTP query and WebSocket connection
-  // IMPORTANT: We must wait for sessionQuery to complete so lastStreamId is available
-  // before starting the subscription, otherwise it defaults to '$' (new events only)
-  const subscription = trpc.messages.subscribe.useSubscription(
+  // Wait for isInitialized to be true so messages are loaded from DB first
+  // When restoring a streaming session:
+  // - replayHistory: true to get full event history from the beginning
+  // - The client deduplicates events via processedEventIdsRef
+  const subscription = deps.useMessageSubscription(
     {
       sessionId: sessionId!,
-      lastEventId: sessionQuery.data?.lastStreamId,
+      lastEventId: undefined,
+      replayHistory: true,
     },
     {
-      enabled: !!sessionId && sessionQuery.isSuccess,
-      onData: (event) => {
+      enabled: !!sessionId,
+      onData: (event: StreamEvent) => {
+        processedEventIdsRef.current.add(event.id);
+
         console.log('[AgentSession] Event:', event.type, event);
+
+        if (!hasInitialScrolledRef.current) {
+          setTimeout(() => {
+            console.log('[AgentSession] Scrolling to bottom');
+
+            const lastMessage = messageListRef.current?.children[
+              messageListRef.current.children.length - 1
+            ] as HTMLDivElement | undefined;
+
+            lastMessage?.scrollIntoView({ behavior: 'instant' });
+          }, 100);
+          hasInitialScrolledRef.current = true;
+        } else {
+          debouncedScrollToBottom();
+        }
+
         switch (event.type) {
           case 'user_message_created':
             // Replace optimistic message with real one from server
@@ -382,7 +367,7 @@ export function useAgentSession({
           case 'message_start':
             setStatus('streaming');
             setThinkingStatus({ isThinking: true });
-            // Initialize accumulator for this message
+            // Initialize accumulators for this message
             accumulatedTextRef.current[event.messageId] = '';
             accumulatedReasoningRef.current[event.messageId] = '';
             needsNewTextPartRef.current[event.messageId] = false;
@@ -421,21 +406,20 @@ export function useAgentSession({
               accumulatedTextRef.current[event.messageId] = '';
             }
 
+            // Append the delta
             accumulatedTextRef.current[event.messageId] =
               (accumulatedTextRef.current[event.messageId] || '') + event.delta;
+            const newContent =
+              accumulatedTextRef.current[event.messageId] || '';
 
             setMessages((prev) => {
               const existing = prev.find((m) => m.id === event.messageId);
-              const newContent =
-                accumulatedTextRef.current[event.messageId] || '';
 
               if (existing) {
                 return prev.map((m) => {
                   if (m.id !== event.messageId) return m;
 
-                  // Keep reasoning parts as-is when text starts streaming
                   const newParts = [...m.parts];
-
                   if (needsNewPart) {
                     // Create new text part at the end (after tool results)
                     newParts.push(createTextPart(newContent));
@@ -466,6 +450,7 @@ export function useAgentSession({
                   return { ...m, parts: newParts };
                 });
               } else {
+                // Message doesn't exist - create new
                 return [
                   ...prev,
                   {
@@ -490,17 +475,12 @@ export function useAgentSession({
               accumulatedReasoningRef.current[event.messageId] = '';
             }
 
+            // Append the delta
             accumulatedReasoningRef.current[event.messageId] =
               (accumulatedReasoningRef.current[event.messageId] || '') +
               event.delta;
-
             const currentReasoning =
               accumulatedReasoningRef.current[event.messageId] || '';
-
-            setThinkingStatus({
-              isThinking: true,
-              detail: currentReasoning,
-            });
 
             setMessages((prev) => {
               const existing = prev.find((m) => m.id === event.messageId);
@@ -510,7 +490,6 @@ export function useAgentSession({
                   if (m.id !== event.messageId) return m;
 
                   const newParts = [...m.parts];
-
                   if (needsNewPart) {
                     // Create new reasoning part at the end (after tool results)
                     newParts.push(createReasoningPart(currentReasoning));
@@ -541,7 +520,7 @@ export function useAgentSession({
                   return { ...m, parts: newParts };
                 });
               } else {
-                // Create assistant message if it doesn't exist
+                // Message doesn't exist - create new
                 return [
                   ...prev,
                   {
@@ -553,6 +532,12 @@ export function useAgentSession({
                 ];
               }
             });
+
+            // Update thinking status with current reasoning content
+            setThinkingStatus({
+              isThinking: true,
+              detail: currentReasoning,
+            });
             break;
           }
 
@@ -562,23 +547,30 @@ export function useAgentSession({
             needsNewReasoningPartRef.current[event.messageId] = true;
             // Track tool name for artifact detection
             toolNamesByCallIdRef.current[event.toolCallId] = event.toolName;
+            // Extract todos from TodoWrite tool
+            if (
+              event.toolName === 'TodoWrite' &&
+              event.toolArgs &&
+              Array.isArray(event.toolArgs.todos)
+            ) {
+              setTodos(event.toolArgs.todos as TodoItem[]);
+            }
             setMessages((prev) => {
               const existing = prev.find((m) => m.id === event.messageId);
               const newPart = createToolInvocationPart(
                 event.toolCallId,
                 event.toolName,
-                {},
+                event.toolArgs ?? {},
                 'running'
               );
 
               if (existing) {
                 return prev.map((m) => {
                   if (m.id !== event.messageId) return m;
-                  // Keep reasoning parts as-is when tool call starts
                   return { ...m, parts: [...m.parts, newPart] };
                 });
               } else {
-                // Create assistant message if it doesn't exist (missed message_start)
+                // Create assistant message if it doesn't exist
                 return [
                   ...prev,
                   {
@@ -604,8 +596,7 @@ export function useAgentSession({
               if (existing) {
                 return prev.map((m) => {
                   if (m.id !== event.messageId) return m;
-
-                  // Update the tool invocation state and add result
+                  // Update tool invocation state and add result part
                   const newParts = m.parts.map((p) => {
                     if (
                       p.type === 'tool_invocation' &&
@@ -620,7 +611,6 @@ export function useAgentSession({
                     }
                     return p;
                   });
-
                   newParts.push(resultPart);
                   return { ...m, parts: newParts };
                 });
@@ -656,6 +646,11 @@ export function useAgentSession({
             break;
 
           case 'message_complete':
+            // Skip historical terminal events for messages loaded from DB
+            // This prevents history replay from resetting streaming status
+            if (loadedMessageIdsRef.current.has(event.messageId)) {
+              break;
+            }
             setStatus('ready');
             setThinkingStatus({ isThinking: false });
             // Clean up accumulators
@@ -667,27 +662,17 @@ export function useAgentSession({
             // Keep reasoning parts expanded after streaming is complete
             // (no auto-collapse)
 
-            // Accumulate usage from this message
-            if (event.usage) {
-              setAccumulatedUsage((prev) => {
-                const currentPrompt = prev?.promptTokens ?? 0;
-                const currentCompletion = prev?.completionTokens ?? 0;
-                const currentCost = prev?.estimatedCost ?? 0;
-                const newPrompt = currentPrompt + event.usage!.promptTokens;
-                const newCompletion =
-                  currentCompletion + event.usage!.completionTokens;
-                const newCost = currentCost + (event.usage!.estimatedCost ?? 0);
-                return {
-                  promptTokens: newPrompt,
-                  completionTokens: newCompletion,
-                  totalTokens: newPrompt + newCompletion,
-                  estimatedCost: newCost,
-                };
-              });
-            }
+            // Don't update currentContextTokens from streaming event - the provider's
+            // promptTokens is inflated due to multiple tool call rounds.
+            // Let the session query refresh provide the accurate value (contextWindowUsage
+            // calculated from breakdown total).
             break;
 
           case 'error': {
+            // Skip historical terminal events for messages loaded from DB
+            if (loadedMessageIdsRef.current.has(event.messageId)) {
+              break;
+            }
             setStatus('error');
             setThinkingStatus({ isThinking: false });
             console.error('Stream error:', event.error, event.code);
@@ -703,6 +688,10 @@ export function useAgentSession({
           }
 
           case 'interrupted':
+            // Skip historical terminal events for messages loaded from DB
+            if (loadedMessageIdsRef.current.has(event.messageId)) {
+              break;
+            }
             setStatus('ready');
             setThinkingStatus({ isThinking: false });
             currentPlaceholderIdRef.current = null;
@@ -734,7 +723,7 @@ export function useAgentSession({
         // The WebSocket client will auto-reconnect with retryDelayMs
         // But DO show error if reconnection has been failing for too long
         if (errorMessage.includes('WebSocket closed')) {
-          const wsState = getConnectionState();
+          const wsState = deps.getConnectionState();
           // Show error after 5+ failed reconnection attempts
           if (wsState.reconnectAttempts < 5) {
             console.log(
@@ -794,31 +783,6 @@ export function useAgentSession({
       // Add optimistic user message and placeholder assistant message for responsive UI
       // Skip if an optimistic message with same content already exists (from queued message)
       setMessages((prev) => {
-        const alreadyHasOptimistic = prev.some(
-          (m) =>
-            m.id.startsWith('optimistic-') &&
-            m.role === 'user' &&
-            m.parts[0]?.type === 'text' &&
-            (m.parts[0] as TextPart).content === content
-        );
-        if (alreadyHasOptimistic) {
-          // Still add placeholder if not present
-          const hasPlaceholder = prev.some((m) =>
-            m.id.startsWith('placeholder-')
-          );
-          if (!hasPlaceholder) {
-            const placeholderId = `placeholder-${Date.now()}`;
-            currentPlaceholderIdRef.current = placeholderId;
-            const placeholderMessage: TaskMessage = {
-              id: placeholderId,
-              role: 'assistant',
-              parts: [], // Empty parts = placeholder state
-              createdAt: new Date(),
-            };
-            return [...prev, placeholderMessage];
-          }
-          return prev;
-        }
         const optimisticId = `optimistic-${Date.now()}`;
         const optimisticMessage: TaskMessage = {
           id: optimisticId,
@@ -826,16 +790,8 @@ export function useAgentSession({
           parts: [createTextPart(content)],
           createdAt: new Date(),
         };
-        // Add placeholder assistant message for immediate scroll target
-        const placeholderId = `placeholder-${Date.now()}`;
-        currentPlaceholderIdRef.current = placeholderId;
-        const placeholderMessage: TaskMessage = {
-          id: placeholderId,
-          role: 'assistant',
-          parts: [], // Empty parts = placeholder state
-          createdAt: new Date(),
-        };
-        return [...prev, optimisticMessage, placeholderMessage];
+
+        return [...prev, optimisticMessage];
       });
 
       // Set thinking indicator immediately for responsive UI
@@ -844,13 +800,13 @@ export function useAgentSession({
 
       setIsLoading(true);
 
-      // Scroll to the placeholder (last message before spacer)
+      // Scroll to the new message (last message before spacer)
       requestAnimationFrame(() => {
-        const placeholder = messageListRef.current?.children[
-          messageListRef.current.children.length - 2
+        const newMessage = messageListRef.current?.children[
+          messageListRef.current.children.length - 1
         ] as HTMLDivElement | undefined;
 
-        placeholder?.scrollIntoView({
+        newMessage?.scrollIntoView({
           behavior: 'instant',
           block: 'start',
         });
@@ -888,6 +844,11 @@ export function useAgentSession({
   useEffect(() => {
     const pending = pendingMessageRef.current;
     if (pending && sessionId === pending.sessionId && isSubscriptionReady) {
+      // Clear timeout since we're sending
+      if (pendingMessageTimeoutRef.current) {
+        clearTimeout(pendingMessageTimeoutRef.current);
+        pendingMessageTimeoutRef.current = null;
+      }
       // Subscription is connected and ready, send the pending message
       pendingMessageRef.current = null;
       doSendMessage(pending.content, pending.sessionId);
@@ -902,11 +863,35 @@ export function useAgentSession({
       // If using a different session (new session being created), queue the message
       // until subscription is ready for that session
       if (overrideSessionId && overrideSessionId !== sessionId) {
+        // Clear any existing timeout
+        if (pendingMessageTimeoutRef.current) {
+          clearTimeout(pendingMessageTimeoutRef.current);
+        }
+
         // Queue message until subscription is ready
         pendingMessageRef.current = {
           content,
           sessionId: overrideSessionId,
         };
+
+        // Set timeout to prevent message from hanging forever if subscription never connects
+        pendingMessageTimeoutRef.current = setTimeout(() => {
+          if (pendingMessageRef.current) {
+            console.error(
+              '[AgentSession] Pending message timeout - subscription never became ready'
+            );
+            pendingMessageRef.current = null;
+            pendingMessageTimeoutRef.current = null;
+            setError({
+              type: 'network',
+              message:
+                'Failed to connect to the server. Please check your connection and try again.',
+              retryable: true,
+            });
+            setStatus('error');
+            setThinkingStatus({ isThinking: false });
+          }
+        }, 15000); // 15 second timeout
 
         // Add optimistic user message and placeholder assistant message for responsive UI
         const optimisticId = `optimistic-${Date.now()}`;
@@ -967,19 +952,152 @@ export function useAgentSession({
     // but not currently used for any conditional behavior
   }, []);
 
-  // Calculate context usage from accumulated state
+  // Calculate context usage
+  // - `used`: from latest streaming event (currentContextTokens) or server's currentContextTokens
+  // - Accumulated values: from sessionQuery.data.usage (server is source of truth)
   const DEFAULT_CONTEXT_WINDOW = 200000;
-  const contextUsage: ContextUsage | null = accumulatedUsage
-    ? {
-        used: accumulatedUsage.totalTokens,
-        total: DEFAULT_CONTEXT_WINDOW,
-        percentage:
-          (accumulatedUsage.totalTokens / DEFAULT_CONTEXT_WINDOW) * 100,
-        promptTokens: accumulatedUsage.promptTokens,
-        completionTokens: accumulatedUsage.completionTokens,
-        estimatedCost: accumulatedUsage.estimatedCost,
+  const sessionUsage = sessionQuery.data?.usage as
+    | {
+        promptTokens?: number;
+        completionTokens?: number;
+        estimatedCost?: number;
+        cacheReadTokens?: number;
+        cacheWriteTokens?: number;
+        currentContextTokens?: number;
+        tokenBreakdown?: {
+          systemPrompt: number;
+          toolDefinitions: number;
+          conversationHistory: number;
+          toolResults: number;
+          userInput: number;
+          completion?: number;
+        };
       }
-    : null;
+    | undefined;
+  // Prefer streaming event's currentContextTokens (most up-to-date during streaming),
+  // fall back to server's currentContextTokens, then 0
+  const usedContext =
+    currentContextTokens || sessionUsage?.currentContextTokens || 0;
+  const contextUsage: ContextUsage | null =
+    sessionUsage || currentContextTokens
+      ? {
+          used: usedContext,
+          total: DEFAULT_CONTEXT_WINDOW,
+          percentage: (usedContext / DEFAULT_CONTEXT_WINDOW) * 100,
+          // Accumulated values from server (read-only, don't modify locally)
+          promptTokens: sessionUsage?.promptTokens ?? 0,
+          completionTokens: sessionUsage?.completionTokens ?? 0,
+          estimatedCost: sessionUsage?.estimatedCost ?? 0,
+          cacheReadTokens: sessionUsage?.cacheReadTokens ?? 0,
+          cacheWriteTokens: sessionUsage?.cacheWriteTokens ?? 0,
+          // Token breakdown for context visualization
+          tokenBreakdown: sessionUsage?.tokenBreakdown,
+        }
+      : null;
+
+  // Track last event time to detect stale streaming state
+  const lastEventTimeRef = useRef<number>(Date.now());
+
+  // Track when we entered streaming state to avoid reacting to stale query data
+  const streamingStartTimeRef = useRef<number | null>(null);
+
+  // Update last event time on any streaming event
+  useEffect(() => {
+    if (status === 'streaming') {
+      lastEventTimeRef.current = Date.now();
+    }
+  }, [status, messages]); // messages changes on each event
+
+  // Update streaming start time when status changes to streaming
+  useEffect(() => {
+    if (status === 'streaming') {
+      streamingStartTimeRef.current = Date.now();
+    } else {
+      streamingStartTimeRef.current = null;
+    }
+  }, [status]);
+
+  // Watch streaming state from server - enabled when we're in streaming state
+  // This query gets invalidated by useCacheInvalidation when streaming_state_changed is received
+  const streamingStateQuery = trpc.sessions.isStreaming.useQuery(
+    { sessionId: sessionId! },
+    {
+      enabled: status === 'streaming' && !!sessionId,
+      staleTime: 0, // Always refetch when invalidated
+      refetchOnWindowFocus: false, // Avoid unnecessary refetches
+    }
+  );
+
+  // React to streaming state changes from server pub/sub
+  // When server reports streaming stopped but we're still in streaming status, reset
+  // Add grace period to avoid reacting to stale query data from previous message
+  const STREAMING_QUERY_GRACE_PERIOD_MS = 2000;
+
+  useEffect(() => {
+    if (
+      status === 'streaming' &&
+      streamingStateQuery.data === false &&
+      !streamingStateQuery.isLoading
+    ) {
+      // Only react if we've been in streaming state long enough for the query to be fresh
+      const streamingDuration = streamingStartTimeRef.current
+        ? Date.now() - streamingStartTimeRef.current
+        : 0;
+
+      if (streamingDuration > STREAMING_QUERY_GRACE_PERIOD_MS) {
+        console.log(
+          '[AgentSession] Server reports streaming stopped via pub/sub, resetting status'
+        );
+        setStatus('ready');
+        setThinkingStatus({ isThinking: false });
+      }
+    }
+  }, [status, streamingStateQuery.data, streamingStateQuery.isLoading]);
+
+  // Recovery timeout: If status is 'streaming' for too long without events,
+  // query the server to verify the streaming state is still active
+  // This is a fallback in case pub/sub events are missed
+  const STREAMING_RECOVERY_TIMEOUT_MS = 30000; // 30 seconds
+  const utils = trpc.useUtils();
+
+  useEffect(() => {
+    if (status !== 'streaming' || !sessionId) {
+      return;
+    }
+
+    const checkStreamingState = async () => {
+      try {
+        // Query the server for the authoritative streaming state
+        const isStillStreaming = await utils.sessions.isStreaming.fetch({
+          sessionId,
+        });
+
+        if (!isStillStreaming) {
+          console.log(
+            '[AgentSession] Recovery timeout: Server reports streaming stopped, resetting status'
+          );
+          setStatus('ready');
+          setThinkingStatus({ isThinking: false });
+        }
+      } catch (err) {
+        console.error(
+          '[AgentSession] Recovery: Failed to check streaming state:',
+          err
+        );
+      }
+    };
+
+    // Start timeout to check streaming state
+    const timeout = setTimeout(() => {
+      // Only check if no events received recently
+      const timeSinceLastEvent = Date.now() - lastEventTimeRef.current;
+      if (timeSinceLastEvent > STREAMING_RECOVERY_TIMEOUT_MS) {
+        checkStreamingState();
+      }
+    }, STREAMING_RECOVERY_TIMEOUT_MS);
+
+    return () => clearTimeout(timeout);
+  }, [status, sessionId, utils]);
 
   return {
     messages,
@@ -995,5 +1113,6 @@ export function useAgentSession({
     setMessageListRef,
     handleScrollPositionChange,
     sessionAgentId: sessionQuery.data?.agentId ?? null,
+    todos,
   };
 }

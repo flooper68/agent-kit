@@ -1,0 +1,65 @@
+services:
+  codebase-researcher:
+    build:
+      context: .
+      dockerfile: src/agents/codebase-researcher/Dockerfile
+    environment:
+      - SERVER_URL=${SERVER_URL}
+      - AGENT_API_KEY=${CODEBASE_RESEARCHER_AGENT_API_KEY}
+      - AGENT_ID=${CODEBASE_RESEARCHER_AGENT_ID:-codebase-researcher}
+      - WORKING_DIRECTORY=${CODEBASE_RESEARCHER_WORKING_DIRECTORY:-/workspace}
+      - MODEL=${CODEBASE_RESEARCHER_MODEL:-}
+      - MAX_THINKING_TOKENS=${CODEBASE_RESEARCHER_MAX_THINKING_TOKENS:-}
+      - INCLUDE_PARTIAL_MESSAGES=${CODEBASE_RESEARCHER_INCLUDE_PARTIAL_MESSAGES:-}
+    volumes:
+      - ${CODEBASE_RESEARCHER_WORKSPACE:-./workspace}:/workspace:ro
+    restart: unless-stopped
+
+  web-researcher:
+    build:
+      context: .
+      dockerfile: src/agents/web-researcher/Dockerfile
+    environment:
+      - SERVER_URL=${SERVER_URL}
+      - AGENT_API_KEY=${WEB_RESEARCHER_AGENT_API_KEY}
+      - AGENT_ID=${WEB_RESEARCHER_AGENT_ID:-web-researcher}
+      - MODEL=${WEB_RESEARCHER_MODEL:-}
+      - MAX_THINKING_TOKENS=${WEB_RESEARCHER_MAX_THINKING_TOKENS:-}
+      - INCLUDE_PARTIAL_MESSAGES=${WEB_RESEARCHER_INCLUDE_PARTIAL_MESSAGES:-}
+      - HTTP_PROXY=${WEB_RESEARCHER_HTTP_PROXY:-}
+      - HTTPS_PROXY=${WEB_RESEARCHER_HTTPS_PROXY:-}
+    restart: unless-stopped
+
+  mock-agent:
+    build:
+      context: .
+      dockerfile: src/agents/mock-agent/Dockerfile
+    environment:
+      - SERVER_URL=${SERVER_URL}
+      - AGENT_API_KEY=${MOCK_AGENT_AGENT_API_KEY}
+      - AGENT_ID=${MOCK_AGENT_AGENT_ID:-mock-agent}
+      - MOCK_DELAY_MS=${MOCK_AGENT_DELAY_MS:-100}
+      - MOCK_THINKING_ENABLED=${MOCK_AGENT_THINKING_ENABLED:-true}
+      - MOCK_TOOL_CALLS=${MOCK_AGENT_TOOL_CALLS:-2}
+    restart: unless-stopped
+
+  claude-cli:
+    build:
+      context: .
+      dockerfile: src/agents/claude-cli/Dockerfile
+    environment:
+      - SERVER_URL=${SERVER_URL}
+      - AGENT_API_KEY=${CLAUDE_CLI_AGENT_API_KEY}
+      - AGENT_ID=${CLAUDE_CLI_AGENT_ID:-claude-cli}
+      - WORKING_DIRECTORY=${CLAUDE_CLI_WORKING_DIRECTORY:-/workspace}
+      - MODEL=${CLAUDE_CLI_MODEL:-}
+      - MAX_THINKING_TOKENS=${CLAUDE_CLI_MAX_THINKING_TOKENS:-}
+      - MAX_TOKENS=${CLAUDE_CLI_MAX_TOKENS:-}
+      - ALLOWED_TOOLS=${CLAUDE_CLI_ALLOWED_TOOLS:-}
+      - DISALLOWED_TOOLS=${CLAUDE_CLI_DISALLOWED_TOOLS:-}
+      - APPEND_SYSTEM_PROMPT=${CLAUDE_CLI_APPEND_SYSTEM_PROMPT:-}
+      - PERMISSION_MODE=${CLAUDE_CLI_PERMISSION_MODE:-dangerously-skip-permissions}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ${CLAUDE_CLI_WORKSPACE:-./workspace}:/workspace
+    restart: unless-stopped

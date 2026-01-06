@@ -1,6 +1,6 @@
 import type { db as DbType } from '../../db';
 import type { Task } from '../../db/schema';
-import type { CacheInvalidationService } from '../../lib/redis/cache-invalidation-service';
+import type { CacheInvalidationService } from '../../real-time';
 import {
   CreateTaskCommand,
   UpdateTaskCommand,

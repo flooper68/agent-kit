@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import type { RedisConfig } from './types';
+import type { RedisConfig } from '../../real-time';
 
 const DEFAULT_CONFIG: Partial<RedisConfig> = {
   maxRetriesPerRequest: 3,

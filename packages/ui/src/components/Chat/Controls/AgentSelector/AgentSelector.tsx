@@ -6,7 +6,9 @@ import {
   useCallback,
   useMemo,
   useRef,
+  useLayoutEffect,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '../../../../lib/utils';
 import type { AgentType } from '../../../../types/chat';
 
@@ -77,7 +79,12 @@ export const AgentSelector = memo(
       const [searchQuery, setSearchQuery] = useState('');
       const [agentUsage, setAgentUsage] =
         useState<AgentUsage>(getStoredAgentUsage);
+      const [dropdownPosition, setDropdownPosition] = useState<{
+        top: number;
+        left: number;
+      } | null>(null);
       const searchInputRef = useRef<HTMLInputElement>(null);
+      const triggerRef = useRef<HTMLButtonElement>(null);
 
       const handleClose = useCallback(() => {
         setIsOpen(false);
@@ -154,6 +161,18 @@ export const AgentSelector = memo(
         return () => document.removeEventListener('keydown', handleKeyDown);
       }, [isOpen, handleClose]);
 
+      // Calculate dropdown position when opening
+      useLayoutEffect(() => {
+        if (isOpen && triggerRef.current) {
+          const rect = triggerRef.current.getBoundingClientRect();
+          // Position above the trigger button
+          setDropdownPosition({
+            top: rect.top - 4, // 4px margin
+            left: rect.left,
+          });
+        }
+      }, [isOpen]);
+
       // Focus search input when dropdown opens
       useEffect(() => {
         if (isOpen && searchInputRef.current) {
@@ -162,6 +181,8 @@ export const AgentSelector = memo(
       }, [isOpen]);
 
       const handleSelect = (agent: AgentType) => {
+        // Don't allow selecting disabled agents
+        if (agent.disabled) return;
         trackAgentUsage(agent.id);
         onSelect?.(agent);
         handleClose();
@@ -170,6 +191,7 @@ export const AgentSelector = memo(
       return (
         <div ref={ref} className={cn('relative', className)} {...props}>
           <button
+            ref={triggerRef}
             type="button"
             onClick={() => !disabled && setIsOpen(!isOpen)}
             disabled={disabled}
@@ -204,67 +226,88 @@ export const AgentSelector = memo(
             </svg>
           </button>
 
-          {isOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={handleClose} />
-              <div className="absolute bottom-full left-0 mb-1 w-72 z-20 rounded-md border bg-popover shadow-md">
-                <div className="p-2 border-b">
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Search agents..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-2 py-1.5 text-sm rounded border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {filteredAgents.length === 0 ? (
-                    <div className="px-1.5 py-1 text-sm text-muted-foreground">
-                      {agents.length === 0
-                        ? 'No agents available'
-                        : 'No agents found'}
-                    </div>
-                  ) : (
-                    filteredAgents.map((agent) => (
-                      <button
-                        key={agent.id}
-                        type="button"
-                        onClick={() => handleSelect(agent)}
-                        className={cn(
-                          'w-full px-1.5 py-1 text-left text-sm hover:bg-accent transition-colors',
-                          agent.id === selectedAgent?.id && 'bg-accent'
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          {agent.icon && (
-                            <span className="text-muted-foreground flex-shrink-0 [&>svg]:h-4 [&>svg]:w-4">
-                              {agent.icon}
-                            </span>
+          {isOpen &&
+            dropdownPosition &&
+            createPortal(
+              <>
+                <div className="fixed inset-0 z-40" onClick={handleClose} />
+                <div
+                  className="fixed w-72 z-50 rounded-md border bg-popover shadow-md"
+                  style={{
+                    top: dropdownPosition.top,
+                    left: dropdownPosition.left,
+                    transform: 'translateY(-100%)',
+                  }}
+                >
+                  <div className="p-2 border-b">
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Search agents..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full px-2 py-1.5 text-sm rounded border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {filteredAgents.length === 0 ? (
+                      <div className="px-1.5 py-1 text-sm text-muted-foreground">
+                        {agents.length === 0
+                          ? 'No agents available'
+                          : 'No agents found'}
+                      </div>
+                    ) : (
+                      filteredAgents.map((agent) => (
+                        <button
+                          key={agent.id}
+                          type="button"
+                          onClick={() => handleSelect(agent)}
+                          disabled={agent.disabled}
+                          className={cn(
+                            'w-full px-1.5 py-1 text-left text-sm transition-colors',
+                            agent.disabled
+                              ? 'opacity-50 cursor-not-allowed'
+                              : 'hover:bg-accent',
+                            agent.id === selectedAgent?.id && 'bg-accent'
                           )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-medium">{agent.name}</span>
-                              {agent.isLocal && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
-                                  Local
+                        >
+                          <div className="flex items-center gap-2">
+                            {agent.icon && (
+                              <span className="text-muted-foreground flex-shrink-0 [&>svg]:h-4 [&>svg]:w-4">
+                                {agent.icon}
+                              </span>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-medium">
+                                  {agent.name}
                                 </span>
+                                {agent.isLocal && !agent.disabled && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                                    Local
+                                  </span>
+                                )}
+                                {agent.disabled && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+                                    Offline
+                                  </span>
+                                )}
+                              </div>
+                              {agent.description && (
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {agent.description}
+                                </div>
                               )}
                             </div>
-                            {agent.description && (
-                              <div className="text-xs text-muted-foreground truncate">
-                                {agent.description}
-                              </div>
-                            )}
                           </div>
-                        </div>
-                      </button>
-                    ))
-                  )}
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>,
+              document.body
+            )}
         </div>
       );
     }

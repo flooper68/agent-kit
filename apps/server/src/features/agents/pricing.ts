@@ -6,6 +6,19 @@
 export interface ModelPricing {
   inputPricePerMillion: number;
   outputPricePerMillion: number;
+  // Cache pricing (optional - if not specified, uses inputPricePerMillion)
+  cacheReadPricePerMillion?: number; // ~10% of input for Anthropic
+  cacheWritePricePerMillion?: number; // ~125% of input for Anthropic
+}
+
+/**
+ * Usage object for cost calculation
+ */
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
 }
 
 export const MODEL_PRICING: Record<string, ModelPricing> = {
@@ -20,30 +33,42 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
   'gpt-4o': { inputPricePerMillion: 2.5, outputPricePerMillion: 10.0 },
   'gpt-4o-mini': { inputPricePerMillion: 0.15, outputPricePerMillion: 0.6 },
 
-  // Anthropic
+  // Anthropic (cache read: 10% of input, cache write: 125% of input)
   'claude-opus-4-5-20251101': {
     inputPricePerMillion: 5.0,
     outputPricePerMillion: 25.0,
+    cacheReadPricePerMillion: 0.5,
+    cacheWritePricePerMillion: 6.25,
   },
   'claude-sonnet-4-5-20250929': {
     inputPricePerMillion: 3.0,
     outputPricePerMillion: 15.0,
+    cacheReadPricePerMillion: 0.3,
+    cacheWritePricePerMillion: 3.75,
   },
   'claude-haiku-4-5-20251001': {
     inputPricePerMillion: 1.0,
     outputPricePerMillion: 5.0,
+    cacheReadPricePerMillion: 0.1,
+    cacheWritePricePerMillion: 1.25,
   },
   'claude-opus-4-1-20250805': {
     inputPricePerMillion: 15.0,
     outputPricePerMillion: 75.0,
+    cacheReadPricePerMillion: 1.5,
+    cacheWritePricePerMillion: 18.75,
   },
   'claude-sonnet-4-20250514': {
     inputPricePerMillion: 3.0,
     outputPricePerMillion: 15.0,
+    cacheReadPricePerMillion: 0.3,
+    cacheWritePricePerMillion: 3.75,
   },
   'claude-3-5-haiku-20241022': {
     inputPricePerMillion: 0.8,
     outputPricePerMillion: 4.0,
+    cacheReadPricePerMillion: 0.08,
+    cacheWritePricePerMillion: 1.0,
   },
 
   // Google Gemini
@@ -69,20 +94,35 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
 
 /**
  * Calculate the cost for a given model and token usage.
+ * Accounts for cache pricing when available.
+ *
  * @param model - The model identifier
- * @param promptTokens - Number of input/prompt tokens
- * @param completionTokens - Number of output/completion tokens
+ * @param usage - Token usage object with prompt, completion, and optional cache tokens
  * @returns The estimated cost in USD
  */
-export function calculateCost(
-  model: string,
-  promptTokens: number,
-  completionTokens: number
-): number {
+export function calculateCost(model: string, usage: TokenUsage): number {
   const pricing = MODEL_PRICING[model];
   if (!pricing) return 0;
+
+  const { promptTokens, completionTokens, cacheReadTokens, cacheWriteTokens } =
+    usage;
+
+  // Calculate regular input tokens (excluding cache read tokens if present)
+  // Note: promptTokens from the API already includes cache reads, so we subtract them
+  const regularInputTokens = promptTokens - (cacheReadTokens ?? 0);
+
+  // Cache read price defaults to input price if not specified
+  const cacheReadPrice =
+    pricing.cacheReadPricePerMillion ?? pricing.inputPricePerMillion;
+
+  // Cache write price defaults to input price if not specified
+  const cacheWritePrice =
+    pricing.cacheWritePricePerMillion ?? pricing.inputPricePerMillion;
+
   return (
-    (promptTokens * pricing.inputPricePerMillion +
+    (regularInputTokens * pricing.inputPricePerMillion +
+      (cacheReadTokens ?? 0) * cacheReadPrice +
+      (cacheWriteTokens ?? 0) * cacheWritePrice +
       completionTokens * pricing.outputPricePerMillion) /
     1_000_000
   );

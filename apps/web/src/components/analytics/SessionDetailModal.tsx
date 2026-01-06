@@ -1,4 +1,12 @@
-import { Dialog, Heading, Spinner, Text } from '@agent-kit/ui';
+import {
+  Button,
+  CopyButton,
+  Dialog,
+  Heading,
+  Spinner,
+  Text,
+} from '@agent-kit/ui';
+import { Download } from 'lucide-react';
 import { trpc } from '../../lib/trpc';
 import { SessionMetadataHeader } from './SessionMetadataHeader';
 import { SessionEventsTimeline } from './SessionEventsTimeline';
@@ -18,6 +26,30 @@ export function SessionDetailModal({
   );
 
   const isOpen = !!sessionId;
+
+  const jsonContent = sessionQuery.data
+    ? JSON.stringify(
+        {
+          session: sessionQuery.data.session,
+          messages: sessionQuery.data.messages,
+          events: sessionQuery.data.events,
+        },
+        null,
+        2
+      )
+    : '';
+
+  const handleDownload = () => {
+    if (!sessionQuery.data || !sessionId) return;
+
+    const blob = new Blob([jsonContent], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `session-${sessionId}-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -64,17 +96,27 @@ export function SessionDetailModal({
                 <Heading as="h4" size="14" className="mb-3">
                   Events ({sessionQuery.data.events.length})
                 </Heading>
-                <SessionEventsTimeline events={sessionQuery.data.events} />
+                <SessionEventsTimeline
+                  events={sessionQuery.data.events}
+                  messages={sessionQuery.data.messages}
+                />
               </div>
             </div>
           )}
         </div>
 
-        <Dialog.Footer>
+        <Dialog.Footer className="flex gap-2">
+          <CopyButton content={jsonContent} />
+          <Button
+            variant="outline"
+            onClick={handleDownload}
+            disabled={!sessionQuery.data}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download JSON
+          </Button>
           <Dialog.Close asChild>
-            <button className="px-4 py-2 text-sm font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors">
-              Close
-            </button>
+            <Button variant="ghost">Close</Button>
           </Dialog.Close>
         </Dialog.Footer>
       </Dialog.Content>

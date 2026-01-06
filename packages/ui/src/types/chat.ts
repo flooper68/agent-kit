@@ -135,14 +135,27 @@ export interface ThinkingStatus {
   detail?: string;
 }
 
+// Token breakdown for context visualization
+export interface TokenBreakdown {
+  systemPrompt: number;
+  toolDefinitions: number;
+  conversationHistory: number;
+  toolResults: number;
+  userInput: number;
+  completion?: number;
+}
+
 // Context usage
 export interface ContextUsage {
-  used: number;
-  total: number;
+  used: number; // Current context window usage (not accumulated total)
+  total: number; // Context window limit
   percentage: number;
-  promptTokens?: number;
-  completionTokens?: number;
+  promptTokens?: number; // Accumulated prompt tokens (for billing)
+  completionTokens?: number; // Accumulated completion tokens (for billing)
   estimatedCost?: number;
+  cacheReadTokens?: number; // Accumulated cache read tokens
+  cacheWriteTokens?: number; // Accumulated cache write tokens
+  tokenBreakdown?: TokenBreakdown; // Breakdown of context by category
 }
 
 // Suggestion chip for empty state
@@ -173,6 +186,7 @@ export interface TaskHistoryItem {
   agentName?: string;
   totalTokens?: number;
   messageCount?: number;
+  isStreaming?: boolean;
 }
 
 // Agent type for selection
@@ -185,4 +199,14 @@ export interface AgentType {
   model?: string;
   provider?: string;
   isLocal?: boolean;
+  disabled?: boolean;
+}
+
+// Todo item types for TodoWrite tool visualization
+export type TodoStatus = 'pending' | 'in_progress' | 'completed';
+
+export interface TodoItem {
+  content: string;
+  status: TodoStatus;
+  activeForm: string;
 }

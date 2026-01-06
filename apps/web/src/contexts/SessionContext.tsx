@@ -24,6 +24,9 @@ interface SessionContextValue {
   sessionId: string | null;
   setSessionId: (id: string | null) => void;
   clearSession: () => void;
+  // Track which sessions are currently streaming (client-side state for immediate UI feedback)
+  streamingSessionIds: Set<string>;
+  setSessionStreaming: (sessionId: string, isStreaming: boolean) => void;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -37,6 +40,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
   });
+
+  // Track streaming sessions client-side for immediate UI feedback
+  // This eliminates race conditions with pub/sub event propagation
+  const [streamingSessionIds, setStreamingSessionIds] = useState<Set<string>>(
+    new Set()
+  );
+
+  const setSessionStreaming = useCallback(
+    (sessionId: string, isStreaming: boolean) => {
+      setStreamingSessionIds((prev) => {
+        const next = new Set(prev);
+        if (isStreaming) {
+          next.add(sessionId);
+        } else {
+          next.delete(sessionId);
+        }
+        return next;
+      });
+    },
+    []
+  );
 
   const setSessionId = useCallback((id: string | null) => {
     setSessionIdState(id);
@@ -63,7 +87,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <SessionContext.Provider value={{ sessionId, setSessionId, clearSession }}>
+    <SessionContext.Provider
+      value={{
+        sessionId,
+        setSessionId,
+        clearSession,
+        streamingSessionIds,
+        setSessionStreaming,
+      }}
+    >
       {children}
     </SessionContext.Provider>
   );

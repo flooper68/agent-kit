@@ -292,5 +292,7 @@ const sessions = await db
 
 ## Next Steps
 
-- [Configure AI providers](./tools.md) - Set up OpenAI and other AI services
-- [Set up web search](./tavily.md) - Enable web search capabilities
+After setting up Clerk authentication, you can proceed with:
+
+- Configure AI providers (OpenAI, Anthropic) by setting environment variables
+- Set up additional integrations as needed for your use case

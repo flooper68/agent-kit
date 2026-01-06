@@ -1,11 +1,11 @@
-import type { AgentSessionManager } from '../../agent-session-manager';
-import type { PubSubManager } from '../../../lib/redis/pubsub';
+import type { EventStreamManager } from '../../event-stream-manager';
+import type { PubSubManager } from '../../../real-time';
 
 /**
  * Context provided to client-side tools.
  *
  * Client tools use this context to:
- * - Publish events to the client via sessionManager
+ * - Publish events to the client via eventStreamManager
  * - Subscribe to responses via pubsub (for stateful tools)
  */
 export interface ClientToolContext {
@@ -13,8 +13,8 @@ export interface ClientToolContext {
   sessionId: string;
   /** Current message ID being processed */
   messageId: string;
-  /** Session manager for publishing events */
-  sessionManager: AgentSessionManager;
+  /** Event stream manager for publishing events */
+  eventStreamManager: EventStreamManager;
   /** Pub/Sub manager for subscribing to responses (required for stateful tools only) */
   pubsub?: PubSubManager;
 }

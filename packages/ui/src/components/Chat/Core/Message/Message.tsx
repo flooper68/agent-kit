@@ -113,23 +113,23 @@ const MessageAvatar = memo(
 MessageAvatar.displayName = 'MessageAvatar';
 
 // Message Bubble
+// Note: No memo() here - children handle their own memoization,
+// and memo with children prop is counterproductive (always new React element)
 type MessageBubbleProps = React.HTMLAttributes<HTMLDivElement>;
 
-const MessageBubble = memo(
-  forwardRef<HTMLDivElement, MessageBubbleProps>(
-    ({ className, children, ...props }, ref) => {
-      const { role } = useMessage();
-      return (
-        <div
-          ref={ref}
-          className={cn(bubbleVariants({ role }), className)}
-          {...props}
-        >
-          {children}
-        </div>
-      );
-    }
-  )
+const MessageBubble = forwardRef<HTMLDivElement, MessageBubbleProps>(
+  ({ className, children, ...props }, ref) => {
+    const { role } = useMessage();
+    return (
+      <div
+        ref={ref}
+        className={cn(bubbleVariants({ role }), className)}
+        {...props}
+      >
+        {children}
+      </div>
+    );
+  }
 );
 
 MessageBubble.displayName = 'MessageBubble';

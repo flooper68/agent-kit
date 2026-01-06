@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { checkIsAdmin } from '../lib/auth';
 import { useChatHistory } from '../hooks/useChatHistory';
+import { useLocalAgentConnectionStatus } from '../hooks/useCacheInvalidation';
 import { useGlobalKeyboardShortcut } from '../hooks/useGlobalKeyboardShortcut';
 import { useSession } from '../contexts/SessionContext';
 import {
@@ -41,6 +42,10 @@ import {
   useHeaderActions,
 } from '../contexts/HeaderActionsContext';
 import { CommandRegistryProvider } from '../contexts/CommandRegistryContext';
+import {
+  AgentSelectionProvider,
+  useAgentSelection,
+} from '../contexts/AgentSelectionContext';
 import { trpc } from '../lib/trpc';
 import { AppAgentPanel } from '../components/AppAgentPanel';
 import { AppCommandPalette } from '../components/AppCommandPalette';
@@ -76,13 +81,20 @@ function DashboardLayoutInner({
   const { userMemberships, setActive, isLoaded } = useOrganizationList({
     userMemberships: { infinite: true },
   });
-  const { setSessionId, clearSession } = useSession();
+  const { sessionId, setSessionId, clearSession } = useSession();
   const { actions: headerActions, menuItems: headerMenuItems } =
     useHeaderActions();
   const [isSwitching, setIsSwitching] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [panelWidth, setPanelWidth] = useState(getDefaultPanelWidth);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const {
+    selectedAgentId,
+    setSelectedAgentId,
+    pendingInputFocus,
+    requestInputFocus,
+    clearInputFocus,
+  } = useAgentSelection();
   const appLayoutRef = useRef<AppLayoutRef>(null);
   const isAdmin = checkIsAdmin(membership?.role);
   const currentPath = location.pathname;
@@ -114,6 +126,30 @@ function DashboardLayoutInner({
     [handlePanelWidthChange]
   );
 
+  // Handle toggle history from command palette
+  const handleToggleHistory = useCallback(() => {
+    setIsHistoryOpen((prev) => !prev);
+  }, []);
+
+  // Handle agent selection from command palette
+  const handleAgentSelectFromPalette = useCallback(
+    (agent: AgentType) => {
+      setSelectedAgentId(agent.id);
+      // Expand panel if on a page with side panel
+      if (showAgentPanel) {
+        handleExpandPanel();
+      }
+      // Always request input focus (works on home page and side panel pages)
+      requestInputFocus();
+    },
+    [setSelectedAgentId, showAgentPanel, handleExpandPanel, requestInputFocus]
+  );
+
+  // Clear pending focus flag
+  const handleInputFocused = useCallback(() => {
+    clearInputFocus();
+  }, [clearInputFocus]);
+
   // Register Cmd+P / Ctrl+P keyboard shortcut for command palette
   const openCommandPalette = useCallback(() => {
     setIsCommandPaletteOpen(true);
@@ -123,18 +159,25 @@ function DashboardLayoutInner({
   // Fetch chat history for the sidebar
   const { sessions, refetch: refetchSessions } = useChatHistory({ limit: 50 });
 
-  // Fetch agents for the agent panel (only when showAgentPanel is true)
-  const agentsQuery = trpc.agents.list.useQuery(undefined, {
-    enabled: showAgentPanel,
-  });
+  // Fetch agents for the agent panel and command palette
+  const agentsQuery = trpc.agents.list.useQuery();
 
-  // Map server agents to UI AgentType format
+  // Track local agent connection status
+  const hasLocalAgents = agentsQuery.data?.some((a) => a.isLocal) ?? false;
+  const localAgentConnectionStatus =
+    useLocalAgentConnectionStatus(hasLocalAgents);
+
+  // Map server agents to UI AgentType format (with disabled state for disconnected local agents)
   const agents: AgentType[] = useMemo(() => {
     return (agentsQuery.data || []).map((agent) => ({
       id: agent.id,
       name: agent.name,
       description: agent.description ?? undefined,
       isLocal: agent.isLocal,
+      // Local agents are disabled when not connected
+      disabled: agent.isLocal
+        ? !localAgentConnectionStatus.get(agent.id)
+        : false,
       // Built-in agents have tools, model, provider; local agents don't
       ...(agent.isLocal
         ? {}
@@ -144,7 +187,7 @@ function DashboardLayoutInner({
             provider: agent.provider,
           }),
     }));
-  }, [agentsQuery.data]);
+  }, [agentsQuery.data, localAgentConnectionStatus]);
 
   // Delete session mutation
   const deleteSessionMutation = trpc.sessions.delete.useMutation({
@@ -412,7 +455,11 @@ function DashboardLayoutInner({
           showAgentPanel ? (
             <AppAgentPanel
               agents={agents}
+              selectedAgentId={selectedAgentId}
+              onAgentSelect={handleAgentSelectFromPalette}
               onNewChat={handleNewSession}
+              pendingInputFocus={pendingInputFocus}
+              onInputFocused={handleInputFocused}
               emptyStateConfig={{
                 title: 'How can I help?',
                 description:
@@ -442,6 +489,10 @@ function DashboardLayoutInner({
         onTogglePanel={showAgentPanel ? handleTogglePanel : undefined}
         onSetPanelWidth={showAgentPanel ? handleSetPanelWidth : undefined}
         onExpandPanel={showAgentPanel ? handleExpandPanel : undefined}
+        onToggleHistory={handleToggleHistory}
+        agents={agents}
+        onAgentSelect={handleAgentSelectFromPalette}
+        isAgentSelectorEnabled={!sessionId}
       />
     </>
   );
@@ -450,11 +501,13 @@ function DashboardLayoutInner({
 export function DashboardLayout(props: DashboardLayoutProps) {
   return (
     <ToastProvider>
-      <CommandRegistryProvider>
-        <HeaderActionsProvider>
-          <DashboardLayoutInner {...props} />
-        </HeaderActionsProvider>
-      </CommandRegistryProvider>
+      <AgentSelectionProvider>
+        <CommandRegistryProvider>
+          <HeaderActionsProvider>
+            <DashboardLayoutInner {...props} />
+          </HeaderActionsProvider>
+        </CommandRegistryProvider>
+      </AgentSelectionProvider>
     </ToastProvider>
   );
 }

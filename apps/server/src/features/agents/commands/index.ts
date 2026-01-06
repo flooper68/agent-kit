@@ -11,3 +11,19 @@ export { DeleteSessionCommand } from './delete-session';
 export { CreateMessageCommand } from './create-message';
 export { UpdateMessageStatusCommand } from './update-message-status';
 export { InsertEventCommand } from './insert-event';
+// New orchestration commands
+export { SendUserMessageCommand } from './send-user-message';
+export type {
+  SendUserMessageInput,
+  SendUserMessageResult,
+} from './send-user-message';
+export { CompleteMessageCommand } from './complete-message';
+export type {
+  CompleteMessageInput,
+  CompleteMessageResult,
+} from './complete-message';
+export { TriggerSummarizationCommand } from './trigger-summarization';
+export type {
+  TriggerSummarizationInput,
+  TriggerSummarizationResult,
+} from './trigger-summarization';

@@ -2,9 +2,9 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import type { Tool } from '../../types';
-import type { StreamEvent } from '../../agent-session-manager';
+import type { StreamEvent } from '../../event-stream-manager';
 import type { ClientToolContext } from './types';
-import type { PubSubMessage } from '../../../lib/redis/types';
+import type { PubSubMessage } from '../../../real-time';
 import { getClientToolResponseChannel } from '../../../trpc/routers/client-tools';
 
 /** Timeout for waiting for client response (5 seconds) */
@@ -97,7 +97,7 @@ export function createGetCurrentUIStateTool(context: ClientToolContext): Tool {
         await pubsub.subscribe(responseChannel, responseHandler!);
 
         // Publish request event to client
-        await context.sessionManager.publishEvent(context.sessionId, {
+        await context.eventStreamManager.publish(context.sessionId, {
           type: 'client_tool_request',
           sessionId: context.sessionId,
           messageId: context.messageId,

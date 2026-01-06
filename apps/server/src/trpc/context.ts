@@ -1,14 +1,21 @@
 import type { createClerkClient } from '@clerk/backend';
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
 import type { AuthContext } from '../types/auth.js';
-import type { AgentSessionManager } from '../agent/agent-session-manager';
+import type {
+  JobQueueManager,
+  EventStreamManager,
+  JobRegistryManager,
+  StreamingStateManager,
+  LocalAgentsConnectionManager,
+  LocalAgentWebSocketRegistry,
+} from '../agent';
 import type { AgentsFeature } from '../features/agents';
 import type { AnalyticsFeature } from '../features/analytics';
 import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
 import type { LocalAgentsFeature } from '../features/local-agents';
-import type { PubSubManager } from '../lib/redis/pubsub';
+import type { PubSubManager, CacheInvalidationService } from '../real-time';
 
 export type ClerkClient = ReturnType<typeof createClerkClient>;
 
@@ -20,8 +27,14 @@ export interface ContextDeps {
   projectsFeature: ProjectsFeature;
   tasksFeature: TasksFeature;
   localAgentsFeature: LocalAgentsFeature;
-  sessionManager: AgentSessionManager;
+  jobQueueManager: JobQueueManager;
+  eventStreamManager: EventStreamManager;
+  jobRegistryManager: JobRegistryManager;
+  streamingStateManager: StreamingStateManager;
   pubsub: PubSubManager;
+  localAgentsConnectionManager: LocalAgentsConnectionManager;
+  localAgentWSRegistry: LocalAgentWebSocketRegistry;
+  cacheInvalidation: CacheInvalidationService;
 }
 
 export function createContext(deps: ContextDeps) {
@@ -44,8 +57,14 @@ export function createContext(deps: ContextDeps) {
       projectsFeature: deps.projectsFeature,
       tasksFeature: deps.tasksFeature,
       localAgentsFeature: deps.localAgentsFeature,
-      sessionManager: deps.sessionManager,
+      jobQueueManager: deps.jobQueueManager,
+      eventStreamManager: deps.eventStreamManager,
+      jobRegistryManager: deps.jobRegistryManager,
+      streamingStateManager: deps.streamingStateManager,
       pubsub: deps.pubsub,
+      localAgentsConnectionManager: deps.localAgentsConnectionManager,
+      localAgentWSRegistry: deps.localAgentWSRegistry,
+      cacheInvalidation: deps.cacheInvalidation,
     };
   };
 }

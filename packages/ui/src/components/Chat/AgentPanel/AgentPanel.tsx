@@ -6,71 +6,19 @@ import {
   useMemo,
   useImperativeHandle,
 } from 'react';
-import { ScanSearch } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import type {
-  TaskMessage,
-  MessagePart,
-  TextPart,
-  ToolInvocationPart,
-  ToolResultPart,
-  ReasoningPart,
-  ImagePart,
-} from '../../../types/chat';
 import { ChatContainer } from '../Core/ChatContainer';
 import { MessageList } from '../Core/MessageList';
-import { Message } from '../Core/Message';
 import { ChatInput } from '../Core/ChatInput';
 import { EmptyState } from '../States/EmptyState';
 import { LoadingState } from '../States/LoadingState';
 import { ErrorBanner } from '../Banners/ErrorBanner';
 import { TokenLimitBanner } from '../Banners/TokenLimitBanner';
 import { InterruptButton } from '../AIFeatures/InterruptButton';
-import { ReasoningDisplay } from '../AIFeatures/ReasoningDisplay';
-import { ToolBadge } from '../ToolDisplay/ToolBadge';
-import { MarkdownRenderer } from '../CodeDisplay/MarkdownRenderer';
-import { CopyButton, RegenerateButton } from '../Controls';
-import { IconButton } from '../../IconButton';
-import { AttachmentButton } from '../Controls/AttachmentButton';
-import { ContextIndicator } from '../Controls/ContextIndicator';
-import {
-  AgentSelector,
-  AgentSelectorSkeleton,
-} from '../Controls/AgentSelector';
-import { AgentInfoBadge } from '../Controls/AgentInfoBadge';
-import { SessionResourcesButton } from '../Controls/SessionResourcesButton';
+import { TodosFloatingPanel } from '../TodosFloatingPanel';
+import { MessageListItem } from './MessageItem';
+import { InputActions } from './InputActions';
 import type { AgentPanelProps, AgentPanelRef } from './types';
-
-/**
- * Get text content from a message for copying
- */
-function getTextContent(message: TaskMessage): string {
-  return message.parts
-    .filter((p): p is TextPart => p.type === 'text')
-    .map((p) => p.content)
-    .join('\n');
-}
-
-/**
- * Format timestamp for display
- */
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-/**
- * Format full timestamp for tooltip
- */
-function formatFullTimestamp(date: Date): string {
-  return date.toLocaleString([], {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-}
 
 /**
  * AgentPanel - A complete chat interface component
@@ -112,6 +60,7 @@ export const AgentPanel = memo(
         onInspect,
         onSessionResources,
         sessionResourcesCounts,
+        todos,
         scrollContainerRef: scrollContainerRefProp,
         inputRef: inputRefProp,
       },
@@ -174,172 +123,23 @@ export const AgentPanel = memo(
 
       // Helper to get avatar config for a message role (memoized)
       const getAvatar = useCallback(
-        (role: 'user' | 'assistant') => {
+        (
+          role: 'user' | 'assistant'
+        ): { src?: string; fallback: string; name?: string } => {
           if (role === 'user') {
-            return avatars?.user ?? { fallback: 'U' };
+            return {
+              src: avatars?.user?.src,
+              fallback: avatars?.user?.fallback ?? 'U',
+              name: avatars?.user?.name,
+            };
           }
-          return avatars?.assistant ?? { fallback: 'AI' };
+          return {
+            src: avatars?.assistant?.src,
+            fallback: avatars?.assistant?.fallback ?? 'AI',
+            name: avatars?.assistant?.name,
+          };
         },
         [avatars]
-      );
-
-      // Find matching tool result for a tool invocation
-      const findToolResult = useCallback(
-        (
-          message: TaskMessage,
-          toolCallId: string
-        ): ToolResultPart | undefined => {
-          return message.parts.find(
-            (p): p is ToolResultPart =>
-              p.type === 'tool_result' && p.toolCallId === toolCallId
-          );
-        },
-        []
-      );
-
-      // Render individual message part (memoized)
-      const renderPart = useCallback(
-        (part: MessagePart, index: number, message: TaskMessage) => {
-          switch (part.type) {
-            case 'text': {
-              const textPart = part as TextPart;
-              return (
-                <MarkdownRenderer
-                  key={part.id || index}
-                  content={textPart.content}
-                />
-              );
-            }
-            case 'reasoning': {
-              const reasoningPart = part as ReasoningPart;
-              return (
-                <ReasoningDisplay
-                  key={part.id || index}
-                  content={reasoningPart.content}
-                  expanded={!reasoningPart.isCollapsed}
-                  durationSeconds={reasoningPart.durationSeconds}
-                />
-              );
-            }
-            case 'tool_invocation': {
-              const toolPart = part as ToolInvocationPart;
-              const result = findToolResult(message, toolPart.toolCallId);
-              return (
-                <div key={part.id || index} className="block">
-                  <ToolBadge
-                    toolName={toolPart.toolName}
-                    state={toolPart.state}
-                    args={toolPart.args}
-                    toolCallId={toolPart.toolCallId}
-                    result={result}
-                  />
-                </div>
-              );
-            }
-            case 'image': {
-              const imagePart = part as ImagePart;
-              return (
-                <img
-                  key={part.id || index}
-                  src={imagePart.url}
-                  alt={imagePart.alt ?? 'Image'}
-                  className="max-w-full rounded-lg"
-                />
-              );
-            }
-            default:
-              return null;
-          }
-        },
-        [findToolResult]
-      );
-
-      // Render message content (memoized)
-      const renderMessageContent = useCallback(
-        (message: TaskMessage) => {
-          return (
-            <div className="space-y-2 w-full">
-              {message.parts.map((part, index) =>
-                renderPart(part, index, message)
-              )}
-            </div>
-          );
-        },
-        [renderPart]
-      );
-
-      // Render a single message (memoized)
-      const renderMessage = useCallback(
-        (message: TaskMessage, index: number) => {
-          // Check if this is a placeholder (assistant with no parts)
-          const isPlaceholder =
-            message.role === 'assistant' && message.parts.length === 0;
-
-          if (isPlaceholder) {
-            // Render invisible placeholder with min-height for scroll target.
-            // 60px ensures the placeholder is tall enough to trigger scrollIntoView
-            // positioning correctly, matching approximate height of a minimal message.
-            return <div key={message.id} className="min-h-[60px]" />;
-          }
-
-          const avatar = getAvatar(message.role as 'user' | 'assistant');
-          const isUser = message.role === 'user';
-          const isLastMessage = index === messages.length - 1;
-          // Hide actions for the last assistant message while streaming
-          const hideActions = !isUser && isLastMessage && isSubmitting;
-
-          const tooltipName = isUser
-            ? (avatars?.user?.name ?? 'You')
-            : (avatars?.assistant?.name ?? 'Assistant');
-
-          return (
-            <Message key={message.id} role={message.role}>
-              {isUser && (
-                <Message.Avatar
-                  {...avatar}
-                  className="h-6 w-6"
-                  tooltip={tooltipName}
-                />
-              )}
-              <Message.Bubble>{renderMessageContent(message)}</Message.Bubble>
-              {!hideActions && (
-                <Message.Actions>
-                  {isUser && (
-                    <span
-                      className="text-sm text-muted-foreground cursor-default opacity-0 group-hover:opacity-100 transition-opacity"
-                      title={formatFullTimestamp(message.createdAt)}
-                    >
-                      {formatTime(message.createdAt)}
-                    </span>
-                  )}
-                  <CopyButton content={getTextContent(message)} />
-                  {!isUser && enableRegenerate && onRegenerate && (
-                    <RegenerateButton
-                      onRegenerate={() => onRegenerate(message.id)}
-                    />
-                  )}
-                  {!isUser && (
-                    <span
-                      className="text-sm text-muted-foreground cursor-default opacity-0 group-hover:opacity-100 transition-opacity"
-                      title={formatFullTimestamp(message.createdAt)}
-                    >
-                      {formatTime(message.createdAt)}
-                    </span>
-                  )}
-                </Message.Actions>
-              )}
-            </Message>
-          );
-        },
-        [
-          getAvatar,
-          renderMessageContent,
-          enableRegenerate,
-          onRegenerate,
-          avatars,
-          isSubmitting,
-          messages.length,
-        ]
       );
 
       // Handle form submission (memoized)
@@ -350,49 +150,6 @@ export const AgentPanel = memo(
           }
         },
         [isSubmitting, onSend]
-      );
-
-      // Render the input actions
-      const renderInputActions = () => (
-        <>
-          <div className="flex items-center gap-1">
-            {enableAttachments && onAttach && (
-              <AttachmentButton onAttach={onAttach} showMenu={false} />
-            )}
-            {/* Show selector when not locked, badge when locked, skeleton when loading */}
-            {isAgentSelectorDisabled ? (
-              <>
-                {selectedAgent && <AgentInfoBadge agent={selectedAgent} />}
-                {onInspect && (
-                  <IconButton
-                    icon={<ScanSearch className="h-4 w-4" />}
-                    label="Inspect session"
-                    size="sm"
-                    onClick={onInspect}
-                  />
-                )}
-                {onSessionResources && sessionResourcesCounts && (
-                  <SessionResourcesButton
-                    counts={sessionResourcesCounts}
-                    onClick={onSessionResources}
-                  />
-                )}
-              </>
-            ) : isAgentsLoading ? (
-              <AgentSelectorSkeleton />
-            ) : (
-              agents &&
-              agents.length > 0 && (
-                <AgentSelector
-                  agents={agents}
-                  selectedAgent={selectedAgent}
-                  onSelect={onAgentSelect}
-                />
-              )
-            )}
-          </div>
-          {contextUsage && <ContextIndicator usage={contextUsage} />}
-        </>
       );
 
       return (
@@ -416,7 +173,21 @@ export const AgentPanel = memo(
                     placeholder={inputPlaceholder}
                     autoFocus
                   />
-                  <ChatInput.Actions>{renderInputActions()}</ChatInput.Actions>
+                  <ChatInput.Actions>
+                    <InputActions
+                      enableAttachments={enableAttachments}
+                      onAttach={onAttach}
+                      isAgentSelectorDisabled={!!isAgentSelectorDisabled}
+                      selectedAgent={selectedAgent}
+                      isAgentsLoading={isAgentsLoading}
+                      agents={agents}
+                      onAgentSelect={onAgentSelect}
+                      onInspect={onInspect}
+                      onSessionResources={onSessionResources}
+                      sessionResourcesCounts={sessionResourcesCounts}
+                      contextUsage={contextUsage}
+                    />
+                  </ChatInput.Actions>
                 </ChatInput>
               }
             />
@@ -425,7 +196,18 @@ export const AgentPanel = memo(
               ref={setScrollRef}
               onScrollPositionChange={onScrollPositionChange}
             >
-              {messages.map(renderMessage)}
+              {messages.map((message, index) => (
+                <MessageListItem
+                  key={index}
+                  message={message}
+                  index={index}
+                  messagesLength={messages.length}
+                  isSubmitting={isSubmitting}
+                  avatar={getAvatar(message.role as 'user' | 'assistant')}
+                  enableRegenerate={enableRegenerate}
+                  onRegenerate={onRegenerate}
+                />
+              ))}
             </MessageList>
           )}
 
@@ -456,6 +238,13 @@ export const AgentPanel = memo(
             </div>
           )}
 
+          {/* Todos floating panel (only when not in empty state and todos exist) */}
+          {!showEmptyState && todos && todos.length > 0 && (
+            <div className="max-w-3xl mx-auto w-full px-4">
+              <TodosFloatingPanel todos={todos} />
+            </div>
+          )}
+
           {/* Input area (only when not in empty state) */}
           {!showEmptyState && (
             <div className="max-w-3xl mx-auto w-full px-4 pb-4 pt-2">
@@ -465,7 +254,21 @@ export const AgentPanel = memo(
                   placeholder={inputPlaceholder}
                   autoFocus
                 />
-                <ChatInput.Actions>{renderInputActions()}</ChatInput.Actions>
+                <ChatInput.Actions>
+                  <InputActions
+                    enableAttachments={enableAttachments}
+                    onAttach={onAttach}
+                    isAgentSelectorDisabled={!!isAgentSelectorDisabled}
+                    selectedAgent={selectedAgent}
+                    isAgentsLoading={isAgentsLoading}
+                    agents={agents}
+                    onAgentSelect={onAgentSelect}
+                    onInspect={onInspect}
+                    onSessionResources={onSessionResources}
+                    sessionResourcesCounts={sessionResourcesCounts}
+                    contextUsage={contextUsage}
+                  />
+                </ChatInput.Actions>
               </ChatInput>
             </div>
           )}

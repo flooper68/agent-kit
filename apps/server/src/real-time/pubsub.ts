@@ -1,5 +1,5 @@
 import type Redis from 'ioredis';
-import type { PubSubMessage } from './types';
+import type { PubSubMessage, SubscribeAsyncOptions } from './types';
 
 type MessageHandler<T = unknown> = (
   message: PubSubMessage<T>
@@ -82,6 +82,63 @@ export class PubSubManager {
   async publish<T = unknown>(channel: string, data: T): Promise<number> {
     const message = JSON.stringify(data);
     return this.publisher.publish(channel, message);
+  }
+
+  /**
+   * Subscribe to a channel and return an AsyncGenerator that yields messages.
+   * This encapsulates the queue bridging logic internally.
+   *
+   * @param channel - The Redis pub/sub channel to subscribe to
+   * @param options - Optional configuration (maxQueueSize defaults to 100)
+   * @returns AsyncGenerator that yields parsed message data
+   */
+  async *subscribeAsync<T>(
+    channel: string,
+    options: SubscribeAsyncOptions = {}
+  ): AsyncGenerator<T, void, unknown> {
+    const { maxQueueSize = 100 } = options;
+
+    const queue: T[] = [];
+    const waiters: Array<() => void> = [];
+    let closed = false;
+
+    const handler = (message: PubSubMessage) => {
+      if (closed) return;
+
+      if (queue.length >= maxQueueSize) {
+        queue.shift();
+      }
+
+      queue.push(message.data as T);
+
+      const waiter = waiters.shift();
+      if (waiter) {
+        waiter();
+      }
+    };
+
+    await this.subscribe(channel, handler);
+
+    try {
+      while (!closed) {
+        if (queue.length > 0) {
+          const item = queue.shift();
+          if (item !== undefined) {
+            yield item;
+          }
+        } else {
+          await new Promise<void>((resolve) => {
+            waiters.push(resolve);
+          });
+        }
+      }
+    } finally {
+      closed = true;
+      for (const waiter of waiters) {
+        waiter();
+      }
+      await this.unsubscribe(channel, handler);
+    }
   }
 
   async close(): Promise<void> {
