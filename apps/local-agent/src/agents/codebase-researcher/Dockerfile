@@ -49,9 +49,7 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 USER root
 
 COPY --from=builder /app/apps/local-agent/dist/codebase-researcher /usr/local/bin/
-COPY apps/local-agent/src/agents/codebase-researcher/entrypoint.sh /usr/local/bin/
-
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY --chmod=755 apps/local-agent/src/agents/codebase-researcher/entrypoint.sh /usr/local/bin/
 
 # Default working directory for file operations
 WORKDIR /workspace
