@@ -77,17 +77,100 @@ Compiled binaries are output to `dist/`.
 
 ## Docker
 
-Each agent has its own Dockerfile:
+### Docker Compose (Recommended)
+
+The easiest way to run agents is via Docker Compose:
 
 ```bash
-# Build codebase researcher
-docker build -f src/agents/codebase-researcher/Dockerfile -t codebase-researcher ../../..
+cd apps/local-agent
 
-# Build web researcher
-docker build -f src/agents/web-researcher/Dockerfile -t web-researcher ../../..
+# Copy env template and configure
+cp .env.example .env
+# Edit .env with your settings
 
-# Build mock agent
-docker build -f src/agents/mock-agent/Dockerfile -t mock-agent ../../..
+# Build and run all agents
+docker compose build
+docker compose up
+```
+
+### Prerequisites
+
+The Docker setup requires these files on your host machine:
+
+| File                          | Purpose                                              |
+| ----------------------------- | ---------------------------------------------------- |
+| `~/.claude/.credentials.json` | Claude OAuth authentication                          |
+| `~/.gitconfig`                | Git configuration (codebase-researcher only)         |
+| `~/.config/gh/`               | GitHub CLI authentication (codebase-researcher only) |
+
+To set up Claude credentials, run `claude` locally and complete OAuth login.
+
+### Container Architecture
+
+All agent containers:
+
+- Run as non-root `agent` user for security
+- Use Bun 1.3.5 for building
+- Install Claude Code CLI via native installer
+- Use `debian:bookworm-slim` as runtime base
+
+### Environment Variables
+
+Configure via `.env` file or environment:
+
+**Codebase Researcher:**
+
+```bash
+CODEBASE_RESEARCHER_AGENT_API_KEY=your_key
+CODEBASE_RESEARCHER_AGENT_ID=codebase-researcher
+CODEBASE_RESEARCHER_GIT_REPOSITORY_URL=https://github.com/user/repo.git
+CODEBASE_RESEARCHER_GIT_BRANCH=main  # optional
+CODEBASE_RESEARCHER_MODEL=claude-sonnet-4-5
+```
+
+**Web Researcher:**
+
+```bash
+WEB_RESEARCHER_AGENT_API_KEY=your_key
+WEB_RESEARCHER_AGENT_ID=web-researcher
+WEB_RESEARCHER_MODEL=claude-sonnet-4-5
+WEB_RESEARCHER_HTTP_PROXY=http://proxy:8080  # optional
+```
+
+**Claude CLI:**
+
+```bash
+CLAUDE_CLI_AGENT_API_KEY=your_key
+CLAUDE_CLI_AGENT_ID=claude-cli
+CLAUDE_CLI_WORKSPACE=./workspace
+ANTHROPIC_API_KEY=your_anthropic_key  # or use OAuth
+```
+
+### Volume Mounts
+
+| Container           | Mount                         | Purpose           |
+| ------------------- | ----------------------------- | ----------------- |
+| All agents          | `~/.claude/.credentials.json` | Claude OAuth      |
+| codebase-researcher | `~/.gitconfig`                | Git config        |
+| codebase-researcher | `~/.config/gh/`               | GitHub CLI auth   |
+| claude-cli          | `./workspace:/workspace`      | Working directory |
+
+### Resource Limits
+
+The `claude-cli` container has resource limits:
+
+- Memory: 4GB
+- CPUs: 2.0
+- Security: `no-new-privileges`
+
+### Building Individual Images
+
+```bash
+# Build from monorepo root with correct context
+docker build -f apps/local-agent/src/agents/codebase-researcher/Dockerfile -t codebase-researcher .
+docker build -f apps/local-agent/src/agents/web-researcher/Dockerfile -t web-researcher .
+docker build -f apps/local-agent/src/agents/claude-cli/Dockerfile -t claude-cli .
+docker build -f apps/local-agent/src/agents/mock-agent/Dockerfile -t mock-agent .
 ```
 
 ## Creating New Agents

@@ -14,6 +14,12 @@ const envSchema = z.object({
   /** Secret API key from local agent creation */
   AGENT_API_KEY: z.string().min(1, 'AGENT_API_KEY is required'),
 
+  /** Git repository URL to clone */
+  GIT_REPOSITORY_URL: z.string().min(1, 'GIT_REPOSITORY_URL is required'),
+
+  /** Git branch to checkout (optional, defaults to default branch) */
+  GIT_BRANCH: z.string().optional(),
+
   /** Working directory for file operations (defaults to current directory) */
   WORKING_DIRECTORY: z.string().optional(),
 
@@ -22,12 +28,6 @@ const envSchema = z.object({
 
   /** Maximum tokens for extended thinking mode */
   MAX_THINKING_TOKENS: z.coerce.number().optional(),
-
-  /** Enable partial message streaming for real-time text updates */
-  INCLUDE_PARTIAL_MESSAGES: z
-    .enum(['true', 'false'])
-    .default('true')
-    .transform((v) => v === 'true'),
 });
 
 export const env = envSchema.parse(process.env);

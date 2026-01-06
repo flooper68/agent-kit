@@ -26,16 +26,15 @@ All research results are saved as artifacts with:
 
 ## Environment Variables
 
-| Variable                   | Required | Default               | Description                              |
-| -------------------------- | -------- | --------------------- | ---------------------------------------- |
-| `SERVER_URL`               | No       | `ws://localhost:3001` | WebSocket server URL                     |
-| `AGENT_API_KEY`            | **Yes**  | -                     | Secret API key from local agent creation |
-| `AGENT_ID`                 | No       | -                     | Optional identifier for logging          |
-| `MODEL`                    | No       | `claude-sonnet-4-5`   | Claude model to use                      |
-| `MAX_THINKING_TOKENS`      | No       | `5000`                | Thinking tokens for better synthesis     |
-| `HTTP_PROXY`               | No       | -                     | HTTP proxy for web requests              |
-| `HTTPS_PROXY`              | No       | -                     | HTTPS proxy for web requests             |
-| `INCLUDE_PARTIAL_MESSAGES` | No       | `true`                | Enable real-time streaming               |
+| Variable              | Required | Default               | Description                              |
+| --------------------- | -------- | --------------------- | ---------------------------------------- |
+| `SERVER_URL`          | No       | `ws://localhost:3001` | WebSocket server URL                     |
+| `AGENT_API_KEY`       | **Yes**  | -                     | Secret API key from local agent creation |
+| `AGENT_ID`            | No       | -                     | Optional identifier for logging          |
+| `MODEL`               | No       | `claude-sonnet-4-5`   | Claude model to use                      |
+| `MAX_THINKING_TOKENS` | No       | `5000`                | Thinking tokens for better synthesis     |
+| `HTTP_PROXY`          | No       | -                     | HTTP proxy for web requests              |
+| `HTTPS_PROXY`         | No       | -                     | HTTPS proxy for web requests             |
 
 ## Running Locally
 
@@ -55,16 +54,42 @@ bun run dev:web-researcher
 
 ## Running with Docker
 
-```bash
-# Build the image
-docker build -f agents/web-researcher/Dockerfile -t web-researcher ../../..
+### Docker Compose (Recommended)
 
-# Run the agent
+```bash
+cd apps/local-agent
+
+# Configure environment
+cat >> .env << EOF
+WEB_RESEARCHER_AGENT_API_KEY=your_key
+EOF
+
+# Build and run
+docker compose build web-researcher
+docker compose up web-researcher
+```
+
+### Docker (Manual)
+
+```bash
+# Build from monorepo root
+docker build -f apps/local-agent/src/agents/web-researcher/Dockerfile -t web-researcher .
+
+# Run with required mounts
 docker run -it \
   -e AGENT_API_KEY=your_api_key_here \
   -e SERVER_URL=ws://host.docker.internal:3001 \
+  -v ~/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro \
   web-researcher
 ```
+
+### Required Host Files
+
+For Docker, these files must exist on the host:
+
+| File                          | Purpose                                   |
+| ----------------------------- | ----------------------------------------- |
+| `~/.claude/.credentials.json` | Claude OAuth (run `claude` locally first) |
 
 ## Use Cases
 

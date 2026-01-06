@@ -90,6 +90,7 @@ export class ClaudeCodeProvider {
         cwd: this.config.cwd,
         allowedTools: this.config.allowedTools,
         abortController,
+        pathToClaudeCodeExecutable: process.env.CLAUDE_CODE_PATH || undefined,
       };
 
       // Add optional configuration
