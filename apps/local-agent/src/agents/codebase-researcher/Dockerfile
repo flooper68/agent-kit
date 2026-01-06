@@ -46,12 +46,12 @@ RUN useradd -m -s /bin/bash agent && \
 # Install Claude Code CLI via native installer (as agent user)
 USER agent
 RUN curl -fsSL https://claude.ai/install.sh | bash
-
-# Configure git to trust mounted workspace (ownership differs between host and container)
-RUN git config --global --add safe.directory /workspace
 USER root
 
 COPY --from=builder /app/apps/local-agent/dist/codebase-researcher /usr/local/bin/
+COPY apps/local-agent/src/agents/codebase-researcher/entrypoint.sh /usr/local/bin/
+
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Default working directory for file operations
 WORKDIR /workspace
@@ -63,4 +63,4 @@ ENV SERVER_URL=ws://host.docker.internal:3001
 ENV WORKING_DIRECTORY=/workspace
 ENV CLAUDE_CODE_PATH=/home/agent/.local/bin/claude
 
-ENTRYPOINT ["codebase-researcher"]
+ENTRYPOINT ["entrypoint.sh"]

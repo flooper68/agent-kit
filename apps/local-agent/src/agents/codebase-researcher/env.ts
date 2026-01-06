@@ -14,6 +14,12 @@ const envSchema = z.object({
   /** Secret API key from local agent creation */
   AGENT_API_KEY: z.string().min(1, 'AGENT_API_KEY is required'),
 
+  /** Git repository URL to clone */
+  GIT_REPOSITORY_URL: z.string().min(1, 'GIT_REPOSITORY_URL is required'),
+
+  /** Git branch to checkout (optional, defaults to default branch) */
+  GIT_BRANCH: z.string().optional(),
+
   /** Working directory for file operations (defaults to current directory) */
   WORKING_DIRECTORY: z.string().optional(),
 

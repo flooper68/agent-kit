@@ -7,11 +7,12 @@ services:
       - SERVER_URL=${SERVER_URL}
       - AGENT_API_KEY=${CODEBASE_RESEARCHER_AGENT_API_KEY}
       - AGENT_ID=${CODEBASE_RESEARCHER_AGENT_ID:-codebase-researcher}
+      - GIT_REPOSITORY_URL=${CODEBASE_RESEARCHER_GIT_REPOSITORY_URL}
+      - GIT_BRANCH=${CODEBASE_RESEARCHER_GIT_BRANCH:-}
       - WORKING_DIRECTORY=${CODEBASE_RESEARCHER_WORKING_DIRECTORY:-/workspace}
       - MODEL=${CODEBASE_RESEARCHER_MODEL:-}
       - MAX_THINKING_TOKENS=${CODEBASE_RESEARCHER_MAX_THINKING_TOKENS:-}
     volumes:
-      - ${CODEBASE_RESEARCHER_WORKSPACE:-./workspace}:/workspace:ro
       - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro
       - ${HOME}/.gitconfig:/home/agent/.gitconfig:ro
       - ${HOME}/.git-credentials:/home/agent/.git-credentials:ro
