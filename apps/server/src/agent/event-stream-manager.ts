@@ -172,17 +172,37 @@ export class EventStreamManager {
 
     // Create a dedicated connection for this subscription
     // This ensures multiple concurrent subscriptions don't block each other
+    console.log('[EventStreamManager] Creating subscription connection', {
+      sessionId,
+      streamName,
+    });
     const subscriptionRedis = this.createSubscriptionConnection();
 
     try {
-      // Wait for connection to be ready
-      await new Promise<void>((resolve, reject) => {
-        if (subscriptionRedis.status === 'ready') {
-          resolve();
-        } else {
-          subscriptionRedis.once('ready', resolve);
-          subscriptionRedis.once('error', reject);
-        }
+      // Wait for connection to be ready with timeout
+      // Without timeout, this can hang forever if Redis connection fails silently
+      await Promise.race([
+        new Promise<void>((resolve, reject) => {
+          if (subscriptionRedis.status === 'ready') {
+            resolve();
+          } else {
+            subscriptionRedis.once('ready', resolve);
+            subscriptionRedis.once('error', reject);
+          }
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () =>
+              reject(
+                new Error('Redis subscription connection timeout after 10s')
+              ),
+            10000
+          )
+        ),
+      ]);
+
+      console.log('[EventStreamManager] Subscription connection ready', {
+        sessionId,
       });
 
       // If replayHistory is true, first yield all historical events
@@ -251,7 +271,16 @@ export class EventStreamManager {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
+    } catch (error) {
+      console.error('[EventStreamManager] Subscription error', {
+        sessionId,
+        error: error instanceof Error ? error.message : error,
+      });
+      throw error;
     } finally {
+      console.log('[EventStreamManager] Cleaning up subscription connection', {
+        sessionId,
+      });
       // Clean up the connection when subscription ends
       await subscriptionRedis.quit().catch(() => {
         // Ignore errors during cleanup
