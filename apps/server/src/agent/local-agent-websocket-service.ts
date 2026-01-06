@@ -5,6 +5,16 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import { z } from 'zod';
 import { logger } from './logger';
 import { EventBuffer } from './event-buffer';
+import {
+  generateNonce,
+  computeHmac,
+  verifyHmac,
+  isTimestampValid,
+  buildAgentHmacMessage,
+  buildServerHmacMessage,
+  type ServerChallenge,
+  type AuthChallenge,
+} from '@agent-kit/auth';
 import type { LocalAgentWebSocketRegistry } from './local-agent-websocket-registry';
 import type { LocalAgentsConnectionManager } from './local-agents-connection-manager';
 import type { EventStreamManager } from './event-stream-manager';
@@ -123,7 +133,10 @@ export class LocalAgentWebSocketService {
 
   /**
    * Handle a new unauthenticated WebSocket connection.
-   * Waits for auth message before allowing other operations.
+   * Uses HMAC mutual authentication:
+   * 1. Server sends challenge with nonce
+   * 2. Agent responds with HMAC proving it knows the secret
+   * 3. Server verifies and responds with its own HMAC proving server identity
    */
   private async handleUnauthenticatedConnection(ws: WebSocket): Promise<void> {
     // Set up auth timeout - close connection if no auth within 30s
@@ -132,29 +145,98 @@ export class LocalAgentWebSocketService {
       ws.close(4000, 'Authentication timeout');
     }, 30000);
 
-    // Wait for first message (auth)
+    // Generate and send server challenge immediately
+    const serverNonce = generateNonce();
+    const serverTimestamp = Date.now();
+
+    const challenge: ServerChallenge = {
+      type: 'server_challenge',
+      serverNonce,
+      timestamp: serverTimestamp,
+    };
+    ws.send(JSON.stringify(challenge));
+
+    // Wait for auth_challenge response
     const handleAuthMessage = async (data: Buffer) => {
       try {
-        const message = JSON.parse(data.toString());
+        const message = JSON.parse(data.toString()) as AuthChallenge;
 
-        if (message.type !== 'auth' || !message.key) {
+        if (message.type !== 'auth_challenge') {
           ws.send(
             JSON.stringify({
               type: 'auth_error',
-              error: 'Invalid auth message',
+              error: 'Expected auth_challenge message',
             })
           );
           ws.close(4001, 'Invalid auth message');
           return;
         }
 
-        const agent = await this.localAgentsFeature.validateKey(message.key);
-
-        if (!agent || agent.disabled) {
+        // Validate required fields
+        if (
+          !message.keyPrefix ||
+          !message.clientNonce ||
+          !message.serverNonceHmac ||
+          !message.timestamp
+        ) {
           ws.send(
             JSON.stringify({
               type: 'auth_error',
-              error: 'Invalid or disabled agent',
+              error: 'Missing required auth fields',
+            })
+          );
+          ws.close(4001, 'Invalid auth message');
+          return;
+        }
+
+        // Verify timestamp is within valid window (30 seconds)
+        if (!isTimestampValid(message.timestamp)) {
+          ws.send(
+            JSON.stringify({
+              type: 'auth_error',
+              error: 'Challenge expired',
+            })
+          );
+          ws.close(4001, 'Challenge expired');
+          return;
+        }
+
+        // Find agent by key prefix
+        const agent = await this.localAgentsFeature.findByKeyPrefix(
+          message.keyPrefix
+        );
+
+        if (!agent) {
+          ws.send(
+            JSON.stringify({
+              type: 'auth_error',
+              error: 'Invalid credentials',
+            })
+          );
+          ws.close(4001, 'Authentication failed');
+          return;
+        }
+
+        // Verify agent's HMAC - proves agent knows the secret
+        // The agent.secretKey in DB is already SHA256(plaintextKey)
+        if (
+          !verifyHmac(
+            agent.secretKey,
+            buildAgentHmacMessage(
+              serverNonce,
+              message.clientNonce,
+              message.timestamp
+            ),
+            message.serverNonceHmac
+          )
+        ) {
+          this.log.warn('HMAC verification failed', {
+            keyPrefix: message.keyPrefix,
+          });
+          ws.send(
+            JSON.stringify({
+              type: 'auth_error',
+              error: 'Authentication failed',
             })
           );
           ws.close(4001, 'Authentication failed');
@@ -165,8 +247,20 @@ export class LocalAgentWebSocketService {
         clearTimeout(authTimeout);
         ws.removeListener('message', handleAuthMessage);
 
-        // Send success response
-        ws.send(JSON.stringify({ type: 'auth_success', agentId: agent.id }));
+        // Compute server's HMAC response - proves server has access to stored secret
+        const serverHmac = computeHmac(
+          agent.secretKey,
+          buildServerHmacMessage(message.clientNonce, serverNonce, agent.id)
+        );
+
+        // Send success response with server's proof
+        ws.send(
+          JSON.stringify({
+            type: 'auth_success',
+            agentId: agent.id,
+            clientNonceHmac: serverHmac,
+          })
+        );
 
         // Set up authenticated connection
         const connectionId = crypto.randomUUID();

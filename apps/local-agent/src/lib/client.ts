@@ -2,6 +2,20 @@ import WebSocket from 'ws';
 import { MessageHandler } from './message-handler';
 import { EventBufferQueue } from './event-buffer-queue';
 import { createLogger } from './logger';
+import {
+  deriveSharedSecret,
+  generateNonce,
+  computeHmac,
+  verifyHmac,
+  generateKeyPrefix,
+  buildAgentHmacMessage,
+  buildServerHmacMessage,
+  validateConnectionSecurity,
+  isTimestampValid,
+  type ServerChallenge,
+  type AuthSuccess,
+  type AuthError,
+} from '@agent-kit/auth';
 import type { ClaudeCodeHandlerConfig } from './types';
 
 const log = createLogger('Client');
@@ -19,6 +33,12 @@ export interface LocalAgentClientConfig {
   handlerConfig: ClaudeCodeHandlerConfig;
 }
 
+interface PendingAuth {
+  clientNonce: string;
+  serverNonce: string;
+  sharedSecret: string;
+}
+
 export class LocalAgentClient {
   private config: LocalAgentClientConfig;
   private ws: WebSocket | null = null;
@@ -30,6 +50,7 @@ export class LocalAgentClient {
   private connectionStartTime: number = 0;
   private messageCount: number = 0;
   private isAuthenticated = false;
+  private pendingAuth: PendingAuth | null = null;
 
   constructor(config: LocalAgentClientConfig) {
     this.config = config;
@@ -38,10 +59,13 @@ export class LocalAgentClient {
   }
 
   async connect(): Promise<void> {
-    // Connect without API key in URL - send via first message after connection
+    // Enforce WSS for non-localhost connections
+    validateConnectionSecurity(this.config.serverUrl);
+
     const wsUrl = `${this.config.serverUrl}/agents`;
     this.connectionStartTime = Date.now();
     this.isAuthenticated = false;
+    this.pendingAuth = null;
 
     log.info(`Initiating WebSocket connection`, {
       serverUrl: this.config.serverUrl,
@@ -53,31 +77,110 @@ export class LocalAgentClient {
 
     this.ws.on('open', () => {
       const connectDuration = Date.now() - this.connectionStartTime;
-      log.info(`WebSocket connection established, sending authentication`, {
-        durationMs: connectDuration,
-        agentId: this.config.agentId,
-      });
-
-      // Send authentication as first message (not in URL to avoid logging)
-      this.ws!.send(
-        JSON.stringify({
-          type: 'auth',
-          key: this.config.agentApiKey,
-        })
+      log.info(
+        `WebSocket connection established, waiting for server challenge`,
+        {
+          durationMs: connectDuration,
+          agentId: this.config.agentId,
+        }
       );
+      // Wait for server_challenge - don't send anything yet
     });
 
     this.ws.on('message', async (data) => {
       const dataStr = data.toString();
 
-      // Handle authentication response
+      // Handle authentication handshake
       if (!this.isAuthenticated) {
         try {
-          const response = JSON.parse(dataStr);
+          const response = JSON.parse(dataStr) as
+            | ServerChallenge
+            | AuthSuccess
+            | AuthError;
+
+          // Step 1: Receive server challenge and respond with auth challenge
+          if (response.type === 'server_challenge') {
+            log.debug('Received server challenge, sending auth response');
+
+            // Validate server's timestamp is within acceptable window (defense-in-depth)
+            if (!isTimestampValid(response.timestamp)) {
+              log.error(
+                'Server challenge timestamp out of range - possible replay attack',
+                { serverTimestamp: response.timestamp, now: Date.now() }
+              );
+              this.ws?.close(4002, 'Invalid challenge timestamp');
+              return;
+            }
+
+            // Derive shared secret from API key
+            const sharedSecret = deriveSharedSecret(this.config.agentApiKey);
+            const clientNonce = generateNonce();
+            const timestamp = Date.now();
+
+            // Compute HMAC proving we know the secret
+            const serverNonceHmac = computeHmac(
+              sharedSecret,
+              buildAgentHmacMessage(
+                response.serverNonce,
+                clientNonce,
+                timestamp
+              )
+            );
+
+            // Store for verification of server response
+            this.pendingAuth = {
+              clientNonce,
+              serverNonce: response.serverNonce,
+              sharedSecret,
+            };
+
+            // Send auth challenge
+            this.ws!.send(
+              JSON.stringify({
+                type: 'auth_challenge',
+                keyPrefix: generateKeyPrefix(this.config.agentApiKey),
+                clientNonce,
+                serverNonceHmac,
+                timestamp,
+              })
+            );
+            return;
+          }
+
+          // Step 2: Verify server's response proves server identity
           if (response.type === 'auth_success') {
+            if (!this.pendingAuth) {
+              log.error('Received auth_success without pending auth state');
+              this.ws?.close(4002, 'Protocol error');
+              return;
+            }
+
+            // Verify server's HMAC - proves server has access to stored secret
+            if (
+              !verifyHmac(
+                this.pendingAuth.sharedSecret,
+                buildServerHmacMessage(
+                  this.pendingAuth.clientNonce,
+                  this.pendingAuth.serverNonce,
+                  response.agentId
+                ),
+                response.clientNonceHmac
+              )
+            ) {
+              log.error(
+                'Server HMAC verification failed - possible MITM attack'
+              );
+              this.pendingAuth = null;
+              this.ws?.close(4002, 'Server verification failed');
+              return;
+            }
+
+            // Clear pending auth state
+            this.pendingAuth = null;
             this.isAuthenticated = true;
-            log.info(`Authentication successful`, {
-              agentId: this.config.agentId,
+
+            log.info(`Mutual authentication successful`, {
+              agentId: response.agentId,
               workingDirectory: this.config.handlerConfig.cwd,
               allowedTools: this.config.handlerConfig.allowedTools,
             });
@@ -109,8 +212,11 @@ export class LocalAgentClient {
 
             log.debug('MessageHandler initialized');
             return;
-          } else if (response.type === 'auth_error') {
+          }
+
+          if (response.type === 'auth_error') {
             log.error('Authentication failed', { error: response.error });
+            this.pendingAuth = null;
             this.ws?.close(4001, 'Authentication failed');
             return;
           }
@@ -160,6 +266,7 @@ export class LocalAgentClient {
 
       this.messageHandler = null;
       this.isAuthenticated = false;
+      this.pendingAuth = null;
 
       if (!this.isShuttingDown) {
         log.debug('Scheduling reconnect');
