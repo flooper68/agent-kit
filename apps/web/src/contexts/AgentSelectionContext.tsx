@@ -22,9 +22,14 @@ const AgentSelectionContext = createContext<AgentSelectionContextValue | null>(
 export function AgentSelectionProvider({ children }: { children: ReactNode }) {
   const [selectedAgentId, setSelectedAgentIdState] = useState<string | null>(
     () => {
+      // SSR/environment safety check - localStorage may not exist
+      if (typeof window === 'undefined' || !window.localStorage) {
+        return null;
+      }
       try {
         return localStorage.getItem('agent-kit:lastAgentId');
       } catch {
+        // Handle errors from private browsing modes or quota exceeded
         return null;
       }
     }
@@ -34,10 +39,14 @@ export function AgentSelectionProvider({ children }: { children: ReactNode }) {
   const setSelectedAgentId = useCallback((agentId: string | null) => {
     setSelectedAgentIdState(agentId);
     if (agentId) {
+      // SSR/environment safety check
+      if (typeof window === 'undefined' || !window.localStorage) {
+        return;
+      }
       try {
         localStorage.setItem('agent-kit:lastAgentId', agentId);
       } catch {
-        // Ignore localStorage errors
+        // Ignore localStorage errors (private browsing, quota exceeded)
       }
     }
   }, []);

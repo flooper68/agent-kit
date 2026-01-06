@@ -29,6 +29,7 @@ export class LocalAgentClient {
   private isShuttingDown = false;
   private connectionStartTime: number = 0;
   private messageCount: number = 0;
+  private isAuthenticated = false;
 
   constructor(config: LocalAgentClientConfig) {
     this.config = config;
@@ -37,8 +38,10 @@ export class LocalAgentClient {
   }
 
   async connect(): Promise<void> {
-    const wsUrl = `${this.config.serverUrl}/agents?key=${this.config.agentApiKey}`;
+    // Connect without API key in URL - send via first message after connection
+    const wsUrl = `${this.config.serverUrl}/agents`;
     this.connectionStartTime = Date.now();
+    this.isAuthenticated = false;
 
     log.info(`Initiating WebSocket connection`, {
       serverUrl: this.config.serverUrl,
@@ -50,37 +53,91 @@ export class LocalAgentClient {
 
     this.ws.on('open', () => {
       const connectDuration = Date.now() - this.connectionStartTime;
-      log.info(`WebSocket connection established`, {
+      log.info(`WebSocket connection established, sending authentication`, {
         durationMs: connectDuration,
         agentId: this.config.agentId,
-        workingDirectory: this.config.handlerConfig.cwd,
-        allowedTools: this.config.handlerConfig.allowedTools,
       });
 
-      this.reconnectAttempts = 0;
-      this.messageCount = 0;
+      // Send authentication as first message (not in URL to avoid logging)
+      this.ws!.send(
+        JSON.stringify({
+          type: 'auth',
+          key: this.config.agentApiKey,
+        })
+      );
+    });
 
-      // Initialize message handler with handler type, config, and shared buffer
-      this.messageHandler = new MessageHandler(this.ws!, {
-        handlerType: this.config.handlerType,
-        config: this.config.handlerConfig,
-        eventBuffer: this.eventBuffer,
-      });
+    this.ws.on('message', async (data) => {
+      const dataStr = data.toString();
 
-      // Flush any buffered events from previous connection
-      if (this.eventBuffer.hasEvents) {
-        log.info('Flushing buffered events after reconnection', {
-          bufferedCount: this.eventBuffer.size,
-        });
-        const result = this.messageHandler.flushBuffer();
-        if (result.failed) {
-          log.warn('Buffer flush failed, will retry on next reconnection');
-        } else {
-          log.info('Buffer flush completed', { flushed: result.flushed });
+      // Handle authentication response
+      if (!this.isAuthenticated) {
+        try {
+          const response = JSON.parse(dataStr);
+          if (response.type === 'auth_success') {
+            this.isAuthenticated = true;
+            log.info(`Authentication successful`, {
+              agentId: this.config.agentId,
+              workingDirectory: this.config.handlerConfig.cwd,
+              allowedTools: this.config.handlerConfig.allowedTools,
+            });
+
+            this.reconnectAttempts = 0;
+            this.messageCount = 0;
+
+            // Initialize message handler after authentication
+            this.messageHandler = new MessageHandler(this.ws!, {
+              handlerType: this.config.handlerType,
+              config: this.config.handlerConfig,
+              eventBuffer: this.eventBuffer,
+            });
+
+            // Flush any buffered events from previous connection
+            if (this.eventBuffer.hasEvents) {
+              log.info('Flushing buffered events after reconnection', {
+                bufferedCount: this.eventBuffer.size,
+              });
+              const result = this.messageHandler.flushBuffer();
+              if (result.failed) {
+                log.warn(
+                  'Buffer flush failed, will retry on next reconnection'
+                );
+              } else {
+                log.info('Buffer flush completed', { flushed: result.flushed });
+              }
+            }
+
+            log.debug('MessageHandler initialized');
+            return;
+          } else if (response.type === 'auth_error') {
+            log.error('Authentication failed', { error: response.error });
+            this.ws?.close(4001, 'Authentication failed');
+            return;
+          }
+        } catch {
+          // Not a JSON message, ignore during auth phase
         }
+        return;
       }
 
-      log.debug('MessageHandler initialized');
+      // Handle regular messages after authentication
+      this.messageCount++;
+      const messageSize = dataStr.length;
+
+      log.debug(`Received message #${this.messageCount}`, {
+        sizeBytes: messageSize,
+        preview: messageSize > 200 ? dataStr.slice(0, 200) + '...' : dataStr,
+      });
+
+      if (this.messageHandler) {
+        const startTime = Date.now();
+        await this.messageHandler.handleMessage(dataStr);
+        log.debug(`Message #${this.messageCount} processed`, {
+          durationMs: Date.now() - startTime,
+        });
+      } else {
+        log.warn('Received message but MessageHandler not initialized');
+      }
     });
 
     this.ws.on('ping', () => {
@@ -90,29 +147,6 @@ export class LocalAgentClient {
 
     this.ws.on('pong', () => {
       log.debug('Received pong from server');
-    });
-
-    this.ws.on('message', async (data) => {
-      this.messageCount++;
-      const messageSize = data.toString().length;
-
-      log.debug(`Received message #${this.messageCount}`, {
-        sizeBytes: messageSize,
-        preview:
-          messageSize > 200
-            ? data.toString().slice(0, 200) + '...'
-            : data.toString(),
-      });
-
-      if (this.messageHandler) {
-        const startTime = Date.now();
-        await this.messageHandler.handleMessage(data.toString());
-        log.debug(`Message #${this.messageCount} processed`, {
-          durationMs: Date.now() - startTime,
-        });
-      } else {
-        log.warn('Received message but MessageHandler not initialized');
-      }
     });
 
     this.ws.on('close', (code, reason) => {
@@ -125,6 +159,7 @@ export class LocalAgentClient {
       });
 
       this.messageHandler = null;
+      this.isAuthenticated = false;
 
       if (!this.isShuttingDown) {
         log.debug('Scheduling reconnect');
@@ -165,6 +200,11 @@ export class LocalAgentClient {
     });
 
     setTimeout(() => {
+      // Check shutdown flag to avoid reconnecting after shutdown() was called
+      if (this.isShuttingDown) {
+        log.debug('Reconnect timer fired but shutdown in progress, skipping');
+        return;
+      }
       log.debug('Reconnect timer fired, initiating connection');
       void this.connect();
     }, delay);

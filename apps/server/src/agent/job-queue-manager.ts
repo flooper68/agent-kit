@@ -96,14 +96,15 @@ export class JobQueueManager {
   /**
    * Consume jobs from the job stream using consumer groups
    * This ensures each job is processed by exactly one worker
+   * @param signal - Optional AbortSignal for graceful shutdown
    */
   async consume(
     groupName: string,
     consumerName: string,
     handler: JobHandler,
-    options: { blockMs?: number; count?: number } = {}
+    options: { blockMs?: number; count?: number; signal?: AbortSignal } = {}
   ): Promise<void> {
-    const { blockMs = 5000, count = 1 } = options;
+    const { blockMs = 5000, count = 1, signal } = options;
 
     console.log(
       `[JobQueueManager] Setting up consumer group: ${groupName}, consumer: ${consumerName}`
@@ -118,7 +119,7 @@ export class JobQueueManager {
     let consecutiveErrors = 0;
     const maxConsecutiveErrors = 10;
 
-    while (true) {
+    while (!signal?.aborted) {
       try {
         // Use dedicated worker connection for blocking operations
         const result = (await this.workerRedis.call(
@@ -223,8 +224,24 @@ export class JobQueueManager {
           30000
         );
         console.log(`[JobQueueManager] Retrying in ${delay}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+
+        // Wait with abort support
+        await new Promise<void>((resolve) => {
+          const timeout = setTimeout(resolve, delay);
+          signal?.addEventListener(
+            'abort',
+            () => {
+              clearTimeout(timeout);
+              resolve();
+            },
+            { once: true }
+          );
+        });
       }
+    }
+
+    if (signal?.aborted) {
+      console.log('[JobQueueManager] Consumer stopped via abort signal');
     }
   }
 }

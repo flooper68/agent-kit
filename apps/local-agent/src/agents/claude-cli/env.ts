@@ -36,13 +36,14 @@ const envSchema = z.object({
   APPEND_SYSTEM_PROMPT: z.string().optional(),
 
   /**
-   * Permission mode for handling tool approvals.
-   * - 'dangerously-skip-permissions': Skip all permission prompts (default, recommended for automated agents)
-   * - 'allowed-tools': Only auto-approve tools listed in ALLOWED_TOOLS
+   * Permission mode for handling tool approvals (REQUIRED).
+   * - 'allowed-tools': Only auto-approve tools listed in ALLOWED_TOOLS (recommended)
+   * - 'dangerously-skip-permissions': Skip all permission prompts (use only in trusted environments)
    */
-  PERMISSION_MODE: z
-    .enum(['dangerously-skip-permissions', 'allowed-tools'])
-    .default('dangerously-skip-permissions'),
+  PERMISSION_MODE: z.enum(['dangerously-skip-permissions', 'allowed-tools'], {
+    message:
+      'PERMISSION_MODE is required. Set to "allowed-tools" for controlled access or "dangerously-skip-permissions" for full access.',
+  }),
 });
 
 export const env = envSchema.parse(process.env);

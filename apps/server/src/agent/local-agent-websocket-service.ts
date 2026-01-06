@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import type { IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
 import { WebSocketServer, type WebSocket } from 'ws';
+import { z } from 'zod';
 import { logger } from './logger';
 import { EventBuffer } from './event-buffer';
 import type { LocalAgentWebSocketRegistry } from './local-agent-websocket-registry';
@@ -11,6 +12,56 @@ import type { StreamingStateManager } from './streaming-state-manager';
 import { STREAMING_HEARTBEAT_INTERVAL_MS } from './streaming-state-manager';
 import type { AgentsFeature } from '../features/agents';
 import type { LocalAgentsFeature } from '../features/local-agents';
+
+// Zod schemas for validating WebSocket messages from local agents
+const AgentEventSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('text_delta'), delta: z.string() }),
+  z.object({ type: z.literal('reasoning_delta'), delta: z.string() }),
+  z.object({
+    type: z.literal('tool_call_start'),
+    toolCallId: z.string(),
+    toolName: z.string(),
+    toolArgs: z.unknown(),
+  }),
+  z.object({
+    type: z.literal('tool_call_args_delta'),
+    toolCallId: z.string(),
+    delta: z.string(),
+  }),
+  z.object({
+    type: z.literal('tool_result'),
+    toolCallId: z.string(),
+    result: z.unknown(),
+    isError: z.boolean(),
+  }),
+  z.object({ type: z.literal('message_start') }),
+  z.object({
+    type: z.literal('message_complete'),
+    usage: z
+      .object({
+        promptTokens: z.number(),
+        completionTokens: z.number(),
+      })
+      .optional(),
+    finishReason: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('error'),
+    code: z.string(),
+    error: z.string(),
+    retryable: z.boolean(),
+  }),
+  z.object({ type: z.literal('interrupted') }),
+]);
+
+const EventMessageSchema = z.object({
+  type: z.literal('event'),
+  sessionId: z.string().uuid(),
+  messageId: z.string().uuid(),
+  event: AgentEventSchema,
+});
+
+const AgentMessageSchema = z.discriminatedUnion('type', [EventMessageSchema]);
 
 interface AgentInfo {
   agent: { id: string; userId: string; name: string };
@@ -47,41 +98,15 @@ export class LocalAgentWebSocketService {
   }
 
   /**
-   * Handle HTTP upgrade requests for local agent WebSocket connections
+   * Handle HTTP upgrade requests for local agent WebSocket connections.
+   * Authentication is handled via first message after connection (not URL query param)
+   * to avoid API keys being logged in server access logs.
    */
   handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer): void {
-    const url = new URL(request.url || '', `http://${request.headers.host}`);
-    const secretKey = url.searchParams.get('key');
-
-    if (!secretKey) {
-      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
-    this.localAgentsFeature
-      .validateKey(secretKey)
-      .then((agent) => {
-        if (!agent || agent.disabled) {
-          socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-          socket.destroy();
-          return;
-        }
-
-        const connectionId = crypto.randomUUID();
-
-        this.wss.handleUpgrade(request, socket, head, (ws) => {
-          this.wss.emit('connection', ws, request, {
-            agent,
-            connectionId,
-          });
-        });
-      })
-      .catch((err) => {
-        this.log.error('Agent auth error', { err });
-        socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-        socket.destroy();
-      });
+    // Accept connection without authentication - auth happens via first message
+    this.wss.handleUpgrade(request, socket, head, (ws) => {
+      this.wss.emit('connection', ws, request);
+    });
   }
 
   /**
@@ -90,20 +115,87 @@ export class LocalAgentWebSocketService {
   private setupConnectionHandler(): void {
     this.wss.on(
       'connection',
-      async (
-        ws: WebSocket,
-        _request: IncomingMessage,
-        agentInfo: AgentInfo
-      ) => {
-        await this.handleConnection(ws, agentInfo);
+      async (ws: WebSocket, _request: IncomingMessage) => {
+        await this.handleUnauthenticatedConnection(ws);
       }
     );
   }
 
   /**
-   * Handle a new WebSocket connection from a local agent
+   * Handle a new unauthenticated WebSocket connection.
+   * Waits for auth message before allowing other operations.
    */
-  private async handleConnection(
+  private async handleUnauthenticatedConnection(ws: WebSocket): Promise<void> {
+    // Set up auth timeout - close connection if no auth within 30s
+    const authTimeout = setTimeout(() => {
+      this.log.warn('Auth timeout - closing unauthenticated connection');
+      ws.close(4000, 'Authentication timeout');
+    }, 30000);
+
+    // Wait for first message (auth)
+    const handleAuthMessage = async (data: Buffer) => {
+      try {
+        const message = JSON.parse(data.toString());
+
+        if (message.type !== 'auth' || !message.key) {
+          ws.send(
+            JSON.stringify({
+              type: 'auth_error',
+              error: 'Invalid auth message',
+            })
+          );
+          ws.close(4001, 'Invalid auth message');
+          return;
+        }
+
+        const agent = await this.localAgentsFeature.validateKey(message.key);
+
+        if (!agent || agent.disabled) {
+          ws.send(
+            JSON.stringify({
+              type: 'auth_error',
+              error: 'Invalid or disabled agent',
+            })
+          );
+          ws.close(4001, 'Authentication failed');
+          return;
+        }
+
+        // Auth successful - clear timeout and remove auth handler
+        clearTimeout(authTimeout);
+        ws.removeListener('message', handleAuthMessage);
+
+        // Send success response
+        ws.send(JSON.stringify({ type: 'auth_success', agentId: agent.id }));
+
+        // Set up authenticated connection
+        const connectionId = crypto.randomUUID();
+        await this.handleAuthenticatedConnection(ws, { agent, connectionId });
+      } catch (err) {
+        this.log.error('Auth message error', { err });
+        ws.send(
+          JSON.stringify({ type: 'auth_error', error: 'Authentication failed' })
+        );
+        ws.close(4001, 'Authentication failed');
+      }
+    };
+
+    ws.on('message', handleAuthMessage);
+
+    ws.on('close', () => {
+      clearTimeout(authTimeout);
+    });
+
+    ws.on('error', (err: Error) => {
+      clearTimeout(authTimeout);
+      this.log.error('WebSocket error during auth', { err });
+    });
+  }
+
+  /**
+   * Handle an authenticated WebSocket connection from a local agent
+   */
+  private async handleAuthenticatedConnection(
     ws: WebSocket,
     agentInfo: AgentInfo
   ): Promise<void> {
@@ -151,6 +243,9 @@ export class LocalAgentWebSocketService {
       clearInterval(pingInterval);
       this.wsRegistry.unregister(agent.id);
       await this.connectionManager.unregisterConnection(agent.userId, agent.id);
+      // Clean up any remaining message tracking on disconnect
+      messageSequences.clear();
+      messageBuffers.clear();
       this.log.info('Local agent disconnected', { agentId: agent.id });
     });
 
@@ -169,7 +264,20 @@ export class LocalAgentWebSocketService {
     messageBuffers: Map<string, EventBuffer>
   ): Promise<void> {
     try {
-      const message = JSON.parse(data.toString());
+      const rawMessage = JSON.parse(data.toString());
+
+      // Validate message with Zod schema
+      const parseResult = AgentMessageSchema.safeParse(rawMessage);
+      if (!parseResult.success) {
+        this.log.warn('Invalid message format from local agent', {
+          agentId: agent.id,
+          errors: parseResult.error.issues,
+          messageType: rawMessage?.type,
+        });
+        return;
+      }
+
+      const message = parseResult.data;
 
       switch (message.type) {
         case 'event': {
@@ -181,11 +289,6 @@ export class LocalAgentWebSocketService {
           );
           break;
         }
-
-        default:
-          this.log.warn('Unknown message type from local agent', {
-            type: message.type,
-          });
       }
     } catch (err) {
       this.log.error('Failed to handle message from local agent', {
@@ -368,6 +471,9 @@ export class LocalAgentWebSocketService {
       // Stop streaming state for reliable client state management
       await this.streamingStateManager.stopStreaming(sessionId);
       this.lastHeartbeatBySession.delete(sessionId);
+      // Clean up tracking for errored message
+      messageSequences.delete(messageId);
+      messageBuffers.delete(messageId);
     } else if (event.type === 'interrupted') {
       // Flush buffer before interrupted
       await flushBuffer(messageId);
@@ -379,6 +485,9 @@ export class LocalAgentWebSocketService {
       // Stop streaming state for reliable client state management
       await this.streamingStateManager.stopStreaming(sessionId);
       this.lastHeartbeatBySession.delete(sessionId);
+      // Clean up tracking for interrupted message
+      messageSequences.delete(messageId);
+      messageBuffers.delete(messageId);
     }
 
     // Publish event to Redis stream for real-time delivery

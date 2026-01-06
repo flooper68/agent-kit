@@ -150,16 +150,30 @@ export class StreamingStateManager {
   /**
    * Get all session IDs that are currently streaming
    * Used by sessions.list to add streaming status to session list
+   * Uses SCAN instead of KEYS to avoid blocking Redis
    */
   async getActiveSessionIds(): Promise<Set<string>> {
     const pattern = 'streaming:session:*';
-    const keys = await this.redis.keys(pattern);
     const sessionIds = new Set<string>();
-    for (const key of keys) {
-      // Extract sessionId from key: "streaming:session:{sessionId}"
-      const sessionId = key.replace('streaming:session:', '');
-      sessionIds.add(sessionId);
-    }
+
+    // Use SCAN for production-safe iteration (O(1) per iteration vs O(n) for KEYS)
+    let cursor = '0';
+    do {
+      const [nextCursor, keys] = await this.redis.scan(
+        cursor,
+        'MATCH',
+        pattern,
+        'COUNT',
+        100
+      );
+      cursor = nextCursor;
+      for (const key of keys) {
+        // Extract sessionId from key: "streaming:session:{sessionId}"
+        const sessionId = key.replace('streaming:session:', '');
+        sessionIds.add(sessionId);
+      }
+    } while (cursor !== '0');
+
     return sessionIds;
   }
 
@@ -183,30 +197,39 @@ export class StreamingStateManager {
 
   /**
    * Get all streaming sessions for a user
-   * Note: This scans for keys which is O(n) - use sparingly
+   * Uses SCAN to iterate through keys without blocking Redis
    */
   async getStreamingSessionsForUser(userId: string): Promise<StreamingState[]> {
     const pattern = 'streaming:session:*';
-    const keys = await this.redis.keys(pattern);
-
-    if (keys.length === 0) {
-      return [];
-    }
-
     const states: StreamingState[] = [];
-    const values = await this.redis.mget(keys);
 
-    for (const data of values) {
-      if (!data) continue;
-      try {
-        const state: StreamingState = JSON.parse(data);
-        if (state.userId === userId) {
-          states.push(state);
+    // Use SCAN for production-safe iteration
+    let cursor = '0';
+    do {
+      const [nextCursor, keys] = await this.redis.scan(
+        cursor,
+        'MATCH',
+        pattern,
+        'COUNT',
+        100
+      );
+      cursor = nextCursor;
+
+      if (keys.length > 0) {
+        const values = await this.redis.mget(keys);
+        for (const data of values) {
+          if (!data) continue;
+          try {
+            const state: StreamingState = JSON.parse(data);
+            if (state.userId === userId) {
+              states.push(state);
+            }
+          } catch {
+            // Skip invalid entries
+          }
         }
-      } catch {
-        // Skip invalid entries
       }
-    }
+    } while (cursor !== '0');
 
     return states;
   }

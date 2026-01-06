@@ -1,6 +1,6 @@
 import { LocalAgentClient, registerHandler, createLogger } from '../../lib';
 import { env, parseToolsList } from './env';
-import { ClaudeCliHandler } from './handler';
+import { ClaudeCliHandler, type ClaudeCliHandlerConfig } from './handler';
 
 const log = createLogger('ClaudeCli');
 
@@ -8,7 +8,11 @@ const log = createLogger('ClaudeCli');
 const HANDLER_TYPE = 'claude-cli';
 
 // Register the claude-cli handler
-registerHandler(HANDLER_TYPE, (config) => new ClaudeCliHandler(config));
+// Type assertion is safe because env.PERMISSION_MODE is required by Zod schema
+registerHandler(
+  HANDLER_TYPE,
+  (config) => new ClaudeCliHandler(config as ClaudeCliHandlerConfig)
+);
 
 // Main
 log.info('Claude CLI Agent starting', {

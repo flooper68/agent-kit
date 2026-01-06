@@ -12,7 +12,13 @@ import type {
 export interface ClaudeCliHandlerConfig {
   /** Working directory for CLI execution */
   cwd: string;
-  /** Tools to auto-approve (for allowed-tools mode) */
+  /**
+   * Permission handling mode (REQUIRED for security).
+   * - 'allowed-tools': Only auto-approve tools specified in `allowedTools` array (recommended)
+   * - 'dangerously-skip-permissions': Auto-approve ALL tools (use only in fully trusted environments)
+   */
+  permissionMode: 'dangerously-skip-permissions' | 'allowed-tools';
+  /** Tools to auto-approve (required when permissionMode is 'allowed-tools') */
   allowedTools?: string[];
   /** Claude model to use */
   model?: string;
@@ -22,8 +28,6 @@ export interface ClaudeCliHandlerConfig {
   disallowedTools?: string[];
   /** Custom system prompt to append */
   appendSystemPrompt?: string;
-  /** Permission handling mode */
-  permissionMode?: 'dangerously-skip-permissions' | 'allowed-tools';
   /** Maximum output tokens */
   maxTokens?: number;
 }
@@ -38,18 +42,30 @@ export interface ClaudeCliHandlerConfig {
  *
  * Use this handler as the main "coding agent" for tasks requiring
  * full file system access and code modification capabilities.
+ *
+ * SECURITY NOTE: You MUST explicitly set `permissionMode` in config.
+ * - 'allowed-tools': Only auto-approve tools specified in `allowedTools` array
+ * - 'dangerously-skip-permissions': Auto-approve ALL tools (use only in trusted environments)
  */
 export class ClaudeCliHandler implements AgentHandler {
   readonly id = 'claude-cli';
   private provider: ClaudeCliProvider;
 
   constructor(config: ClaudeCliHandlerConfig) {
+    // Require explicit permission mode - don't default to dangerous mode
+    if (!config.permissionMode) {
+      throw new Error(
+        'ClaudeCliHandler: permissionMode must be explicitly set. ' +
+          'Use "allowed-tools" for controlled access (recommended) or ' +
+          '"dangerously-skip-permissions" only in fully trusted environments.'
+      );
+    }
+
     this.provider = new ClaudeCliProvider({
       ...config,
       loggerName: 'ClaudeCli',
       errorCodePrefix: 'CLAUDE_CLI',
-      // Default to dangerously-skip-permissions for full coding agent capabilities
-      permissionMode: config.permissionMode ?? 'dangerously-skip-permissions',
+      permissionMode: config.permissionMode,
     });
   }
 
