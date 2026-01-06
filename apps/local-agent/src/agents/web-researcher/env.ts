@@ -25,12 +25,6 @@ const envSchema = z.object({
 
   /** Maximum tokens for extended thinking - enables better synthesis */
   MAX_THINKING_TOKENS: z.coerce.number().default(5000),
-
-  /** Enable partial message streaming for real-time text updates */
-  INCLUDE_PARTIAL_MESSAGES: z
-    .enum(['true', 'false'])
-    .default('true')
-    .transform((v) => v === 'true'),
 });
 
 export const env = envSchema.parse(process.env);

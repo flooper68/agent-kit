@@ -19,6 +19,21 @@ const ALLOWED_TOOLS = [
   'WebFetch',
   // Artifact tools via MCP server (write-only)
   'mcp__agent-kit-artifacts__writeArtifact',
+  // Git commands for repository inspection and navigation
+  'Bash(git status:*)',
+  'Bash(git branch:*)',
+  'Bash(git log:*)',
+  'Bash(git diff:*)',
+  'Bash(git show:*)',
+  'Bash(git remote:*)',
+  'Bash(git fetch:*)',
+  'Bash(git checkout:*)',
+  'Bash(git pull:*)',
+  'Bash(git ls-files:*)',
+  'Bash(git ls-tree:*)',
+  'Bash(git rev-parse:*)',
+  'Bash(git describe:*)',
+  'Bash(git tag:*)',
 ];
 
 // System prompt for focused codebase research with structured artifact output
@@ -53,6 +68,21 @@ const SYSTEM_PROMPT = `You are a codebase exploration and research specialist. Y
 - Deep-diving into complex modules that require focused analysis
 - Running parallel searches across different file types or directories
 - Breaking down large research tasks into manageable sub-tasks
+
+### Git Operations
+
+You have access to git commands for repository exploration:
+- \`git status\` - Check working tree status
+- \`git branch -a\` - List all branches
+- \`git checkout <branch>\` - Switch branches
+- \`git pull\` - Pull latest changes from remote
+- \`git fetch\` - Fetch refs from remote
+- \`git log\` - View commit history
+- \`git diff\` - View changes between commits/branches
+- \`git show\` - Show commit details
+- \`git remote -v\` - List remotes
+
+Use git operations to explore different branches or get latest code before analysis.
 
 ## Output Requirements
 
@@ -140,7 +170,7 @@ const client = new LocalAgentClient({
     allowedTools: ALLOWED_TOOLS,
     model: env.MODEL,
     maxThinkingTokens: env.MAX_THINKING_TOKENS,
-    includePartialMessages: env.INCLUDE_PARTIAL_MESSAGES,
+    includePartialMessages: true,
     enableArtifactTools: true,
     customSystemPrompt: SYSTEM_PROMPT,
   },

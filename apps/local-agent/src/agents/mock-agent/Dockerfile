@@ -1,15 +1,27 @@
-FROM oven/bun:1.1 AS builder
+FROM oven/bun:1.3.5 AS builder
 WORKDIR /app
 
-# Copy workspace files
+# Copy workspace root files
 COPY package.json bun.lock ./
+
+# Copy all workspace package.json files
 COPY apps/local-agent/package.json ./apps/local-agent/
+COPY apps/server/package.json ./apps/server/
+COPY apps/storybook/package.json ./apps/storybook/
+COPY apps/web/package.json ./apps/web/
+COPY packages/auth/package.json ./packages/auth/
+COPY packages/ui/package.json ./packages/ui/
 
 # Install dependencies
 RUN bun install --frozen-lockfile
 
-# Copy source
+# Copy all source
 COPY apps/local-agent/ ./apps/local-agent/
+COPY apps/server/ ./apps/server/
+COPY apps/storybook/ ./apps/storybook/
+COPY apps/web/ ./apps/web/
+COPY packages/auth/ ./packages/auth/
+COPY packages/ui/ ./packages/ui/
 
 # Build the mock agent
 WORKDIR /app/apps/local-agent

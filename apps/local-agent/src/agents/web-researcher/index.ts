@@ -91,7 +91,7 @@ const client = new LocalAgentClient({
     allowedTools: ALLOWED_TOOLS,
     model: env.MODEL,
     maxThinkingTokens: env.MAX_THINKING_TOKENS,
-    includePartialMessages: env.INCLUDE_PARTIAL_MESSAGES,
+    includePartialMessages: true,
     enableArtifactTools: true,
     customSystemPrompt: SYSTEM_PROMPT,
   },
