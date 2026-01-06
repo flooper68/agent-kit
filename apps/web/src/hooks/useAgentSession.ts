@@ -169,15 +169,6 @@ export function useAgentSession(
   const needsNewTextPartRef = useRef<Record<string, boolean>>({});
   // Track when a new reasoning part is needed (after tool calls)
   const needsNewReasoningPartRef = useRef<Record<string, boolean>>({});
-  // Track pending message to send once subscription is ready
-  const pendingMessageRef = useRef<{
-    content: string;
-    sessionId: string;
-  } | null>(null);
-  // Timeout for pending message - clear if message never sends
-  const pendingMessageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
   // Track the current placeholder ID to avoid race conditions when replacing
   const currentPlaceholderIdRef = useRef<string | null>(null);
   // Track tool names by callId to identify resource-creating tools
@@ -188,16 +179,6 @@ export function useAgentSession(
   const lastStreamIdRef = useRef<string | undefined>(undefined);
   // Track message IDs loaded from DB to skip historical terminal events during replay
   const loadedMessageIdsRef = useRef<Set<string>>(new Set());
-
-  // Clear pending message timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (pendingMessageTimeoutRef.current) {
-        clearTimeout(pendingMessageTimeoutRef.current);
-        pendingMessageTimeoutRef.current = null;
-      }
-    };
-  }, []);
 
   // Sync streaming status to SessionContext for chat history/command palette
   // This eliminates race conditions with pub/sub event propagation
@@ -222,11 +203,6 @@ export function useAgentSession(
 
   // Reset state when sessionId changes
   useEffect(() => {
-    // Don't reset if we have a pending message (new session being created)
-    if (pendingMessageRef.current) {
-      return;
-    }
-
     // Clear messages and reset state when switching sessions
     setMessages([]);
     // Show loading state when switching to an existing chat, ready state for new chat
@@ -834,91 +810,13 @@ export function useAgentSession(
     [sendMutation]
   );
 
-  // Track if subscription is ready for the current session
-  // Subscription is ready when: sessionId matches, query succeeded, and subscription is connected ('idle' status)
-  const isSubscriptionReady =
-    !!sessionId && sessionQuery.isSuccess && subscription.status === 'idle';
-
-  // Effect to send pending message once subscription is ready
-  // This replaces the previous timer-based approach with proper state tracking
-  useEffect(() => {
-    const pending = pendingMessageRef.current;
-    if (pending && sessionId === pending.sessionId && isSubscriptionReady) {
-      // Clear timeout since we're sending
-      if (pendingMessageTimeoutRef.current) {
-        clearTimeout(pendingMessageTimeoutRef.current);
-        pendingMessageTimeoutRef.current = null;
-      }
-      // Subscription is connected and ready, send the pending message
-      pendingMessageRef.current = null;
-      doSendMessage(pending.content, pending.sessionId);
-    }
-  }, [sessionId, isSubscriptionReady, doSendMessage]);
-
   const sendMessage = useCallback(
     async (content: string, overrideSessionId?: string) => {
       const targetSessionId = overrideSessionId ?? sessionId;
       if (!targetSessionId) return;
 
-      // If using a different session (new session being created), queue the message
-      // until subscription is ready for that session
-      if (overrideSessionId && overrideSessionId !== sessionId) {
-        // Clear any existing timeout
-        if (pendingMessageTimeoutRef.current) {
-          clearTimeout(pendingMessageTimeoutRef.current);
-        }
-
-        // Queue message until subscription is ready
-        pendingMessageRef.current = {
-          content,
-          sessionId: overrideSessionId,
-        };
-
-        // Set timeout to prevent message from hanging forever if subscription never connects
-        pendingMessageTimeoutRef.current = setTimeout(() => {
-          if (pendingMessageRef.current) {
-            console.error(
-              '[AgentSession] Pending message timeout - subscription never became ready'
-            );
-            pendingMessageRef.current = null;
-            pendingMessageTimeoutRef.current = null;
-            setError({
-              type: 'network',
-              message:
-                'Failed to connect to the server. Please check your connection and try again.',
-              retryable: true,
-            });
-            setStatus('error');
-            setThinkingStatus({ isThinking: false });
-          }
-        }, 15000); // 15 second timeout
-
-        // Add optimistic user message and placeholder assistant message for responsive UI
-        const optimisticId = `optimistic-${Date.now()}`;
-        const optimisticMessage: TaskMessage = {
-          id: optimisticId,
-          role: 'user',
-          parts: [createTextPart(content)],
-          createdAt: new Date(),
-        };
-        // Add placeholder assistant message for immediate scroll target
-        const placeholderId = `placeholder-${Date.now()}`;
-        currentPlaceholderIdRef.current = placeholderId;
-        const placeholderMessage: TaskMessage = {
-          id: placeholderId,
-          role: 'assistant',
-          parts: [], // Empty parts = placeholder state
-          createdAt: new Date(),
-        };
-        setMessages((prev) => [...prev, optimisticMessage, placeholderMessage]);
-
-        // Set thinking indicator immediately for responsive UI
-        setThinkingStatus({ isThinking: true });
-        setStatus('submitted');
-        return;
-      }
-
-      // Subscription is ready, send immediately
+      // Send message immediately without waiting for subscription
+      // With replayHistory=true, subscription will catch all events when it connects
       await doSendMessage(content, targetSessionId);
     },
     [sessionId, doSendMessage]
