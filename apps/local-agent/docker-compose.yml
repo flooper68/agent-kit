@@ -14,7 +14,6 @@ services:
       - MAX_THINKING_TOKENS=${CODEBASE_RESEARCHER_MAX_THINKING_TOKENS:-}
     volumes:
       - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro
-      - ${HOME}/.gitconfig:/home/agent/.gitconfig:ro
       - ${HOME}/.git-credentials:/home/agent/.git-credentials:ro
     restart: unless-stopped
 

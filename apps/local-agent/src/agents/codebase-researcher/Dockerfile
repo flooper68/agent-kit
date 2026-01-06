@@ -46,6 +46,9 @@ RUN useradd -m -s /bin/bash agent && \
 # Install Claude Code CLI via native installer (as agent user)
 USER agent
 RUN curl -fsSL https://claude.ai/install.sh | bash
+
+# Configure git to use credentials file (mounted at runtime)
+RUN git config --global credential.helper 'store --file=/home/agent/.git-credentials'
 USER root
 
 COPY --from=builder /app/apps/local-agent/dist/codebase-researcher /usr/local/bin/
