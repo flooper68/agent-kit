@@ -1,7 +1,17 @@
 import type { AgentHandler, ClaudeCodeHandlerConfig } from '../types';
+import type { ArtifactToolRelay } from '../artifact-tool-relay';
+
+/** Context passed to handler factories beyond configuration */
+export interface HandlerContext {
+  /** Artifact relay for server artifact operations */
+  artifactRelay?: ArtifactToolRelay;
+}
 
 /** Factory function type for creating handlers */
-export type HandlerFactory = (config: ClaudeCodeHandlerConfig) => AgentHandler;
+export type HandlerFactory = (
+  config: ClaudeCodeHandlerConfig,
+  context?: HandlerContext
+) => AgentHandler;
 
 /** Registry of available handler factories */
 const handlerFactories = new Map<string, HandlerFactory>();
@@ -11,12 +21,14 @@ const handlerFactories = new Map<string, HandlerFactory>();
  *
  * @param type - Handler type identifier (e.g., 'claude-code')
  * @param config - Handler configuration
+ * @param context - Optional context including artifact relay
  * @returns Handler instance
  * @throws Error if handler type is not registered
  */
 export function createHandler(
   type: string,
-  config: ClaudeCodeHandlerConfig
+  config: ClaudeCodeHandlerConfig,
+  context?: HandlerContext
 ): AgentHandler {
   const factory = handlerFactories.get(type);
   if (!factory) {
@@ -25,7 +37,7 @@ export function createHandler(
       `Unknown handler type: "${type}". Available handlers: ${available}`
     );
   }
-  return factory(config);
+  return factory(config, context);
 }
 
 /**

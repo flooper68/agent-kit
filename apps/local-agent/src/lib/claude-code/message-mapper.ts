@@ -253,6 +253,8 @@ export class SDKMessageMapper {
             promptTokens: message.usage.input_tokens,
             completionTokens: message.usage.output_tokens,
             estimatedCost: message.total_cost_usd,
+            cacheReadTokens: message.usage.cache_read_input_tokens,
+            cacheWriteTokens: message.usage.cache_creation_input_tokens,
           }
         : undefined;
 

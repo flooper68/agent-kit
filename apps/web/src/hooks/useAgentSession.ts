@@ -59,8 +59,10 @@ interface UseAgentSessionReturn {
   dismissError: () => void;
   contextUsage: ContextUsage | null;
   handleScrollPositionChange: (isAtBottom: boolean) => void;
+  showScrollButton: boolean;
   sessionAgentId: string | null;
   todos: TodoItem[];
+  streamingStartTime: number | null;
 }
 
 // Map server error codes to TaskError types
@@ -146,6 +148,9 @@ export function useAgentSession(
   const { setSessionStreaming } = useSession();
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const hasInitialScrolledRef = useRef<boolean>(false);
+  // Track whether scroll button should be shown (user has scrolled away from bottom)
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const showScrollButtonRef = useRef(false);
 
   const [messages, setMessages] = useState<TaskMessage[]>([]);
   const [status, setStatus] = useState<TaskStatus>('ready');
@@ -209,6 +214,8 @@ export function useAgentSession(
     setError(null);
     setCurrentContextTokens(0);
     setTodos([]); // Reset todos when switching sessions
+    setShowScrollButton(false); // Reset scroll button state
+    showScrollButtonRef.current = false;
     accumulatedTextRef.current = {};
     accumulatedReasoningRef.current = {};
     needsNewTextPartRef.current = {};
@@ -263,7 +270,7 @@ export function useAgentSession(
         clearTimeout(timeout);
       }
 
-      timeout = setTimeout(callback, 200);
+      timeout = setTimeout(callback, 100);
     };
   }, []);
 
@@ -293,7 +300,8 @@ export function useAgentSession(
             lastMessage?.scrollIntoView({ behavior: 'instant' });
           }, 100);
           hasInitialScrolledRef.current = true;
-        } else {
+        } else if (!showScrollButtonRef.current) {
+          // Only autoscroll if user hasn't scrolled away from bottom
           debouncedScrollToBottom();
         }
 
@@ -612,6 +620,8 @@ export function useAgentSession(
               ) {
                 onResourceCreated?.();
               }
+              // Clean up after use to prevent memory growth in long sessions
+              delete toolNamesByCallIdRef.current[event.toolCallId];
             }
             break;
 
@@ -838,10 +848,11 @@ export function useAgentSession(
   }, []);
 
   // Callback for MessageList to report scroll position changes
-  // Currently a no-op - can be used in the future for auto-scroll during streaming
-  const handleScrollPositionChange = useCallback((_isAtBottom: boolean) => {
-    // Intentionally empty - scroll position is tracked by MessageList
-    // but not currently used for any conditional behavior
+  // Used to disable autoscroll when user has scrolled away from bottom
+  const handleScrollPositionChange = useCallback((isAtBottom: boolean) => {
+    const shouldShow = !isAtBottom;
+    setShowScrollButton(shouldShow);
+    showScrollButtonRef.current = shouldShow;
   }, []);
 
   // Calculate context usage
@@ -891,7 +902,9 @@ export function useAgentSession(
   const lastEventTimeRef = useRef<number>(Date.now());
 
   // Track when we entered streaming state to avoid reacting to stale query data
-  const streamingStartTimeRef = useRef<number | null>(null);
+  const [streamingStartTime, setStreamingStartTime] = useState<number | null>(
+    null
+  );
 
   // Update last event time on any streaming event
   useEffect(() => {
@@ -903,9 +916,12 @@ export function useAgentSession(
   // Update streaming start time when status changes to streaming
   useEffect(() => {
     if (status === 'streaming') {
-      streamingStartTimeRef.current = Date.now();
+      setStreamingStartTime(Date.now());
+    } else if (status === 'ready') {
+      // Keep the start time when transitioning to ready (for "Worked for" display)
+      // Only reset when starting a new conversation (status goes to submitted first)
     } else {
-      streamingStartTimeRef.current = null;
+      setStreamingStartTime(null);
     }
   }, [status]);
 
@@ -932,8 +948,8 @@ export function useAgentSession(
       !streamingStateQuery.isLoading
     ) {
       // Only react if we've been in streaming state long enough for the query to be fresh
-      const streamingDuration = streamingStartTimeRef.current
-        ? Date.now() - streamingStartTimeRef.current
+      const streamingDuration = streamingStartTime
+        ? Date.now() - streamingStartTime
         : 0;
 
       if (streamingDuration > STREAMING_QUERY_GRACE_PERIOD_MS) {
@@ -944,7 +960,12 @@ export function useAgentSession(
         setThinkingStatus({ isThinking: false });
       }
     }
-  }, [status, streamingStateQuery.data, streamingStateQuery.isLoading]);
+  }, [
+    status,
+    streamingStateQuery.data,
+    streamingStateQuery.isLoading,
+    streamingStartTime,
+  ]);
 
   // Recovery timeout: If status is 'streaming' for too long without events,
   // query the server to verify the streaming state is still active
@@ -1004,7 +1025,9 @@ export function useAgentSession(
     contextUsage,
     setMessageListRef,
     handleScrollPositionChange,
+    showScrollButton,
     sessionAgentId: sessionQuery.data?.agentId ?? null,
     todos,
+    streamingStartTime,
   };
 }

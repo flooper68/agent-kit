@@ -1,4 +1,5 @@
 import { createLogger } from '../../lib/logger';
+import type { HandlerContext } from '../../lib/handlers';
 import type {
   AgentHandler,
   AgentHandlerConfig,
@@ -63,7 +64,7 @@ export class MockAgentHandler implements AgentHandler {
   private thinkingEnabled: boolean;
   private toolCallCount: number;
 
-  constructor(config: AgentHandlerConfig) {
+  constructor(config: AgentHandlerConfig, _context?: HandlerContext) {
     this.config = config;
     this.delayMs = env.MOCK_DELAY_MS;
     this.thinkingEnabled = env.MOCK_THINKING_ENABLED;

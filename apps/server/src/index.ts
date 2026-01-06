@@ -151,7 +151,8 @@ fastify.addHook('onReady', async () => {
     eventStreamManager,
     streamingStateManager,
     agentsFeature,
-    localAgentsFeature
+    localAgentsFeature,
+    artifactsFeature
   );
 
   // Create the agent worker with new architecture

@@ -1,4 +1,5 @@
 import { ClaudeCliProvider } from '../../lib/claude-cli';
+import type { HandlerContext } from '../../lib/handlers';
 import type {
   AgentHandler,
   AgentRunParams,
@@ -51,7 +52,7 @@ export class ClaudeCliHandler implements AgentHandler {
   readonly id = 'claude-cli';
   private provider: ClaudeCliProvider;
 
-  constructor(config: ClaudeCliHandlerConfig) {
+  constructor(config: ClaudeCliHandlerConfig, _context?: HandlerContext) {
     // Require explicit permission mode - don't default to dangerous mode
     if (!config.permissionMode) {
       throw new Error(
@@ -61,6 +62,8 @@ export class ClaudeCliHandler implements AgentHandler {
       );
     }
 
+    // Note: CLI provider doesn't support artifact tools via in-process MCP
+    // because it spawns a separate process. Would need external MCP server.
     this.provider = new ClaudeCliProvider({
       ...config,
       loggerName: 'ClaudeCli',

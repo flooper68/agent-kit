@@ -73,6 +73,9 @@ const MessageCompleteEventSchema = BaseStreamEventSchema.extend({
       estimatedCost: z.number().optional(),
       cacheReadTokens: z.number().optional(),
       cacheWriteTokens: z.number().optional(),
+      durationMs: z.number().optional(),
+      durationApiMs: z.number().optional(),
+      numTurns: z.number().optional(),
     })
     .optional(),
   finishReason: z.string().optional(),

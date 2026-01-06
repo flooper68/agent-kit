@@ -22,6 +22,7 @@ import type { StreamingStateManager } from './streaming-state-manager';
 import { STREAMING_HEARTBEAT_INTERVAL_MS } from './streaming-state-manager';
 import type { AgentsFeature } from '../features/agents';
 import type { LocalAgentsFeature } from '../features/local-agents';
+import type { ArtifactsFeature } from '../features/artifacts';
 
 // Zod schemas for validating WebSocket messages from local agents
 const AgentEventSchema = z.discriminatedUnion('type', [
@@ -51,6 +52,12 @@ const AgentEventSchema = z.discriminatedUnion('type', [
       .object({
         promptTokens: z.number(),
         completionTokens: z.number(),
+        estimatedCost: z.number().optional(),
+        cacheReadTokens: z.number().optional(),
+        cacheWriteTokens: z.number().optional(),
+        durationMs: z.number().optional(),
+        durationApiMs: z.number().optional(),
+        numTurns: z.number().optional(),
       })
       .optional(),
     finishReason: z.string().optional(),
@@ -71,7 +78,37 @@ const EventMessageSchema = z.object({
   event: AgentEventSchema,
 });
 
-const AgentMessageSchema = z.discriminatedUnion('type', [EventMessageSchema]);
+// Schema for artifact tool requests from local agents
+const ArtifactToolRequestSchema = z.object({
+  type: z.literal('artifact_tool_request'),
+  requestId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  tool: z.enum(['writeArtifact', 'readArtifact', 'searchArtifacts']),
+  params: z.record(z.string(), z.unknown()),
+  timestamp: z.string(),
+});
+
+// Schemas for validating artifact tool parameters
+const WriteArtifactParamsSchema = z.object({
+  title: z.string().min(1).max(255),
+  content: z.string().min(1).max(1_000_000),
+  summary: z.string().max(500).optional(),
+});
+
+const ReadArtifactParamsSchema = z.object({
+  artifactId: z.string().uuid(),
+});
+
+const SearchArtifactsParamsSchema = z.object({
+  query: z.string().optional().default(''),
+  limit: z.number().int().min(1).max(100).optional().default(10),
+  offset: z.number().int().min(0).optional().default(0),
+});
+
+const AgentMessageSchema = z.discriminatedUnion('type', [
+  EventMessageSchema,
+  ArtifactToolRequestSchema,
+]);
 
 interface AgentInfo {
   agent: { id: string; userId: string; name: string };
@@ -94,7 +131,8 @@ export class LocalAgentWebSocketService {
     private eventStreamManager: EventStreamManager,
     private streamingStateManager: StreamingStateManager,
     private agentsFeature: AgentsFeature,
-    private localAgentsFeature: LocalAgentsFeature
+    private localAgentsFeature: LocalAgentsFeature,
+    private artifactsFeature: ArtifactsFeature
   ) {
     this.wss = new WebSocketServer({ noServer: true });
     this.setupConnectionHandler();
@@ -383,6 +421,10 @@ export class LocalAgentWebSocketService {
           );
           break;
         }
+        case 'artifact_tool_request': {
+          await this.handleArtifactToolRequest(agent, message);
+          break;
+        }
       }
     } catch (err) {
       this.log.error('Failed to handle message from local agent', {
@@ -465,6 +507,21 @@ export class LocalAgentWebSocketService {
             }
           : undefined,
       });
+
+      // Update session usage with extended data from local agent
+      if (event.usage) {
+        await this.agentsFeature.sessions.updateUsage({
+          sessionId,
+          promptTokens: event.usage.promptTokens,
+          completionTokens: event.usage.completionTokens,
+          cacheReadTokens: event.usage.cacheReadTokens,
+          cacheWriteTokens: event.usage.cacheWriteTokens,
+          latency: event.usage.durationApiMs,
+          model: agent.name,
+          provider: 'local',
+        });
+      }
+
       await this.eventStreamManager.publish(sessionId, {
         type: 'message_complete',
         sessionId,
@@ -591,6 +648,188 @@ export class LocalAgentWebSocketService {
       messageId,
     });
   }
+
+  /**
+   * Handle an artifact tool request from a local agent
+   */
+  private async handleArtifactToolRequest(
+    agent: { id: string; userId: string; name: string },
+    message: {
+      requestId: string;
+      sessionId: string;
+      tool: 'writeArtifact' | 'readArtifact' | 'searchArtifacts';
+      params: Record<string, unknown>;
+    }
+  ): Promise<void> {
+    const { requestId, sessionId, tool, params } = message;
+
+    this.log.debug('Handling artifact tool request', {
+      agentId: agent.id,
+      requestId: requestId.slice(0, 8) + '...',
+      tool,
+    });
+
+    // Get session to retrieve orgId
+    const session = await this.agentsFeature.sessions.getById(sessionId);
+    if (!session) {
+      this.log.warn('Session not found for artifact tool request', {
+        sessionId: sessionId.slice(0, 8) + '...',
+      });
+      this.sendArtifactToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        {
+          error: 'Session not found',
+        },
+        true
+      );
+      return;
+    }
+
+    try {
+      let result: unknown;
+
+      switch (tool) {
+        case 'writeArtifact': {
+          const validatedParams = WriteArtifactParamsSchema.parse(params);
+          const artifact = await this.artifactsFeature.create({
+            userId: agent.userId,
+            orgId: session.orgId,
+            sessionId,
+            agentId: agent.id,
+            title: validatedParams.title,
+            content: validatedParams.content,
+            summary: validatedParams.summary,
+          });
+          result = {
+            success: true,
+            artifactId: artifact.id,
+            title: artifact.title,
+            message: `Document "${artifact.title}" saved successfully.`,
+          };
+          this.log.info('Artifact created by local agent', {
+            agentId: agent.id,
+            artifactId: artifact.id,
+            title: artifact.title,
+          });
+          break;
+        }
+
+        case 'readArtifact': {
+          const validatedParams = ReadArtifactParamsSchema.parse(params);
+          const artifact = await this.artifactsFeature.getById(
+            validatedParams.artifactId,
+            agent.userId,
+            session.orgId
+          );
+          if (artifact) {
+            result = {
+              found: true,
+              id: artifact.id,
+              title: artifact.title,
+              content: artifact.content,
+              summary: artifact.summary,
+              createdAt: artifact.createdAt,
+              updatedAt: artifact.updatedAt,
+            };
+          } else {
+            result = {
+              found: false,
+              message: 'Document not found or access denied.',
+            };
+          }
+          break;
+        }
+
+        case 'searchArtifacts': {
+          const validatedParams = SearchArtifactsParamsSchema.parse(params);
+          const searchResult = await this.artifactsFeature.search({
+            userId: agent.userId,
+            orgId: session.orgId,
+            query: validatedParams.query,
+            limit: validatedParams.limit,
+            offset: validatedParams.offset,
+          });
+          result = {
+            found: searchResult.results.length > 0,
+            count: searchResult.results.length,
+            totalCount: searchResult.totalCount,
+            results: searchResult.results.map((r) => ({
+              id: r.id,
+              title: r.title,
+              summary: r.summary,
+              createdAt: r.createdAt,
+            })),
+            message:
+              searchResult.results.length > 0
+                ? `Found ${searchResult.results.length} document(s).`
+                : 'No documents found.',
+          };
+          break;
+        }
+
+        default:
+          throw new Error(`Unknown artifact tool: ${tool}`);
+      }
+
+      this.sendArtifactToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        result,
+        false
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log.error('Artifact tool execution failed', {
+        agentId: agent.id,
+        tool,
+        error: errorMessage,
+      });
+      this.sendArtifactToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        {
+          error: errorMessage,
+        },
+        true
+      );
+    }
+  }
+
+  /**
+   * Send an artifact tool response back to a local agent
+   */
+  private sendArtifactToolResponse(
+    agentId: string,
+    sessionId: string,
+    requestId: string,
+    result: unknown,
+    isError: boolean
+  ): void {
+    const payload = {
+      type: 'artifact_tool_response',
+      requestId,
+      sessionId,
+      result,
+      isError,
+      timestamp: new Date().toISOString(),
+    };
+
+    const sent = this.wsRegistry.sendMessage(agentId, payload);
+    if (!sent) {
+      this.log.warn(
+        'Failed to send artifact tool response - agent not connected',
+        {
+          agentId,
+          requestId: requestId.slice(0, 8) + '...',
+        }
+      );
+    }
+  }
 }
 
 // Event types from local agents
@@ -613,7 +852,16 @@ type AgentEvent =
   | { type: 'message_start' }
   | {
       type: 'message_complete';
-      usage?: { promptTokens: number; completionTokens: number };
+      usage?: {
+        promptTokens: number;
+        completionTokens: number;
+        estimatedCost?: number;
+        cacheReadTokens?: number;
+        cacheWriteTokens?: number;
+        durationMs?: number;
+        durationApiMs?: number;
+        numTurns?: number;
+      };
       finishReason?: string;
     }
   | { type: 'error'; code: string; error: string; retryable: boolean }

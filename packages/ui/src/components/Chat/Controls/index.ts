@@ -1,6 +1,9 @@
 export { ContextIndicator } from './ContextIndicator';
 export type { ContextIndicatorProps } from './ContextIndicator';
 
+export { RunningTimeIndicator } from './RunningTimeIndicator';
+export type { RunningTimeIndicatorProps } from './RunningTimeIndicator';
+
 export { AttachmentButton } from './AttachmentButton';
 export type { AttachmentButtonProps, AttachmentType } from './AttachmentButton';
 

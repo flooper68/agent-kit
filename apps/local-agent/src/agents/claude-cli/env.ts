@@ -32,8 +32,8 @@ const envSchema = z.object({
   /** Comma-separated list of tools to block */
   DISALLOWED_TOOLS: z.string().optional(),
 
-  /** Custom system prompt to append */
-  APPEND_SYSTEM_PROMPT: z.string().optional(),
+  /** Custom system prompt to replace the default entirely */
+  CUSTOM_SYSTEM_PROMPT: z.string().optional(),
 
   /**
    * Permission mode for handling tool approvals (REQUIRED).

@@ -22,6 +22,8 @@ export interface CliArgsOptions {
   maxTokens?: number;
   /** CLI session ID for resuming conversation */
   resumeSessionId?: string;
+  /** Path to MCP config JSON file for external tools (e.g., artifact tools) */
+  mcpConfigPath?: string;
 }
 
 /**
@@ -90,6 +92,11 @@ export function buildCliArgs(options: CliArgsOptions): string[] {
   // Session resumption for conversation continuity
   if (options.resumeSessionId) {
     args.push('--resume', options.resumeSessionId);
+  }
+
+  // MCP server configuration for external tools (e.g., artifact tools)
+  if (options.mcpConfigPath) {
+    args.push('--mcp-config', options.mcpConfigPath);
   }
 
   return args;

@@ -20,11 +20,11 @@ const envSchema = z.object({
   /** HTTPS proxy for web requests */
   HTTPS_PROXY: z.string().optional(),
 
-  /** Claude model to use (e.g., 'claude-sonnet-4-20250514') */
-  MODEL: z.string().optional(),
+  /** Claude model to use - defaults to Sonnet 4.5 */
+  MODEL: z.string().default('claude-sonnet-4-5'),
 
-  /** Maximum tokens for extended thinking mode */
-  MAX_THINKING_TOKENS: z.coerce.number().optional(),
+  /** Maximum tokens for extended thinking - enables better synthesis */
+  MAX_THINKING_TOKENS: z.coerce.number().default(5000),
 
   /** Enable partial message streaming for real-time text updates */
   INCLUDE_PARTIAL_MESSAGES: z

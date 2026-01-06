@@ -33,6 +33,23 @@ export const Default: Story = {
   },
 };
 
+export const Empty: Story = {
+  args: {
+    usage: {
+      used: 0,
+      total: 200000,
+      percentage: 0,
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Default state when no context usage data is available yet.',
+      },
+    },
+  },
+};
+
 export const WithCost: Story = {
   args: {
     usage: {
