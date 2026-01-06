@@ -7,11 +7,15 @@
     "dev:web-researcher": "bun run --watch src/agents/web-researcher/index.ts",
     "dev:mock-agent": "bun run --watch src/agents/mock-agent/index.ts",
     "dev:claude-cli": "bun run --watch src/agents/claude-cli/index.ts",
+    "dev:claude-assistant-opus": "bun run --watch src/agents/claude-assistant-opus/index.ts",
+    "dev:claude-assistant-sonnet": "bun run --watch src/agents/claude-assistant-sonnet/index.ts",
     "build:codebase-researcher": "bun build src/agents/codebase-researcher/index.ts --compile --outfile dist/codebase-researcher --minify",
     "build:web-researcher": "bun build src/agents/web-researcher/index.ts --compile --outfile dist/web-researcher --minify",
     "build:mock-agent": "bun build src/agents/mock-agent/index.ts --compile --outfile dist/mock-agent --minify",
     "build:claude-cli": "bun build src/agents/claude-cli/index.ts --compile --outfile dist/claude-cli --minify",
-    "build": "bun run build:codebase-researcher && bun run build:web-researcher && bun run build:mock-agent && bun run build:claude-cli"
+    "build:claude-assistant-opus": "bun build src/agents/claude-assistant-opus/index.ts --compile --outfile dist/claude-assistant-opus --minify",
+    "build:claude-assistant-sonnet": "bun build src/agents/claude-assistant-sonnet/index.ts --compile --outfile dist/claude-assistant-sonnet --minify",
+    "build": "bun run build:codebase-researcher && bun run build:web-researcher && bun run build:mock-agent && bun run build:claude-cli && bun run build:claude-assistant-opus && bun run build:claude-assistant-sonnet"
   },
   "dependencies": {
     "@agent-kit/auth": "workspace:*",

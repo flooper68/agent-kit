@@ -73,10 +73,57 @@ export type ArtifactToolResponsePayload = z.infer<
   typeof ArtifactToolResponsePayloadSchema
 >;
 
+// Server tool names (all server-side tools accessible via relay)
+export const ServerToolNameSchema = z.enum([
+  // Static tools
+  'webSearch',
+  'fetch',
+  // Artifact tools
+  'writeArtifact',
+  'readArtifact',
+  'searchArtifacts',
+  // Project tools
+  'listProjects',
+  'searchProjects',
+  'getProject',
+  'createProject',
+  'updateProject',
+  // Task tools
+  'listTasks',
+  'searchTasks',
+  'getTask',
+  'createTask',
+  'updateTask',
+  'moveTask',
+  'reorderTask',
+  'attachArtifactToTask',
+  'detachArtifactFromTask',
+  // Client tools (relayed through server)
+  'navigateTo',
+  'getCurrentUIState',
+]);
+
+export type ServerToolName = z.infer<typeof ServerToolNameSchema>;
+
+// Server tool response from server (after agent sends request)
+export const ServerToolResponsePayloadSchema = z.object({
+  type: z.literal('server_tool_response'),
+  requestId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  result: z.unknown(),
+  isError: z.boolean().optional(),
+  timestamp: z.string(),
+});
+
+export type ServerToolResponsePayload = z.infer<
+  typeof ServerToolResponsePayloadSchema
+>;
+
 export const ServerToAgentMessageSchema = z.discriminatedUnion('type', [
   UserMessagePayloadSchema,
   InterruptPayloadSchema,
   ArtifactToolResponsePayloadSchema,
+  ServerToolResponsePayloadSchema,
 ]);
 
 export type ServerToAgentMessage = z.infer<typeof ServerToAgentMessageSchema>;
@@ -208,10 +255,25 @@ export type ArtifactToolRequestPayload = z.infer<
   typeof ArtifactToolRequestPayloadSchema
 >;
 
+// Server tool request sent from agent to server
+export const ServerToolRequestPayloadSchema = z.object({
+  type: z.literal('server_tool_request'),
+  requestId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  tool: ServerToolNameSchema,
+  params: z.record(z.string(), z.unknown()),
+  timestamp: z.string(),
+});
+
+export type ServerToolRequestPayload = z.infer<
+  typeof ServerToolRequestPayloadSchema
+>;
+
 // Agent to server message types
 export const AgentToServerMessageSchema = z.discriminatedUnion('type', [
   EventPayloadSchema,
   ArtifactToolRequestPayloadSchema,
+  ServerToolRequestPayloadSchema,
 ]);
 
 export type AgentToServerMessage = z.infer<typeof AgentToServerMessageSchema>;
@@ -250,6 +312,8 @@ export interface ClaudeCodeHandlerConfig extends AgentHandlerConfig {
   permissionMode?: 'dangerously-skip-permissions' | 'allowed-tools';
   /** Enable server artifact tools via WebSocket relay */
   enableArtifactTools?: boolean;
+  /** Enable all server tools via WebSocket relay (supersedes enableArtifactTools) */
+  enableServerTools?: boolean;
 }
 
 /**

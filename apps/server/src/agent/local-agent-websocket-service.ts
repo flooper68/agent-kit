@@ -23,6 +23,10 @@ import { STREAMING_HEARTBEAT_INTERVAL_MS } from './streaming-state-manager';
 import type { AgentsFeature } from '../features/agents';
 import type { LocalAgentsFeature } from '../features/local-agents';
 import type { ArtifactsFeature } from '../features/artifacts';
+import type { ProjectsFeature } from '../features/projects';
+import type { TasksFeature } from '../features/tasks';
+import type { PubSubManager } from '../real-time';
+import { getToolsById } from './tools';
 
 // Zod schemas for validating WebSocket messages from local agents
 const AgentEventSchema = z.discriminatedUnion('type', [
@@ -88,6 +92,43 @@ const ArtifactToolRequestSchema = z.object({
   timestamp: z.string(),
 });
 
+// Schema for server tool requests from local agents (all server tools)
+const ServerToolRequestSchema = z.object({
+  type: z.literal('server_tool_request'),
+  requestId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  tool: z.enum([
+    // Static tools
+    'webSearch',
+    'fetch',
+    // Artifact tools
+    'writeArtifact',
+    'readArtifact',
+    'searchArtifacts',
+    // Project tools
+    'listProjects',
+    'searchProjects',
+    'getProject',
+    'createProject',
+    'updateProject',
+    // Task tools
+    'listTasks',
+    'searchTasks',
+    'getTask',
+    'createTask',
+    'updateTask',
+    'moveTask',
+    'reorderTask',
+    'attachArtifactToTask',
+    'detachArtifactFromTask',
+    // Client tools
+    'navigateTo',
+    'getCurrentUIState',
+  ]),
+  params: z.record(z.string(), z.unknown()),
+  timestamp: z.string(),
+});
+
 // Schemas for validating artifact tool parameters
 const WriteArtifactParamsSchema = z.object({
   title: z.string().min(1).max(255),
@@ -108,6 +149,7 @@ const SearchArtifactsParamsSchema = z.object({
 const AgentMessageSchema = z.discriminatedUnion('type', [
   EventMessageSchema,
   ArtifactToolRequestSchema,
+  ServerToolRequestSchema,
 ]);
 
 interface AgentInfo {
@@ -132,7 +174,10 @@ export class LocalAgentWebSocketService {
     private streamingStateManager: StreamingStateManager,
     private agentsFeature: AgentsFeature,
     private localAgentsFeature: LocalAgentsFeature,
-    private artifactsFeature: ArtifactsFeature
+    private artifactsFeature: ArtifactsFeature,
+    private projectsFeature?: ProjectsFeature,
+    private tasksFeature?: TasksFeature,
+    private pubsub?: PubSubManager
   ) {
     this.wss = new WebSocketServer({ noServer: true });
     this.setupConnectionHandler();
@@ -423,6 +468,10 @@ export class LocalAgentWebSocketService {
         }
         case 'artifact_tool_request': {
           await this.handleArtifactToolRequest(agent, message);
+          break;
+        }
+        case 'server_tool_request': {
+          await this.handleServerToolRequest(agent, message);
           break;
         }
       }
@@ -823,6 +872,142 @@ export class LocalAgentWebSocketService {
     if (!sent) {
       this.log.warn(
         'Failed to send artifact tool response - agent not connected',
+        {
+          agentId,
+          requestId: requestId.slice(0, 8) + '...',
+        }
+      );
+    }
+  }
+
+  /**
+   * Handle a server tool request from a local agent.
+   * Uses getToolsById to execute any server-side tool.
+   */
+  private async handleServerToolRequest(
+    agent: { id: string; userId: string; name: string },
+    message: {
+      requestId: string;
+      sessionId: string;
+      tool: string;
+      params: Record<string, unknown>;
+    }
+  ): Promise<void> {
+    const { requestId, sessionId, tool, params } = message;
+
+    this.log.debug('Handling server tool request', {
+      agentId: agent.id,
+      requestId: requestId.slice(0, 8) + '...',
+      tool,
+    });
+
+    // Get session to retrieve orgId
+    const session = await this.agentsFeature.sessions.getById(sessionId);
+    if (!session) {
+      this.log.warn('Session not found for server tool request', {
+        sessionId: sessionId.slice(0, 8) + '...',
+      });
+      this.sendServerToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        { error: 'Session not found' },
+        true
+      );
+      return;
+    }
+
+    try {
+      // Build tool context with all available features
+      const toolContext = {
+        userId: agent.userId,
+        orgId: session.orgId,
+        sessionId,
+        messageId: requestId, // Use requestId as messageId for client tools
+        agentId: agent.id,
+        artifactsFeature: this.artifactsFeature,
+        projectsFeature: this.projectsFeature,
+        tasksFeature: this.tasksFeature,
+        eventStreamManager: this.eventStreamManager,
+        pubsub: this.pubsub,
+      };
+
+      // Get the tool implementation
+      const tools = getToolsById([tool], toolContext);
+      const toolImpl = tools[tool];
+
+      if (!toolImpl) {
+        this.log.warn('Tool not found or not available', {
+          tool,
+          agentId: agent.id,
+        });
+        this.sendServerToolResponse(
+          agent.id,
+          sessionId,
+          requestId,
+          { error: `Tool '${tool}' not found or not available` },
+          true
+        );
+        return;
+      }
+
+      // Execute the tool
+      const result = await toolImpl.execute(params);
+
+      this.log.debug('Server tool executed successfully', {
+        agentId: agent.id,
+        tool,
+        requestId: requestId.slice(0, 8) + '...',
+      });
+
+      this.sendServerToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        result,
+        false
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log.error('Server tool execution failed', {
+        agentId: agent.id,
+        tool,
+        error: errorMessage,
+      });
+      this.sendServerToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        { error: errorMessage },
+        true
+      );
+    }
+  }
+
+  /**
+   * Send a server tool response back to a local agent
+   */
+  private sendServerToolResponse(
+    agentId: string,
+    sessionId: string,
+    requestId: string,
+    result: unknown,
+    isError: boolean
+  ): void {
+    const payload = {
+      type: 'server_tool_response',
+      requestId,
+      sessionId,
+      result,
+      isError,
+      timestamp: new Date().toISOString(),
+    };
+
+    const sent = this.wsRegistry.sendMessage(agentId, payload);
+    if (!sent) {
+      this.log.warn(
+        'Failed to send server tool response - agent not connected',
         {
           agentId,
           requestId: requestId.slice(0, 8) + '...',

@@ -10,13 +10,17 @@ import { SDKMessageMapper } from './message-mapper';
 import { reconstructConversationFromEvents } from './conversation-builder';
 import { createLogger } from '../logger';
 import { createArtifactMcpServer } from '../artifact-mcp-server';
+import { createServerToolsMcpServer } from '../server-tools-mcp-server';
 import type { ArtifactToolRelay } from '../artifact-tool-relay';
+import type { ServerToolRelay } from '../server-tool-relay';
 
 export interface ClaudeCodeProviderConfig extends ClaudeCodeHandlerConfig {
   /** Logger name prefix */
   loggerName: string;
-  /** Artifact tool relay for communicating with the server (optional) */
+  /** Artifact tool relay for communicating with the server (optional, legacy) */
   artifactRelay?: ArtifactToolRelay;
+  /** Server tool relay for all server operations (supersedes artifactRelay) */
+  serverRelay?: ServerToolRelay;
 }
 
 /**
@@ -110,23 +114,36 @@ export class ClaudeCodeProvider {
         queryOptions.customSystemPrompt = this.config.customSystemPrompt;
       }
 
-      // Add in-process MCP server for artifact tools if enabled
-      if (this.config.enableArtifactTools && this.config.artifactRelay) {
-        const artifactServer = createArtifactMcpServer(
+      // Configure MCP servers based on enabled tools
+      const mcpServers: Record<string, unknown> = {};
+
+      // Add in-process MCP server for server tools if enabled (supersedes artifact tools)
+      if (this.config.enableServerTools && this.config.serverRelay) {
+        mcpServers['agent-kit-server'] = createServerToolsMcpServer(
+          this.config.serverRelay,
+          sessionId
+        );
+        this.log.debug('In-process MCP server configured for all server tools');
+      }
+      // Add in-process MCP server for artifact tools if enabled (legacy)
+      else if (this.config.enableArtifactTools && this.config.artifactRelay) {
+        mcpServers['agent-kit-artifacts'] = createArtifactMcpServer(
           this.config.artifactRelay,
           sessionId
         );
-        queryOptions.mcpServers = {
-          'agent-kit-artifacts': artifactServer,
-        };
         this.log.debug('In-process MCP server configured for artifact tools');
+      }
+
+      if (Object.keys(mcpServers).length > 0) {
+        queryOptions.mcpServers = mcpServers;
       }
 
       this.log.debug('Query options configured', {
         hasModel: !!this.config.model,
         hasMaxThinkingTokens: this.config.maxThinkingTokens !== undefined,
         hasIncludePartialMessages: !!this.config.includePartialMessages,
-        hasMcpServers: !!queryOptions.mcpServers,
+        hasMcpServers: Object.keys(mcpServers).length > 0,
+        mcpServerNames: Object.keys(mcpServers),
       });
 
       const queryResult = query({
