@@ -9,12 +9,13 @@ services:
       - AGENT_ID=${CODEBASE_RESEARCHER_AGENT_ID:-codebase-researcher}
       - GIT_REPOSITORY_URL=${CODEBASE_RESEARCHER_GIT_REPOSITORY_URL}
       - GIT_BRANCH=${CODEBASE_RESEARCHER_GIT_BRANCH:-}
-      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - WORKING_DIRECTORY=${CODEBASE_RESEARCHER_WORKING_DIRECTORY:-/workspace}
       - MODEL=${CODEBASE_RESEARCHER_MODEL:-}
       - MAX_THINKING_TOKENS=${CODEBASE_RESEARCHER_MAX_THINKING_TOKENS:-}
     volumes:
       - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro
+      - ${HOME}/.gitconfig:/home/agent/.gitconfig:ro
+      - ${HOME}/.config/gh:/home/agent/.config/gh:ro
     restart: unless-stopped
 
   web-researcher:

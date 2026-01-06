@@ -1,12 +1,6 @@
 #!/bin/bash
 set -e
 
-# Configure git credentials if GITHUB_TOKEN is provided
-if [ -n "$GITHUB_TOKEN" ]; then
-  echo "Configuring git credentials..."
-  echo "https://x-access-token:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
-fi
-
 # Clone repository
 if [ -z "$GIT_REPOSITORY_URL" ]; then
   echo "Error: GIT_REPOSITORY_URL environment variable is required"

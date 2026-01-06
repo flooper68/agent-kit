@@ -30,13 +30,18 @@ RUN bun build src/agents/codebase-researcher/index.ts --compile --outfile dist/c
 # Runtime image
 FROM debian:bookworm-slim
 
-# Install ca-certificates, curl, git for HTTPS requests and repository operations
+# Install ca-certificates, curl, git, and GitHub CLI for HTTPS requests and repository operations
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
         git \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* && \
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends gh && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create non-root user and setup directories
 RUN useradd -m -s /bin/bash agent && \
@@ -47,8 +52,6 @@ RUN useradd -m -s /bin/bash agent && \
 USER agent
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# Configure git credential helper
-RUN git config --global credential.helper store
 USER root
 
 COPY --from=builder /app/apps/local-agent/dist/codebase-researcher /usr/local/bin/
