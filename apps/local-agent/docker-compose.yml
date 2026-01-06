@@ -13,6 +13,8 @@ services:
     volumes:
       - ${CODEBASE_RESEARCHER_WORKSPACE:-./workspace}:/workspace:ro
       - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro
+      - ${HOME}/.gitconfig:/home/agent/.gitconfig:ro
+      - ${HOME}/.git-credentials:/home/agent/.git-credentials:ro
     restart: unless-stopped
 
   web-researcher:

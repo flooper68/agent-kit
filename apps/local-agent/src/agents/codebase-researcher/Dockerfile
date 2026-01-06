@@ -30,11 +30,12 @@ RUN bun build src/agents/codebase-researcher/index.ts --compile --outfile dist/c
 # Runtime image
 FROM debian:bookworm-slim
 
-# Install ca-certificates, curl for HTTPS requests
+# Install ca-certificates, curl, git for HTTPS requests and repository operations
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
+        git \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user and setup directories
