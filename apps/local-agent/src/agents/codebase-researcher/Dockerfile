@@ -48,7 +48,8 @@ USER agent
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
 # Configure git to use credentials file (mounted at runtime)
-RUN git config --global credential.helper 'store --file=/home/agent/.git-credentials'
+RUN git config --global credential.helper 'store --file=/home/agent/.git-credentials' && \
+    touch /home/agent/.git-credentials
 USER root
 
 COPY --from=builder /app/apps/local-agent/dist/codebase-researcher /usr/local/bin/
