@@ -27,6 +27,9 @@ export const RunningTimeIndicator = forwardRef<
   const [finalDuration, setFinalDuration] = useState<number | null>(null);
   const wasStreamingRef = useRef(false);
 
+  // Track elapsed seconds in a ref for capturing final duration without dependency cycles
+  const elapsedSecondsRef = useRef(0);
+
   useEffect(() => {
     if (status === 'streaming' && streamingStartTime) {
       wasStreamingRef.current = true;
@@ -37,23 +40,23 @@ export const RunningTimeIndicator = forwardRef<
         (Date.now() - streamingStartTime) / 1000
       );
       setElapsedSeconds(initialElapsed);
+      elapsedSecondsRef.current = initialElapsed;
 
       const interval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - streamingStartTime) / 1000);
         setElapsedSeconds(elapsed);
+        elapsedSecondsRef.current = elapsed;
       }, 1000);
 
       return () => clearInterval(interval);
-    } else if (
-      wasStreamingRef.current &&
-      status === 'ready' &&
-      elapsedSeconds > 0
-    ) {
-      // Lock the final duration when streaming ends
-      setFinalDuration(elapsedSeconds);
+    } else if (wasStreamingRef.current && status === 'ready') {
+      // Lock the final duration when streaming ends using ref value
+      if (elapsedSecondsRef.current > 0) {
+        setFinalDuration(elapsedSecondsRef.current);
+      }
       wasStreamingRef.current = false;
     }
-  }, [status, streamingStartTime, elapsedSeconds]);
+  }, [status, streamingStartTime]);
 
   // Reset when a new streaming session starts (streamingStartTime changes)
   useEffect(() => {

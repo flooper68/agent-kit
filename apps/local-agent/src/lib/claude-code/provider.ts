@@ -104,17 +104,16 @@ export class ClaudeCodeProvider {
       queryOptions.includePartialMessages =
         this.config.includePartialMessages ?? true;
 
-      // Add system prompt options
+      // Add custom system prompt if configured
       if (this.config.customSystemPrompt) {
         queryOptions.customSystemPrompt = this.config.customSystemPrompt;
-      } else if (this.config.appendSystemPrompt) {
-        queryOptions.appendSystemPrompt = this.config.appendSystemPrompt;
       }
 
       // Add in-process MCP server for artifact tools if enabled
       if (this.config.enableArtifactTools && this.config.artifactRelay) {
         const artifactServer = createArtifactMcpServer(
-          this.config.artifactRelay
+          this.config.artifactRelay,
+          sessionId
         );
         queryOptions.mcpServers = {
           'agent-kit-artifacts': artifactServer,

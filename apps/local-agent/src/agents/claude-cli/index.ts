@@ -37,7 +37,7 @@ const client = new LocalAgentClient({
     maxThinkingTokens: env.MAX_THINKING_TOKENS,
     maxTokens: env.MAX_TOKENS,
     disallowedTools: parseToolsList(env.DISALLOWED_TOOLS),
-    appendSystemPrompt: env.APPEND_SYSTEM_PROMPT,
+    customSystemPrompt: env.CUSTOM_SYSTEM_PROMPT,
     permissionMode: env.PERMISSION_MODE,
   },
 });

@@ -620,6 +620,8 @@ export function useAgentSession(
               ) {
                 onResourceCreated?.();
               }
+              // Clean up after use to prevent memory growth in long sessions
+              delete toolNamesByCallIdRef.current[event.toolCallId];
             }
             break;
 

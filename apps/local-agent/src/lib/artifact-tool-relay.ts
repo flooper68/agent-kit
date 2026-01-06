@@ -10,6 +10,7 @@ interface PendingRequest {
   resolve: (result: unknown) => void;
   reject: (error: Error) => void;
   timeoutId: ReturnType<typeof setTimeout>;
+  tool: string;
 }
 
 /**
@@ -19,17 +20,13 @@ interface PendingRequest {
 export class ArtifactToolRelay {
   private pendingRequests = new Map<string, PendingRequest>();
   private ws: WebSocket | null = null;
-  private sessionId: string | null = null;
 
   /**
-   * Set the WebSocket connection and session context for artifact operations.
+   * Set the WebSocket connection for artifact operations.
    */
-  setConnection(ws: WebSocket, sessionId: string): void {
+  setConnection(ws: WebSocket): void {
     this.ws = ws;
-    this.sessionId = sessionId;
-    log.debug('Connection set for artifact relay', {
-      sessionId: sessionId.slice(0, 8) + '...',
-    });
+    log.debug('Connection set for artifact relay');
   }
 
   /**
@@ -46,7 +43,6 @@ export class ArtifactToolRelay {
     }
     this.pendingRequests.clear();
     this.ws = null;
-    this.sessionId = null;
     log.debug('Connection cleared for artifact relay');
   }
 
@@ -54,7 +50,7 @@ export class ArtifactToolRelay {
    * Check if the relay is connected and ready to send requests.
    */
   isConnected(): boolean {
-    return this.ws !== null && this.sessionId !== null;
+    return this.ws !== null;
   }
 
   /**
@@ -62,15 +58,18 @@ export class ArtifactToolRelay {
    *
    * @param tool - The artifact tool to execute
    * @param params - Parameters for the tool
+   * @param sessionId - The session ID for this request
    * @param timeoutMs - Timeout in milliseconds (default: 30 seconds)
    * @returns The tool result from the server
    */
   async executeArtifactTool(
     tool: ArtifactToolName,
     params: Record<string, unknown>,
+    sessionId: string,
     timeoutMs = DEFAULT_TIMEOUT_MS
   ): Promise<unknown> {
-    if (!this.ws || !this.sessionId) {
+    const ws = this.ws;
+    if (!ws) {
       throw new Error('Not connected to server');
     }
 
@@ -78,6 +77,7 @@ export class ArtifactToolRelay {
 
     log.debug('Executing artifact tool', {
       requestId: requestId.slice(0, 8) + '...',
+      sessionId: sessionId.slice(0, 8) + '...',
       tool,
       params: Object.keys(params),
     });
@@ -95,19 +95,19 @@ export class ArtifactToolRelay {
         );
       }, timeoutMs);
 
-      this.pendingRequests.set(requestId, { resolve, reject, timeoutId });
+      this.pendingRequests.set(requestId, { resolve, reject, timeoutId, tool });
 
       const message = {
         type: 'artifact_tool_request',
         requestId,
-        sessionId: this.sessionId,
+        sessionId,
         tool,
         params,
         timestamp: new Date().toISOString(),
       };
 
       try {
-        this.ws!.send(JSON.stringify(message));
+        ws.send(JSON.stringify(message));
         log.debug('Sent artifact tool request', {
           requestId: requestId.slice(0, 8) + '...',
           tool,

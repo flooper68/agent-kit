@@ -120,8 +120,8 @@ export class MessageHandler {
       eventsCount: events.length,
     });
 
-    // Set artifact relay connection for this session
-    this.artifactRelay.setConnection(this.ws, sessionId);
+    // Set artifact relay WebSocket connection
+    this.artifactRelay.setConnection(this.ws);
 
     // Create abort controller for this session
     const abortController = new AbortController();
@@ -209,6 +209,10 @@ export class MessageHandler {
     } finally {
       this.activeSessions.delete(sessionId);
       this.eventsSentCount.delete(sessionId);
+      // Clear artifact relay connection when no more active sessions
+      if (this.activeSessions.size === 0) {
+        this.artifactRelay.clearConnection();
+      }
       log.debug('Session cleaned up', {
         sessionId,
         remainingActiveSessions: this.activeSessions.size,

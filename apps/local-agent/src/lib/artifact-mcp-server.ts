@@ -28,10 +28,16 @@ function formatMcpResult(result: unknown) {
  * access to the artifact relay without IPC.
  *
  * @param artifactRelay - The relay for communicating artifact operations to the server
+ * @param sessionId - The session ID for artifact operations
  * @returns An MCP server instance that can be passed to the Claude Code SDK query()
  */
-export function createArtifactMcpServer(artifactRelay: ArtifactToolRelay) {
-  log.debug('Creating in-process MCP server for artifact tools');
+export function createArtifactMcpServer(
+  artifactRelay: ArtifactToolRelay,
+  sessionId: string
+) {
+  log.debug('Creating in-process MCP server for artifact tools', {
+    sessionId: sessionId.slice(0, 8) + '...',
+  });
 
   return createSdkMcpServer({
     name: 'agent-kit-artifacts',
@@ -68,7 +74,8 @@ export function createArtifactMcpServer(artifactRelay: ArtifactToolRelay) {
 
           const result = await artifactRelay.executeArtifactTool(
             'writeArtifact',
-            args
+            args,
+            sessionId
           );
 
           log.debug('writeArtifact tool completed', {
@@ -94,7 +101,8 @@ export function createArtifactMcpServer(artifactRelay: ArtifactToolRelay) {
 
           const result = await artifactRelay.executeArtifactTool(
             'readArtifact',
-            args
+            args,
+            sessionId
           );
 
           log.debug('readArtifact tool completed');
@@ -129,7 +137,8 @@ export function createArtifactMcpServer(artifactRelay: ArtifactToolRelay) {
 
           const result = await artifactRelay.executeArtifactTool(
             'searchArtifacts',
-            args
+            args,
+            sessionId
           );
 
           log.debug('searchArtifacts tool completed');

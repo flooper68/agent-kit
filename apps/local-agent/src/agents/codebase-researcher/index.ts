@@ -142,7 +142,7 @@ const client = new LocalAgentClient({
     maxThinkingTokens: env.MAX_THINKING_TOKENS,
     includePartialMessages: env.INCLUDE_PARTIAL_MESSAGES,
     enableArtifactTools: true,
-    appendSystemPrompt: SYSTEM_PROMPT,
+    customSystemPrompt: SYSTEM_PROMPT,
   },
 });
 

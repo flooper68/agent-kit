@@ -1,3 +1,4 @@
+// Note: Using Zod v3 (not v4) for compatibility with @anthropic-ai/claude-code SDK
 import { z } from 'zod';
 
 // ============= Server → Agent Messages =============
@@ -243,8 +244,6 @@ export interface ClaudeCodeHandlerConfig extends AgentHandlerConfig {
   maxTokens?: number;
   /** Tools to block */
   disallowedTools?: string[];
-  /** Custom system prompt to append to the default */
-  appendSystemPrompt?: string;
   /** Custom system prompt to replace the default entirely */
   customSystemPrompt?: string;
   /** Permission handling mode (for Claude CLI) */

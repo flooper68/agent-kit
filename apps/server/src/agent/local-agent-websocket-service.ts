@@ -88,6 +88,23 @@ const ArtifactToolRequestSchema = z.object({
   timestamp: z.string(),
 });
 
+// Schemas for validating artifact tool parameters
+const WriteArtifactParamsSchema = z.object({
+  title: z.string().min(1).max(255),
+  content: z.string().min(1).max(1_000_000),
+  summary: z.string().max(500).optional(),
+});
+
+const ReadArtifactParamsSchema = z.object({
+  artifactId: z.string().uuid(),
+});
+
+const SearchArtifactsParamsSchema = z.object({
+  query: z.string().optional().default(''),
+  limit: z.number().int().min(1).max(100).optional().default(10),
+  offset: z.number().int().min(0).optional().default(0),
+});
+
 const AgentMessageSchema = z.discriminatedUnion('type', [
   EventMessageSchema,
   ArtifactToolRequestSchema,
@@ -675,14 +692,15 @@ export class LocalAgentWebSocketService {
 
       switch (tool) {
         case 'writeArtifact': {
+          const validatedParams = WriteArtifactParamsSchema.parse(params);
           const artifact = await this.artifactsFeature.create({
             userId: agent.userId,
             orgId: session.orgId,
             sessionId,
             agentId: agent.id,
-            title: params.title as string,
-            content: params.content as string,
-            summary: params.summary as string | undefined,
+            title: validatedParams.title,
+            content: validatedParams.content,
+            summary: validatedParams.summary,
           });
           result = {
             success: true,
@@ -699,8 +717,9 @@ export class LocalAgentWebSocketService {
         }
 
         case 'readArtifact': {
+          const validatedParams = ReadArtifactParamsSchema.parse(params);
           const artifact = await this.artifactsFeature.getById(
-            params.artifactId as string,
+            validatedParams.artifactId,
             agent.userId,
             session.orgId
           );
@@ -724,12 +743,13 @@ export class LocalAgentWebSocketService {
         }
 
         case 'searchArtifacts': {
+          const validatedParams = SearchArtifactsParamsSchema.parse(params);
           const searchResult = await this.artifactsFeature.search({
             userId: agent.userId,
             orgId: session.orgId,
-            query: (params.query as string) ?? '',
-            limit: (params.limit as number) ?? 10,
-            offset: (params.offset as number) ?? 0,
+            query: validatedParams.query,
+            limit: validatedParams.limit,
+            offset: validatedParams.offset,
           });
           result = {
             found: searchResult.results.length > 0,
