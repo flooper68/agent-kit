@@ -1,5 +1,6 @@
 import type Redis from 'ioredis';
 import type { PubSubManager } from '../real-time';
+import { logger } from './logger';
 
 /**
  * Interface for listing agents (dependency injection)
@@ -29,6 +30,7 @@ export interface ConnectionStatusUpdate {
 export class LocalAgentsConnectionManager {
   private redis: Redis;
   private pubsub: PubSubManager;
+  private log = logger.child({ component: 'LocalAgentsConnectionManager' });
 
   constructor(redis: Redis, pubsub: PubSubManager) {
     this.redis = redis;
@@ -121,10 +123,7 @@ export class LocalAgentsConnectionManager {
     try {
       return JSON.parse(data) as LocalAgentConnection;
     } catch (error) {
-      console.error(
-        `Failed to parse connection data for agent ${agentId}:`,
-        error
-      );
+      this.log.error('Failed to parse connection data', { agentId, error });
       return null;
     }
   }
@@ -141,10 +140,7 @@ export class LocalAgentsConnectionManager {
       try {
         connections.push(JSON.parse(json) as LocalAgentConnection);
       } catch (error) {
-        console.error(
-          `Failed to parse connection data for agent ${agentId}:`,
-          error
-        );
+        this.log.error('Failed to parse connection data', { agentId, error });
       }
     }
 
@@ -193,9 +189,7 @@ export class LocalAgentsConnectionManager {
 
     if (keys.length > 0) {
       await this.redis.del(...keys);
-      console.log(
-        `[LocalAgents] Cleaned up ${keys.length} stale connection keys`
-      );
+      this.log.info('Cleaned up stale connection keys', { count: keys.length });
     }
   }
 

@@ -173,8 +173,6 @@ export function useAgentSession(
   const currentPlaceholderIdRef = useRef<string | null>(null);
   // Track tool names by callId to identify resource-creating tools
   const toolNamesByCallIdRef = useRef<Record<string, string>>({});
-  // Track processed event IDs to prevent duplicate processing on subscription reconnect
-  const processedEventIdsRef = useRef<Set<string>>(new Set());
   // Track lastStreamId from session query for subscription resumption
   const lastStreamIdRef = useRef<string | undefined>(undefined);
   // Track message IDs loaded from DB to skip historical terminal events during replay
@@ -219,7 +217,6 @@ export function useAgentSession(
     hasInitialScrolledRef.current = false;
     currentPlaceholderIdRef.current = null;
     toolNamesByCallIdRef.current = {};
-    processedEventIdsRef.current = new Set();
     lastStreamIdRef.current = undefined;
     loadedMessageIdsRef.current = new Set();
   }, [sessionId]);
@@ -274,7 +271,6 @@ export function useAgentSession(
   // Wait for isInitialized to be true so messages are loaded from DB first
   // When restoring a streaming session:
   // - replayHistory: true to get full event history from the beginning
-  // - The client deduplicates events via processedEventIdsRef
   const subscription = deps.useMessageSubscription(
     {
       sessionId: sessionId!,
@@ -284,8 +280,6 @@ export function useAgentSession(
     {
       enabled: !!sessionId,
       onData: (event: StreamEvent) => {
-        processedEventIdsRef.current.add(event.id);
-
         console.log('[AgentSession] Event:', event.type, event);
 
         if (!hasInitialScrolledRef.current) {

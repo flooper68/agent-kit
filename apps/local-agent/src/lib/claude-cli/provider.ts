@@ -92,6 +92,9 @@ export class ClaudeCliProvider {
     eventCount++;
     this.log.debug('Emitted message_start event');
 
+    // Track abort handler for cleanup (defined outside try for catch block access)
+    let abortHandler: (() => void) | null = null;
+
     try {
       // Build CLI arguments
       const existingSessionId = this.sessionStore.get(sessionId);
@@ -149,13 +152,14 @@ export class ClaudeCliProvider {
       });
 
       // Handle abort signal
-      const abortHandler = () => {
+      abortHandler = () => {
         this.log.info('Abort signal received, killing process');
         proc.kill();
       };
       abortSignal.addEventListener('abort', abortHandler);
 
-      // Read stderr in background for error reporting
+      // Read stderr in background for error reporting (limited to prevent memory exhaustion)
+      const MAX_STDERR_SIZE = 100000; // 100KB limit
       let stderrOutput = '';
       const stderrPromise = (async () => {
         if (proc.stderr) {
@@ -166,7 +170,12 @@ export class ClaudeCliProvider {
               const { done, value } = await reader.read();
               if (done) break;
               const chunk = decoder.decode(value, { stream: true });
-              stderrOutput += chunk;
+              if (stderrOutput.length < MAX_STDERR_SIZE) {
+                stderrOutput += chunk.slice(
+                  0,
+                  MAX_STDERR_SIZE - stderrOutput.length
+                );
+              }
               this.log.debug('CLI stderr chunk', {
                 chunk: chunk.slice(0, 200),
               });
@@ -321,10 +330,13 @@ export class ClaudeCliProvider {
 
       return { usage: finalUsage };
     } catch (error) {
-      // Clean up process if still running
+      // Clean up process and abort listener
       if (this.activeProcess) {
         this.activeProcess.kill();
         this.activeProcess = null;
+      }
+      if (abortHandler) {
+        abortSignal.removeEventListener('abort', abortHandler);
       }
 
       if (abortSignal.aborted) {
