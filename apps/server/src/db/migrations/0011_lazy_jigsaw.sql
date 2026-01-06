@@ -1,0 +1,1 @@
+ALTER TABLE "local_agents" ADD CONSTRAINT "local_agents_secret_key_prefix_unique" UNIQUE("secret_key_prefix");

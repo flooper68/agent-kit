@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { trpc } from '../lib/trpc';
+import { useSession } from '../contexts/SessionContext';
 import type { TaskHistoryItem } from '@agent-kit/ui';
 
 interface UseChatHistoryOptions {
@@ -16,6 +17,7 @@ export function useChatHistory(
   options: UseChatHistoryOptions = {}
 ): UseChatHistoryReturn {
   const { limit = 20 } = options;
+  const { streamingSessionIds } = useSession();
 
   const sessionsQuery = trpc.sessions.list.useQuery({ limit });
 
@@ -32,8 +34,10 @@ export function useChatHistory(
       agentName: session.agentId,
       totalTokens: session.usage?.totalTokens,
       messageCount: session.messageCount,
+      // Merge server state with client-side state for immediate UI feedback
+      isStreaming: session.isStreaming || streamingSessionIds.has(session.id),
     }));
-  }, [sessionsQuery.data]);
+  }, [sessionsQuery.data, streamingSessionIds]);
 
   return {
     sessions,

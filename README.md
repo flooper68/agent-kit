@@ -149,3 +149,21 @@ For detailed setup instructions, see [docs/clerk-setup.md](./docs/clerk-setup.md
 
 - [Clerk Setup](./docs/clerk-setup.md) - Authentication and multi-tenancy configuration
 - [Cache Invalidation](./docs/cache-invalidation.md) - Real-time UI updates and tRPC query invalidation patterns
+- [Command Palette](./docs/command-palette.md) - Keyboard-driven command system architecture
+- [Local Agents](./docs/local-agents.md) - Run AI agents on your local machine with file system access
+- [Local Agent Authentication](./docs/local-agent-authentication.md) - HMAC mutual authentication protocol for secure agent connections
+- [Session Management](./docs/session-management.md) - Session lifecycle, streaming, and real-time event processing
+
+## Local Agents
+
+Run AI agents on your local machine with access to your file system and local tools.
+
+**[Local Agents Documentation](./docs/local-agents.md)** - Complete guide covering architecture, setup, and usage
+
+**Quick Links:**
+
+- [What are Local Agents?](./docs/local-agents.md#introduction)
+- [Quick Start Guide](./docs/local-agents.md#quick-start-guide)
+- [Architecture Overview](./docs/local-agents.md#architecture-overview)
+- [Authentication Protocol](./docs/local-agent-authentication.md) - HMAC mutual authentication
+- [Troubleshooting](./docs/local-agents.md#troubleshooting)

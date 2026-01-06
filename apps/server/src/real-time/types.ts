@@ -16,3 +16,14 @@ export interface PubSubMessage<T = unknown> {
   data: T;
   publishedAt: string;
 }
+
+/**
+ * Options for subscribeAsync method
+ */
+export interface SubscribeAsyncOptions {
+  /**
+   * Maximum number of messages to queue before dropping oldest ones.
+   * Defaults to 100.
+   */
+  maxQueueSize?: number;
+}

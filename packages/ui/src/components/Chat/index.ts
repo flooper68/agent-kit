@@ -19,6 +19,9 @@ export * from './ToolDisplay';
 // Banners
 export * from './Banners';
 
+// Todos Floating Panel
+export * from './TodosFloatingPanel';
+
 // Sidebar
 export * from './Sidebar';
 

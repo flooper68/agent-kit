@@ -1,6 +1,11 @@
 import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CommandPalette, useTheme, type Command } from '@agent-kit/ui';
+import {
+  CommandPalette,
+  useTheme,
+  StreamingIndicator,
+  type Command,
+} from '@agent-kit/ui';
 import {
   Plus,
   FileText,
@@ -25,9 +30,35 @@ import { useCommandRegistry } from '../contexts/CommandRegistryContext';
 import { trpc } from '../lib/trpc';
 
 const USAGE_STORAGE_KEY = 'agent-kit:command-palette-usage';
+const AGENT_USAGE_STORAGE_KEY = 'agent-kit:agent-selector-usage';
 
 interface CommandUsage {
   [commandId: string]: number; // timestamp of last use
+}
+
+interface AgentUsage {
+  [agentId: string]: number; // timestamp of last use
+}
+
+function getStoredAgentUsage(): AgentUsage {
+  try {
+    const stored = localStorage.getItem(AGENT_USAGE_STORAGE_KEY);
+    if (stored) {
+      const parsed: unknown = JSON.parse(stored);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const validated: AgentUsage = {};
+        for (const [key, value] of Object.entries(parsed)) {
+          if (typeof value === 'number') {
+            validated[key] = value;
+          }
+        }
+        return validated;
+      }
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return {};
 }
 
 function getStoredUsage(): CommandUsage {
@@ -61,7 +92,17 @@ function saveUsage(usage: CommandUsage): void {
   }
 }
 
-type PaletteMode = 'commands' | 'chats' | 'projects';
+type PaletteMode = 'commands' | 'chats' | 'projects' | 'agents';
+
+interface AgentType {
+  id: string;
+  name: string;
+  description?: string;
+  model?: string;
+  provider?: string;
+  isLocal?: boolean;
+  disabled?: boolean;
+}
 
 interface AppCommandPaletteProps {
   open: boolean;
@@ -69,6 +110,10 @@ interface AppCommandPaletteProps {
   onTogglePanel?: () => void;
   onSetPanelWidth?: (width: number) => void;
   onExpandPanel?: () => void;
+  onToggleHistory?: () => void;
+  agents?: AgentType[];
+  onAgentSelect?: (agent: AgentType) => void;
+  isAgentSelectorEnabled?: boolean;
 }
 
 export function AppCommandPalette({
@@ -77,6 +122,10 @@ export function AppCommandPalette({
   onTogglePanel,
   onSetPanelWidth,
   onExpandPanel,
+  onToggleHistory,
+  agents,
+  onAgentSelect,
+  isAgentSelectorEnabled,
 }: AppCommandPaletteProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -85,6 +134,7 @@ export function AppCommandPalette({
   const { resolvedTheme, setTheme } = useTheme();
   const { commands: registeredCommands } = useCommandRegistry();
   const [usage, setUsage] = useState<CommandUsage>(getStoredUsage);
+  const [agentUsage, setAgentUsage] = useState<AgentUsage>(getStoredAgentUsage);
   const [mode, setMode] = useState<PaletteMode>('commands');
 
   // Fetch projects
@@ -114,6 +164,7 @@ export function AppCommandPalette({
   useEffect(() => {
     if (open) {
       setUsage(getStoredUsage());
+      setAgentUsage(getStoredAgentUsage());
     }
   }, [open]);
 
@@ -149,7 +200,11 @@ export function AppCommandPalette({
       description: chat.updatedAt
         ? `Last active ${chat.updatedAt.toLocaleDateString()}`
         : undefined,
-      icon: <MessageSquare className="h-4 w-4" />,
+      icon: chat.isStreaming ? (
+        <StreamingIndicator size="md" />
+      ) : (
+        <MessageSquare className="h-4 w-4" />
+      ),
       keywords: [chat.title.toLowerCase()],
       onSelect: () => {
         trackUsage('open-chat');
@@ -175,6 +230,34 @@ export function AppCommandPalette({
       },
     }));
   }, [projects, navigate, trackUsage]);
+
+  // Agent selection commands (for two-step flow)
+  const agentCommands = useMemo<Command[]>(() => {
+    if (!agents) return [];
+    // Sort agents by most recently used first
+    const sortedAgents = [...agents].sort((a, b) => {
+      const aUsage = agentUsage[a.id] ?? 0;
+      const bUsage = agentUsage[b.id] ?? 0;
+      return bUsage - aUsage;
+    });
+    return sortedAgents.map((agent) => ({
+      id: `agent-${agent.id}`,
+      label: agent.name,
+      description: agent.description,
+      icon: <Bot className="h-4 w-4" />,
+      keywords: [
+        agent.name.toLowerCase(),
+        agent.model?.toLowerCase() ?? '',
+        agent.provider?.toLowerCase() ?? '',
+        agent.isLocal ? 'local' : '',
+      ].filter(Boolean),
+      disabled: agent.disabled,
+      onSelect: () => {
+        trackUsage('select-agent');
+        onAgentSelect?.(agent);
+      },
+    }));
+  }, [agents, agentUsage, onAgentSelect, trackUsage]);
 
   const baseCommands = useMemo<Command[]>(
     () => [
@@ -219,6 +302,29 @@ export function AppCommandPalette({
           setMode('projects');
         },
       },
+      ...(isAgentSelectorEnabled && agents && agents.length > 0
+        ? [
+            {
+              id: 'select-agent',
+              label: 'Select agent...',
+              description: 'Choose an agent for your new chat',
+              icon: <Bot className="h-4 w-4" />,
+              keywords: [
+                'agent',
+                'select',
+                'choose',
+                'model',
+                'assistant',
+                'ai',
+              ],
+              keepOpen: true,
+              onSelect: () => {
+                trackUsage('select-agent');
+                setMode('agents');
+              },
+            },
+          ]
+        : []),
       {
         id: 'nav-home',
         label: 'Navigate to home',
@@ -383,6 +489,29 @@ export function AppCommandPalette({
             },
           ]
         : []),
+      ...(onToggleHistory
+        ? [
+            {
+              id: 'toggle-history',
+              label: 'Toggle chat history',
+              description: 'Show or hide the chat history sidebar',
+              icon: <History className="h-4 w-4" />,
+              keywords: [
+                'history',
+                'toggle',
+                'show',
+                'hide',
+                'sidebar',
+                'tasks',
+                'chats',
+              ],
+              onSelect: () => {
+                trackUsage('toggle-history');
+                onToggleHistory();
+              },
+            },
+          ]
+        : []),
     ],
     [
       navigate,
@@ -398,6 +527,9 @@ export function AppCommandPalette({
       onTogglePanel,
       onSetPanelWidth,
       onExpandPanel,
+      onToggleHistory,
+      agents,
+      isAgentSelectorEnabled,
     ]
   );
 
@@ -418,10 +550,12 @@ export function AppCommandPalette({
         return chatCommands;
       case 'projects':
         return projectCommands;
+      case 'agents':
+        return agentCommands;
       default:
         return sortedBaseCommands;
     }
-  }, [mode, chatCommands, projectCommands, sortedBaseCommands]);
+  }, [mode, chatCommands, projectCommands, agentCommands, sortedBaseCommands]);
 
   const placeholder = useMemo(() => {
     switch (mode) {
@@ -429,6 +563,8 @@ export function AppCommandPalette({
         return 'Search chats...';
       case 'projects':
         return 'Search projects...';
+      case 'agents':
+        return 'Search agents...';
       default:
         return 'Search commands...';
     }
@@ -440,6 +576,8 @@ export function AppCommandPalette({
         return 'No chats found.';
       case 'projects':
         return 'No projects found.';
+      case 'agents':
+        return 'No agents found.';
       default:
         return 'No commands found.';
     }

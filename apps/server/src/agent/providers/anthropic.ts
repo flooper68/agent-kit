@@ -1,4 +1,4 @@
-import { streamText, stepCountIs } from 'ai';
+import { streamText, stepCountIs, type ModelMessage } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import type {
   AgentProvider,
@@ -68,18 +68,25 @@ export class AnthropicProvider implements AgentProvider {
 
       const result = streamText({
         model: anthropic(model),
-        system: systemPrompt,
-        messages,
+        messages: [
+          {
+            role: 'system' as const,
+            content: systemPrompt,
+            providerOptions: {
+              anthropic: { cacheControl: { type: 'ephemeral' } },
+            },
+          },
+          ...(messages as ModelMessage[]),
+        ],
         tools,
         abortSignal,
         stopWhen: stepCountIs(2000),
-        providerOptions: thinkingConfig
-          ? {
-              anthropic: {
-                thinking: thinkingConfig,
-              },
-            }
-          : undefined,
+        providerOptions: {
+          anthropic: {
+            ...(thinkingConfig && { thinking: thinkingConfig }),
+            cacheControl: { type: 'ephemeral' }, // Cache tools
+          },
+        },
       });
 
       let accumulatedText = '';
@@ -151,6 +158,18 @@ export class AnthropicProvider implements AgentProvider {
                     completionTokens:
                       (chunk.totalUsage as { outputTokens?: number })
                         .outputTokens ?? 0,
+                    cacheReadTokens:
+                      (
+                        chunk.totalUsage as {
+                          inputTokenDetails?: { cacheReadTokens?: number };
+                        }
+                      ).inputTokenDetails?.cacheReadTokens ?? undefined,
+                    cacheWriteTokens:
+                      (
+                        chunk.totalUsage as {
+                          inputTokenDetails?: { cacheWriteTokens?: number };
+                        }
+                      ).inputTokenDetails?.cacheWriteTokens ?? undefined,
                   }
                 : undefined,
               finishReason: chunk.finishReason,

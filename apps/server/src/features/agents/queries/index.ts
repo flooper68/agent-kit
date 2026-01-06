@@ -18,3 +18,10 @@ export type {
   ArtifactResource,
   WebsiteResource,
 } from './get-session-resources';
+export {
+  GetSessionMessagesAndEventsQuery,
+  type SessionMessageInfo,
+  type SessionEventInfo,
+  type SessionMessagesAndEvents,
+} from './get-session-messages-and-events';
+export { GetActiveSessionIdsQuery } from './get-active-session-ids';

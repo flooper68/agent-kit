@@ -5,6 +5,7 @@ import type {
   ContextUsage,
   AgentType,
   TaskHistoryItem,
+  TodoItem,
 } from '../../../types/chat';
 import type { SessionResourcesCounts } from '../Controls/SessionResourcesButton';
 
@@ -151,6 +152,9 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
 
   /** Resource counts for session resources button tooltip */
   sessionResourcesCounts?: SessionResourcesCounts;
+
+  /** Current todos from TodoWrite tool to display in floating panel */
+  todos?: TodoItem[];
 
   /** Callback when scroll position changes (at bottom vs scrolled up) */
   onScrollPositionChange?: (isAtBottom: boolean) => void;

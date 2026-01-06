@@ -130,4 +130,14 @@ export const localAgentsRouter = router({
 
       return { secretKey };
     }),
+
+  // Subscribe to connection status updates for user's local agents
+  connectionStatus: protectedProcedureWithErrors.subscription(async function* ({
+    ctx,
+  }) {
+    yield* ctx.localAgentsConnectionManager.subscribeToStatusUpdates(
+      ctx.auth.userId,
+      ctx.localAgentsFeature
+    );
+  }),
 });

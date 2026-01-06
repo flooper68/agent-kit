@@ -1,12 +1,21 @@
 import { eq } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { agentSessions, type AgentSessionUsage } from '../../../db/schema';
+import {
+  agentSessions,
+  type AgentSessionUsage,
+  type TokenBreakdown,
+} from '../../../db/schema';
 import { calculateCost } from '../pricing';
 
 export interface UpdateSessionUsageInput {
   sessionId: string;
   promptTokens: number;
   completionTokens: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  /** Context window usage calculated from breakdown (more accurate than promptTokens for tool use) */
+  contextWindowUsage?: number;
+  tokenBreakdown?: TokenBreakdown;
   latency?: number;
   model?: string;
   provider?: string;
@@ -24,6 +33,10 @@ export class UpdateSessionUsageCommand {
       sessionId,
       promptTokens,
       completionTokens,
+      cacheReadTokens,
+      cacheWriteTokens,
+      contextWindowUsage,
+      tokenBreakdown,
       latency = 0,
       model = 'unknown',
       provider = 'unknown',
@@ -47,13 +60,36 @@ export class UpdateSessionUsageCommand {
 
     // Calculate new usage values
     const newUsage: AgentSessionUsage = {
+      // Accumulated token counts (for billing)
       promptTokens: (currentUsage?.promptTokens || 0) + promptTokens,
       completionTokens:
         (currentUsage?.completionTokens || 0) + completionTokens,
       totalTokens: (currentUsage?.totalTokens || 0) + totalTokens,
+
+      // Accumulated cache tokens (for billing insights)
+      cacheReadTokens:
+        (currentUsage?.cacheReadTokens || 0) + (cacheReadTokens ?? 0),
+      cacheWriteTokens:
+        (currentUsage?.cacheWriteTokens || 0) + (cacheWriteTokens ?? 0),
+
+      // Current context snapshot (overwrite, not accumulate)
+      // Use breakdown-calculated context window usage if available (more accurate for tool use)
+      // Falls back to promptTokens for backwards compatibility
+      currentContextTokens: contextWindowUsage ?? promptTokens,
+
+      // Token breakdown for context visualization (snapshot, not accumulated)
+      tokenBreakdown,
+
+      // Cost calculation with cache pricing
       estimatedCost:
         (currentUsage?.estimatedCost || 0) +
-        calculateCost(model, promptTokens, completionTokens),
+        calculateCost(model, {
+          promptTokens,
+          completionTokens,
+          cacheReadTokens,
+          cacheWriteTokens,
+        }),
+
       totalLatency: (currentUsage?.totalLatency || 0) + latency,
       averageLatency:
         currentMessageCount > 0

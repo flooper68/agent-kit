@@ -1,4 +1,4 @@
-import { forwardRef, useState } from 'react';
+import { forwardRef, useState, memo } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../../../lib/utils';
 import { Dialog } from '../../../Dialog';
@@ -163,118 +163,146 @@ export interface ToolBadgeProps
   result?: ToolResultPart;
 }
 
-export const ToolBadge = forwardRef<HTMLButtonElement, ToolBadgeProps>(
-  ({ toolName, state, args, toolCallId: _toolCallId, result }, ref) => {
-    const [dialogOpen, setDialogOpen] = useState(false);
+/**
+ * Custom comparison function for ToolBadge memoization
+ * Compares primitive props and checks result state changes
+ */
+function areToolBadgePropsEqual(
+  prev: ToolBadgeProps,
+  next: ToolBadgeProps
+): boolean {
+  // Compare primitive props
+  if (prev.toolName !== next.toolName) return false;
+  if (prev.state !== next.state) return false;
+  if (prev.toolCallId !== next.toolCallId) return false;
 
-    // Badge is interactive (clickable) when args are provided
-    const hasDialogData = args !== undefined;
-    const isError = state === 'error' || result?.isError;
+  // Compare result - check if result exists and error state
+  const prevHasResult = prev.result !== undefined;
+  const nextHasResult = next.result !== undefined;
+  if (prevHasResult !== nextHasResult) return false;
+  if (prevHasResult && nextHasResult) {
+    if (prev.result?.isError !== next.result?.isError) return false;
+    if (prev.result?.toolCallId !== next.result?.toolCallId) return false;
+  }
 
-    const content = (
-      <>
-        <ToolIcon />
-        <span className="font-mono truncate max-w-[120px]">{toolName}</span>
-        <StateIcon state={state} />
-      </>
-    );
+  return true;
+}
 
-    const badge = hasDialogData ? (
-      <button
-        ref={ref}
-        type="button"
-        onClick={() => setDialogOpen(true)}
-        className={cn(toolBadgeVariants({ state, interactive: true }))}
-      >
-        {content}
-      </button>
-    ) : (
-      <span className={cn(toolBadgeVariants({ state, interactive: false }))}>
-        {content}
-      </span>
-    );
+export const ToolBadge = memo(
+  forwardRef<HTMLButtonElement, ToolBadgeProps>(
+    ({ toolName, state, args, toolCallId: _toolCallId, result }, ref) => {
+      const [dialogOpen, setDialogOpen] = useState(false);
 
-    // If no dialog data, just render the badge
-    if (!hasDialogData) {
-      return badge;
-    }
+      // Badge is interactive (clickable) when args are provided
+      const hasDialogData = args !== undefined;
+      const isError = state === 'error' || result?.isError;
 
-    // Render badge with dialog
-    return (
-      <>
-        {badge}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <Dialog.Content size="lg">
-            <Dialog.Header>
-              <Dialog.Title>
-                <div className="flex items-center gap-3">
-                  <span>Tool Execution</span>
-                  <span
-                    className={cn(
-                      toolBadgeVariants({ state, interactive: false })
-                    )}
-                  >
-                    <ToolIcon />
-                    <span className="font-mono truncate max-w-[120px]">
-                      {toolName}
+      const content = (
+        <>
+          <ToolIcon />
+          <span className="font-mono truncate max-w-[120px]">{toolName}</span>
+          <StateIcon state={state} />
+        </>
+      );
+
+      const badge = hasDialogData ? (
+        <button
+          ref={ref}
+          type="button"
+          onClick={() => setDialogOpen(true)}
+          className={cn(toolBadgeVariants({ state, interactive: true }))}
+        >
+          {content}
+        </button>
+      ) : (
+        <span className={cn(toolBadgeVariants({ state, interactive: false }))}>
+          {content}
+        </span>
+      );
+
+      // If no dialog data, just render the badge
+      if (!hasDialogData) {
+        return badge;
+      }
+
+      // Render badge with dialog
+      return (
+        <>
+          {badge}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <Dialog.Content size="lg">
+              <Dialog.Header>
+                <Dialog.Title>
+                  <div className="flex items-center gap-3">
+                    <span>Tool Execution</span>
+                    <span
+                      className={cn(
+                        toolBadgeVariants({ state, interactive: false })
+                      )}
+                    >
+                      <ToolIcon />
+                      <span className="font-mono truncate max-w-[120px]">
+                        {toolName}
+                      </span>
+                      <StateIcon state={state} />
                     </span>
-                    <StateIcon state={state} />
-                  </span>
-                </div>
-              </Dialog.Title>
-              <Dialog.Description>
-                Details of the tool invocation and its result
-              </Dialog.Description>
-            </Dialog.Header>
+                  </div>
+                </Dialog.Title>
+                <Dialog.Description>
+                  Details of the tool invocation and its result
+                </Dialog.Description>
+              </Dialog.Header>
 
-            <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
-              {/* Input Section */}
-              <div className="space-y-2">
-                <Text size="14" variant="strong">
-                  Input
-                </Text>
-                <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
-                  {JSON.stringify(args, null, 2)}
-                </pre>
+              <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                {/* Input Section */}
+                <div className="space-y-2">
+                  <Text size="14" variant="strong">
+                    Input
+                  </Text>
+                  <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
+                    {JSON.stringify(args, null, 2)}
+                  </pre>
+                </div>
+
+                {/* Output Section */}
+                {result && (
+                  <div className="space-y-2">
+                    <Text
+                      size="14"
+                      variant="strong"
+                      className={isError ? 'text-destructive' : undefined}
+                    >
+                      {isError ? 'Error' : 'Output'}
+                    </Text>
+                    <ResultDisplay
+                      result={result.result}
+                      isError={isError ?? false}
+                    />
+                  </div>
+                )}
+
+                {/* No result yet */}
+                {!result && state !== 'completed' && (
+                  <Text size="14" variant="muted" className="italic">
+                    {state === 'running'
+                      ? 'Tool is currently executing...'
+                      : 'Waiting for execution...'}
+                  </Text>
+                )}
               </div>
 
-              {/* Output Section */}
-              {result && (
-                <div className="space-y-2">
-                  <Text
-                    size="14"
-                    variant="strong"
-                    className={isError ? 'text-destructive' : undefined}
-                  >
-                    {isError ? 'Error' : 'Output'}
-                  </Text>
-                  <ResultDisplay
-                    result={result.result}
-                    isError={isError ?? false}
-                  />
-                </div>
-              )}
-
-              {/* No result yet */}
-              {!result && state !== 'completed' && (
-                <Text size="14" variant="muted" className="italic">
-                  {state === 'running'
-                    ? 'Tool is currently executing...'
-                    : 'Waiting for execution...'}
-                </Text>
-              )}
-            </div>
-
-            <Dialog.Footer>
-              <Dialog.Close asChild>
-                <Button variant="outline">Close</Button>
-              </Dialog.Close>
-            </Dialog.Footer>
-          </Dialog.Content>
-        </Dialog>
-      </>
-    );
-  }
+              <Dialog.Footer>
+                <Dialog.Close asChild>
+                  <Button variant="outline">Close</Button>
+                </Dialog.Close>
+              </Dialog.Footer>
+            </Dialog.Content>
+          </Dialog>
+        </>
+      );
+    }
+  ),
+  areToolBadgePropsEqual
 );
 
 ToolBadge.displayName = 'ToolBadge';

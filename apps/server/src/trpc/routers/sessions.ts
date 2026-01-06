@@ -12,13 +12,18 @@ export const sessionsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.agentsFeature.sessions.create({
+      const session = await ctx.agentsFeature.sessions.create({
         userId: ctx.auth.userId,
         orgId: ctx.auth.orgId,
         agentId: input.agentId,
         title: input.title,
         isLocalAgent: input.isLocalAgent,
       });
+      await ctx.cacheInvalidation.publishSessionCreated(
+        ctx.auth.userId,
+        session.id
+      );
+      return session;
     }),
 
   list: orgProcedure
@@ -29,10 +34,25 @@ export const sessionsRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      return ctx.agentsFeature.sessions.listByUser(
+      const result = await ctx.agentsFeature.sessions.listByUser(
         ctx.auth.userId,
         input.limit
       );
+
+      // Batch fetch all streaming session IDs for efficient lookup
+      const streamingSessionIds =
+        await ctx.agentsFeature.streaming.getActiveSessionIds();
+
+      // Add isStreaming flag to each session
+      const itemsWithStreaming = result.items.map((session) => ({
+        ...session,
+        isStreaming: streamingSessionIds.has(session.id),
+      }));
+
+      return {
+        items: itemsWithStreaming,
+        nextCursor: result.nextCursor,
+      };
     }),
 
   get: sessionProcedure
@@ -44,13 +64,14 @@ export const sessionsRouter = router({
       // This ensures the subscription starts from a point <= what's in the DB
       // Any events written after this point will be in BOTH DB and subscription,
       // which the client handles via accumulator initialization
-      const lastStreamId = await ctx.sessionManager.getLastStreamId(
+      const lastStreamId = await ctx.eventStreamManager.getLastId(
         input.sessionId
       );
 
-      // Check if session currently has an active streaming job
+      // Check if session currently has an active streaming state
       // This allows the client to restore streaming status on reload
-      const isStreaming = await ctx.sessionManager.hasActiveJob(
+      // Uses StreamingStateManager which works for both server and local agents
+      const isStreaming = await ctx.streamingStateManager.isStreaming(
         input.sessionId
       );
 
@@ -100,6 +121,11 @@ export const sessionsRouter = router({
         });
       }
 
+      await ctx.cacheInvalidation.publishSessionUpdated(
+        ctx.auth.userId,
+        input.sessionId
+      );
+
       return updated;
     }),
 
@@ -116,6 +142,22 @@ export const sessionsRouter = router({
         });
       }
 
+      await ctx.cacheInvalidation.publishSessionDeleted(
+        ctx.auth.userId,
+        input.sessionId
+      );
+
       return { success: true };
+    }),
+
+  /**
+   * Check if a session is currently streaming
+   * Used by clients for recovery when streaming state events may have been missed
+   */
+  isStreaming: sessionProcedure
+    .input(z.object({ sessionId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      // Session ownership already verified by sessionProcedure middleware
+      return ctx.streamingStateManager.isStreaming(input.sessionId);
     }),
 });

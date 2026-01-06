@@ -30,8 +30,16 @@ const WS_TO_CONNECTION_STATUS_MAP: Record<string, ConnectionStatus> = {
 interface AppAgentPanelProps {
   /** Available agents passed from parent */
   agents: AgentType[];
+  /** Selected agent ID from parent (lifted state) */
+  selectedAgentId?: string | null;
+  /** Callback when agent is selected (lifted state) */
+  onAgentSelect?: (agent: AgentType) => void;
   /** Callback when user wants to start a new chat */
   onNewChat?: () => void;
+  /** Signal to focus the input (e.g., after agent selection from command palette) */
+  pendingInputFocus?: boolean;
+  /** Callback when input has been focused */
+  onInputFocused?: () => void;
   emptyStateConfig?: {
     title?: string;
     description?: string;
@@ -45,7 +53,11 @@ interface AppAgentPanelProps {
 
 export function AppAgentPanel({
   agents,
+  selectedAgentId,
+  onAgentSelect,
   onNewChat,
+  pendingInputFocus,
+  onInputFocused,
   emptyStateConfig,
   suggestions,
   recentChats,
@@ -143,6 +155,7 @@ export function AppAgentPanel({
     contextUsage,
     handleScrollPositionChange,
     sessionAgentId,
+    todos,
   } = useAgentSession({
     sessionId,
     onSessionInvalid: handleSessionInvalid,
@@ -150,27 +163,44 @@ export function AppAgentPanel({
     onClientToolRequest: handleClientToolRequest,
   });
 
-  // Restore last selected agent from localStorage, or fallback to first agent
+  // Track when selectedAgentId changes from parent (command palette selection)
+  const prevSelectedAgentIdRef = useRef(selectedAgentId);
   useEffect(() => {
-    if (!sessionId && !selectedAgent && agents.length > 0) {
-      // Try to restore from localStorage first
-      try {
-        const savedAgentId = localStorage.getItem(STORAGE_KEY_AGENT);
-        if (savedAgentId) {
-          const savedAgent = agents.find((a) => a.id === savedAgentId);
-          if (savedAgent) {
-            setSelectedAgent(savedAgent);
-            return;
-          }
+    // Sync when parent's selectedAgentId changes
+    if (
+      selectedAgentId &&
+      selectedAgentId !== prevSelectedAgentIdRef.current &&
+      agents.length > 0
+    ) {
+      const agent = agents.find((a) => a.id === selectedAgentId);
+      if (agent) {
+        setSelectedAgent(agent);
+      }
+    }
+    prevSelectedAgentIdRef.current = selectedAgentId;
+  }, [selectedAgentId, agents]);
+
+  // Initialize selected agent from localStorage or fallback to first agent
+  useEffect(() => {
+    if (selectedAgent || sessionId || agents.length === 0) return;
+
+    // Try to restore from localStorage first
+    try {
+      const savedAgentId = localStorage.getItem(STORAGE_KEY_AGENT);
+      if (savedAgentId) {
+        const savedAgent = agents.find((a) => a.id === savedAgentId);
+        if (savedAgent) {
+          setSelectedAgent(savedAgent);
+          return;
         }
-      } catch {
-        // Ignore localStorage errors
       }
-      // Fallback to first agent
-      const firstAgent = agents[0];
-      if (firstAgent) {
-        setSelectedAgent(firstAgent);
-      }
+    } catch {
+      // Ignore localStorage errors
+    }
+    // Fallback to first agent
+    const firstAgent = agents[0];
+    if (firstAgent) {
+      setSelectedAgent(firstAgent);
     }
   }, [sessionId, selectedAgent, agents]);
 
@@ -183,6 +213,18 @@ export function AppAgentPanel({
       }
     }
   }, [sessionAgentId, agents, selectedAgent?.id]);
+
+  // Focus input when pendingInputFocus is set (e.g., after agent selection from command palette)
+  useEffect(() => {
+    if (pendingInputFocus && inputRef.current) {
+      // Small delay to ensure panel is rendered/expanded
+      const timeoutId = setTimeout(() => {
+        inputRef.current?.focus();
+        onInputFocused?.();
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [pendingInputFocus, onInputFocused]);
 
   // Create avatars config from logged-in user
   const avatars = useMemo(
@@ -201,14 +243,18 @@ export function AppAgentPanel({
   );
 
   // Handle agent selection - session is created on first message, not here
-  const handleAgentSelect = useCallback((agent: AgentType) => {
-    setSelectedAgent(agent);
-    try {
-      localStorage.setItem(STORAGE_KEY_AGENT, agent.id);
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
+  const handleAgentSelect = useCallback(
+    (agent: AgentType) => {
+      setSelectedAgent(agent);
+      onAgentSelect?.(agent);
+      try {
+        localStorage.setItem(STORAGE_KEY_AGENT, agent.id);
+      } catch {
+        // Ignore localStorage errors
+      }
+    },
+    [onAgentSelect]
+  );
 
   const handleSend = useCallback(
     async (message: string) => {
@@ -350,6 +396,7 @@ export function AppAgentPanel({
         onInspect={sessionId ? handleInspect : undefined}
         onSessionResources={sessionId ? handleSessionResources : undefined}
         sessionResourcesCounts={sessionResourcesCounts}
+        todos={todos}
       />
       <ConnectionSnackbar
         status={connectionStatus}

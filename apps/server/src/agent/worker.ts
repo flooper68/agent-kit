@@ -1,6 +1,13 @@
 import { randomUUID } from 'crypto';
-import type { AgentSessionManager } from './agent-session-manager';
-import type { PubSubManager } from '../lib/redis/pubsub';
+import type { JobQueueManager } from './job-queue-manager';
+import type { EventStreamManager } from './event-stream-manager';
+import type { JobRegistryManager } from './job-registry-manager';
+import type { StreamingStateManager } from './streaming-state-manager';
+import type { PubSubManager, CacheInvalidationService } from '../real-time';
+import type { AgentsFeature } from '../features/agents';
+import type { ArtifactsFeature } from '../features/artifacts';
+import type { ProjectsFeature } from '../features/projects';
+import type { TasksFeature } from '../features/tasks';
 import { AgentJobHandler } from './agent-job-handler';
 
 /**
@@ -8,14 +15,41 @@ import { AgentJobHandler } from './agent-job-handler';
  * Each job is handled by a new AgentJobHandler instance
  */
 export class AgentWorker {
-  private sessionManager: AgentSessionManager;
+  private jobQueueManager: JobQueueManager;
+  private eventStreamManager: EventStreamManager;
+  private jobRegistryManager: JobRegistryManager;
+  private streamingStateManager: StreamingStateManager;
+  private agentsFeature: AgentsFeature;
+  private artifactsFeature: ArtifactsFeature;
+  private projectsFeature?: ProjectsFeature;
+  private tasksFeature?: TasksFeature;
   private pubsub: PubSubManager;
+  private cacheInvalidation: CacheInvalidationService;
   private workerId: string;
   private isRunning = false;
 
-  constructor(sessionManager: AgentSessionManager, pubsub: PubSubManager) {
-    this.sessionManager = sessionManager;
+  constructor(
+    jobQueueManager: JobQueueManager,
+    eventStreamManager: EventStreamManager,
+    jobRegistryManager: JobRegistryManager,
+    streamingStateManager: StreamingStateManager,
+    agentsFeature: AgentsFeature,
+    artifactsFeature: ArtifactsFeature,
+    pubsub: PubSubManager,
+    cacheInvalidation: CacheInvalidationService,
+    projectsFeature?: ProjectsFeature,
+    tasksFeature?: TasksFeature
+  ) {
+    this.jobQueueManager = jobQueueManager;
+    this.eventStreamManager = eventStreamManager;
+    this.jobRegistryManager = jobRegistryManager;
+    this.streamingStateManager = streamingStateManager;
+    this.agentsFeature = agentsFeature;
+    this.artifactsFeature = artifactsFeature;
     this.pubsub = pubsub;
+    this.cacheInvalidation = cacheInvalidation;
+    this.projectsFeature = projectsFeature;
+    this.tasksFeature = tasksFeature;
     this.workerId = `worker-${randomUUID().slice(0, 8)}`;
   }
 
@@ -27,7 +61,7 @@ export class AgentWorker {
 
     try {
       // Start consuming jobs - this runs forever
-      await this.sessionManager.consumeJobs(
+      await this.jobQueueManager.consume(
         'agent-workers',
         this.workerId,
         async (job) => {
@@ -35,9 +69,16 @@ export class AgentWorker {
             `[AgentWorker ${this.workerId}] Received job: ${job.id} at ${Date.now()}`
           );
           const handler = new AgentJobHandler(
-            this.sessionManager,
+            this.eventStreamManager,
+            this.jobRegistryManager,
+            this.streamingStateManager,
+            this.agentsFeature,
+            this.artifactsFeature,
             this.pubsub,
-            this.workerId
+            this.cacheInvalidation,
+            this.workerId,
+            this.projectsFeature,
+            this.tasksFeature
           );
           await handler.handle(job);
         }

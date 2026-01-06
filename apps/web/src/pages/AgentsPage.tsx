@@ -42,6 +42,10 @@ export function AgentsPage() {
   const [copiedKey, setCopiedKey] = useState(false);
   const hasAutoCopied = useRef(false);
   const { addToast } = useToast();
+  // Track connection status for all agents
+  const [connectionStatus, setConnectionStatus] = useState<
+    Map<string, boolean>
+  >(new Map());
 
   const utils = trpc.useUtils();
 
@@ -63,6 +67,20 @@ export function AgentsPage() {
   }, [setActions, clearActions]);
 
   const agentsQuery = trpc.localAgents.list.useQuery();
+
+  // Subscribe to connection status updates
+  trpc.localAgents.connectionStatus.useSubscription(undefined, {
+    onData: (update) => {
+      setConnectionStatus((prev) => {
+        const next = new Map(prev);
+        next.set(update.agentId, update.status === 'connected');
+        return next;
+      });
+    },
+    onError: (err) => {
+      console.error('Connection status subscription error:', err);
+    },
+  });
 
   // Clear error when dialogs open
   useEffect(() => {
@@ -308,10 +326,12 @@ export function AgentsPage() {
             {filteredAgents.map((agent) => (
               <LocalAgentCard
                 key={agent.id}
+                id={agent.id}
                 name={agent.name}
                 description={agent.description}
                 secretKeyPrefix={agent.secretKeyPrefix}
                 disabled={agent.disabled}
+                isConnected={connectionStatus.get(agent.id)}
                 isLoading={loadingAgentId === agent.id}
                 onEdit={() =>
                   setEditingAgent({

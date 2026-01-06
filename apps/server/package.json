@@ -18,6 +18,7 @@
     "db:seed": "bun --env-file ../../.env scripts/seed.ts"
   },
   "dependencies": {
+    "@agent-kit/auth": "workspace:*",
     "@ai-sdk/anthropic": "3.0.2",
     "@ai-sdk/google": "3.0.2",
     "@ai-sdk/openai": "3.0.2",

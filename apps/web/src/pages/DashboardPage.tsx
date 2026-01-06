@@ -3,7 +3,9 @@ import type { TaskHistoryItem, AgentType } from '@agent-kit/ui';
 import { AppAgentPanel } from '../components/AppAgentPanel';
 import { DashboardPageSkeleton } from '../components/skeletons';
 import { useChatHistory } from '../hooks/useChatHistory';
+import { useLocalAgentConnectionStatus } from '../hooks/useCacheInvalidation';
 import { useSession } from '../contexts/SessionContext';
+import { useAgentSelection } from '../contexts/AgentSelectionContext';
 import { trpc } from '../lib/trpc';
 
 export function DashboardPage() {
@@ -15,7 +17,16 @@ export function DashboardPage() {
     limit: 3,
   });
   const agentsQuery = trpc.agents.list.useQuery();
+  const hasLocalAgents = agentsQuery.data?.some((a) => a.isLocal) ?? false;
+  const localAgentConnectionStatus =
+    useLocalAgentConnectionStatus(hasLocalAgents);
   const { setSessionId, clearSession } = useSession();
+  const {
+    selectedAgentId,
+    setSelectedAgentId,
+    pendingInputFocus,
+    clearInputFocus,
+  } = useAgentSelection();
 
   // Delete session mutation
   const deleteSessionMutation = trpc.sessions.delete.useMutation({
@@ -31,6 +42,10 @@ export function DashboardPage() {
       name: agent.name,
       description: agent.description ?? undefined,
       isLocal: agent.isLocal,
+      // Local agents are disabled when not connected
+      disabled: agent.isLocal
+        ? !localAgentConnectionStatus.get(agent.id)
+        : false,
       // Built-in agents have tools, model, provider; local agents don't
       ...(agent.isLocal
         ? {}
@@ -40,7 +55,7 @@ export function DashboardPage() {
             provider: agent.provider,
           }),
     }));
-  }, [agentsQuery.data]);
+  }, [agentsQuery.data, localAgentConnectionStatus]);
 
   // Show skeleton while any critical data is loading
   const isLoading = isSessionsLoading || agentsQuery.isLoading;
@@ -59,6 +74,17 @@ export function DashboardPage() {
   const handleNewChat = useCallback(() => {
     clearSession();
   }, [clearSession]);
+
+  const handleAgentSelect = useCallback(
+    (agent: AgentType) => {
+      setSelectedAgentId(agent.id);
+    },
+    [setSelectedAgentId]
+  );
+
+  const handleInputFocused = useCallback(() => {
+    clearInputFocus();
+  }, [clearInputFocus]);
 
   const handleRecentChatDelete = useCallback(
     async (chat: TaskHistoryItem) => {
@@ -79,7 +105,11 @@ export function DashboardPage() {
     <div className="h-full">
       <AppAgentPanel
         agents={agents}
+        selectedAgentId={selectedAgentId}
+        onAgentSelect={handleAgentSelect}
         onNewChat={handleNewChat}
+        pendingInputFocus={pendingInputFocus}
+        onInputFocused={handleInputFocused}
         emptyStateConfig={{
           title: 'How can I help?',
           description: 'Ask me anything or try one of the suggestions below.',

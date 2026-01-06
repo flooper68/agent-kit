@@ -2,8 +2,7 @@ import fp from 'fastify-plugin';
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import type Redis from 'ioredis';
 import { createPubSubClients, createRedisClient } from '../lib/redis/client';
-import { PubSubManager } from '../lib/redis/pubsub';
-import type { RedisConfig } from '../lib/redis/types';
+import { PubSubManager, type RedisConfig } from '../real-time';
 
 export type RedisConnectionFactory = () => Redis;
 

@@ -206,4 +206,23 @@ export class LocalAgentsFeature {
 
     return agent ?? null;
   }
+
+  /**
+   * Find an agent by its key prefix for initial identification during HMAC auth.
+   * The prefix is used to identify the agent before HMAC verification proves identity.
+   * Only returns enabled agents.
+   */
+  async findByKeyPrefix(prefix: string): Promise<LocalAgent | null> {
+    const [agent] = await this.db
+      .select()
+      .from(localAgents)
+      .where(
+        and(
+          eq(localAgents.secretKeyPrefix, prefix),
+          eq(localAgents.disabled, false)
+        )
+      );
+
+    return agent ?? null;
+  }
 }

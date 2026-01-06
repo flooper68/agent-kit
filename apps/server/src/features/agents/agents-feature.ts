@@ -1,5 +1,8 @@
 import type { db as DbType } from '../../db';
 import type { LocalAgentsFeature } from '../local-agents';
+import type { StreamingStateManager } from '../../agent/streaming-state-manager';
+import type { SessionSummarizer } from '../../agent/session-summarizer';
+import type { CacheInvalidationService } from '../../real-time';
 import {
   RegisterAgentCommand,
   UpdateAgentCommand,
@@ -14,8 +17,23 @@ import {
   CreateMessageCommand,
   UpdateMessageStatusCommand,
   InsertEventCommand,
+  SendUserMessageCommand,
+  CompleteMessageCommand,
+  TriggerSummarizationCommand,
 } from './commands';
 import type { UpdateSessionUsageInput } from './commands/update-session-usage';
+import type {
+  SendUserMessageInput,
+  SendUserMessageResult,
+} from './commands/send-user-message';
+import type {
+  CompleteMessageInput,
+  CompleteMessageResult,
+} from './commands/complete-message';
+import type {
+  TriggerSummarizationInput,
+  TriggerSummarizationResult,
+} from './commands/trigger-summarization';
 import {
   GetAgentQuery,
   ListAgentsQuery,
@@ -29,6 +47,8 @@ import {
   VerifySessionOwnershipQuery,
   GetMessagesBySessionIdQuery,
   GetSessionResourcesQuery,
+  GetSessionMessagesAndEventsQuery,
+  GetActiveSessionIdsQuery,
 } from './queries';
 import type {
   AgentDefinition,
@@ -367,6 +387,13 @@ export class AgentsFeature {
   private updateMessageStatusCommand: UpdateMessageStatusCommand;
   private insertEventCommand: InsertEventCommand;
 
+  // New orchestration commands (initialized in constructor)
+  private sendUserMessageCommand: SendUserMessageCommand;
+  private completeMessageCommand: CompleteMessageCommand;
+
+  // Late-initialized commands (require infrastructure dependencies)
+  private triggerSummarizationCommand?: TriggerSummarizationCommand;
+
   // Queries
   private getAgentQuery: GetAgentQuery;
   private listAgentsQuery: ListAgentsQuery;
@@ -380,6 +407,10 @@ export class AgentsFeature {
   private verifySessionOwnershipQuery: VerifySessionOwnershipQuery;
   private getMessagesBySessionIdQuery: GetMessagesBySessionIdQuery;
   private getSessionResourcesQuery: GetSessionResourcesQuery;
+  private getSessionMessagesAndEventsQuery: GetSessionMessagesAndEventsQuery;
+
+  // Late-initialized queries (require infrastructure dependencies)
+  private getActiveSessionIdsQuery?: GetActiveSessionIdsQuery;
 
   constructor(db: typeof DbType, localAgentsFeature: LocalAgentsFeature) {
     // Initialize agents map with defaults
@@ -419,6 +450,47 @@ export class AgentsFeature {
     this.verifySessionOwnershipQuery = new VerifySessionOwnershipQuery(db);
     this.getMessagesBySessionIdQuery = new GetMessagesBySessionIdQuery(db);
     this.getSessionResourcesQuery = new GetSessionResourcesQuery(db);
+    this.getSessionMessagesAndEventsQuery =
+      new GetSessionMessagesAndEventsQuery(db);
+
+    // Initialize orchestration commands (compose existing commands)
+    this.sendUserMessageCommand = new SendUserMessageCommand(
+      this.createMessageCommand,
+      this.insertEventCommand,
+      this.updateSessionTimestampCommand
+    );
+
+    this.completeMessageCommand = new CompleteMessageCommand(
+      this.updateMessageStatusCommand,
+      this.updateSessionUsageCommand,
+      this.incrementMessageCountCommand
+    );
+  }
+
+  /**
+   * Set the SessionSummarizer for late initialization of summarization command
+   * Must be called after Redis-dependent services are ready
+   */
+  setSummarizer(
+    summarizer: SessionSummarizer,
+    cacheInvalidation: CacheInvalidationService
+  ): void {
+    this.triggerSummarizationCommand = new TriggerSummarizationCommand(
+      summarizer,
+      this.getSessionWithMessagesQuery,
+      this.updateSessionSummaryCommand,
+      cacheInvalidation
+    );
+  }
+
+  /**
+   * Set the StreamingStateManager for late initialization of streaming queries
+   * Must be called after Redis-dependent services are ready
+   */
+  setStreamingStateManager(streamingStateManager: StreamingStateManager): void {
+    this.getActiveSessionIdsQuery = new GetActiveSessionIdsQuery(
+      streamingStateManager
+    );
   }
 
   /**
@@ -472,6 +544,8 @@ export class AgentsFeature {
         this.verifySessionOwnershipQuery.execute(sessionId, userId, orgId),
       getResources: (sessionId: string) =>
         this.getSessionResourcesQuery.execute(sessionId),
+      getMessagesAndEvents: (sessionId: string) =>
+        this.getSessionMessagesAndEventsQuery.execute(sessionId),
     };
   }
 
@@ -496,6 +570,78 @@ export class AgentsFeature {
     return {
       insert: (event: NewAgentSessionEvent) =>
         this.insertEventCommand.execute(event),
+    };
+  }
+
+  /**
+   * Message lifecycle orchestration
+   * Higher-level operations that compose multiple commands
+   */
+  get messageLifecycle() {
+    return {
+      /**
+       * Send a user message and create assistant placeholder
+       * Creates user message, inserts text event, creates streaming assistant message
+       */
+      sendUserMessage: (
+        input: SendUserMessageInput
+      ): Promise<SendUserMessageResult> =>
+        this.sendUserMessageCommand.execute(input),
+
+      /**
+       * Complete an assistant message with usage tracking
+       * Updates message status, session usage, and increments message count
+       */
+      completeMessage: (
+        input: CompleteMessageInput
+      ): Promise<CompleteMessageResult> =>
+        this.completeMessageCommand.execute(input),
+    };
+  }
+
+  /**
+   * Session summarization operations
+   */
+  get summarization() {
+    return {
+      /**
+       * Check if summarization should be triggered for given message count
+       */
+      shouldTrigger: (messageCount: number): boolean => {
+        if (!this.triggerSummarizationCommand) {
+          return false;
+        }
+        return this.triggerSummarizationCommand.shouldTrigger(messageCount);
+      },
+
+      /**
+       * Trigger session summarization if threshold is met
+       */
+      trigger: (
+        input: TriggerSummarizationInput
+      ): Promise<TriggerSummarizationResult> => {
+        if (!this.triggerSummarizationCommand) {
+          return Promise.resolve({ summarized: false });
+        }
+        return this.triggerSummarizationCommand.execute(input);
+      },
+    };
+  }
+
+  /**
+   * Streaming status operations
+   */
+  get streaming() {
+    return {
+      /**
+       * Get all session IDs with active streaming jobs
+       */
+      getActiveSessionIds: (): Promise<Set<string>> => {
+        if (!this.getActiveSessionIdsQuery) {
+          return Promise.resolve(new Set());
+        }
+        return this.getActiveSessionIdsQuery.execute();
+      },
     };
   }
 }

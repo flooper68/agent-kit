@@ -1,0 +1,26 @@
+{
+  "name": "@agent-kit/local-agent",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev:codebase-researcher": "bun run --watch src/agents/codebase-researcher/index.ts",
+    "dev:web-researcher": "bun run --watch src/agents/web-researcher/index.ts",
+    "dev:mock-agent": "bun run --watch src/agents/mock-agent/index.ts",
+    "dev:claude-cli": "bun run --watch src/agents/claude-cli/index.ts",
+    "build:codebase-researcher": "bun build src/agents/codebase-researcher/index.ts --compile --outfile dist/codebase-researcher --minify",
+    "build:web-researcher": "bun build src/agents/web-researcher/index.ts --compile --outfile dist/web-researcher --minify",
+    "build:mock-agent": "bun build src/agents/mock-agent/index.ts --compile --outfile dist/mock-agent --minify",
+    "build:claude-cli": "bun build src/agents/claude-cli/index.ts --compile --outfile dist/claude-cli --minify",
+    "build": "bun run build:codebase-researcher && bun run build:web-researcher && bun run build:mock-agent && bun run build:claude-cli"
+  },
+  "dependencies": {
+    "@agent-kit/auth": "workspace:*",
+    "@anthropic-ai/claude-code": "^1.0.0",
+    "ws": "8.18.3",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.5",
+    "@types/ws": "8.18.1"
+  }
+}

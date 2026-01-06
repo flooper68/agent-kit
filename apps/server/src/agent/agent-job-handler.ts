@@ -1,67 +1,28 @@
-import type {
-  AgentSessionManager,
-  StreamEvent,
-  AgentJob,
-} from './agent-session-manager';
-import type { PubSubManager } from '../lib/redis/pubsub';
+import type { EventStreamManager, StreamEvent } from './event-stream-manager';
+import type { JobRegistryManager } from './job-registry-manager';
+import type { StreamingStateManager } from './streaming-state-manager';
+import { STREAMING_HEARTBEAT_INTERVAL_MS } from './streaming-state-manager';
+import type { AgentJob } from './job-queue-manager';
+import type { PubSubManager, CacheInvalidationService } from '../real-time';
 import type { MessagePart } from '../db/schema/agent-session-messages';
+import type { AgentsFeature } from '../features/agents';
+import type { ArtifactsFeature } from '../features/artifacts';
+import type { ProjectsFeature } from '../features/projects';
+import type { TasksFeature } from '../features/tasks';
 import { getProvider } from './providers';
 import { getToolsById } from './tools';
-import type { ProviderStreamEvent, Message } from './types';
+import type {
+  ProviderStreamEvent,
+  Message,
+  AssistantContentPart,
+  ToolResultOutput,
+} from './types';
 import type { AgentError } from './errors';
 import { classifyError } from './errors';
 import { logger } from './logger';
-import { SessionSummarizer } from './session-summarizer';
 import { calculateCost } from '../features/agents/pricing';
-
-type BufferableEvent = {
-  type: 'text_delta' | 'reasoning_delta';
-  content: string;
-};
-
-/**
- * Buffers consecutive events of the same type to reduce database writes.
- * Events are accumulated until the type changes, then flushed as a single event.
- */
-class EventBuffer {
-  private buffer: BufferableEvent | null = null;
-  private startSequence: number = 0;
-
-  /**
-   * Add event to buffer. Returns the previous buffered event if type changed,
-   * null if event was accumulated into existing buffer.
-   */
-  add(
-    event: BufferableEvent,
-    sequence: number
-  ): { event: BufferableEvent; sequence: number } | null {
-    if (!this.buffer) {
-      this.buffer = { ...event };
-      this.startSequence = sequence;
-      return null;
-    }
-
-    if (this.buffer.type === event.type) {
-      // Same type - accumulate content
-      this.buffer.content += event.content;
-      return null;
-    }
-
-    // Type changed - flush old buffer, start new one
-    const toFlush = { event: this.buffer, sequence: this.startSequence };
-    this.buffer = { ...event };
-    this.startSequence = sequence;
-    return toFlush;
-  }
-
-  /** Flush and return any buffered event */
-  flush(): { event: BufferableEvent; sequence: number } | null {
-    if (!this.buffer) return null;
-    const result = { event: this.buffer, sequence: this.startSequence };
-    this.buffer = null;
-    return result;
-  }
-}
+import { EventBuffer } from './event-buffer';
+import { calculateTokenBreakdown, type TokenBreakdown } from '../lib/tokenizer';
 
 export interface DbMessage {
   id: string;
@@ -74,24 +35,43 @@ export interface DbMessage {
  * Manages streaming, event persistence, and error handling
  */
 export class AgentJobHandler {
-  private sessionManager: AgentSessionManager;
+  private eventStreamManager: EventStreamManager;
+  private jobRegistryManager: JobRegistryManager;
+  private streamingStateManager: StreamingStateManager;
+  private agentsFeature: AgentsFeature;
+  private artifactsFeature: ArtifactsFeature;
+  private projectsFeature?: ProjectsFeature;
+  private tasksFeature?: TasksFeature;
   private pubsub: PubSubManager;
+  private cacheInvalidation: CacheInvalidationService;
   private workerId: string;
   private eventSequence = 0;
   private eventBuffer = new EventBuffer();
   private log: ReturnType<typeof logger.child>;
-  private summarizer: SessionSummarizer;
 
   constructor(
-    sessionManager: AgentSessionManager,
+    eventStreamManager: EventStreamManager,
+    jobRegistryManager: JobRegistryManager,
+    streamingStateManager: StreamingStateManager,
+    agentsFeature: AgentsFeature,
+    artifactsFeature: ArtifactsFeature,
     pubsub: PubSubManager,
-    workerId: string
+    cacheInvalidation: CacheInvalidationService,
+    workerId: string,
+    projectsFeature?: ProjectsFeature,
+    tasksFeature?: TasksFeature
   ) {
-    this.sessionManager = sessionManager;
+    this.eventStreamManager = eventStreamManager;
+    this.jobRegistryManager = jobRegistryManager;
+    this.streamingStateManager = streamingStateManager;
+    this.agentsFeature = agentsFeature;
+    this.artifactsFeature = artifactsFeature;
     this.pubsub = pubsub;
+    this.cacheInvalidation = cacheInvalidation;
     this.workerId = workerId;
+    this.projectsFeature = projectsFeature;
+    this.tasksFeature = tasksFeature;
     this.log = logger.child({ workerId });
-    this.summarizer = new SessionSummarizer();
   }
 
   /**
@@ -105,14 +85,14 @@ export class AgentJobHandler {
     const { sessionId, agentId, userId, orgId, content } = job;
 
     // Create user message first (preserves user input even if job fails)
-    const userMessage = await this.sessionManager.createMessage({
+    const userMessage = await this.agentsFeature.messages.create({
       sessionId,
       role: 'user',
       status: 'complete',
     });
 
     // Insert user message content event
-    await this.sessionManager.insertEvent({
+    await this.agentsFeature.events.insert({
       sessionId,
       messageId: userMessage.id,
       sequence: 0,
@@ -120,8 +100,11 @@ export class AgentJobHandler {
       content,
     });
 
+    // Increment message count for user message (so messageCount includes all messages)
+    await this.agentsFeature.sessions.incrementMessageCount(sessionId);
+
     // Publish user_message_created event so client can update optimistic message
-    await this.sessionManager.publishEvent(sessionId, {
+    await this.eventStreamManager.publish(sessionId, {
       type: 'user_message_created',
       sessionId,
       messageId: userMessage.id,
@@ -129,22 +112,25 @@ export class AgentJobHandler {
     } as Omit<StreamEvent, 'id' | 'timestamp'>);
 
     // Create assistant placeholder
-    const assistantMessage = await this.sessionManager.createMessage({
+    const assistantMessage = await this.agentsFeature.messages.create({
       sessionId,
       role: 'assistant',
       status: 'pending',
     });
 
     // Update session timestamp
-    await this.sessionManager.updateSessionTimestamp(sessionId);
+    await this.agentsFeature.sessions.updateTimestamp(sessionId);
 
     const messageId = assistantMessage.id;
 
     // Get agent definition
-    const agent = this.sessionManager.agents.get(agentId);
+    const agent = this.agentsFeature.agents.get(agentId);
     if (!agent) {
       this.log.error('Agent not found', { sessionId });
-      await this.sessionManager.updateMessageStatus(messageId, 'error');
+      await this.agentsFeature.messages.updateStatus({
+        messageId,
+        status: 'error',
+      });
       await this.publishError(sessionId, messageId, {
         code: 'SESSION_ERROR',
         message: `Agent not found: ${agentId}`,
@@ -166,7 +152,10 @@ export class AgentJobHandler {
         sessionId,
         provider: agent.provider,
       });
-      await this.sessionManager.updateMessageStatus(messageId, 'error');
+      await this.agentsFeature.messages.updateStatus({
+        messageId,
+        status: 'error',
+      });
       await this.publishError(sessionId, messageId, {
         code: 'PROVIDER_ERROR',
         message: `Provider not found: ${agent.provider}`,
@@ -176,15 +165,22 @@ export class AgentJobHandler {
     }
 
     // Register job for interruption tracking
-    await this.sessionManager.registerJob(sessionId, this.workerId);
+    await this.jobRegistryManager.register(sessionId, this.workerId);
+
+    // Note: startStreaming is already called in messages.send router
+    // This ensures streaming state is set immediately when user sends message
+    // (not delayed until worker picks up the job)
 
     try {
       // Update message status to streaming
-      await this.sessionManager.updateMessageStatus(messageId, 'streaming');
+      await this.agentsFeature.messages.updateStatus({
+        messageId,
+        status: 'streaming',
+      });
 
       // Get conversation history
       const dbMessages =
-        await this.sessionManager.getSessionMessages(sessionId);
+        await this.agentsFeature.messages.getBySessionId(sessionId);
       const messages = convertToAIMessages(dbMessages);
 
       // Get tools for this agent (with context for artifact, planning, and client-side tools)
@@ -194,15 +190,15 @@ export class AgentJobHandler {
         sessionId,
         messageId,
         agentId,
-        artifactsFeature: this.sessionManager.artifactsFeature,
-        projectsFeature: this.sessionManager.projectsFeature,
-        tasksFeature: this.sessionManager.tasksFeature,
-        sessionManager: this.sessionManager,
+        artifactsFeature: this.artifactsFeature,
+        projectsFeature: this.projectsFeature,
+        tasksFeature: this.tasksFeature,
+        eventStreamManager: this.eventStreamManager,
         pubsub: this.pubsub,
       });
 
       // Publish message start event
-      await this.sessionManager.publishEvent(sessionId, {
+      await this.eventStreamManager.publish(sessionId, {
         type: 'message_start',
         sessionId,
         messageId,
@@ -225,12 +221,38 @@ export class AgentJobHandler {
 
       let finalStatus: 'complete' | 'error' | 'interrupted' = 'complete';
       let finalMetadata:
-        | { tokensUsed?: number; finishReason?: string }
+        | {
+            tokensUsed?: number;
+            finishReason?: string;
+            contextTokens?: number;
+            cacheReadTokens?: number;
+            cacheWriteTokens?: number;
+            contextBreakdown?: TokenBreakdown;
+          }
+        | undefined;
+      let finalUsage:
+        | {
+            promptTokens: number;
+            completionTokens: number;
+            cacheReadTokens?: number;
+            cacheWriteTokens?: number;
+            contextWindowUsage?: number;
+            tokenBreakdown?: TokenBreakdown;
+          }
         | undefined;
 
+      // Track last heartbeat time for streaming state TTL refresh
+      let lastHeartbeat = Date.now();
+
       for await (const event of stream) {
+        // Send heartbeat to keep streaming state alive during long streams
+        if (Date.now() - lastHeartbeat > STREAMING_HEARTBEAT_INTERVAL_MS) {
+          await this.streamingStateManager.sendHeartbeat(sessionId);
+          lastHeartbeat = Date.now();
+        }
+
         // Check for interrupt
-        if (await this.sessionManager.isInterrupted(sessionId)) {
+        if (await this.jobRegistryManager.isInterrupted(sessionId)) {
           this.log.info('Interrupted by user', { sessionId, messageId });
           abortController.abort();
           finalStatus = 'interrupted';
@@ -250,26 +272,58 @@ export class AgentJobHandler {
           agent.model
         );
 
-        // Capture final metadata from done event and update session usage
+        // Capture final metadata from done event
         if (event.type === 'done') {
+          // Recalculate token breakdown now that streaming is complete
+          // This captures the full conversation including tool results from this turn
+          const updatedDbMessages =
+            await this.agentsFeature.messages.getBySessionId(sessionId);
+          const updatedMessages = convertToAIMessages(updatedDbMessages);
+          const finalTokenBreakdown = calculateTokenBreakdown({
+            systemPrompt: agent.systemPrompt,
+            tools: tools as Record<string, unknown>,
+            messages: updatedMessages as Array<{
+              role: string;
+              content: unknown;
+            }>,
+          });
+
+          // Calculate context window usage from breakdown (more accurate than provider's count
+          // which includes repeated tokens from multiple tool call rounds)
+          const contextWindowUsage =
+            finalTokenBreakdown.systemPrompt +
+            finalTokenBreakdown.toolDefinitions +
+            finalTokenBreakdown.conversationHistory +
+            finalTokenBreakdown.toolResults +
+            finalTokenBreakdown.userInput;
+
           finalMetadata = {
             tokensUsed: event.usage
               ? event.usage.promptTokens + event.usage.completionTokens
               : undefined,
             finishReason: event.finishReason,
+            // Store context tracking per-message (use breakdown total for accurate context window usage)
+            contextTokens: contextWindowUsage,
+            cacheReadTokens: event.usage?.cacheReadTokens,
+            cacheWriteTokens: event.usage?.cacheWriteTokens,
+            // Include context breakdown for this message
+            contextBreakdown: finalTokenBreakdown,
           };
 
-          // Update session usage metrics
           if (event.usage) {
-            const latency = Date.now() - startTime;
-            await this.sessionManager.updateSessionUsage({
-              sessionId,
+            finalUsage = {
               promptTokens: event.usage.promptTokens,
               completionTokens: event.usage.completionTokens,
-              latency,
-              model: agent.model,
-              provider: agent.provider,
-            });
+              cacheReadTokens: event.usage.cacheReadTokens,
+              cacheWriteTokens: event.usage.cacheWriteTokens,
+              // Context window usage from breakdown
+              contextWindowUsage,
+              // Include token breakdown for session usage (with completion tokens)
+              tokenBreakdown: {
+                ...finalTokenBreakdown,
+                completion: event.usage.completionTokens,
+              },
+            };
           }
         }
 
@@ -278,21 +332,36 @@ export class AgentJobHandler {
         }
       }
 
-      // Update message status to complete
-      await this.sessionManager.updateMessageStatus(
-        messageId,
-        finalStatus,
-        finalMetadata
-      );
+      // Calculate latency
+      const latency = Date.now() - startTime;
 
-      // Trigger summarization for successful completions
-      if (finalStatus === 'complete') {
-        this.triggerSummarizationIfNeeded(sessionId).catch((err) => {
-          this.log.error('Summarization trigger failed', {
-            sessionId,
-            error: err instanceof Error ? err.message : 'Unknown error',
-          });
+      // Update message status and session usage via completeMessage
+      const completeResult =
+        await this.agentsFeature.messageLifecycle.completeMessage({
+          messageId,
+          sessionId,
+          status: finalStatus,
+          metadata: finalMetadata,
+          usage: finalUsage,
+          latency,
+          model: agent.model,
+          provider: agent.provider,
         });
+
+      // Trigger summarization for successful completions (fire-and-forget)
+      if (finalStatus === 'complete' && completeResult.messageCount) {
+        this.agentsFeature.summarization
+          .trigger({
+            sessionId,
+            messageCount: completeResult.messageCount,
+            userId,
+          })
+          .catch((err) => {
+            this.log.error('Summarization trigger failed', {
+              sessionId,
+              error: err instanceof Error ? err.message : 'Unknown error',
+            });
+          });
       }
     } catch (error) {
       const agentError = classifyError(error);
@@ -304,10 +373,15 @@ export class AgentJobHandler {
       });
       // Flush any buffered events before marking as error
       await this.flushBuffer(sessionId, messageId);
-      await this.sessionManager.updateMessageStatus(messageId, 'error');
+      await this.agentsFeature.messages.updateStatus({
+        messageId,
+        status: 'error',
+      });
       await this.publishError(sessionId, messageId, agentError);
     } finally {
-      await this.sessionManager.unregisterJob(sessionId);
+      await this.jobRegistryManager.unregister(sessionId);
+      // Stop streaming state - publishes streaming_state_changed event
+      await this.streamingStateManager.stopStreaming(sessionId);
     }
   }
 
@@ -329,7 +403,7 @@ export class AgentJobHandler {
           sequence
         );
         if (toFlush) {
-          await this.sessionManager.insertEvent({
+          await this.agentsFeature.events.insert({
             sessionId,
             messageId,
             sequence: toFlush.sequence,
@@ -338,7 +412,7 @@ export class AgentJobHandler {
           });
         }
         // Always publish immediately for real-time streaming
-        await this.sessionManager.publishEvent(sessionId, {
+        await this.eventStreamManager.publish(sessionId, {
           type: 'text_delta',
           sessionId,
           messageId,
@@ -354,7 +428,7 @@ export class AgentJobHandler {
           sequence
         );
         if (toFlush) {
-          await this.sessionManager.insertEvent({
+          await this.agentsFeature.events.insert({
             sessionId,
             messageId,
             sequence: toFlush.sequence,
@@ -363,7 +437,7 @@ export class AgentJobHandler {
           });
         }
         // Always publish immediately for real-time streaming
-        await this.sessionManager.publishEvent(sessionId, {
+        await this.eventStreamManager.publish(sessionId, {
           type: 'reasoning_delta',
           sessionId,
           messageId,
@@ -380,7 +454,7 @@ export class AgentJobHandler {
           toolName: event.toolName,
           toolCallId: event.toolCallId,
         });
-        await this.sessionManager.insertEvent({
+        await this.agentsFeature.events.insert({
           sessionId,
           messageId,
           sequence,
@@ -389,12 +463,13 @@ export class AgentJobHandler {
           toolName: event.toolName,
           toolArgs: event.args,
         });
-        await this.sessionManager.publishEvent(sessionId, {
+        await this.eventStreamManager.publish(sessionId, {
           type: 'tool_call_start',
           sessionId,
           messageId,
           toolCallId: event.toolCallId,
           toolName: event.toolName,
+          toolArgs: event.args,
         } as Omit<StreamEvent, 'id' | 'timestamp'>);
         break;
 
@@ -405,7 +480,7 @@ export class AgentJobHandler {
           sessionId,
           toolCallId: event.toolCallId,
         });
-        await this.sessionManager.insertEvent({
+        await this.agentsFeature.events.insert({
           sessionId,
           messageId,
           sequence,
@@ -414,7 +489,7 @@ export class AgentJobHandler {
           toolResult: event.result,
           isError: event.isError,
         });
-        await this.sessionManager.publishEvent(sessionId, {
+        await this.eventStreamManager.publish(sessionId, {
           type: 'tool_result',
           sessionId,
           messageId,
@@ -428,18 +503,19 @@ export class AgentJobHandler {
         // Flush any remaining buffered deltas
         await this.flushBuffer(sessionId, messageId);
         const estimatedCost = event.usage
-          ? calculateCost(
-              model,
-              event.usage.promptTokens,
-              event.usage.completionTokens
-            )
+          ? calculateCost(model, {
+              promptTokens: event.usage.promptTokens,
+              completionTokens: event.usage.completionTokens,
+              cacheReadTokens: event.usage.cacheReadTokens,
+              cacheWriteTokens: event.usage.cacheWriteTokens,
+            })
           : undefined;
         this.log.info('Message complete', {
           sessionId,
           messageId,
           estimatedCost,
         });
-        await this.sessionManager.publishEvent(sessionId, {
+        await this.eventStreamManager.publish(sessionId, {
           type: 'message_complete',
           sessionId,
           messageId,
@@ -463,7 +539,7 @@ export class AgentJobHandler {
           code: event.error.code,
         });
         // Persist error event to DB
-        await this.sessionManager.insertEvent({
+        await this.agentsFeature.events.insert({
           sessionId,
           messageId,
           sequence,
@@ -482,7 +558,7 @@ export class AgentJobHandler {
         // Flush any buffered deltas before unknown event
         await this.flushBuffer(sessionId, messageId);
         // Store unknown event types for debugging/future handling
-        await this.sessionManager.insertEvent({
+        await this.agentsFeature.events.insert({
           sessionId,
           messageId,
           sequence,
@@ -508,7 +584,7 @@ export class AgentJobHandler {
     const buffered = this.eventBuffer.flush();
     if (!buffered) return;
 
-    await this.sessionManager.insertEvent({
+    await this.agentsFeature.events.insert({
       sessionId,
       messageId,
       sequence: buffered.sequence,
@@ -522,7 +598,7 @@ export class AgentJobHandler {
     messageId: string,
     error: AgentError
   ): Promise<void> {
-    await this.sessionManager.publishEvent(sessionId, {
+    await this.eventStreamManager.publish(sessionId, {
       type: 'error',
       sessionId,
       messageId,
@@ -537,71 +613,125 @@ export class AgentJobHandler {
     sessionId: string,
     messageId: string
   ): Promise<void> {
-    await this.sessionManager.publishEvent(sessionId, {
+    await this.eventStreamManager.publish(sessionId, {
       type: 'interrupted',
       sessionId,
       messageId,
     } as Omit<StreamEvent, 'id' | 'timestamp'>);
   }
+}
 
-  /**
-   * Check if summarization should be triggered and run it async
-   */
-  private async triggerSummarizationIfNeeded(sessionId: string): Promise<void> {
-    // Increment message count and get new value
-    const newCount = await this.sessionManager.incrementMessageCount(sessionId);
-
-    if (!newCount) {
-      this.log.warn('Failed to increment message count', { sessionId });
-      return;
+/**
+ * Convert a raw tool result to AI SDK's ToolResultOutput format
+ * AI SDK v6 requires tool outputs to be wrapped with a type discriminator
+ */
+function wrapToolResultOutput(
+  result: unknown,
+  isError?: boolean
+): ToolResultOutput {
+  // Check if already in correct format
+  if (
+    result &&
+    typeof result === 'object' &&
+    'type' in result &&
+    'value' in result
+  ) {
+    const typed = result as { type: string; value: unknown };
+    if (
+      ['text', 'json', 'error-text', 'error-json', 'content'].includes(
+        typed.type
+      )
+    ) {
+      return result as ToolResultOutput;
     }
-
-    // Check if we hit a threshold
-    if (!this.summarizer.shouldSummarize(newCount)) {
-      return;
-    }
-
-    this.log.info('Triggering summarization', {
-      sessionId,
-      messageCount: newCount,
-    });
-
-    // Get all messages for summarization
-    const messages = await this.sessionManager.getSessionMessages(sessionId);
-
-    // Generate summary
-    const summary = await this.summarizer.generateSummary(messages);
-
-    // Update session with summary
-    await this.sessionManager.updateSessionSummary(
-      sessionId,
-      summary.title,
-      summary.description
-    );
-
-    this.log.info('Summarization complete', {
-      sessionId,
-      title: summary.title,
-    });
   }
+
+  // Wrap based on type
+  if (typeof result === 'string') {
+    if (isError) {
+      return { type: 'error-text', value: result };
+    }
+    return { type: 'text', value: result };
+  }
+
+  // For objects/arrays/other, use JSON format
+  if (isError) {
+    return { type: 'error-json', value: result ?? {} };
+  }
+  return { type: 'json', value: result ?? {} };
 }
 
 /**
  * Convert database messages to AI-compatible message format
- * Filters out messages with empty content (e.g., assistant messages with only tool parts)
+ * Properly converts all message parts including tool calls and results
  */
 export function convertToAIMessages(dbMessages: DbMessage[]): Message[] {
   return dbMessages
-    .map((msg) => {
-      const textContent = msg.parts
-        .filter((p) => p.type === 'text')
-        .map((p) => (p as { type: 'text'; content: string }).content)
-        .join('');
+    .map((msg): Message | null => {
+      // Build maps for tool lookups
+      const toolNameMap = new Map<string, string>();
+      const toolErrorMap = new Map<string, boolean>();
+      for (const part of msg.parts) {
+        if (part.type === 'tool_invocation') {
+          toolNameMap.set(part.toolCallId, part.toolName);
+        }
+        if (part.type === 'tool_result') {
+          toolErrorMap.set(part.toolCallId, part.isError ?? false);
+        }
+      }
 
-      return {
-        role: msg.role,
-        content: textContent,
-      };
+      // Handle user messages - they only have text content
+      if (msg.role === 'user') {
+        const textContent = msg.parts
+          .filter((p) => p.type === 'text')
+          .map((p) => (p as { type: 'text'; content: string }).content)
+          .join('');
+        if (textContent.length === 0) return null;
+        return { role: 'user', content: textContent };
+      }
+
+      // Handle system messages
+      if (msg.role === 'system') {
+        const textContent = msg.parts
+          .filter((p) => p.type === 'text')
+          .map((p) => (p as { type: 'text'; content: string }).content)
+          .join('');
+        if (textContent.length === 0) return null;
+        return { role: 'system', content: textContent };
+      }
+
+      // Handle assistant messages - convert all parts to AI SDK format
+      const content: AssistantContentPart[] = [];
+
+      for (const part of msg.parts) {
+        switch (part.type) {
+          case 'text':
+            content.push({ type: 'text', text: part.content });
+            break;
+          case 'tool_invocation':
+            content.push({
+              type: 'tool-call',
+              toolCallId: part.toolCallId,
+              toolName: part.toolName,
+              input: part.args,
+            });
+            break;
+          case 'tool_result':
+            content.push({
+              type: 'tool-result',
+              toolCallId: part.toolCallId,
+              toolName: toolNameMap.get(part.toolCallId) ?? 'unknown',
+              output: wrapToolResultOutput(part.result, part.isError),
+            });
+            break;
+          case 'reasoning':
+            // Skip reasoning - not all providers support it in history
+            break;
+        }
+      }
+
+      if (content.length === 0) return null;
+      return { role: 'assistant', content };
     })
-    .filter((msg) => msg.content.length > 0);
+    .filter((msg): msg is Message => msg !== null);
 }

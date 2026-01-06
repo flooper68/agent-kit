@@ -12,18 +12,26 @@ import { db } from './db';
 import redisPlugin from './plugins/redis';
 import corsPlugin from './plugins/cors';
 import clerkPlugin from './plugins/clerk';
-import pubsubTestRoutes from './routes/pubsub-test';
 import { appRouter, createContext, type AppRouter } from './trpc';
 import { OrgRole, type AuthContext } from './types/auth';
-import { AgentSessionManager, AgentWorker } from './agent';
+import {
+  AgentWorker,
+  JobQueueManager,
+  EventStreamManager,
+  JobRegistryManager,
+  StreamingStateManager,
+  SessionSummarizer,
+  LocalAgentsConnectionManager,
+  LocalAgentWebSocketRegistry,
+  LocalAgentWebSocketService,
+} from './agent';
 import { AgentsFeature } from './features/agents';
 import { AnalyticsFeature } from './features/analytics';
 import { ArtifactsFeature } from './features/artifacts';
 import { ProjectsFeature } from './features/projects';
 import { TasksFeature } from './features/tasks';
 import { LocalAgentsFeature } from './features/local-agents';
-import { CacheInvalidationService } from './lib/redis/cache-invalidation-service';
-import type { PubSubManager } from './lib/redis/pubsub';
+import { CacheInvalidationService, type PubSubManager } from './real-time';
 
 const clerk = createClerkClient({
   secretKey: env.CLERK_SECRET_KEY,
@@ -43,8 +51,6 @@ fastify.register(corsPlugin);
 fastify.register(clerkPlugin, { secretKey: env.CLERK_SECRET_KEY });
 
 fastify.register(redisPlugin, { url: env.REDIS_URL });
-// Note: Not using @fastify/websocket - we handle WebSocket manually via ws library
-fastify.register(pubsubTestRoutes, { prefix: '/api' });
 
 // Prevent Fastify from processing WebSocket upgrade requests to /trpc
 // The ws library handles these via the 'upgrade' event on the HTTP server
@@ -63,6 +69,9 @@ fastify.addHook('onRequest', async (request, reply) => {
 
 // Create local agents feature (needed by agents feature)
 const localAgentsFeature = new LocalAgentsFeature(db);
+
+// Create WebSocket registry for local agents (tracks active connections)
+const localAgentWSRegistry = new LocalAgentWebSocketRegistry();
 
 // Create agents feature (single instance)
 const agentsFeature = new AgentsFeature(db, localAgentsFeature);
@@ -86,8 +95,14 @@ const projectsFeature = new ProjectsFeature(db);
 const tasksFeature = new TasksFeature(db);
 
 // Will be initialized after Redis is ready (in onReady hook, before listen)
-let sessionManager!: AgentSessionManager;
+let jobQueueManager!: JobQueueManager;
+let eventStreamManager!: EventStreamManager;
+let jobRegistryManager!: JobRegistryManager;
+let streamingStateManager!: StreamingStateManager;
 let pubsub!: PubSubManager;
+let localAgentsConnectionManager!: LocalAgentsConnectionManager;
+let cacheInvalidation!: CacheInvalidationService;
+let localAgentWSService!: LocalAgentWebSocketService;
 
 // Hook to initialize Redis-dependent services after Redis plugin is registered
 fastify.addHook('onReady', async () => {
@@ -99,25 +114,59 @@ fastify.addHook('onReady', async () => {
   // Store pubsub reference for tRPC context
   pubsub = fastify.redis.pubsub;
 
+  // Create local agents connection manager
+  localAgentsConnectionManager = new LocalAgentsConnectionManager(
+    redis,
+    pubsub
+  );
+
+  // Clean up stale connections from previous server instance
+  await localAgentsConnectionManager.cleanupAllConnections();
+
   // Create cache invalidation service and attach to features
-  const cacheInvalidation = new CacheInvalidationService(pubsub);
+  cacheInvalidation = new CacheInvalidationService(pubsub);
   projectsFeature.setCacheInvalidation(cacheInvalidation);
   tasksFeature.setCacheInvalidation(cacheInvalidation);
 
-  // Create session manager with Redis and AgentsFeature
-  // Pass dedicated worker connection for job processing and factory for subscriptions
-  sessionManager = new AgentSessionManager(
+  // Create infrastructure managers (split from AgentSessionManager)
+  jobQueueManager = new JobQueueManager(redis, workerRedis);
+  eventStreamManager = new EventStreamManager(
     redis,
+    createSubscriptionConnection
+  );
+  jobRegistryManager = new JobRegistryManager(redis);
+  streamingStateManager = new StreamingStateManager(redis, cacheInvalidation);
+
+  // Create session summarizer for title/description generation
+  const sessionSummarizer = new SessionSummarizer();
+
+  // Wire up late-initialized dependencies on AgentsFeature
+  agentsFeature.setSummarizer(sessionSummarizer, cacheInvalidation);
+  agentsFeature.setStreamingStateManager(streamingStateManager);
+
+  // Create local agent WebSocket service
+  localAgentWSService = new LocalAgentWebSocketService(
+    localAgentWSRegistry,
+    localAgentsConnectionManager,
+    eventStreamManager,
+    streamingStateManager,
+    agentsFeature,
+    localAgentsFeature
+  );
+
+  // Create the agent worker with new architecture
+  const agentWorker = new AgentWorker(
+    jobQueueManager,
+    eventStreamManager,
+    jobRegistryManager,
+    streamingStateManager,
     agentsFeature,
     artifactsFeature,
-    workerRedis,
-    createSubscriptionConnection,
+    pubsub,
+    cacheInvalidation,
     projectsFeature,
     tasksFeature
   );
-
-  // Create the agent worker
-  const agentWorker = new AgentWorker(sessionManager, pubsub);
 
   fastify.log.info('Starting agent worker...');
 
@@ -129,7 +178,7 @@ fastify.addHook('onReady', async () => {
   fastify.log.info('Agent worker initialization complete');
 });
 
-// Register tRPC - uses a getter to access sessionManager after it's initialized
+// Register tRPC - uses getters to access managers after they're initialized
 fastify.register(fastifyTRPCPlugin, {
   prefix: '/trpc',
   trpcOptions: {
@@ -144,8 +193,14 @@ fastify.register(fastifyTRPCPlugin, {
         projectsFeature,
         tasksFeature,
         localAgentsFeature,
-        sessionManager,
+        jobQueueManager,
+        eventStreamManager,
+        jobRegistryManager,
+        streamingStateManager,
         pubsub,
+        localAgentsConnectionManager,
+        localAgentWSRegistry,
+        cacheInvalidation,
       })(opts);
     },
     onError({ path, error }) {
@@ -242,8 +297,14 @@ const start = async () => {
           projectsFeature,
           tasksFeature,
           localAgentsFeature,
-          sessionManager,
+          jobQueueManager,
+          eventStreamManager,
+          jobRegistryManager,
+          streamingStateManager,
           pubsub,
+          localAgentsConnectionManager,
+          localAgentWSRegistry,
+          cacheInvalidation,
         };
       },
     });
@@ -256,7 +317,11 @@ const start = async () => {
     // This intercepts upgrade requests before Fastify tries to handle them as 404s
     fastify.server.on('upgrade', (request, socket, head) => {
       const url = new URL(request.url || '', `http://${request.headers.host}`);
-      if (url.pathname === '/trpc') {
+
+      if (url.pathname === '/agents') {
+        // Local agent connection - delegate to service
+        localAgentWSService.handleUpgrade(request, socket, head);
+      } else if (url.pathname === '/trpc') {
         wss.handleUpgrade(request, socket, head, (ws) => {
           wss.emit('connection', ws, request);
         });
@@ -267,6 +332,9 @@ const start = async () => {
 
     console.log(
       `WebSocket server is running at ws://${env.HOST}:${env.PORT}/trpc`
+    );
+    console.log(
+      `Local agents WebSocket endpoint: ws://${env.HOST}:${env.PORT}/agents`
     );
 
     process.on('SIGTERM', () => {

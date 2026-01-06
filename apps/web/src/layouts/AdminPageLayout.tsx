@@ -157,10 +157,10 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
                 },
                 {
                   id: 'agents',
-                  label: 'Agents',
+                  label: 'Local Agents',
                   icon: <Bot className="h-4 w-4" />,
-                  onClick: () => navigate('/app'),
-                  active: currentPath === '/app',
+                  onClick: () => navigate('/app/agents'),
+                  active: currentPath === '/app/agents',
                 },
                 {
                   id: 'artifacts',
@@ -230,6 +230,20 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
                   size="sm"
                   className={
                     currentPath === '/app'
+                      ? 'bg-accent text-accent-foreground'
+                      : undefined
+                  }
+                />
+              </Tooltip>
+              <Tooltip content="Local Agents">
+                <IconButton
+                  icon={<Bot className="h-4 w-4" />}
+                  label="Local Agents"
+                  onClick={() => navigate('/app/agents')}
+                  variant="ghost"
+                  size="sm"
+                  className={
+                    currentPath === '/app/agents'
                       ? 'bg-accent text-accent-foreground'
                       : undefined
                   }

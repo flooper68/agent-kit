@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Bot,
   Pencil,
@@ -6,14 +7,18 @@ import {
   PowerOff,
   MoreVertical,
   Loader2,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { ActionCard, IconButton, DropdownMenu } from '@agent-kit/ui';
 
 export interface LocalAgentCardProps {
+  id: string;
   name: string;
   description: string | null;
   secretKeyPrefix: string;
   disabled: boolean;
+  isConnected?: boolean;
   isLoading?: boolean;
   onEdit: () => void;
   onRegenerateKey: () => void;
@@ -21,17 +26,31 @@ export interface LocalAgentCardProps {
 }
 
 export function LocalAgentCard({
+  id,
   name,
   description,
   secretKeyPrefix,
   disabled,
+  isConnected,
   isLoading,
   onEdit,
   onRegenerateKey,
   onToggleDisabled,
 }: LocalAgentCardProps) {
+  const [copiedId, setCopiedId] = useState(false);
+
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
+    } catch {
+      // Clipboard access failed
+    }
+  };
+
   return (
-    <ActionCard disabled={disabled}>
+    <ActionCard disabled={disabled} className="min-w-[320px]">
       <ActionCard.Header
         icon={<Bot className="h-5 w-5" />}
         title={name}
@@ -40,7 +59,16 @@ export function LocalAgentCard({
             <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
               Disabled
             </span>
-          ) : undefined
+          ) : isConnected ? (
+            <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20 flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+              Connected
+            </span>
+          ) : (
+            <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+              Offline
+            </span>
+          )
         }
         menuContent={
           <DropdownMenu>
@@ -75,13 +103,33 @@ export function LocalAgentCard({
         }
       />
 
-      {description && (
-        <ActionCard.Content className="pt-0">
-          <p className="text-sm text-muted-foreground line-clamp-2">
+      <ActionCard.Content className="pt-0">
+        {description && (
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
             {description}
           </p>
-        </ActionCard.Content>
-      )}
+        )}
+        {/* Agent ID display */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">ID:</span>
+          <code className="text-xs font-mono text-muted-foreground flex-1 truncate">
+            {id}
+          </code>
+          <IconButton
+            icon={
+              copiedId ? (
+                <Check className="h-3 w-3" />
+              ) : (
+                <Copy className="h-3 w-3" />
+              )
+            }
+            onClick={handleCopyId}
+            label="Copy ID"
+            size="sm"
+            variant="ghost"
+          />
+        </div>
+      </ActionCard.Content>
 
       {/* Secret key prefix display */}
       <div className="mx-4 mb-3 flex items-center gap-2 rounded border border-border px-2 py-1.5 bg-muted/50">

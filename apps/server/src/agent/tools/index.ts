@@ -2,8 +2,8 @@ import type { Tool } from '../types';
 import type { ArtifactsFeature } from '../../features/artifacts';
 import type { ProjectsFeature } from '../../features/projects';
 import type { TasksFeature } from '../../features/tasks';
-import type { AgentSessionManager } from '../agent-session-manager';
-import type { PubSubManager } from '../../lib/redis/pubsub';
+import type { EventStreamManager } from '../event-stream-manager';
+import type { PubSubManager } from '../../real-time';
 import { getTimeTool } from './get-time';
 import { webSearchTool } from './web-search';
 import { extractContentTool } from './extract-content';
@@ -81,8 +81,8 @@ export interface ToolContext {
   artifactsFeature: ArtifactsFeature;
   projectsFeature?: ProjectsFeature;
   tasksFeature?: TasksFeature;
-  /** Session manager for client-side tools */
-  sessionManager?: AgentSessionManager;
+  /** Event stream manager for client-side tools */
+  eventStreamManager?: EventStreamManager;
   /** Pub/Sub manager for stateful client-side tools */
   pubsub?: PubSubManager;
 }
@@ -249,20 +249,20 @@ export function getToolsById(
         case 'navigateTo':
           // Fire-and-forget tool - doesn't need pubsub
           if (
-            context.sessionManager &&
+            context.eventStreamManager &&
             context.sessionId &&
             context.messageId
           ) {
             result[id] = createNavigateToTool({
               sessionId: context.sessionId,
               messageId: context.messageId,
-              sessionManager: context.sessionManager,
+              eventStreamManager: context.eventStreamManager,
             });
           }
           break;
         case 'getCurrentUIState':
           if (
-            context.sessionManager &&
+            context.eventStreamManager &&
             context.sessionId &&
             context.messageId &&
             context.pubsub
@@ -270,7 +270,7 @@ export function getToolsById(
             result[id] = createGetCurrentUIStateTool({
               sessionId: context.sessionId,
               messageId: context.messageId,
-              sessionManager: context.sessionManager,
+              eventStreamManager: context.eventStreamManager,
               pubsub: context.pubsub,
             });
           }

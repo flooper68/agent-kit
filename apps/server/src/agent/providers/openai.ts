@@ -31,7 +31,9 @@ export class OpenAIProvider implements AgentProvider {
       const result = streamText({
         model: openai(model),
         system: systemPrompt,
-        messages,
+        // Cast messages to satisfy AI SDK types - our Message type is structurally compatible
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        messages: messages as any,
         tools,
         abortSignal,
         stopWhen: stepCountIs(2000),
@@ -114,6 +116,18 @@ export class OpenAIProvider implements AgentProvider {
                     completionTokens:
                       (chunk.totalUsage as { outputTokens?: number })
                         .outputTokens ?? 0,
+                    cacheReadTokens:
+                      (
+                        chunk.totalUsage as {
+                          inputTokenDetails?: { cacheReadTokens?: number };
+                        }
+                      ).inputTokenDetails?.cacheReadTokens ?? undefined,
+                    cacheWriteTokens:
+                      (
+                        chunk.totalUsage as {
+                          inputTokenDetails?: { cacheWriteTokens?: number };
+                        }
+                      ).inputTokenDetails?.cacheWriteTokens ?? undefined,
                   }
                 : undefined,
               finishReason: chunk.finishReason,

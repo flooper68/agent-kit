@@ -1,0 +1,240 @@
+import { query } from '@anthropic-ai/claude-code';
+import type {
+  AgentRunParams,
+  AgentRunResult,
+  AgentUsage,
+  StreamEvent,
+  ClaudeCodeHandlerConfig,
+} from '../types';
+import { SDKMessageMapper } from './message-mapper';
+import { reconstructConversationFromEvents } from './conversation-builder';
+import { createLogger } from '../logger';
+
+export interface ClaudeCodeProviderConfig extends ClaudeCodeHandlerConfig {
+  /** Logger name prefix */
+  loggerName: string;
+}
+
+/**
+ * Claude Code SDK provider that handles the common query execution flow.
+ * Encapsulates SDK interaction, message mapping, and event streaming.
+ */
+export class ClaudeCodeProvider {
+  private config: ClaudeCodeProviderConfig;
+  private mapper: SDKMessageMapper;
+  private log: ReturnType<typeof createLogger>;
+
+  constructor(config: ClaudeCodeProviderConfig) {
+    this.config = config;
+    this.mapper = new SDKMessageMapper(
+      config.loggerName,
+      config.errorCodePrefix ?? 'CLAUDE_CODE'
+    );
+    this.log = createLogger(config.loggerName);
+  }
+
+  /**
+   * Execute a query using the Claude Code SDK.
+   * Yields StreamEvent objects as the SDK processes the request.
+   */
+  async *run(
+    params: AgentRunParams
+  ): AsyncGenerator<StreamEvent, AgentRunResult, undefined> {
+    const { sessionId, messageId, content, messages, events, abortSignal } =
+      params;
+    const startTime = Date.now();
+    let messageCount = 0;
+    let eventCount = 0;
+
+    this.log.info('Starting query', {
+      sessionId: sessionId.slice(0, 8) + '...',
+      messageId: messageId.slice(0, 8) + '...',
+      promptLength: content.length,
+      cwd: this.config.cwd,
+      model: this.config.model ?? 'default',
+      maxThinkingTokens: this.config.maxThinkingTokens,
+      includePartialMessages: this.config.includePartialMessages,
+    });
+
+    // Reset mapper state for this new message run
+    // This ensures we properly track stream events vs assistant messages
+    this.mapper.resetState();
+
+    // Emit message_start event
+    yield { type: 'message_start' };
+    eventCount++;
+    this.log.debug('Emitted message_start event');
+
+    let finalUsage: AgentUsage | undefined;
+
+    try {
+      // Create abort controller from signal
+      const abortController = new AbortController();
+      abortSignal.addEventListener('abort', () => abortController.abort());
+
+      this.log.debug('Calling query() SDK function', {
+        messagesCount: messages.length,
+        eventsCount: events.length,
+        hasHistory: messages.length > 0,
+      });
+
+      // Build prompt with conversation context
+      const prompt = this.buildPrompt(content, messages, events);
+
+      // Build query options
+      const queryOptions: Record<string, unknown> = {
+        cwd: this.config.cwd,
+        allowedTools: this.config.allowedTools,
+        permissionMode: 'bypassPermissions',
+        abortController,
+      };
+
+      // Add optional configuration
+      if (this.config.model) {
+        queryOptions.model = this.config.model;
+      }
+
+      // Default maxThinkingTokens to 10000 if not specified
+      queryOptions.maxThinkingTokens = this.config.maxThinkingTokens ?? 10000;
+
+      // Default includePartialMessages to true if not specified
+      queryOptions.includePartialMessages =
+        this.config.includePartialMessages ?? true;
+
+      this.log.debug('Query options configured', {
+        hasModel: !!this.config.model,
+        hasMaxThinkingTokens: this.config.maxThinkingTokens !== undefined,
+        hasIncludePartialMessages: !!this.config.includePartialMessages,
+      });
+
+      const queryResult = query({
+        prompt,
+        options: queryOptions,
+      });
+
+      this.log.debug('Starting async iteration over query results');
+
+      for await (const message of queryResult) {
+        messageCount++;
+
+        // Check for abort
+        if (abortSignal.aborted) {
+          this.log.info('Abort signal detected, emitting interrupted event', {
+            messagesProcessed: messageCount,
+          });
+          yield { type: 'interrupted' };
+          return { usage: finalUsage };
+        }
+
+        // Log SDK message details
+        const msgType = (message as { type?: string }).type ?? 'unknown';
+        this.log.debug(`Processing SDK message #${messageCount}`, {
+          type: msgType,
+          hasContent:
+            msgType === 'assistant'
+              ? !!(message as { message?: { content?: unknown[] } }).message
+                  ?.content?.length
+              : undefined,
+        });
+
+        // Map SDK message to server events
+        const mappedEvents = this.mapper.mapMessage(message);
+
+        this.log.debug(`Mapped message to ${mappedEvents.length} event(s)`, {
+          eventTypes: mappedEvents.map((e) => e.type),
+        });
+
+        for (const event of mappedEvents) {
+          eventCount++;
+
+          // Capture usage from message_complete event
+          if (event.type === 'message_complete' && event.usage) {
+            finalUsage = event.usage;
+            this.log.debug('Captured usage from message_complete', {
+              usage: finalUsage,
+            });
+          }
+
+          yield event;
+        }
+      }
+
+      const duration = Date.now() - startTime;
+      this.log.info('Query iteration completed successfully', {
+        durationMs: duration,
+        sdkMessages: messageCount,
+        eventsEmitted: eventCount,
+        usage: finalUsage,
+      });
+
+      return { usage: finalUsage };
+    } catch (error) {
+      const duration = Date.now() - startTime;
+
+      if (abortSignal.aborted) {
+        this.log.info('Query aborted by user', {
+          durationMs: duration,
+          messagesProcessed: messageCount,
+        });
+        yield { type: 'interrupted' };
+        return { usage: finalUsage };
+      }
+
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      this.log.error('Query failed with error', {
+        durationMs: duration,
+        messagesProcessed: messageCount,
+        error: errorMessage,
+        stack: errorStack,
+        errorType: error?.constructor?.name,
+      });
+
+      yield {
+        type: 'error',
+        error: errorMessage,
+        code: `${this.config.errorCodePrefix ?? 'CLAUDE_CODE'}_ERROR`,
+        retryable: true,
+      };
+
+      return { usage: finalUsage };
+    }
+  }
+
+  /**
+   * Build the prompt with optional conversation context
+   */
+  private buildPrompt(
+    content: string,
+    messages: AgentRunParams['messages'],
+    events: AgentRunParams['events']
+  ): string {
+    if (messages.length === 0) {
+      this.log.debug('Using simple prompt for first message');
+      return content;
+    }
+
+    // Reconstruct conversation history from events
+    this.log.debug('Reconstructing conversation from events');
+    const conversationContext = reconstructConversationFromEvents(
+      messages,
+      events
+    );
+
+    // Include conversation context with current message
+    const prompt = `<conversation_history>
+${conversationContext}
+</conversation_history>
+
+Current user message: ${content}`;
+
+    this.log.debug('Using conversation context with current message', {
+      contextLength: conversationContext.length,
+      fullPromptLength: prompt.length,
+    });
+
+    return prompt;
+  }
+}

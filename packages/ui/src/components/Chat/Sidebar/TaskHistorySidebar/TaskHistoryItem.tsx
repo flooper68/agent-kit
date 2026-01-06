@@ -2,6 +2,7 @@ import { forwardRef } from 'react';
 import { Trash2 } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
 import type { TaskHistoryItem as TaskHistoryItemType } from '../../../../types/chat';
+import { StreamingIndicator } from '../../../StreamingIndicator';
 
 export interface TaskHistoryItemProps {
   task: TaskHistoryItemType;
@@ -66,9 +67,12 @@ export const TaskHistoryItemComponent = forwardRef<
       )}
     >
       <div className="flex items-start justify-between gap-1.5">
-        <h4 className="text-sm font-medium truncate flex-1">
-          {task.title || 'Untitled Task'}
-        </h4>
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          {task.isStreaming && <StreamingIndicator className="flex-shrink-0" />}
+          <h4 className="text-sm font-medium truncate">
+            {task.title || 'Untitled Task'}
+          </h4>
+        </div>
 
         {onDelete && (
           <button

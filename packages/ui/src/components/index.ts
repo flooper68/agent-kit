@@ -39,6 +39,9 @@ export type { TooltipProps } from './Tooltip';
 export { StatusIndicator } from './StatusIndicator';
 export type { StatusIndicatorProps, StatusType } from './StatusIndicator';
 
+export { StreamingIndicator } from './StreamingIndicator';
+export type { StreamingIndicatorProps } from './StreamingIndicator';
+
 export { ConnectionSnackbar } from './ConnectionSnackbar';
 export type {
   ConnectionSnackbarProps,

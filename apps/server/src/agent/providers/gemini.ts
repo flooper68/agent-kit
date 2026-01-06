@@ -1,4 +1,4 @@
-import { streamText, stepCountIs } from 'ai';
+import { streamText, stepCountIs, type ModelMessage } from 'ai';
 import { google } from '@ai-sdk/google';
 import type {
   AgentProvider,
@@ -33,7 +33,7 @@ export class GeminiProvider implements AgentProvider {
       const result = streamText({
         model: google(model),
         system: systemPrompt,
-        messages,
+        messages: messages as ModelMessage[],
         tools,
         abortSignal,
         stopWhen: stepCountIs(2000),
@@ -117,6 +117,18 @@ export class GeminiProvider implements AgentProvider {
                     completionTokens:
                       (chunk.totalUsage as { outputTokens?: number })
                         .outputTokens ?? 0,
+                    cacheReadTokens:
+                      (
+                        chunk.totalUsage as {
+                          inputTokenDetails?: { cacheReadTokens?: number };
+                        }
+                      ).inputTokenDetails?.cacheReadTokens ?? undefined,
+                    cacheWriteTokens:
+                      (
+                        chunk.totalUsage as {
+                          inputTokenDetails?: { cacheWriteTokens?: number };
+                        }
+                      ).inputTokenDetails?.cacheWriteTokens ?? undefined,
                   }
                 : undefined,
               finishReason: chunk.finishReason,
