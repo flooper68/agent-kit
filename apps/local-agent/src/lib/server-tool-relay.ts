@@ -45,6 +45,7 @@ interface PendingRequest {
 export class ServerToolRelay {
   private pendingRequests = new Map<string, PendingRequest>();
   private ws: WebSocket | null = null;
+  private isClearing = false;
 
   /**
    * Set the WebSocket connection for server tool operations.
@@ -56,8 +57,10 @@ export class ServerToolRelay {
 
   /**
    * Clear the connection and reject all pending requests.
+   * Uses isClearing flag to prevent race conditions with concurrent executeServerTool calls.
    */
   clearConnection(): void {
+    this.isClearing = true;
     // Reject all pending requests
     for (const [requestId, pending] of this.pendingRequests) {
       clearTimeout(pending.timeoutId);
@@ -69,6 +72,7 @@ export class ServerToolRelay {
     }
     this.pendingRequests.clear();
     this.ws = null;
+    this.isClearing = false;
     log.debug('Connection cleared for server tool relay');
   }
 
@@ -94,6 +98,11 @@ export class ServerToolRelay {
     sessionId: string,
     timeoutMs?: number
   ): Promise<unknown> {
+    // Prevent new requests during connection clearing to avoid race conditions
+    if (this.isClearing) {
+      throw new Error('Connection is being cleared');
+    }
+
     const timeout = timeoutMs ?? getToolTimeout(tool);
     const ws = this.ws;
     if (!ws) {

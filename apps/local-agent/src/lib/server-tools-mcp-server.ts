@@ -620,6 +620,14 @@ export function createServerToolsMcpServer(
           path: z
             .string()
             .min(1)
+            .regex(
+              /^\/(?![/\\])/,
+              'Path must start with a single forward slash'
+            )
+            .refine(
+              (path) => !path.includes('://') && !path.includes('//'),
+              'Path cannot contain protocol or double slashes'
+            )
             .describe(
               'Application route path (e.g., "/app/projects", "/app/artifacts", "/app/agents")'
             ),

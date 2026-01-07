@@ -7,8 +7,8 @@ const log = createLogger('ClaudeAssistantOpus');
 // Handler type identifier
 const HANDLER_TYPE = 'claude-assistant-opus';
 
-// All server tools via MCP
-const ALLOWED_TOOLS = ['mcp__agent-kit-server__*'];
+// All server tools via MCP + Claude SDK web tools
+const ALLOWED_TOOLS = ['mcp__agent-kit-server__*', 'WebSearch', 'WebFetch'];
 
 // System prompt for brainstorming and planning assistant
 const SYSTEM_PROMPT = `You are Claude Assistant, an AI-powered planning and brainstorming partner in Agent Kit.

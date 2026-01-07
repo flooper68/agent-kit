@@ -69,9 +69,9 @@ const AgentEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('error'),
-    code: z.string(),
+    code: z.string().optional(),
     error: z.string(),
-    retryable: z.boolean(),
+    retryable: z.boolean().optional(),
   }),
   z.object({ type: z.literal('interrupted') }),
 ]);
@@ -160,6 +160,8 @@ export class LocalAgentWebSocketService {
   private sessionCache = new Map<string, CachedSession>();
   // Rate limiting per agent
   private rateLimitByAgent = new Map<string, RateLimitEntry>();
+  // Cleanup interval for stale cache entries
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private wsRegistry: LocalAgentWebSocketRegistry,
@@ -175,6 +177,59 @@ export class LocalAgentWebSocketService {
   ) {
     this.wss = new WebSocketServer({ noServer: true });
     this.setupConnectionHandler();
+    this.startCacheCleanup();
+  }
+
+  /**
+   * Start periodic cleanup of stale cache entries.
+   * Runs every 5 minutes to remove expired session cache and empty rate limit entries.
+   */
+  private startCacheCleanup(): void {
+    // Clean up every 5 minutes
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanupStaleCaches();
+      },
+      5 * 60 * 1000
+    );
+  }
+
+  /**
+   * Clean up stale cache entries to prevent memory leaks.
+   */
+  private cleanupStaleCaches(): void {
+    const now = Date.now();
+    let sessionCacheCleared = 0;
+    let rateLimitCleared = 0;
+
+    // Clean expired session cache entries
+    for (const [sessionId, cached] of this.sessionCache) {
+      if (now - cached.cachedAt > SESSION_CACHE_TTL_MS) {
+        this.sessionCache.delete(sessionId);
+        sessionCacheCleared++;
+      }
+    }
+
+    // Clean rate limit entries for agents with no recent requests
+    const windowStart = now - RATE_LIMIT_WINDOW_MS;
+    for (const [agentId, entry] of this.rateLimitByAgent) {
+      // Filter out old requests first
+      entry.requests = entry.requests.filter((ts) => ts > windowStart);
+      // Remove entry if no requests remain
+      if (entry.requests.length === 0) {
+        this.rateLimitByAgent.delete(agentId);
+        rateLimitCleared++;
+      }
+    }
+
+    if (sessionCacheCleared > 0 || rateLimitCleared > 0) {
+      this.log.debug('Cleaned up stale cache entries', {
+        sessionCacheCleared,
+        rateLimitCleared,
+        sessionCacheSize: this.sessionCache.size,
+        rateLimitSize: this.rateLimitByAgent.size,
+      });
+    }
   }
 
   /**
@@ -1123,5 +1178,5 @@ type AgentEvent =
       };
       finishReason?: string;
     }
-  | { type: 'error'; code: string; error: string; retryable: boolean }
+  | { type: 'error'; code?: string; error: string; retryable?: boolean }
   | { type: 'interrupted' };
