@@ -145,9 +145,16 @@ export class ClaudeCodeProvider {
       if (this.config.enableServerTools && this.config.serverRelay) {
         mcpServers['agent-kit-server'] = createServerToolsMcpServer(
           this.config.serverRelay,
-          sessionId
+          sessionId,
+          messageId,
+          this.config.allowedSpawnAgents
         );
-        this.log.debug('In-process MCP server configured for all server tools');
+        this.log.debug(
+          'In-process MCP server configured for all server tools',
+          {
+            allowedSpawnAgents: this.config.allowedSpawnAgents?.length ?? 0,
+          }
+        );
       }
       // Add in-process MCP server for artifact tools if enabled (legacy)
       else if (this.config.enableArtifactTools && this.config.artifactRelay) {

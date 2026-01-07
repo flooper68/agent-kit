@@ -28,6 +28,7 @@ export interface SelectOption {
   value: string;
   label: string;
   disabled?: boolean;
+  icon?: React.ReactNode;
 }
 
 export interface SelectProps
@@ -111,7 +112,10 @@ export function Select({
                   </SelectPrimitive.ItemIndicator>
                 </span>
                 <SelectPrimitive.ItemText>
-                  {option.label}
+                  <span className="inline-flex items-center gap-2">
+                    {option.icon}
+                    {option.label}
+                  </span>
                 </SelectPrimitive.ItemText>
               </SelectPrimitive.Item>
             ))}

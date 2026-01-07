@@ -2,6 +2,19 @@ import { router, protectedProcedure } from '../trpc';
 import { z } from 'zod';
 
 export const agentsRouter = router({
+  listBuiltIn: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.agentsFeature.agents.list().map((agent) => ({
+      id: agent.id,
+      name: agent.name,
+      description: agent.description,
+      systemPrompt: agent.systemPrompt,
+      provider: agent.provider,
+      model: agent.model,
+      tools: agent.tools,
+      releasedAt: agent.releasedAt,
+    }));
+  }),
+
   list: protectedProcedure.query(async ({ ctx }) => {
     // Get built-in agents
     const builtInAgents = ctx.agentsFeature.agents.list().map((agent) => ({

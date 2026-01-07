@@ -1034,11 +1034,12 @@ export class LocalAgentWebSocketService {
     message: {
       requestId: string;
       sessionId: string;
+      messageId?: string;
       tool: string;
       params: Record<string, unknown>;
     }
   ): Promise<void> {
-    const { requestId, sessionId, tool, params } = message;
+    const { requestId, sessionId, messageId, tool, params } = message;
 
     this.log.debug('Handling server tool request', {
       agentId: agent.id,
@@ -1103,7 +1104,8 @@ export class LocalAgentWebSocketService {
         userId: agent.userId,
         orgId: session.orgId,
         sessionId,
-        messageId: requestId, // Use requestId as messageId for client tools
+        // Use provided messageId for spawn_session_created event association, fallback to requestId
+        messageId: messageId || requestId,
         agentId: agent.id,
         artifactsFeature: this.artifactsFeature,
         projectsFeature: this.projectsFeature,
@@ -1135,7 +1137,8 @@ export class LocalAgentWebSocketService {
       }
 
       // Execute the tool
-      const result = await toolImpl.execute(params);
+      // Pass toolCallId for tools that need it (e.g., spawnAgent)
+      const result = await toolImpl.execute(params, { toolCallId: requestId });
 
       this.log.debug('Server tool executed successfully', {
         agentId: agent.id,

@@ -31,6 +31,19 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+
+  /** Comma-separated list of agent IDs this agent is allowed to spawn */
+  ALLOWED_SPAWN_AGENTS: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v
+        ? v
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : []
+    ),
 });
 
 export const env = envSchema.parse(process.env);

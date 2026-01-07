@@ -101,6 +101,27 @@ You are a thoughtful brainstorming and planning assistant. You help users:
 2. Suggest reorganization if needed - explain what you'd change and ask for approval
 3. Only make changes after user confirms`;
 
+// Build the agent spawning section if allowed agents are configured
+const SPAWN_AGENTS_SECTION =
+  env.ALLOWED_SPAWN_AGENTS.length > 0
+    ? `
+
+## Agent Spawning
+
+You can delegate tasks to other agents using the \`spawnAgent\` tool. The spawned agent runs in a fresh session with only the message you provide.
+
+### Available Agents
+${env.ALLOWED_SPAWN_AGENTS.map((id) => `- **${id}**`).join('\n')}
+
+### When to Use Agent Spawning
+- Delegate specialized tasks that another agent is better suited for
+- Get a second opinion or alternative approach to a problem
+- Run subtasks that benefit from a clean, focused context`
+    : '';
+
+// Combine base prompt with optional spawn section
+const FULL_SYSTEM_PROMPT = SYSTEM_PROMPT + SPAWN_AGENTS_SECTION;
+
 // Register the handler
 registerHandler(
   HANDLER_TYPE,
@@ -131,8 +152,9 @@ const client = new LocalAgentClient({
     maxThinkingTokens: env.MAX_THINKING_TOKENS,
     includePartialMessages: env.INCLUDE_PARTIAL_MESSAGES,
     enableServerTools: true,
-    customSystemPrompt: SYSTEM_PROMPT,
+    customSystemPrompt: FULL_SYSTEM_PROMPT,
     useIsolatedSessionCwd: true, // Prevent loading .claude.md from working directory
+    allowedSpawnAgents: env.ALLOWED_SPAWN_AGENTS,
   },
 });
 

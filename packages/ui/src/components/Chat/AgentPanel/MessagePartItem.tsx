@@ -150,8 +150,11 @@ export const MessagePartItem = memo(function MessagePartItem({
       const toolPart = part as ToolInvocationPart;
       const result = findToolResult(message, toolPart.toolCallId);
 
-      // Special handling for spawnAgent tool
-      if (toolPart.toolName === 'spawnAgent') {
+      // Special handling for spawnAgent tool (both server-side 'spawnAgent' and MCP 'mcp__agent-kit-server__spawnAgent')
+      if (
+        toolPart.toolName === 'spawnAgent' ||
+        toolPart.toolName === 'mcp__agent-kit-server__spawnAgent'
+      ) {
         // Prefer agentName from result (full display name) over agentId (key used for spawning)
         const resultData = result?.result as {
           sessionId?: string;
