@@ -12,6 +12,20 @@ const ALLOWED_TOOLS = [
   'WebFetch',
   'WebSearch',
   'mcp__agent-kit-artifacts__writeArtifact',
+  'TodoRead',
+  'TodoWrite',
+];
+
+// Block all built-in Claude Code tools that aren't needed
+const DISALLOWED_TOOLS = [
+  'Bash',
+  'Read',
+  'Write',
+  'Edit',
+  'Glob',
+  'Grep',
+  'Task',
+  'NotebookEdit',
 ];
 
 // System prompt for focused web research with artifact output
@@ -89,11 +103,13 @@ const client = new LocalAgentClient({
   handlerConfig: {
     cwd: process.cwd(),
     allowedTools: ALLOWED_TOOLS,
+    disallowedTools: DISALLOWED_TOOLS,
     model: env.MODEL,
     maxThinkingTokens: env.MAX_THINKING_TOKENS,
     includePartialMessages: true,
     enableArtifactTools: true,
     customSystemPrompt: SYSTEM_PROMPT,
+    useIsolatedSessionCwd: true, // Prevent loading .claude.md from working directory
   },
 });
 

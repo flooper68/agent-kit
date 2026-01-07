@@ -270,7 +270,7 @@ export function useAgentSession(
         clearTimeout(timeout);
       }
 
-      timeout = setTimeout(callback, 100);
+      timeout = setTimeout(callback, 50);
     };
   }, []);
 

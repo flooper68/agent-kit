@@ -21,7 +21,7 @@ const envSchema = z.object({
   HTTPS_PROXY: z.string().optional(),
 
   /** Claude model to use - defaults to Sonnet 4.5 */
-  MODEL: z.string().default('claude-sonnet-4-5-20250514'),
+  MODEL: z.string().default('claude-sonnet-4-5'),
 
   /** Maximum tokens for extended thinking */
   MAX_THINKING_TOKENS: z.coerce.number().default(10000),

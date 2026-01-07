@@ -287,6 +287,12 @@ export interface ClaudeCodeHandlerConfig extends AgentHandlerConfig {
   enableArtifactTools?: boolean;
   /** Enable all server tools via WebSocket relay (supersedes enableArtifactTools) */
   enableServerTools?: boolean;
+  /**
+   * Use an isolated temp directory as cwd instead of the configured cwd.
+   * This prevents loading .claude.md or other Claude settings from the working directory.
+   * Defaults to false (uses configured cwd).
+   */
+  useIsolatedSessionCwd?: boolean;
 }
 
 /**

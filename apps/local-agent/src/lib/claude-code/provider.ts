@@ -1,4 +1,7 @@
 import { query } from '@anthropic-ai/claude-code';
+import { mkdirSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import type {
   AgentRunParams,
   AgentRunResult,
@@ -54,11 +57,23 @@ export class ClaudeCodeProvider {
     let messageCount = 0;
     let eventCount = 0;
 
+    // Determine cwd: use isolated temp directory or configured cwd
+    let effectiveCwd: string;
+    if (this.config.useIsolatedSessionCwd) {
+      // Create session-specific temp directory to avoid loading any Claude config files
+      // This prevents .claude.md and other settings from affecting the agent
+      effectiveCwd = join(tmpdir(), `agent-kit-session-${sessionId}`);
+      mkdirSync(effectiveCwd, { recursive: true });
+    } else {
+      effectiveCwd = this.config.cwd;
+    }
+
     this.log.info('Starting query', {
       sessionId: sessionId.slice(0, 8) + '...',
       messageId: messageId.slice(0, 8) + '...',
       promptLength: content.length,
-      cwd: this.config.cwd,
+      cwd: effectiveCwd,
+      useIsolatedSessionCwd: this.config.useIsolatedSessionCwd ?? false,
       model: this.config.model ?? 'default',
       maxThinkingTokens: this.config.maxThinkingTokens,
       includePartialMessages: this.config.includePartialMessages,
@@ -91,11 +106,20 @@ export class ClaudeCodeProvider {
 
       // Build query options
       const queryOptions: Record<string, unknown> = {
-        cwd: this.config.cwd,
-        allowedTools: this.config.allowedTools,
+        cwd: effectiveCwd,
         abortController,
         pathToClaudeCodeExecutable: process.env.CLAUDE_CODE_PATH || undefined,
+        // Use bypassPermissions for non-interactive mode
+        permissionMode: 'bypassPermissions',
       };
+
+      // Add disallowedTools if configured (blocklist approach)
+      if (
+        this.config.disallowedTools &&
+        this.config.disallowedTools.length > 0
+      ) {
+        queryOptions.disallowedTools = this.config.disallowedTools;
+      }
 
       // Add optional configuration
       if (this.config.model) {

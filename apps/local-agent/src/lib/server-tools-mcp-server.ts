@@ -44,55 +44,6 @@ export function createServerToolsMcpServer(
     name: 'agent-kit-server',
     version: '1.0.0',
     tools: [
-      // ============= Static Tools =============
-
-      tool(
-        'webSearch',
-        'Search the web for current information. Use this when you need up-to-date facts, news, or information.',
-        {
-          query: z.string().min(1).max(500).describe('The search query'),
-          maxResults: z
-            .number()
-            .min(1)
-            .max(10)
-            .default(5)
-            .describe('Maximum number of results to return'),
-          topic: z
-            .enum(['general', 'news', 'finance'])
-            .optional()
-            .describe('Topic category to focus the search'),
-        },
-        async (args) => {
-          log.debug('webSearch tool called', { query: args.query });
-          const result = await serverRelay.executeServerTool(
-            'webSearch',
-            args,
-            sessionId
-          );
-          return formatMcpResult(result);
-        }
-      ),
-
-      tool(
-        'fetch',
-        'Fetch raw content from a public URL using HTTP GET. Use this for APIs, JSON endpoints, or when you need the exact response.',
-        {
-          url: z
-            .string()
-            .url()
-            .describe('The public URL to fetch (no private/internal URLs)'),
-        },
-        async (args) => {
-          log.debug('fetch tool called', { url: args.url });
-          const result = await serverRelay.executeServerTool(
-            'fetch',
-            args,
-            sessionId
-          );
-          return formatMcpResult(result);
-        }
-      ),
-
       // ============= Artifact Tools =============
 
       tool(
