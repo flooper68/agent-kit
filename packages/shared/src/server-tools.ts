@@ -34,6 +34,8 @@ export const SERVER_TOOL_NAMES = [
   // Client tools (relayed through server)
   'navigateTo',
   'getCurrentUIState',
+  // Agent spawning
+  'spawnAgent',
 ] as const;
 
 /**

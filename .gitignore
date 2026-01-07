@@ -57,6 +57,7 @@ debug.log
 *.local
 *.tmp
 *.temp
+tmp
 
 # Git Worktrees
 .worktrees/

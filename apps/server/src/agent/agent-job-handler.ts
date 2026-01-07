@@ -93,44 +93,22 @@ export class AgentJobHandler {
 
     const { sessionId, agentId, userId, orgId, content } = job;
 
-    // Create user message first (preserves user input even if job fails)
-    const userMessage = await this.agentsFeature.messages.create({
-      sessionId,
-      role: 'user',
-      status: 'complete',
-    });
-
-    // Insert user message content event
-    await this.agentsFeature.events.insert({
-      sessionId,
-      messageId: userMessage.id,
-      sequence: 0,
-      type: 'text_delta',
-      content,
-    });
-
-    // Increment message count for user message (so messageCount includes all messages)
-    await this.agentsFeature.sessions.incrementMessageCount(sessionId);
+    // Create user message and assistant placeholder using shared command
+    const { userMessageId, assistantMessageId } =
+      await this.agentsFeature.messageLifecycle.sendUserMessage({
+        sessionId,
+        content,
+      });
 
     // Publish user_message_created event so client can update optimistic message
     await this.eventStreamManager.publish(sessionId, {
       type: 'user_message_created',
       sessionId,
-      messageId: userMessage.id,
+      messageId: userMessageId,
       content,
     } as Omit<StreamEvent, 'id' | 'timestamp'>);
 
-    // Create assistant placeholder
-    const assistantMessage = await this.agentsFeature.messages.create({
-      sessionId,
-      role: 'assistant',
-      status: 'pending',
-    });
-
-    // Update session timestamp
-    await this.agentsFeature.sessions.updateTimestamp(sessionId);
-
-    const messageId = assistantMessage.id;
+    const messageId = assistantMessageId;
 
     // Get agent definition
     const agent = this.agentsFeature.agents.get(agentId);

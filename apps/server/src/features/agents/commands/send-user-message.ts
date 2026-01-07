@@ -1,6 +1,7 @@
 import type { CreateMessageCommand } from './create-message';
 import type { InsertEventCommand } from './insert-event';
 import type { UpdateSessionTimestampCommand } from './update-session-timestamp';
+import type { IncrementMessageCountCommand } from './increment-message-count';
 
 export interface SendUserMessageInput {
   sessionId: string;
@@ -24,7 +25,8 @@ export class SendUserMessageCommand {
   constructor(
     private createMessageCommand: CreateMessageCommand,
     private insertEventCommand: InsertEventCommand,
-    private updateSessionTimestampCommand: UpdateSessionTimestampCommand
+    private updateSessionTimestampCommand: UpdateSessionTimestampCommand,
+    private incrementMessageCountCommand: IncrementMessageCountCommand
   ) {}
 
   async execute(input: SendUserMessageInput): Promise<SendUserMessageResult> {
@@ -45,6 +47,9 @@ export class SendUserMessageCommand {
       type: 'text_delta',
       content,
     });
+
+    // Increment message count for user message
+    await this.incrementMessageCountCommand.execute(sessionId);
 
     // Create assistant message placeholder
     const assistantMessage = await this.createMessageCommand.execute({

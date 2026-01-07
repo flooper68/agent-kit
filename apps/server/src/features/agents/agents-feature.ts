@@ -459,7 +459,8 @@ export class AgentsFeature {
     this.sendUserMessageCommand = new SendUserMessageCommand(
       this.createMessageCommand,
       this.insertEventCommand,
-      this.updateSessionTimestampCommand
+      this.updateSessionTimestampCommand,
+      this.incrementMessageCountCommand
     );
 
     this.completeMessageCommand = new CompleteMessageCommand(

@@ -171,6 +171,9 @@ fastify.addHook('onReady', async () => {
     jobRegistryManager
   );
 
+  // Wire up agent spawner to local agent WebSocket service for sub-agent delegation
+  localAgentWSService.setAgentSpawner(agentSpawner);
+
   // Create the agent worker with new architecture
   const agentWorker = new AgentWorker(
     jobQueueManager,
