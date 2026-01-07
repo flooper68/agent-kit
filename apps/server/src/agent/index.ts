@@ -35,3 +35,14 @@ export type {
 } from './local-agents-connection-manager';
 export { LocalAgentWebSocketRegistry } from './local-agent-websocket-registry';
 export { LocalAgentWebSocketService } from './local-agent-websocket-service';
+
+// Agent spawning
+export { AgentSpawner } from './agent-spawner';
+export type {
+  SpawnInput,
+  SpawnResult,
+  SpawnAndWaitResult,
+  // Legacy aliases
+  SpawnAgentInput,
+  SpawnAgentResult,
+} from './agent-spawner';

@@ -7,6 +7,7 @@ import {
   useId,
 } from 'react';
 import { Search } from 'lucide-react';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { Dialog } from '../Dialog';
 import { cn } from '../../lib/utils';
 import { CommandPaletteItem } from './CommandPaletteItem';
@@ -108,6 +109,9 @@ export function CommandPalette({
         onEscapeKeyDown={handleClose}
         onCloseAutoFocus={handleCloseAutoFocus}
       >
+        <VisuallyHidden.Root>
+          <Dialog.Title>Command Palette</Dialog.Title>
+        </VisuallyHidden.Root>
         {/* Search Input */}
         <div className="flex items-center border-b border-border px-3">
           <Search

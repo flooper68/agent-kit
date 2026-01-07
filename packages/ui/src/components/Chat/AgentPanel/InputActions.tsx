@@ -26,7 +26,8 @@ interface InputActionsProps {
   sessionResourcesCounts?: SessionResourcesCounts;
   contextUsage?: ContextUsage;
   status?: TaskStatus;
-  streamingStartTime?: number | null;
+  /** Formatted elapsed time label (e.g., "5s" or "1m 23s"). Pass null to hide. */
+  elapsedLabel?: string | null;
 }
 
 /**
@@ -52,7 +53,7 @@ export const InputActions = memo(function InputActions({
   sessionResourcesCounts,
   contextUsage,
   status = 'ready',
-  streamingStartTime,
+  elapsedLabel,
 }: InputActionsProps) {
   return (
     <>
@@ -93,10 +94,7 @@ export const InputActions = memo(function InputActions({
         )}
       </div>
       <div className="flex items-center gap-2">
-        <RunningTimeIndicator
-          status={status}
-          streamingStartTime={streamingStartTime}
-        />
+        <RunningTimeIndicator status={status} elapsedLabel={elapsedLabel} />
         <ContextIndicator usage={contextUsage ?? DEFAULT_CONTEXT_USAGE} />
       </div>
     </>

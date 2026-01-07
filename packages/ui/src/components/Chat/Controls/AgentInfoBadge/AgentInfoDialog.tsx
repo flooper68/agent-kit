@@ -31,13 +31,13 @@ export const AgentInfoDialog = memo(
                   {agent.icon || <Bot className="h-4 w-4" />}
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold tracking-tight">
+                  <Dialog.Title className="text-base font-semibold tracking-tight">
                     {agent.name}
-                  </h2>
+                  </Dialog.Title>
                   {agent.description && (
-                    <p className="text-sm text-muted-foreground mt-0.5 max-w-[280px]">
+                    <Dialog.Description className="text-sm text-muted-foreground mt-0.5 max-w-[280px]">
                       {agent.description}
-                    </p>
+                    </Dialog.Description>
                   )}
                 </div>
               </div>

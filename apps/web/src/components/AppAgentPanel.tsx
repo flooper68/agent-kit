@@ -1,12 +1,17 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '@clerk/clerk-react';
-import { AgentPanel, ConnectionSnackbar } from '@agent-kit/ui';
+import {
+  AgentPanel,
+  ConnectionSnackbar,
+  SubAgentFullViewDialog,
+} from '@agent-kit/ui';
 import type {
   AgentType,
   TaskHistoryItem,
   SuggestionChip,
   ConnectionStatus,
   SessionResourcesCounts,
+  RenderSubAgentCardProps,
 } from '@agent-kit/ui';
 import { MessageSquareText } from 'lucide-react';
 import { useRegisterCommand } from '../contexts/CommandRegistryContext';
@@ -14,8 +19,12 @@ import { trpc, subscribeToConnectionState } from '../lib/trpc';
 import { useAgentSession } from '../hooks/useAgentSession';
 import { useClientToolCommands } from '../hooks/useClientToolCommands';
 import { useSession } from '../contexts/SessionContext';
+import { useSubAgentDialog } from '../hooks/useSubAgentDialog';
+import { useSubAgentStreaming } from '../hooks/useSubAgentStreaming';
+import { useElapsedTime } from '../hooks/useElapsedTime';
 import { SessionDetailModal } from './analytics/SessionDetailModal';
 import { SessionResourcesDialog } from './SessionResourcesDialog';
+import { SubAgentCardConnected } from './SubAgentCardConnected';
 
 const STORAGE_KEY_AGENT = 'agent-kit:lastAgentId';
 
@@ -75,11 +84,20 @@ export function AppAgentPanel({
     useState<ConnectionStatus>('reconnecting');
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
-  // State for session inspect modal
-  const [isInspectModalOpen, setIsInspectModalOpen] = useState(false);
+  // State for session inspect modal (can be main session or sub-agent session)
+  const [inspectSessionId, setInspectSessionId] = useState<string | null>(null);
 
   // State for session resources dialog
   const [isResourcesDialogOpen, setIsResourcesDialogOpen] = useState(false);
+
+  // Sub-agent dialog management
+  const subAgentDialog = useSubAgentDialog(agents);
+
+  // Sub-agent streaming (when dialog is open)
+  const subAgentStreaming = useSubAgentStreaming({
+    sessionId: subAgentDialog.currentSessionId,
+    enabled: subAgentDialog.isOpen,
+  });
 
   // Client tool commands handler (for navigateTo, getCurrentUIState, etc.)
   const { handleClientToolRequest } = useClientToolCommands({ sessionId });
@@ -163,6 +181,18 @@ export function AppAgentPanel({
     onSessionInvalid: handleSessionInvalid,
     onResourceCreated: handleResourceCreated,
     onClientToolRequest: handleClientToolRequest,
+  });
+
+  // Convert streamingStartTime to formatted elapsed label for main session
+  const { formattedElapsed: elapsedLabel } = useElapsedTime({
+    startTime: streamingStartTime,
+    isRunning: status === 'streaming',
+  });
+
+  // Convert streamingStartTime to formatted elapsed label for sub-agent dialog
+  const { formattedElapsed: subAgentElapsedLabel } = useElapsedTime({
+    startTime: subAgentStreaming.streamingStartTime,
+    isRunning: subAgentStreaming.isStreaming,
   });
 
   // Track when selectedAgentId changes from parent (command palette selection)
@@ -330,12 +360,21 @@ export function AppAgentPanel({
   );
 
   const handleInspect = useCallback(() => {
-    setIsInspectModalOpen(true);
-  }, []);
+    if (sessionId) {
+      setInspectSessionId(sessionId);
+    }
+  }, [sessionId]);
 
   const handleInspectClose = useCallback(() => {
-    setIsInspectModalOpen(false);
+    setInspectSessionId(null);
   }, []);
+
+  // Inspect handler for sub-agent sessions
+  const handleSubAgentInspect = useCallback(() => {
+    if (subAgentDialog.currentSessionId) {
+      setInspectSessionId(subAgentDialog.currentSessionId);
+    }
+  }, [subAgentDialog.currentSessionId]);
 
   const handleSessionResources = useCallback(() => {
     setIsResourcesDialogOpen(true);
@@ -343,6 +382,28 @@ export function AppAgentPanel({
 
   const handleResourcesClose = useCallback(() => {
     setIsResourcesDialogOpen(false);
+  }, []);
+
+  // Callback for opening sub-agent dialog
+  const handleOpenSubAgentDialog = useCallback(
+    (subAgentSessionId: string) => {
+      subAgentDialog.openDialog(subAgentSessionId);
+    },
+    [subAgentDialog]
+  );
+
+  // Render function for sub-agent cards (enables real-time streaming)
+  const renderSubAgentCard = useCallback((props: RenderSubAgentCardProps) => {
+    return (
+      <SubAgentCardConnected
+        sessionId={props.sessionId}
+        agentName={props.agentName}
+        toolState={props.toolState}
+        toolResult={props.toolResult}
+        onOpenFullView={props.onOpenFullView}
+        onOpenSubAgentDialog={props.onOpenSubAgentDialog}
+      />
+    );
   }, []);
 
   // Register focus input command
@@ -400,19 +461,42 @@ export function AppAgentPanel({
         onSessionResources={sessionId ? handleSessionResources : undefined}
         sessionResourcesCounts={sessionResourcesCounts}
         todos={todos}
-        streamingStartTime={streamingStartTime}
+        elapsedLabel={elapsedLabel}
+        onOpenSubAgentDialog={handleOpenSubAgentDialog}
+        renderSubAgentCard={renderSubAgentCard}
       />
       <ConnectionSnackbar
         status={connectionStatus}
         reconnectAttempt={reconnectAttempts}
       />
       <SessionDetailModal
-        sessionId={isInspectModalOpen ? sessionId : null}
+        sessionId={inspectSessionId}
         onClose={handleInspectClose}
       />
       <SessionResourcesDialog
         sessionId={isResourcesDialogOpen ? sessionId : null}
         onClose={handleResourcesClose}
+      />
+      <SubAgentFullViewDialog
+        open={subAgentDialog.isOpen}
+        onOpenChange={(open) => {
+          if (!open) subAgentDialog.closeDialog();
+        }}
+        agentName={subAgentDialog.sessionData.agentName}
+        messages={subAgentStreaming.messages}
+        status={
+          subAgentStreaming.status === 'idle'
+            ? 'active'
+            : subAgentStreaming.status
+        }
+        isStreaming={subAgentStreaming.isStreaming}
+        usage={subAgentDialog.sessionData.usage}
+        todos={subAgentStreaming.todos}
+        agent={subAgentDialog.agent}
+        elapsedLabel={subAgentElapsedLabel}
+        onInspect={handleSubAgentInspect}
+        onOpenSubAgentDialog={subAgentDialog.navigateTo}
+        renderSubAgentCard={renderSubAgentCard}
       />
     </div>
   );

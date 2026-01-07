@@ -24,6 +24,7 @@ import {
   LocalAgentsConnectionManager,
   LocalAgentWebSocketRegistry,
   LocalAgentWebSocketService,
+  AgentSpawner,
 } from './agent';
 import { AgentsFeature } from './features/agents';
 import { AnalyticsFeature } from './features/analytics';
@@ -103,6 +104,7 @@ let pubsub!: PubSubManager;
 let localAgentsConnectionManager!: LocalAgentsConnectionManager;
 let cacheInvalidation!: CacheInvalidationService;
 let localAgentWSService!: LocalAgentWebSocketService;
+let agentSpawner!: AgentSpawner;
 
 // Hook to initialize Redis-dependent services after Redis plugin is registered
 fastify.addHook('onReady', async () => {
@@ -158,6 +160,21 @@ fastify.addHook('onReady', async () => {
     pubsub
   );
 
+  // Create the agent spawner for spawning sub-agents
+  agentSpawner = new AgentSpawner(
+    agentsFeature,
+    localAgentsFeature,
+    jobQueueManager,
+    eventStreamManager,
+    streamingStateManager,
+    localAgentWSRegistry,
+    cacheInvalidation,
+    jobRegistryManager
+  );
+
+  // Wire up agent spawner to local agent WebSocket service for sub-agent delegation
+  localAgentWSService.setAgentSpawner(agentSpawner);
+
   // Create the agent worker with new architecture
   const agentWorker = new AgentWorker(
     jobQueueManager,
@@ -169,7 +186,9 @@ fastify.addHook('onReady', async () => {
     pubsub,
     cacheInvalidation,
     projectsFeature,
-    tasksFeature
+    tasksFeature,
+    localAgentsFeature,
+    agentSpawner
   );
 
   fastify.log.info('Starting agent worker...');
@@ -205,6 +224,7 @@ fastify.register(fastifyTRPCPlugin, {
         localAgentsConnectionManager,
         localAgentWSRegistry,
         cacheInvalidation,
+        agentSpawner,
       })(opts);
     },
     onError({ path, error }) {
@@ -309,6 +329,7 @@ const start = async () => {
           localAgentsConnectionManager,
           localAgentWSRegistry,
           cacheInvalidation,
+          agentSpawner,
         };
       },
     });

@@ -4,6 +4,7 @@ import type { ProjectsFeature } from '../../features/projects';
 import type { TasksFeature } from '../../features/tasks';
 import type { EventStreamManager } from '../event-stream-manager';
 import type { PubSubManager } from '../../real-time';
+import type { AgentSpawner } from '../agent-spawner';
 import { logger } from '../logger';
 import { getTimeTool } from './get-time';
 import { webSearchTool } from './web-search';
@@ -32,6 +33,7 @@ import {
   createNavigateToTool,
   createGetCurrentUIStateTool,
 } from './client-tools';
+import { createSpawnAgentTool } from './spawn-agent';
 
 // Static tools (no context needed)
 const STATIC_TOOLS: Record<string, Tool> = {
@@ -68,6 +70,8 @@ const CONTEXT_TOOL_IDS = [
   // Client-side tools
   'navigateTo',
   'getCurrentUIState',
+  // Agent spawning
+  'spawnAgent',
 ] as const;
 
 export type StaticToolId = keyof typeof STATIC_TOOLS;
@@ -90,6 +94,10 @@ export interface ToolContext {
   eventStreamManager?: EventStreamManager;
   /** Pub/Sub manager for stateful client-side tools */
   pubsub?: PubSubManager;
+  /** Agent spawner for spawnAgent tool */
+  agentSpawner?: AgentSpawner;
+  /** Current spawn depth for recursion tracking (0 for root sessions) */
+  currentSpawnDepth?: number;
 }
 
 /**
@@ -374,6 +382,26 @@ export function getToolsById(
               hasSessionId: !!context.sessionId,
               hasMessageId: !!context.messageId,
               hasPubsub: !!context.pubsub,
+            });
+          }
+          break;
+        // Agent spawning tool
+        case 'spawnAgent':
+          if (context.agentSpawner && context.sessionId && context.messageId) {
+            result[id] = createSpawnAgentTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              sessionId: context.sessionId,
+              currentSpawnDepth: context.currentSpawnDepth ?? 0,
+              agentSpawner: context.agentSpawner,
+              messageId: context.messageId,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing context', {
+              tool: id,
+              hasAgentSpawner: !!context.agentSpawner,
+              hasSessionId: !!context.sessionId,
+              hasMessageId: !!context.messageId,
             });
           }
           break;

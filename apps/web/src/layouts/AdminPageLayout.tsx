@@ -16,7 +16,7 @@ import {
   IconButton,
   Tooltip,
 } from '@agent-kit/ui';
-import type { Project, MenuSection } from '@agent-kit/ui';
+import type { Project, MenuSection, SessionFilter } from '@agent-kit/ui';
 import {
   Bot,
   BarChart3,
@@ -50,6 +50,7 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
   const [isSwitching, setIsSwitching] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<SessionFilter>('my_chats');
   const isAdmin = checkIsAdmin(membership?.role);
   const currentPath = location.pathname;
 
@@ -60,7 +61,10 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
   useGlobalKeyboardShortcut('p', openCommandPalette, { cmdOrCtrl: true });
 
   // Fetch chat history for the sidebar
-  const { sessions, refetch: refetchSessions } = useChatHistory({ limit: 50 });
+  const { sessions, refetch: refetchSessions } = useChatHistory({
+    limit: 50,
+    filter: historyFilter,
+  });
 
   // Delete session mutation
   const deleteSessionMutation = trpc.sessions.delete.useMutation({
@@ -289,6 +293,8 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
         tasks={sessions}
         onTaskSelect={handleSessionSelect}
         onTaskDelete={handleSessionDelete}
+        filter={historyFilter}
+        onFilterChange={setHistoryFilter}
       />
       <AppCommandPalette
         open={isCommandPaletteOpen}

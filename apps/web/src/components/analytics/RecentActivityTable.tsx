@@ -9,6 +9,8 @@ interface RecentActivityItem {
   status: string;
   messageCount: number;
   updatedAt: Date | string;
+  parentSessionId?: string | null;
+  spawnDepth?: number;
 }
 
 interface RecentActivityTableProps {
@@ -52,6 +54,21 @@ function getStatusBadge(status: string) {
       className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusStyles[status] ?? statusStyles.cancelled}`}
     >
       {status}
+    </span>
+  );
+}
+
+function getTypeBadge(spawnDepth?: number) {
+  if (spawnDepth && spawnDepth > 0) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+        Sub-agent (L{spawnDepth})
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400">
+      Root
     </span>
   );
 }
@@ -141,6 +158,7 @@ export function RecentActivityTable({
                   <Text className="font-medium">
                     {activity.title ?? 'Untitled session'}
                   </Text>
+                  {getTypeBadge(activity.spawnDepth)}
                   {getStatusBadge(activity.status)}
                 </div>
                 <Text className="text-sm text-muted-foreground">

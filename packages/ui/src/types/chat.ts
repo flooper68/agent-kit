@@ -187,6 +187,8 @@ export interface TaskHistoryItem {
   totalTokens?: number;
   messageCount?: number;
   isStreaming?: boolean;
+  /** Whether this session was spawned by another agent (has parent) */
+  isSubAgent?: boolean;
 }
 
 // Agent type for selection

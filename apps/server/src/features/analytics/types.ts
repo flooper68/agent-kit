@@ -53,6 +53,8 @@ export interface RecentActivityItem {
   status: string;
   messageCount: number;
   updatedAt: Date;
+  parentSessionId: string | null;
+  spawnDepth: number;
 }
 
 export interface PaginatedRecentActivity {

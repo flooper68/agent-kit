@@ -48,6 +48,8 @@ export class CreateSessionCommand {
         agentId: input.agentId,
         title: input.title,
         isLocalAgent,
+        parentSessionId: input.parentSessionId,
+        spawnDepth: input.spawnDepth ?? 0,
       })
       .returning();
 

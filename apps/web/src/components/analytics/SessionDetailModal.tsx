@@ -14,11 +14,13 @@ import { SessionEventsTimeline } from './SessionEventsTimeline';
 interface SessionDetailModalProps {
   sessionId: string | null;
   onClose: () => void;
+  onNavigateToSession?: (sessionId: string) => void;
 }
 
 export function SessionDetailModal({
   sessionId,
   onClose,
+  onNavigateToSession,
 }: SessionDetailModalProps) {
   const sessionQuery = trpc.analytics.getSessionDetail.useQuery(
     { sessionId: sessionId! },
@@ -89,7 +91,10 @@ export function SessionDetailModal({
           {sessionQuery.data && (
             <div className="divide-y divide-border">
               <div className="py-3">
-                <SessionMetadataHeader session={sessionQuery.data.session} />
+                <SessionMetadataHeader
+                  session={sessionQuery.data.session}
+                  onNavigateToSession={onNavigateToSession}
+                />
               </div>
 
               <div className="py-3">

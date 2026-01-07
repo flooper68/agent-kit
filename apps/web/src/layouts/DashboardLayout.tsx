@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   useUser,
   useClerk,
@@ -23,6 +23,7 @@ import type {
   MenuSection,
   AgentType,
   AppLayoutRef,
+  SessionFilter,
 } from '@agent-kit/ui';
 import {
   Bot,
@@ -87,6 +88,9 @@ function DashboardLayoutInner({
   const [isSwitching, setIsSwitching] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [panelWidth, setPanelWidth] = useState(getDefaultPanelWidth);
+  const [historyFilter, setHistoryFilter] = useState<SessionFilter>('my_chats');
+  const [historyCursors, setHistoryCursors] = useState<string[]>([]);
+  const currentHistoryCursor = historyCursors[historyCursors.length - 1];
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const {
     selectedAgentId,
@@ -157,7 +161,33 @@ function DashboardLayoutInner({
   useGlobalKeyboardShortcut('p', openCommandPalette, { cmdOrCtrl: true });
 
   // Fetch chat history for the sidebar
-  const { sessions, refetch: refetchSessions } = useChatHistory({ limit: 50 });
+  const {
+    sessions,
+    refetch: refetchSessions,
+    nextCursor: historyNextCursor,
+    isFetching: isHistoryFetching,
+    totalCount: historyTotalCount,
+  } = useChatHistory({
+    limit: 20,
+    filter: historyFilter,
+    cursor: currentHistoryCursor,
+  });
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    setHistoryCursors([]);
+  }, [historyFilter]);
+
+  // Pagination handlers
+  const handleHistoryNextPage = useCallback(() => {
+    if (historyNextCursor) {
+      setHistoryCursors((prev) => [...prev, historyNextCursor]);
+    }
+  }, [historyNextCursor]);
+
+  const handleHistoryPreviousPage = useCallback(() => {
+    setHistoryCursors((prev) => prev.slice(0, -1));
+  }, []);
 
   // Fetch agents for the agent panel and command palette
   const agentsQuery = trpc.agents.list.useQuery();
@@ -482,6 +512,14 @@ function DashboardLayoutInner({
         tasks={sessions}
         onTaskSelect={handleSessionSelect}
         onTaskDelete={handleSessionDelete}
+        filter={historyFilter}
+        onFilterChange={setHistoryFilter}
+        hasNextPage={!!historyNextCursor}
+        hasPreviousPage={historyCursors.length > 0}
+        onNextPage={handleHistoryNextPage}
+        onPreviousPage={handleHistoryPreviousPage}
+        isPaginationLoading={isHistoryFetching}
+        totalCount={historyTotalCount}
       />
       <AppCommandPalette
         open={isCommandPaletteOpen}

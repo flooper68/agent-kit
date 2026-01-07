@@ -200,6 +200,7 @@ export function AgentsPage() {
 
   const handleCreate = (data: LocalAgentFormData) => {
     createMutation.mutate({
+      key: data.key,
       name: data.name,
       description: data.description || undefined,
     });
@@ -209,6 +210,7 @@ export function AgentsPage() {
     if (!editingAgent) return;
     updateMutation.mutate({
       id: editingAgent.id,
+      key: data.key,
       name: data.name,
       description: data.description || undefined,
     });
@@ -337,6 +339,7 @@ export function AgentsPage() {
                   setEditingAgent({
                     id: agent.id,
                     data: {
+                      key: agent.key,
                       name: agent.name,
                       description: agent.description ?? '',
                     },

@@ -7,6 +7,7 @@ import {
   integer,
   text,
   boolean,
+  index,
 } from 'drizzle-orm/pg-core';
 
 export type AgentSessionStatus = 'active' | 'completed' | 'cancelled';
@@ -60,32 +61,43 @@ export interface AgentSessionUsage {
   lastProvider: string;
 }
 
-export const agentSessions = pgTable('agent_sessions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: varchar('user_id', { length: 255 }).notNull(),
-  orgId: varchar('org_id', { length: 255 }).notNull(),
-  agentId: varchar('agent_id', { length: 64 }).notNull(),
-  isLocalAgent: boolean('is_local_agent').notNull().default(false),
-  title: varchar('title', { length: 255 }),
-  description: text('description'),
-  status: varchar('status', { length: 32 })
-    .$type<AgentSessionStatus>()
-    .notNull()
-    .default('active'),
+export const agentSessions = pgTable(
+  'agent_sessions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: varchar('user_id', { length: 255 }).notNull(),
+    orgId: varchar('org_id', { length: 255 }).notNull(),
+    agentId: varchar('agent_id', { length: 64 }).notNull(),
+    isLocalAgent: boolean('is_local_agent').notNull().default(false),
+    title: varchar('title', { length: 255 }),
+    description: text('description'),
+    status: varchar('status', { length: 32 })
+      .$type<AgentSessionStatus>()
+      .notNull()
+      .default('active'),
 
-  // Usage metrics
-  usage: jsonb('usage').$type<AgentSessionUsage>(),
+    // Spawn hierarchy tracking
+    parentSessionId: uuid('parent_session_id'),
+    spawnDepth: integer('spawn_depth').notNull().default(0),
 
-  // Message counters (for quick access without loading all messages)
-  messageCount: integer('message_count').notNull().default(0),
+    // Usage metrics
+    usage: jsonb('usage').$type<AgentSessionUsage>(),
 
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+    // Message counters (for quick access without loading all messages)
+    messageCount: integer('message_count').notNull().default(0),
+
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // Index for finding child sessions spawned from a parent
+    index('idx_agent_sessions_parent_session_id').on(table.parentSessionId),
+  ]
+);
 
 export type AgentSession = typeof agentSessions.$inferSelect;
 export type NewAgentSession = typeof agentSessions.$inferInsert;

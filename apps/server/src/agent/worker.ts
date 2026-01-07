@@ -8,7 +8,15 @@ import type { AgentsFeature } from '../features/agents';
 import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
+import type { LocalAgentsFeature } from '../features/local-agents';
+import type { AgentSpawner } from './agent-spawner';
 import { AgentJobHandler } from './agent-job-handler';
+
+// Maximum concurrent jobs per worker (configurable via environment variable)
+const MAX_CONCURRENT_JOBS = parseInt(
+  process.env.AGENT_WORKER_MAX_CONCURRENT ?? '10',
+  10
+);
 
 /**
  * Agent Worker - consumes jobs from the queue and processes them
@@ -23,6 +31,8 @@ export class AgentWorker {
   private artifactsFeature: ArtifactsFeature;
   private projectsFeature?: ProjectsFeature;
   private tasksFeature?: TasksFeature;
+  private localAgentsFeature?: LocalAgentsFeature;
+  private agentSpawner?: AgentSpawner;
   private pubsub: PubSubManager;
   private cacheInvalidation: CacheInvalidationService;
   private workerId: string;
@@ -38,7 +48,9 @@ export class AgentWorker {
     pubsub: PubSubManager,
     cacheInvalidation: CacheInvalidationService,
     projectsFeature?: ProjectsFeature,
-    tasksFeature?: TasksFeature
+    tasksFeature?: TasksFeature,
+    localAgentsFeature?: LocalAgentsFeature,
+    agentSpawner?: AgentSpawner
   ) {
     this.jobQueueManager = jobQueueManager;
     this.eventStreamManager = eventStreamManager;
@@ -50,6 +62,8 @@ export class AgentWorker {
     this.cacheInvalidation = cacheInvalidation;
     this.projectsFeature = projectsFeature;
     this.tasksFeature = tasksFeature;
+    this.localAgentsFeature = localAgentsFeature;
+    this.agentSpawner = agentSpawner;
     this.workerId = `worker-${randomUUID().slice(0, 8)}`;
   }
 
@@ -60,8 +74,9 @@ export class AgentWorker {
     console.log(`[AgentWorker ${this.workerId}] Starting worker...`);
 
     try {
-      // Start consuming jobs - this runs forever
-      await this.jobQueueManager.consume(
+      // Start consuming jobs concurrently with per-session locking
+      // This allows spawned agents (different sessions) to run in parallel
+      await this.jobQueueManager.consumeConcurrently(
         'agent-workers',
         this.workerId,
         async (job) => {
@@ -78,10 +93,13 @@ export class AgentWorker {
             this.cacheInvalidation,
             this.workerId,
             this.projectsFeature,
-            this.tasksFeature
+            this.tasksFeature,
+            this.localAgentsFeature,
+            this.agentSpawner
           );
           await handler.handle(job);
-        }
+        },
+        { maxConcurrent: MAX_CONCURRENT_JOBS }
       );
     } catch (error) {
       console.error(`[AgentWorker ${this.workerId}] Worker error:`, error);

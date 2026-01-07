@@ -1,4 +1,5 @@
 import { Code, DataList, Text } from '@agent-kit/ui';
+import { formatDate, formatLatency } from '../../lib/time-utils';
 import { TokenBreakdownBar } from './TokenBreakdownBar';
 
 interface TokenBreakdown {
@@ -40,10 +41,13 @@ interface SessionData {
   usage: SessionUsage | null;
   createdAt: Date | string;
   updatedAt: Date | string;
+  parentSessionId?: string | null;
+  spawnDepth?: number;
 }
 
 interface SessionMetadataHeaderProps {
   session: SessionData;
+  onNavigateToSession?: (sessionId: string) => void;
 }
 
 function getStatusBadge(status: string) {
@@ -65,26 +69,14 @@ function getStatusBadge(status: string) {
   );
 }
 
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 function formatCost(cost: number): string {
   return `$${cost.toFixed(4)}`;
 }
 
-function formatLatency(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  return `${(ms / 1000).toFixed(2)}s`;
-}
-
-export function SessionMetadataHeader({ session }: SessionMetadataHeaderProps) {
+export function SessionMetadataHeader({
+  session,
+  onNavigateToSession,
+}: SessionMetadataHeaderProps) {
   return (
     <DataList className="border-0 rounded-none">
       <DataList.Item className="hover:bg-transparent px-0 py-2">
@@ -95,6 +87,46 @@ export function SessionMetadataHeader({ session }: SessionMetadataHeaderProps) {
           <Code className="text-xs">{session.id}</Code>
         </DataList.Cell>
       </DataList.Item>
+      <DataList.Item className="hover:bg-transparent px-0 py-2">
+        <DataList.Cell shrink className="w-24">
+          <Text className="text-sm text-muted-foreground">Type</Text>
+        </DataList.Cell>
+        <DataList.Cell grow>
+          <div className="flex items-center gap-2">
+            {session.spawnDepth && session.spawnDepth > 0 ? (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                Sub-agent (L{session.spawnDepth})
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400">
+                Root
+              </span>
+            )}
+          </div>
+        </DataList.Cell>
+      </DataList.Item>
+      {session.parentSessionId && (
+        <DataList.Item className="hover:bg-transparent px-0 py-2">
+          <DataList.Cell shrink className="w-24">
+            <Text className="text-sm text-muted-foreground">Parent</Text>
+          </DataList.Cell>
+          <DataList.Cell grow>
+            {onNavigateToSession ? (
+              <button
+                type="button"
+                onClick={() => onNavigateToSession(session.parentSessionId!)}
+                className="text-xs text-primary hover:underline"
+              >
+                {session.parentSessionId.slice(0, 8)}...
+              </button>
+            ) : (
+              <Code className="text-xs">
+                {session.parentSessionId.slice(0, 8)}...
+              </Code>
+            )}
+          </DataList.Cell>
+        </DataList.Item>
+      )}
       <DataList.Item className="hover:bg-transparent px-0 py-2">
         <DataList.Cell shrink className="w-24">
           <Text className="text-sm text-muted-foreground">Status</Text>

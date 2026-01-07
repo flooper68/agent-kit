@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type {
   TaskMessage,
   TaskStatus,
@@ -6,8 +7,28 @@ import type {
   AgentType,
   TaskHistoryItem,
   TodoItem,
+  ToolInvocationPart,
+  ToolResultPart,
 } from '../../../types/chat';
 import type { SessionResourcesCounts } from '../Controls/SessionResourcesButton';
+
+/**
+ * Props passed to the renderSubAgentCard render function
+ */
+export interface RenderSubAgentCardProps {
+  /** Session ID for the sub-agent (available after spawning) */
+  sessionId: string | undefined;
+  /** Name of the agent */
+  agentName: string;
+  /** Tool invocation state */
+  toolState: ToolInvocationPart['state'];
+  /** Tool result (if available) */
+  toolResult?: ToolResultPart;
+  /** Callback when "Open Full View" is clicked */
+  onOpenFullView?: () => void;
+  /** Callback when a nested sub-agent dialog should open */
+  onOpenSubAgentDialog?: (sessionId: string) => void;
+}
 
 /**
  * Error information for the task
@@ -90,7 +111,15 @@ export interface AgentPanelCallbacks {
 
   /** Called when user clicks the session resources button */
   onSessionResources?: () => void;
+
+  /** Called when user wants to open a sub-agent's full view dialog */
+  onOpenSubAgentDialog?: (sessionId: string) => void;
 }
+
+/**
+ * Status for compact mode sub-agent display
+ */
+export type CompactStatus = 'pending' | 'running' | 'complete' | 'error';
 
 /**
  * Main AgentPanel component props
@@ -101,6 +130,24 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
 
   /** Current status of the task */
   status: TaskStatus;
+
+  /** Display variant - 'full' (default) or 'compact' for inline sub-agent card view */
+  variant?: 'full' | 'compact';
+
+  /** Compact mode: Agent name to display in header */
+  agentName?: string;
+
+  /** Compact mode: Current status badge */
+  compactStatus?: CompactStatus;
+
+  /** Compact mode: Callback when "Open Full View" is clicked */
+  onOpenFullView?: () => void;
+
+  /** Compact mode: Callback for retry on error */
+  onCompactRetry?: () => void;
+
+  /** Compact mode: Formatted elapsed time label (e.g., "5s" or "1m 23s"). Pass null to hide. */
+  compactElapsedLabel?: string | null;
 
   /** Error information if status is 'error' */
   error?: TaskError | null;
@@ -123,8 +170,8 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
   /** Context usage information for token limit display */
   contextUsage?: ContextUsage;
 
-  /** Timestamp when streaming started (for running time indicator) */
-  streamingStartTime?: number | null;
+  /** Formatted elapsed time label for running time indicator (e.g., "5s" or "1m 23s"). Pass null to hide. */
+  elapsedLabel?: string | null;
 
   /** Placeholder text for input */
   inputPlaceholder?: string;
@@ -170,6 +217,16 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
 
   /** Callback when input ref changes (for external focus control) */
   inputRef?: (node: HTMLTextAreaElement | null) => void;
+
+  /** Whether the input is disabled (read-only mode for sub-agent views) */
+  inputDisabled?: boolean;
+
+  /**
+   * Custom render function for sub-agent cards (spawnAgent tool invocations).
+   * Use this to inject a connected component that can subscribe to streaming.
+   * If not provided, falls back to the default SubAgentCard.
+   */
+  renderSubAgentCard?: (props: RenderSubAgentCardProps) => ReactNode;
 }
 
 /**

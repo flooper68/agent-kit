@@ -25,3 +25,8 @@ export {
   type SessionMessagesAndEvents,
 } from './get-session-messages-and-events';
 export { GetActiveSessionIdsQuery } from './get-active-session-ids';
+export { GetSessionChildrenQuery } from './get-session-children';
+export {
+  GetSessionLineageQuery,
+  type LineageItem,
+} from './get-session-lineage';

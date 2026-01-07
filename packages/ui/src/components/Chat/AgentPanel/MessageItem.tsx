@@ -4,10 +4,12 @@ import type {
   TextPart,
   ReasoningPart,
   ToolInvocationPart,
+  AgentType,
 } from '../../../types/chat';
 import { Message } from '../Core/Message';
 import { CopyButton, RegenerateButton } from '../Controls';
 import { MessageContent } from './MessageContent';
+import type { RenderSubAgentCardProps } from './types';
 
 interface MessageItemProps {
   message: TaskMessage;
@@ -16,6 +18,10 @@ interface MessageItemProps {
   avatar: { src?: string; fallback: string; name?: string };
   enableRegenerate: boolean;
   onRegenerate?: (messageId: string) => void;
+  onOpenSubAgentDialog?: (sessionId: string) => void;
+  renderSubAgentCard?: (props: RenderSubAgentCardProps) => React.ReactNode;
+  /** Available agents for looking up full names from agent IDs */
+  agents?: AgentType[];
 }
 
 /**
@@ -63,7 +69,8 @@ function areMessageItemsEqual(
       prev.isLastMessage === next.isLastMessage &&
       prev.isSubmitting === next.isSubmitting &&
       prev.enableRegenerate === next.enableRegenerate &&
-      prev.onRegenerate === next.onRegenerate
+      prev.onRegenerate === next.onRegenerate &&
+      prev.onOpenSubAgentDialog === next.onOpenSubAgentDialog
     );
   }
 
@@ -128,7 +135,10 @@ function areMessageItemsEqual(
     prev.isLastMessage === next.isLastMessage &&
     prev.isSubmitting === next.isSubmitting &&
     prev.enableRegenerate === next.enableRegenerate &&
-    prev.onRegenerate === next.onRegenerate
+    prev.onRegenerate === next.onRegenerate &&
+    prev.onOpenSubAgentDialog === next.onOpenSubAgentDialog &&
+    prev.renderSubAgentCard === next.renderSubAgentCard &&
+    prev.agents === next.agents
   );
 }
 
@@ -143,6 +153,9 @@ export const MessageItem = memo(function MessageItem({
   avatar,
   enableRegenerate,
   onRegenerate,
+  onOpenSubAgentDialog,
+  renderSubAgentCard,
+  agents,
 }: MessageItemProps) {
   const isUser = message.role === 'user';
   // Hide actions for the last assistant message while streaming
@@ -163,7 +176,12 @@ export const MessageItem = memo(function MessageItem({
         />
       )}
       <Message.Bubble>
-        <MessageContent message={message} />
+        <MessageContent
+          message={message}
+          onOpenSubAgentDialog={onOpenSubAgentDialog}
+          renderSubAgentCard={renderSubAgentCard}
+          agents={agents}
+        />
       </Message.Bubble>
       {!hideActions && (
         <Message.Actions>
@@ -206,6 +224,10 @@ interface MessageListItemProps {
   avatar: { src?: string; fallback: string; name?: string };
   enableRegenerate: boolean;
   onRegenerate?: (messageId: string) => void;
+  onOpenSubAgentDialog?: (sessionId: string) => void;
+  renderSubAgentCard?: (props: RenderSubAgentCardProps) => React.ReactNode;
+  /** Available agents for looking up full names from agent IDs */
+  agents?: AgentType[];
 }
 
 /**
@@ -242,6 +264,9 @@ function areMessageListItemsEqual(
       avatar: prev.avatar,
       enableRegenerate: prev.enableRegenerate,
       onRegenerate: prev.onRegenerate,
+      onOpenSubAgentDialog: prev.onOpenSubAgentDialog,
+      renderSubAgentCard: prev.renderSubAgentCard,
+      agents: prev.agents,
     },
     {
       message: next.message,
@@ -250,6 +275,9 @@ function areMessageListItemsEqual(
       avatar: next.avatar,
       enableRegenerate: next.enableRegenerate,
       onRegenerate: next.onRegenerate,
+      onOpenSubAgentDialog: next.onOpenSubAgentDialog,
+      renderSubAgentCard: next.renderSubAgentCard,
+      agents: next.agents,
     }
   );
 }
@@ -266,6 +294,9 @@ export const MessageListItem = memo(function MessageListItem({
   avatar,
   enableRegenerate,
   onRegenerate,
+  onOpenSubAgentDialog,
+  renderSubAgentCard,
+  agents,
 }: MessageListItemProps) {
   // Check if this is a placeholder (assistant with no parts)
   if (message.role === 'assistant' && message.parts.length === 0) {
@@ -283,6 +314,9 @@ export const MessageListItem = memo(function MessageListItem({
       avatar={avatar}
       enableRegenerate={enableRegenerate}
       onRegenerate={onRegenerate}
+      onOpenSubAgentDialog={onOpenSubAgentDialog}
+      renderSubAgentCard={renderSubAgentCard}
+      agents={agents}
     />
   );
 }, areMessageListItemsEqual);

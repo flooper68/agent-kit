@@ -8,6 +8,7 @@ import type {
   StreamingStateManager,
   LocalAgentsConnectionManager,
   LocalAgentWebSocketRegistry,
+  AgentSpawner,
 } from '../agent';
 import type { AgentsFeature } from '../features/agents';
 import type { AnalyticsFeature } from '../features/analytics';
@@ -35,6 +36,7 @@ export interface ContextDeps {
   localAgentsConnectionManager: LocalAgentsConnectionManager;
   localAgentWSRegistry: LocalAgentWebSocketRegistry;
   cacheInvalidation: CacheInvalidationService;
+  agentSpawner: AgentSpawner;
 }
 
 export function createContext(deps: ContextDeps) {
@@ -65,6 +67,7 @@ export function createContext(deps: ContextDeps) {
       localAgentsConnectionManager: deps.localAgentsConnectionManager,
       localAgentWSRegistry: deps.localAgentWSRegistry,
       cacheInvalidation: deps.cacheInvalidation,
+      agentSpawner: deps.agentSpawner,
     };
   };
 }

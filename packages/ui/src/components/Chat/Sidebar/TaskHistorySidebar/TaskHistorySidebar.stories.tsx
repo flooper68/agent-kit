@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { TaskHistorySidebar } from './TaskHistorySidebar';
+import type { SessionFilter } from '../SessionFilterDropdown';
 import { Button } from '../../../Button';
 import type { TaskHistoryItem } from '../../../../types/chat';
 
@@ -84,12 +85,23 @@ type Story = StoryObj<typeof TaskHistorySidebar>;
 const SidebarWrapper = ({
   tasks = sampleTasks,
   selectedTaskId,
+  showFilter = false,
+  hasNextPage = false,
+  hasPreviousPage = false,
+  onNextPage,
+  onPreviousPage,
 }: {
   tasks?: TaskHistoryItem[];
   selectedTaskId?: string;
+  showFilter?: boolean;
+  hasNextPage?: boolean;
+  hasPreviousPage?: boolean;
+  onNextPage?: () => void;
+  onPreviousPage?: () => void;
 }) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(selectedTaskId);
+  const [filter, setFilter] = useState<SessionFilter>('my_chats');
 
   return (
     <>
@@ -104,7 +116,19 @@ const SidebarWrapper = ({
           console.log('Selected:', id);
         }}
         onTaskDelete={(id) => console.log('Delete:', id)}
-        onNewTask={() => console.log('New task')}
+        filter={showFilter ? filter : undefined}
+        onFilterChange={
+          showFilter
+            ? (newFilter) => {
+                setFilter(newFilter);
+                console.log('Filter changed:', newFilter);
+              }
+            : undefined
+        }
+        hasNextPage={hasNextPage}
+        hasPreviousPage={hasPreviousPage}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
       />
     </>
   );
@@ -160,4 +184,56 @@ export const LongTitles: Story = {
       ]}
     />
   ),
+};
+
+export const WithFilter: Story = {
+  render: () => <SidebarWrapper showFilter />,
+};
+
+// Pagination story with interactive state
+const PaginatedSidebarWrapper = () => {
+  const [open, setOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [filter, setFilter] = useState<SessionFilter>('my_chats');
+  const pageSize = 5;
+
+  const allTasks = Array.from({ length: 25 }, (_, i) =>
+    createTask(
+      `task-${i + 1}`,
+      `Task conversation ${i + 1}`,
+      i,
+      `This is a preview of task ${i + 1} with some sample content...`,
+      agents[i % agents.length],
+      Math.floor(Math.random() * 100000) + 1000
+    )
+  );
+
+  const paginatedTasks = allTasks.slice(page * pageSize, (page + 1) * pageSize);
+
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Open Task History</Button>
+      <TaskHistorySidebar
+        open={open}
+        onOpenChange={setOpen}
+        tasks={paginatedTasks}
+        onTaskSelect={(id) => console.log('Selected:', id)}
+        onTaskDelete={(id) => console.log('Delete:', id)}
+        filter={filter}
+        onFilterChange={(newFilter) => {
+          setFilter(newFilter);
+          setPage(0); // Reset page when filter changes
+          console.log('Filter changed:', newFilter);
+        }}
+        hasNextPage={(page + 1) * pageSize < allTasks.length}
+        hasPreviousPage={page > 0}
+        onNextPage={() => setPage((p) => p + 1)}
+        onPreviousPage={() => setPage((p) => p - 1)}
+      />
+    </>
+  );
+};
+
+export const WithPagination: Story = {
+  render: () => <PaginatedSidebarWrapper />,
 };

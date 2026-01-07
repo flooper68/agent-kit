@@ -4,16 +4,22 @@ import {
   agentSessions,
   agentSessionMessages,
   agentSessionEvents,
+  localAgents,
 } from '../../../db/schema';
 import type { AgentSessionEvent } from '../../../db/schema/agent-session-events';
 import type { SessionWithMessages } from '../types';
 import { reconstructPartsFromEvents } from '../utils';
+import { logger } from '../../../agent/logger';
+
+const log = logger.child({ module: 'get-session-with-messages' });
 
 export class GetSessionWithMessagesQuery {
   private db: typeof DbType;
+  private agentNames: Map<string, string>;
 
-  constructor(db: typeof DbType) {
+  constructor(db: typeof DbType, agentNames: Map<string, string>) {
     this.db = db;
+    this.agentNames = agentNames;
   }
 
   async execute(sessionId: string): Promise<SessionWithMessages | undefined> {
@@ -23,6 +29,39 @@ export class GetSessionWithMessagesQuery {
       .where(eq(agentSessions.id, sessionId));
 
     if (!session) return undefined;
+
+    // Resolve agent name - check built-in agents first, then local agents
+    let agentName = this.agentNames.get(session.agentId);
+    if (!agentName && session.isLocalAgent) {
+      // Look up local agent name by key
+      const localAgentResult = await this.db
+        .select({ name: localAgents.name })
+        .from(localAgents)
+        .where(eq(localAgents.key, session.agentId))
+        .limit(1);
+      agentName = localAgentResult[0]?.name;
+
+      if (!agentName) {
+        log.warn(
+          'Local agent not found for session, using agentId as fallback',
+          {
+            sessionId,
+            agentId: session.agentId,
+            isLocalAgent: session.isLocalAgent,
+          }
+        );
+      }
+    } else if (!agentName && !session.isLocalAgent) {
+      log.warn(
+        'Built-in agent not found for session, using agentId as fallback',
+        {
+          sessionId,
+          agentId: session.agentId,
+        }
+      );
+    }
+    // Fall back to agentId if no name found
+    agentName = agentName ?? session.agentId;
 
     // Get messages
     const sessionMessages = await this.db
@@ -58,6 +97,7 @@ export class GetSessionWithMessagesQuery {
 
     return {
       ...session,
+      agentName,
       messages: messagesWithParts,
     };
   }

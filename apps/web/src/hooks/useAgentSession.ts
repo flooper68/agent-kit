@@ -178,6 +178,8 @@ export function useAgentSession(
   const currentPlaceholderIdRef = useRef<string | null>(null);
   // Track tool names by callId to identify resource-creating tools
   const toolNamesByCallIdRef = useRef<Record<string, string>>({});
+  // Track pending spawned sessions (when spawn_session_created arrives before tool_call_start)
+  const pendingSpawnedSessionsRef = useRef<Record<string, string>>({});
   // Track lastStreamId from session query for subscription resumption
   const lastStreamIdRef = useRef<string | undefined>(undefined);
   // Track message IDs loaded from DB to skip historical terminal events during replay
@@ -521,7 +523,7 @@ export function useAgentSession(
             break;
           }
 
-          case 'tool_call_start':
+          case 'tool_call_start': {
             // Mark that next text_delta/reasoning_delta needs a new part
             needsNewTextPartRef.current[event.messageId] = true;
             needsNewReasoningPartRef.current[event.messageId] = true;
@@ -535,12 +537,25 @@ export function useAgentSession(
             ) {
               setTodos(event.toolArgs.todos as TodoItem[]);
             }
+
+            // Check if spawn_session_created arrived before this tool_call_start
+            const pendingSpawnedSessionId =
+              pendingSpawnedSessionsRef.current[event.toolCallId];
+            if (pendingSpawnedSessionId) {
+              delete pendingSpawnedSessionsRef.current[event.toolCallId];
+            }
+
+            // Include pending spawnedSessionId in args if it exists
+            const toolArgs = pendingSpawnedSessionId
+              ? { ...event.toolArgs, spawnedSessionId: pendingSpawnedSessionId }
+              : (event.toolArgs ?? {});
+
             setMessages((prev) => {
               const existing = prev.find((m) => m.id === event.messageId);
               const newPart = createToolInvocationPart(
                 event.toolCallId,
                 event.toolName,
-                event.toolArgs ?? {},
+                toolArgs,
                 'running'
               );
 
@@ -563,6 +578,7 @@ export function useAgentSession(
               }
             });
             break;
+          }
 
           case 'tool_result':
             setMessages((prev) => {
@@ -692,6 +708,50 @@ export function useAgentSession(
               requestId: event.requestId,
               params: event.params,
               requiresResponse: event.requiresResponse,
+            });
+            break;
+
+          case 'spawn_session_created':
+            // Update the spawnAgent tool invocation part with the spawned sessionId
+            // This enables the "Open Full View" button to work while the sub-agent is still running
+            setMessages((prev) => {
+              // Check if the tool invocation part exists
+              const msg = prev.find((m) => m.id === event.messageId);
+              const toolInvocationExists = msg?.parts.some(
+                (p) =>
+                  p.type === 'tool_invocation' &&
+                  (p as ToolInvocationPart).toolCallId === event.toolCallId
+              );
+
+              if (!toolInvocationExists) {
+                // tool_call_start hasn't arrived yet, store for later
+                pendingSpawnedSessionsRef.current[event.toolCallId] =
+                  event.spawnedSessionId;
+                return prev;
+              }
+
+              // Tool invocation exists, update it
+              return prev.map((m) => {
+                if (m.id !== event.messageId) return m;
+                return {
+                  ...m,
+                  parts: m.parts.map((part) => {
+                    if (part.type !== 'tool_invocation') return part;
+                    if (
+                      (part as ToolInvocationPart).toolCallId !==
+                      event.toolCallId
+                    )
+                      return part;
+                    return {
+                      ...part,
+                      args: {
+                        ...(part as ToolInvocationPart).args,
+                        spawnedSessionId: event.spawnedSessionId,
+                      },
+                    };
+                  }),
+                };
+              });
             });
             break;
         }

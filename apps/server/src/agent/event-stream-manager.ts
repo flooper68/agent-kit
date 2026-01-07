@@ -1,6 +1,9 @@
 import type Redis from 'ioredis';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
+import { logger } from './logger';
+
+const log = logger.child({ module: 'event-stream-manager' });
 
 // Zod schemas for stream events
 const StreamEventTypeSchema = z.enum([
@@ -15,6 +18,7 @@ const StreamEventTypeSchema = z.enum([
   'error',
   'interrupted',
   'client_tool_request',
+  'spawn_session_created',
 ]);
 
 const BaseStreamEventSchema = z.object({
@@ -101,6 +105,12 @@ const ClientToolRequestEventSchema = BaseStreamEventSchema.extend({
   requiresResponse: z.boolean(),
 });
 
+const SpawnSessionCreatedEventSchema = BaseStreamEventSchema.extend({
+  type: z.literal('spawn_session_created'),
+  toolCallId: z.string(),
+  spawnedSessionId: z.string(),
+});
+
 export const StreamEventSchema = z.discriminatedUnion('type', [
   UserMessageCreatedEventSchema,
   MessageStartEventSchema,
@@ -113,6 +123,7 @@ export const StreamEventSchema = z.discriminatedUnion('type', [
   ErrorEventSchema,
   InterruptedEventSchema,
   ClientToolRequestEventSchema,
+  SpawnSessionCreatedEventSchema,
 ]);
 
 export type StreamEvent = z.infer<typeof StreamEventSchema>;
@@ -165,17 +176,19 @@ export class EventStreamManager {
    * @param sessionId - The session to subscribe to
    * @param lastId - Optional ID to resume from (events after this ID will be returned)
    * @param replayHistory - If true, first yields all historical events from the beginning
+   * @param signal - Optional AbortSignal to terminate the subscription
    */
   async *subscribe(
     sessionId: string,
     lastId?: string,
-    replayHistory: boolean = false
+    replayHistory: boolean = false,
+    signal?: AbortSignal
   ): AsyncGenerator<StreamEvent, void, unknown> {
     const streamName = getSessionStream(sessionId);
 
     // Create a dedicated connection for this subscription
     // This ensures multiple concurrent subscriptions don't block each other
-    console.log('[EventStreamManager] Creating subscription connection', {
+    log.debug('Creating subscription connection', {
       sessionId,
       streamName,
     });
@@ -204,7 +217,7 @@ export class EventStreamManager {
         ),
       ]);
 
-      console.log('[EventStreamManager] Subscription connection ready', {
+      log.debug('Subscription connection ready', {
         sessionId,
       });
 
@@ -245,7 +258,7 @@ export class EventStreamManager {
       // connected before sending messages to avoid missing events
       let currentId = lastId ?? '$';
 
-      while (true) {
+      while (!signal?.aborted) {
         try {
           const result = (await subscriptionRedis.call(
             'XREAD',
@@ -275,11 +288,14 @@ export class EventStreamManager {
                 const event = StreamEventSchema.parse(parsed);
                 yield event;
               } catch (parseError) {
-                console.error(
-                  '[EventStreamManager] Failed to parse event data:',
-                  parseError,
-                  { messageId, rawData: rawData.slice(0, 200) }
-                );
+                log.error('Failed to parse event data', {
+                  messageId,
+                  rawData: rawData.slice(0, 200),
+                  error:
+                    parseError instanceof Error
+                      ? parseError.message
+                      : 'Parse error',
+                });
                 // Skip malformed event and continue
                 continue;
               }
@@ -290,19 +306,22 @@ export class EventStreamManager {
             }
           }
         } catch (error) {
-          console.error('[EventStreamManager] Error reading stream:', error);
+          log.error('Error reading stream', {
+            sessionId,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
           // Wait before retrying
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
     } catch (error) {
-      console.error('[EventStreamManager] Subscription error', {
+      log.error('Subscription error', {
         sessionId,
-        error: error instanceof Error ? error.message : error,
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     } finally {
-      console.log('[EventStreamManager] Cleaning up subscription connection', {
+      log.debug('Cleaning up subscription connection', {
         sessionId,
       });
       // Clean up the connection when subscription ends
@@ -352,28 +371,24 @@ export class EventStreamManager {
       .map(([messageId, fields]) => {
         const dataIndex = fields.indexOf('data');
         if (dataIndex === -1 || dataIndex + 1 >= fields.length) {
-          console.warn(
-            '[EventStreamManager] Invalid stream event format, skipping:',
-            { messageId }
-          );
+          log.warn('Invalid stream event format, skipping', { messageId });
           return null;
         }
         const rawData = fields[dataIndex + 1];
         if (!rawData) {
-          console.warn('[EventStreamManager] Missing event data, skipping:', {
-            messageId,
-          });
+          log.warn('Missing event data, skipping', { messageId });
           return null;
         }
         try {
           const parsed = JSON.parse(rawData);
           return { messageId, event: StreamEventSchema.parse(parsed) };
         } catch (parseError) {
-          console.error(
-            '[EventStreamManager] Failed to parse event in history:',
-            parseError,
-            { messageId, rawData: rawData.slice(0, 200) }
-          );
+          log.error('Failed to parse event in history', {
+            messageId,
+            rawData: rawData.slice(0, 200),
+            error:
+              parseError instanceof Error ? parseError.message : 'Parse error',
+          });
           return null;
         }
       })

@@ -28,6 +28,7 @@ import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
 import type { PubSubManager } from '../real-time';
 import { getToolsById } from './tools';
+import type { AgentSpawner } from './agent-spawner';
 
 // Zod schemas for validating WebSocket messages from local agents
 const AgentEventSchema = z.discriminatedUnion('type', [
@@ -127,7 +128,7 @@ const AgentMessageSchema = z.discriminatedUnion('type', [
 ]);
 
 interface AgentInfo {
-  agent: { id: string; userId: string; name: string };
+  agent: { id: string; key: string; userId: string; name: string };
   connectionId: string;
 }
 
@@ -139,7 +140,7 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute window
 const RATE_LIMIT_MAX_REQUESTS = 100; // Max 100 requests per minute per agent
 
 interface CachedSession {
-  session: { orgId: string; userId: string };
+  session: { orgId: string; userId: string; spawnDepth: number };
   cachedAt: number;
 }
 
@@ -162,6 +163,8 @@ export class LocalAgentWebSocketService {
   private rateLimitByAgent = new Map<string, RateLimitEntry>();
   // Cleanup interval for stale cache entries
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
+  // Agent spawner for sub-agent delegation (set after construction due to circular deps)
+  private agentSpawner?: AgentSpawner;
 
   constructor(
     private wsRegistry: LocalAgentWebSocketRegistry,
@@ -207,6 +210,14 @@ export class LocalAgentWebSocketService {
     this.rateLimitByAgent.clear();
     this.lastHeartbeatBySession.clear();
     this.log.info('LocalAgentWebSocketService shutdown complete');
+  }
+
+  /**
+   * Set the agent spawner for sub-agent delegation.
+   * Called after construction due to circular dependency with AgentSpawner.
+   */
+  setAgentSpawner(spawner: AgentSpawner): void {
+    this.agentSpawner = spawner;
   }
 
   /**
@@ -452,10 +463,10 @@ export class LocalAgentWebSocketService {
     // Register WebSocket connection for message forwarding
     this.wsRegistry.register(agent.id, ws);
 
-    // Register connection in Redis
+    // Register connection in Redis (use key for UI matching)
     await this.connectionManager.registerConnection(
       agent.userId,
-      agent.id,
+      agent.key,
       connectionId
     );
 
@@ -468,12 +479,12 @@ export class LocalAgentWebSocketService {
     const pingInterval = setInterval(() => {
       if (ws.readyState === ws.OPEN) {
         ws.ping();
-        void this.connectionManager.updatePing(agent.userId, agent.id);
+        void this.connectionManager.updatePing(agent.userId, agent.key);
       }
     }, 30000);
 
     ws.on('pong', () => {
-      void this.connectionManager.updatePing(agent.userId, agent.id);
+      void this.connectionManager.updatePing(agent.userId, agent.key);
     });
 
     ws.on('message', async (data: Buffer) => {
@@ -483,7 +494,10 @@ export class LocalAgentWebSocketService {
     ws.on('close', async () => {
       clearInterval(pingInterval);
       this.wsRegistry.unregister(agent.id);
-      await this.connectionManager.unregisterConnection(agent.userId, agent.id);
+      await this.connectionManager.unregisterConnection(
+        agent.userId,
+        agent.key
+      );
       // Clean up any remaining message tracking on disconnect
       messageSequences.clear();
       messageBuffers.clear();
@@ -499,7 +513,7 @@ export class LocalAgentWebSocketService {
    * Handle a message from a local agent
    */
   private async handleMessage(
-    agent: { id: string; userId: string; name: string },
+    agent: { id: string; key: string; userId: string; name: string },
     data: Buffer,
     messageSequences: Map<string, number>,
     messageBuffers: Map<string, EventBuffer>
@@ -565,7 +579,7 @@ export class LocalAgentWebSocketService {
    */
   private async getSessionCached(
     sessionId: string
-  ): Promise<{ orgId: string; userId: string } | null> {
+  ): Promise<{ orgId: string; userId: string; spawnDepth: number } | null> {
     const now = Date.now();
     const cached = this.sessionCache.get(sessionId);
 
@@ -582,13 +596,14 @@ export class LocalAgentWebSocketService {
       return null;
     }
 
-    // Cache the session info
+    // Cache the session info (spawnDepth defaults to 0 for non-spawned sessions)
+    const spawnDepth = session.spawnDepth ?? 0;
     this.sessionCache.set(sessionId, {
-      session: { orgId: session.orgId, userId: session.userId },
+      session: { orgId: session.orgId, userId: session.userId, spawnDepth },
       cachedAt: now,
     });
 
-    return { orgId: session.orgId, userId: session.userId };
+    return { orgId: session.orgId, userId: session.userId, spawnDepth };
   }
 
   /**
@@ -629,7 +644,7 @@ export class LocalAgentWebSocketService {
    * Handle an event message from a local agent
    */
   private async handleEventMessage(
-    agent: { id: string; userId: string; name: string },
+    agent: { id: string; key: string; userId: string; name: string },
     message: { sessionId: string; messageId: string; event: AgentEvent },
     messageSequences: Map<string, number>,
     messageBuffers: Map<string, EventBuffer>
@@ -832,7 +847,7 @@ export class LocalAgentWebSocketService {
    * Handle an artifact tool request from a local agent
    */
   private async handleArtifactToolRequest(
-    agent: { id: string; userId: string; name: string },
+    agent: { id: string; key: string; userId: string; name: string },
     message: {
       requestId: string;
       sessionId: string;
@@ -1015,7 +1030,7 @@ export class LocalAgentWebSocketService {
    * Uses getToolsById to execute any server-side tool.
    */
   private async handleServerToolRequest(
-    agent: { id: string; userId: string; name: string },
+    agent: { id: string; key: string; userId: string; name: string },
     message: {
       requestId: string;
       sessionId: string;
@@ -1095,6 +1110,9 @@ export class LocalAgentWebSocketService {
         tasksFeature: this.tasksFeature,
         eventStreamManager: this.eventStreamManager,
         pubsub: this.pubsub,
+        // Agent spawning context for sub-agent delegation
+        agentSpawner: this.agentSpawner,
+        currentSpawnDepth: session.spawnDepth,
       };
 
       // Get the tool implementation

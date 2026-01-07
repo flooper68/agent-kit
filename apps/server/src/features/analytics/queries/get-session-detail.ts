@@ -4,6 +4,7 @@ import {
   agentSessions,
   agentSessionEvents,
   agentSessionMessages,
+  localAgents,
 } from '../../../db/schema';
 import type {
   AgentSessionUsage,
@@ -61,6 +62,8 @@ export interface SessionDetailData {
     usage: AgentSessionUsage | null;
     createdAt: Date;
     updatedAt: Date;
+    parentSessionId: string | null;
+    spawnDepth: number;
   };
   messages: SessionDetailMessage[];
   events: SessionDetailEvent[];
@@ -92,6 +95,8 @@ export class GetSessionDetailQuery {
         usage: agentSessions.usage,
         createdAt: agentSessions.createdAt,
         updatedAt: agentSessions.updatedAt,
+        parentSessionId: agentSessions.parentSessionId,
+        spawnDepth: agentSessions.spawnDepth,
       })
       .from(agentSessions)
       .where(
@@ -148,10 +153,22 @@ export class GetSessionDetailQuery {
         asc(agentSessionEvents.sequence)
       );
 
+    // Resolve agent name - check built-in agents first, then local agents
+    let agentName = this.agentNames.get(session.agentId);
+    if (!agentName) {
+      // Look up local agent name by key
+      const localAgentResult = await this.db
+        .select({ name: localAgents.name })
+        .from(localAgents)
+        .where(eq(localAgents.key, session.agentId))
+        .limit(1);
+      agentName = localAgentResult[0]?.name ?? session.agentId;
+    }
+
     return {
       session: {
         ...session,
-        agentName: this.agentNames.get(session.agentId) ?? session.agentId,
+        agentName,
         isLocalAgent: session.isLocalAgent,
       },
       messages: messageResults,

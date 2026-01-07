@@ -1,5 +1,8 @@
 import type Redis from 'ioredis';
 import type { CacheInvalidationService } from '../real-time/cache-invalidation-service';
+import { logger } from './logger';
+
+const log = logger.child({ module: 'streaming-state-manager' });
 
 // Redis key pattern for streaming state
 const STREAMING_STATE_KEY = (sessionId: string) =>
@@ -70,9 +73,11 @@ export class StreamingStateManager {
       true
     );
 
-    console.log(
-      `[StreamingState] Started streaming for session ${sessionId} (${isLocalAgent ? 'local' : 'server'} agent)`
-    );
+    log.info('Started streaming for session', {
+      sessionId,
+      agentId,
+      isLocalAgent,
+    });
   }
 
   /**
@@ -135,7 +140,7 @@ export class StreamingStateManager {
       );
     }
 
-    console.log(`[StreamingState] Stopped streaming for session ${sessionId}`);
+    log.info('Stopped streaming for session', { sessionId });
   }
 
   /**

@@ -9,8 +9,11 @@ import type { AgentsFeature } from '../features/agents';
 import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
+import type { LocalAgentsFeature } from '../features/local-agents';
+import type { AgentSpawner } from './agent-spawner';
 import { getProvider } from './providers';
 import { getToolsById } from './tools';
+import { buildSystemPrompt } from './system-prompt-builder';
 import type {
   ProviderStreamEvent,
   Message,
@@ -42,6 +45,8 @@ export class AgentJobHandler {
   private artifactsFeature: ArtifactsFeature;
   private projectsFeature?: ProjectsFeature;
   private tasksFeature?: TasksFeature;
+  private localAgentsFeature?: LocalAgentsFeature;
+  private agentSpawner?: AgentSpawner;
   private pubsub: PubSubManager;
   private cacheInvalidation: CacheInvalidationService;
   private workerId: string;
@@ -59,7 +64,9 @@ export class AgentJobHandler {
     cacheInvalidation: CacheInvalidationService,
     workerId: string,
     projectsFeature?: ProjectsFeature,
-    tasksFeature?: TasksFeature
+    tasksFeature?: TasksFeature,
+    localAgentsFeature?: LocalAgentsFeature,
+    agentSpawner?: AgentSpawner
   ) {
     this.eventStreamManager = eventStreamManager;
     this.jobRegistryManager = jobRegistryManager;
@@ -71,6 +78,8 @@ export class AgentJobHandler {
     this.workerId = workerId;
     this.projectsFeature = projectsFeature;
     this.tasksFeature = tasksFeature;
+    this.localAgentsFeature = localAgentsFeature;
+    this.agentSpawner = agentSpawner;
     this.log = logger.child({ workerId });
   }
 
@@ -84,44 +93,22 @@ export class AgentJobHandler {
 
     const { sessionId, agentId, userId, orgId, content } = job;
 
-    // Create user message first (preserves user input even if job fails)
-    const userMessage = await this.agentsFeature.messages.create({
-      sessionId,
-      role: 'user',
-      status: 'complete',
-    });
-
-    // Insert user message content event
-    await this.agentsFeature.events.insert({
-      sessionId,
-      messageId: userMessage.id,
-      sequence: 0,
-      type: 'text_delta',
-      content,
-    });
-
-    // Increment message count for user message (so messageCount includes all messages)
-    await this.agentsFeature.sessions.incrementMessageCount(sessionId);
+    // Create user message and assistant placeholder using shared command
+    const { userMessageId, assistantMessageId } =
+      await this.agentsFeature.messageLifecycle.sendUserMessage({
+        sessionId,
+        content,
+      });
 
     // Publish user_message_created event so client can update optimistic message
     await this.eventStreamManager.publish(sessionId, {
       type: 'user_message_created',
       sessionId,
-      messageId: userMessage.id,
+      messageId: userMessageId,
       content,
     } as Omit<StreamEvent, 'id' | 'timestamp'>);
 
-    // Create assistant placeholder
-    const assistantMessage = await this.agentsFeature.messages.create({
-      sessionId,
-      role: 'assistant',
-      status: 'pending',
-    });
-
-    // Update session timestamp
-    await this.agentsFeature.sessions.updateTimestamp(sessionId);
-
-    const messageId = assistantMessage.id;
+    const messageId = assistantMessageId;
 
     // Get agent definition
     const agent = this.agentsFeature.agents.get(agentId);
@@ -144,6 +131,22 @@ export class AgentJobHandler {
       model: agent.model,
       provider: agent.provider,
     });
+
+    // Get session info for spawn depth
+    const session = await this.agentsFeature.sessions.getById(sessionId);
+    const currentSpawnDepth = session?.spawnDepth ?? 0;
+
+    // Build system prompt with available agents if spawnAgent tool is enabled
+    let systemPrompt = agent.systemPrompt;
+    if (agent.tools.includes('spawnAgent') && this.localAgentsFeature) {
+      systemPrompt = await buildSystemPrompt(
+        agent.systemPrompt,
+        this.agentsFeature,
+        this.localAgentsFeature,
+        userId,
+        true
+      );
+    }
 
     // Get provider
     const provider = getProvider(agent.provider);
@@ -183,7 +186,7 @@ export class AgentJobHandler {
         await this.agentsFeature.messages.getBySessionId(sessionId);
       const messages = convertToAIMessages(dbMessages);
 
-      // Get tools for this agent (with context for artifact, planning, and client-side tools)
+      // Get tools for this agent (with context for artifact, planning, client-side, and spawn tools)
       const tools = getToolsById(agent.tools, {
         userId,
         orgId,
@@ -195,6 +198,8 @@ export class AgentJobHandler {
         tasksFeature: this.tasksFeature,
         eventStreamManager: this.eventStreamManager,
         pubsub: this.pubsub,
+        agentSpawner: this.agentSpawner,
+        currentSpawnDepth,
       });
 
       // Publish message start event
@@ -210,7 +215,7 @@ export class AgentJobHandler {
       // Stream the response
       const stream = provider.createStream({
         model: agent.model,
-        systemPrompt: agent.systemPrompt,
+        systemPrompt,
         messages,
         tools,
         abortSignal: abortController.signal,
@@ -454,6 +459,7 @@ export class AgentJobHandler {
           toolName: event.toolName,
           toolCallId: event.toolCallId,
         });
+
         await this.agentsFeature.events.insert({
           sessionId,
           messageId,

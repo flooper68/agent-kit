@@ -122,6 +122,7 @@ const contentVariants = cva(
         lg: 'w-full max-w-lg p-6',
         xl: 'w-full max-w-xl p-6',
         '2xl': 'w-full max-w-4xl p-6',
+        half: 'w-[50vw] max-w-none p-6',
         viewport: 'w-full h-[90vh] max-w-5xl p-6 flex flex-col',
         full: 'w-full h-full max-w-none rounded-none',
       },

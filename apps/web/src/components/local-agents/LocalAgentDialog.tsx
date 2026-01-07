@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, Button, Input, Text } from '@agent-kit/ui';
 
 export interface LocalAgentFormData {
+  key: string;
   name: string;
   description: string;
 }
@@ -25,6 +26,7 @@ export function LocalAgentDialog({
   isLoading,
   error,
 }: LocalAgentDialogProps) {
+  const [key, setKey] = useState(initialData?.key ?? '');
   const [name, setName] = useState(initialData?.name ?? '');
   const [description, setDescription] = useState(
     initialData?.description ?? ''
@@ -33,6 +35,7 @@ export function LocalAgentDialog({
   // Reset form when dialog opens with new data
   useEffect(() => {
     if (open) {
+      setKey(initialData?.key ?? '');
       setName(initialData?.name ?? '');
       setDescription(initialData?.description ?? '');
     }
@@ -41,6 +44,7 @@ export function LocalAgentDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
+      key: key.trim().toLowerCase().replace(/\s+/g, '-'),
       name: name.trim(),
       description: description.trim(),
     });
@@ -68,6 +72,22 @@ export function LocalAgentDialog({
           )}
 
           <div className="space-y-2">
+            <label className="text-sm font-medium">Key</label>
+            <Input
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="my-agent"
+              required
+              pattern="^[a-zA-Z0-9_-]+$"
+              title="Key can only contain letters, numbers, underscores, and hyphens"
+            />
+            <Text className="text-xs text-muted-foreground">
+              Unique identifier used for spawning. Letters, numbers,
+              underscores, and hyphens only.
+            </Text>
+          </div>
+
+          <div className="space-y-2">
             <label className="text-sm font-medium">Name</label>
             <Input
               value={name}
@@ -75,6 +95,9 @@ export function LocalAgentDialog({
               placeholder="My Custom Agent"
               required
             />
+            <Text className="text-xs text-muted-foreground">
+              Display name shown in the UI.
+            </Text>
           </div>
 
           <div className="space-y-2">

@@ -27,6 +27,8 @@ export interface AgentDefinition {
   model: string;
   tools: string[];
   releasedAt: Date;
+  /** Timeout in milliseconds for spawned agent responses (default: 900000 / 15 minutes) */
+  spawnTimeout?: number;
 }
 
 // Command input types
@@ -36,6 +38,10 @@ export interface CreateSessionInput {
   agentId: string;
   title?: string;
   isLocalAgent?: boolean;
+  /** Parent session ID for spawned sessions */
+  parentSessionId?: string;
+  /** Spawn depth for tracking recursion (0 for root sessions) */
+  spawnDepth?: number;
 }
 
 export interface UpdateSessionTitleInput {
@@ -64,6 +70,8 @@ export interface UpdateMessageStatusInput {
 // Query result types
 export interface SessionWithMessages extends AgentSession {
   messages: Array<AgentSessionMessage & { parts: MessagePart[] }>;
+  /** Resolved agent name (for display). For local agents, this is the full name, not the key. */
+  agentName?: string;
 }
 
 export interface MessageWithParts {
@@ -75,4 +83,5 @@ export interface MessageWithParts {
 export interface PaginatedSessions {
   items: AgentSession[];
   nextCursor: string | undefined;
+  totalCount: number;
 }

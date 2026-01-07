@@ -4,7 +4,9 @@ import type { MessageWithParts } from '../features/agents/types';
 import { logger } from './logger';
 
 // Message count thresholds that trigger summarization
-export const SUMMARIZATION_THRESHOLDS = [1, 5, 50, 100] as const;
+// Note: messageCount includes both user and assistant messages (2 per exchange)
+// So: 2=1st exchange, 10=5th exchange, 50=25th, 100=50th
+export const SUMMARIZATION_THRESHOLDS = [2, 10, 50, 100] as const;
 
 export interface SessionSummary {
   title: string;

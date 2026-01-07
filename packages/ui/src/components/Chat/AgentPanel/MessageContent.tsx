@@ -4,11 +4,17 @@ import type {
   TextPart,
   ReasoningPart,
   ToolInvocationPart,
+  AgentType,
 } from '../../../types/chat';
 import { MessagePartItem } from './MessagePartItem';
+import type { RenderSubAgentCardProps } from './types';
 
 interface MessageContentProps {
   message: TaskMessage;
+  onOpenSubAgentDialog?: (sessionId: string) => void;
+  renderSubAgentCard?: (props: RenderSubAgentCardProps) => React.ReactNode;
+  /** Available agents for looking up full names from agent IDs */
+  agents?: AgentType[];
 }
 
 /**
@@ -23,6 +29,11 @@ function areMessagesContentEqual(
   if (prev.message.id !== next.message.id) return false;
   // Different number of parts means content changed
   if (prev.message.parts.length !== next.message.parts.length) return false;
+  // Check callback references
+  if (prev.onOpenSubAgentDialog !== next.onOpenSubAgentDialog) return false;
+  if (prev.renderSubAgentCard !== next.renderSubAgentCard) return false;
+  // Check agents reference (used for name lookup)
+  if (prev.agents !== next.agents) return false;
 
   // Check each part for changes
   for (let i = 0; i < prev.message.parts.length; i++) {
@@ -71,11 +82,21 @@ function areMessagesContentEqual(
  */
 export const MessageContent = memo(function MessageContent({
   message,
+  onOpenSubAgentDialog,
+  renderSubAgentCard,
+  agents,
 }: MessageContentProps) {
   return (
     <div className="space-y-2 w-full">
       {message.parts.map((part) => (
-        <MessagePartItem key={part.id} part={part} message={message} />
+        <MessagePartItem
+          key={part.id}
+          part={part}
+          message={message}
+          onOpenSubAgentDialog={onOpenSubAgentDialog}
+          renderSubAgentCard={renderSubAgentCard}
+          agents={agents}
+        />
       ))}
     </div>
   );

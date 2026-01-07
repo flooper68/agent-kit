@@ -57,9 +57,10 @@ debug.log
 *.local
 *.tmp
 *.temp
+tmp
 
 # Git Worktrees
 .worktrees/
 
 # Playwright MCP screenshots
-.playwright-mcp/
+.playwright-mcp
