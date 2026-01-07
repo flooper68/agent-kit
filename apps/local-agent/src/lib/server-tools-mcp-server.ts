@@ -39,7 +39,9 @@ function formatMcpResult(result: unknown) {
  */
 export function createServerToolsMcpServer(
   serverRelay: ServerToolRelay,
-  sessionId: string
+  sessionId: string,
+  messageId: string,
+  allowedSpawnAgents?: string[]
 ) {
   log.debug('Creating in-process MCP server for server tools', {
     sessionId: sessionId.slice(0, 8) + '...',
@@ -81,7 +83,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'writeArtifact',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -103,7 +106,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'readArtifact',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -134,7 +138,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'searchArtifacts',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -158,7 +163,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'listProjects',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -186,7 +192,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'searchProjects',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -208,7 +215,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'getProject',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -230,7 +238,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'createProject',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -264,7 +273,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'updateProject',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -286,7 +296,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'deleteProject',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -324,7 +335,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'listTasks',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -352,7 +364,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'searchTasks',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -374,7 +387,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'getTask',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -406,7 +420,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'createTask',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -440,7 +455,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'updateTask',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -459,7 +475,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'deleteTask',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -487,7 +504,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'moveTask',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -513,7 +531,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'reorderTask',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -537,7 +556,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'attachArtifactToTask',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -561,7 +581,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'detachArtifactFromTask',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -597,7 +618,8 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'navigateTo',
             args,
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
@@ -612,11 +634,76 @@ export function createServerToolsMcpServer(
           const result = await serverRelay.executeServerTool(
             'getCurrentUIState',
             {},
-            sessionId
+            sessionId,
+            messageId
           );
           return formatMcpResult(result);
         }
       ),
+
+      // ============= Agent Spawning =============
+
+      ...(allowedSpawnAgents && allowedSpawnAgents.length > 0
+        ? [
+            tool(
+              'spawnAgent',
+              `Spawn another agent to handle a specific task. The spawned agent runs in its own fresh session with only the message you provide - it does not have access to your conversation history.
+
+Use this tool to:
+- Delegate specialized tasks to other agents
+- Get a second opinion or alternative approach
+- Run subtasks that benefit from a clean context
+
+The tool will wait for the spawned agent to complete and return its full response.
+
+Available agents: ${allowedSpawnAgents.join(', ')}`,
+              {
+                agentId: z
+                  .string()
+                  .min(1)
+                  .max(64)
+                  .regex(
+                    /^[a-zA-Z0-9_-]+$/,
+                    'Agent ID can only contain letters, numbers, underscores, and hyphens'
+                  )
+                  .describe(
+                    `ID of the agent to spawn. Available: ${allowedSpawnAgents.join(', ')}`
+                  ),
+                message: z
+                  .string()
+                  .min(1)
+                  .max(50000)
+                  .describe('The task/message to send to the spawned agent'),
+              },
+              async (args: { agentId: string; message: string }) => {
+                log.debug('spawnAgent tool called', {
+                  agentId: args.agentId,
+                  messageLength: args.message.length,
+                });
+
+                // Validate against allowed agents
+                if (!allowedSpawnAgents.includes(args.agentId)) {
+                  log.warn('Spawn attempt for disallowed agent', {
+                    requestedAgent: args.agentId,
+                    allowedAgents: allowedSpawnAgents,
+                  });
+                  return formatMcpResult({
+                    success: false,
+                    error: `Agent '${args.agentId}' is not in the allowed spawn list. Allowed agents: ${allowedSpawnAgents.join(', ')}`,
+                  });
+                }
+
+                const result = await serverRelay.executeServerTool(
+                  'spawnAgent',
+                  args,
+                  sessionId,
+                  messageId
+                );
+                return formatMcpResult(result);
+              }
+            ),
+          ]
+        : []),
     ],
   });
 }

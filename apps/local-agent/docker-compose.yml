@@ -86,6 +86,7 @@ services:
       - AGENT_ID=${CLAUDE_ASSISTANT_OPUS_AGENT_ID:-claude-assistant-opus}
       - MODEL=${CLAUDE_ASSISTANT_OPUS_MODEL:-}
       - MAX_THINKING_TOKENS=${CLAUDE_ASSISTANT_OPUS_MAX_THINKING_TOKENS:-}
+      - ALLOWED_SPAWN_AGENTS=${CLAUDE_ASSISTANT_OPUS_ALLOWED_SPAWN_AGENTS:-}
     volumes:
       - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro
     restart: unless-stopped
@@ -100,6 +101,7 @@ services:
       - AGENT_ID=${CLAUDE_ASSISTANT_SONNET_AGENT_ID:-claude-assistant-sonnet}
       - MODEL=${CLAUDE_ASSISTANT_SONNET_MODEL:-}
       - MAX_THINKING_TOKENS=${CLAUDE_ASSISTANT_SONNET_MAX_THINKING_TOKENS:-}
+      - ALLOWED_SPAWN_AGENTS=${CLAUDE_ASSISTANT_SONNET_ALLOWED_SPAWN_AGENTS:-}
     volumes:
       - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro
     restart: unless-stopped

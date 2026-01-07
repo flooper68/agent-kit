@@ -233,6 +233,7 @@ export const ServerToolRequestPayloadSchema = z.object({
   type: z.literal('server_tool_request'),
   requestId: z.string().uuid(),
   sessionId: z.string().uuid(),
+  messageId: z.string().uuid().optional(), // Assistant message ID for spawn_session_created event association
   tool: ServerToolNameSchema,
   params: z.record(z.string(), z.unknown()),
   timestamp: z.string(),
@@ -293,6 +294,11 @@ export interface ClaudeCodeHandlerConfig extends AgentHandlerConfig {
    * Defaults to false (uses configured cwd).
    */
   useIsolatedSessionCwd?: boolean;
+  /**
+   * List of agent IDs this agent is allowed to spawn.
+   * If empty or undefined, the spawnAgent tool will not be available.
+   */
+  allowedSpawnAgents?: string[];
 }
 
 /**

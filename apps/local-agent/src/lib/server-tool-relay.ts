@@ -92,6 +92,7 @@ export class ServerToolRelay {
    * @param tool - The server tool to execute
    * @param params - Parameters for the tool
    * @param sessionId - The session ID for this request
+   * @param messageId - The assistant message ID (for spawn_session_created event association)
    * @param timeoutMs - Timeout in milliseconds (uses tool-specific default if not provided)
    * @returns The tool result from the server
    */
@@ -99,6 +100,7 @@ export class ServerToolRelay {
     tool: ServerToolName,
     params: Record<string, unknown>,
     sessionId: string,
+    messageId?: string,
     timeoutMs?: number
   ): Promise<unknown> {
     // Prevent new requests during connection clearing to avoid race conditions
@@ -138,6 +140,7 @@ export class ServerToolRelay {
         type: 'server_tool_request',
         requestId,
         sessionId,
+        messageId,
         tool,
         params,
         timestamp: new Date().toISOString(),
