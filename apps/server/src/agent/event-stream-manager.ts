@@ -165,11 +165,13 @@ export class EventStreamManager {
    * @param sessionId - The session to subscribe to
    * @param lastId - Optional ID to resume from (events after this ID will be returned)
    * @param replayHistory - If true, first yields all historical events from the beginning
+   * @param signal - Optional AbortSignal to terminate the subscription
    */
   async *subscribe(
     sessionId: string,
     lastId?: string,
-    replayHistory: boolean = false
+    replayHistory: boolean = false,
+    signal?: AbortSignal
   ): AsyncGenerator<StreamEvent, void, unknown> {
     const streamName = getSessionStream(sessionId);
 
@@ -224,7 +226,7 @@ export class EventStreamManager {
       // connected before sending messages to avoid missing events
       let currentId = lastId ?? '$';
 
-      while (true) {
+      while (!signal?.aborted) {
         try {
           const result = (await subscriptionRedis.call(
             'XREAD',

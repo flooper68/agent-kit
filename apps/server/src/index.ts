@@ -167,7 +167,8 @@ fastify.addHook('onReady', async () => {
     eventStreamManager,
     streamingStateManager,
     localAgentWSRegistry,
-    cacheInvalidation
+    cacheInvalidation,
+    jobRegistryManager
   );
 
   // Create the agent worker with new architecture

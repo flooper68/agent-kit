@@ -4,8 +4,10 @@ import type { JobQueueManager } from './job-queue-manager';
 import type { EventStreamManager, StreamEvent } from './event-stream-manager';
 import type { StreamingStateManager } from './streaming-state-manager';
 import type { LocalAgentWebSocketRegistry } from './local-agent-websocket-registry';
+import type { JobRegistryManager } from './job-registry-manager';
 import type { CacheInvalidationService } from '../real-time';
 import { SPAWN_CONFIG } from './spawn-config';
+import { getAvailableAgents as getAvailableAgentsFromBuilder } from './system-prompt-builder';
 import { logger } from './logger';
 
 export interface SpawnAgentInput {
@@ -60,7 +62,8 @@ export class AgentSpawner {
     private eventStreamManager: EventStreamManager,
     private streamingStateManager: StreamingStateManager,
     private localAgentWSRegistry: LocalAgentWebSocketRegistry,
-    private cacheInvalidation: CacheInvalidationService
+    private cacheInvalidation: CacheInvalidationService,
+    private jobRegistryManager: JobRegistryManager
   ) {}
 
   /**
@@ -312,9 +315,15 @@ export class AgentSpawner {
       let errorMessage: string | undefined;
       let resolved = false;
 
+      // AbortController to terminate the subscription when done
+      const abortController = new AbortController();
+
       const finish = () => {
         if (resolved) return;
         resolved = true;
+
+        // Signal the subscription to terminate
+        abortController.abort();
 
         resolve({
           sessionId,
@@ -325,18 +334,40 @@ export class AgentSpawner {
         });
       };
 
-      // Set up timeout
-      const timeoutId = setTimeout(() => {
+      // Set up timeout with interrupt request
+      const timeoutId = setTimeout(async () => {
         if (resolved) return;
         finishReason = 'timeout';
         errorMessage = `Agent did not respond within ${timeout}ms`;
+
+        // Request interruption of the spawned agent
+        try {
+          await this.jobRegistryManager.requestInterrupt(sessionId);
+          log.info('Requested interrupt for timed out spawned agent', {
+            sessionId,
+          });
+        } catch (interruptError) {
+          log.warn('Failed to request interrupt for timed out agent', {
+            sessionId,
+            error:
+              interruptError instanceof Error
+                ? interruptError.message
+                : 'Unknown error',
+          });
+        }
+
         finish();
       }, timeout);
 
       // Subscribe to events
       const processEvents = async () => {
         try {
-          const eventStream = this.eventStreamManager.subscribe(sessionId);
+          const eventStream = this.eventStreamManager.subscribe(
+            sessionId,
+            undefined,
+            false,
+            abortController.signal
+          );
 
           for await (const event of eventStream) {
             if (resolved) break;
@@ -383,37 +414,34 @@ export class AgentSpawner {
         }
       };
 
-      processEvents();
+      // Run processEvents and catch any unhandled errors
+      processEvents().catch((error) => {
+        if (!resolved) {
+          finishReason = 'error';
+          errorMessage =
+            error instanceof Error
+              ? error.message
+              : 'Unknown subscription error';
+          clearTimeout(timeoutId);
+          finish();
+        }
+      });
     });
   }
 
   /**
    * Get all available agents for spawning (built-in + local)
+   * Delegates to shared implementation in system-prompt-builder
    */
   async getAvailableAgents(
     userId: string
   ): Promise<
     Array<{ id: string; name: string; description: string; isLocal: boolean }>
   > {
-    // Get built-in agents
-    const builtInAgents = this.agentsFeature.agents.list().map((agent) => ({
-      id: agent.id,
-      name: agent.name,
-      description: agent.description,
-      isLocal: false,
-    }));
-
-    // Get local agents
-    const localAgents = await this.localAgentsFeature.list(userId);
-    const activeLocalAgents = localAgents
-      .filter((agent) => !agent.disabled)
-      .map((agent) => ({
-        id: agent.id,
-        name: agent.name,
-        description: agent.description ?? 'Local agent',
-        isLocal: true,
-      }));
-
-    return [...builtInAgents, ...activeLocalAgents];
+    return getAvailableAgentsFromBuilder(
+      this.agentsFeature,
+      this.localAgentsFeature,
+      userId
+    );
   }
 }

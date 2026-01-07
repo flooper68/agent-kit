@@ -28,6 +28,11 @@ Available agents are listed in the system prompt. Local agents have "(local)" su
       agentId: z
         .string()
         .min(1, 'Agent ID is required')
+        .max(64, 'Agent ID must be 64 characters or less')
+        .regex(
+          /^[a-zA-Z0-9_-]+$/,
+          'Agent ID can only contain letters, numbers, underscores, and hyphens'
+        )
         .describe(
           'ID of the agent to spawn (from the available agents list in system prompt)'
         ),

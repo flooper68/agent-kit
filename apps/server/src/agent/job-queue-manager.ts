@@ -1,6 +1,29 @@
 import type Redis from 'ioredis';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
+import { logger } from './logger';
+
+const log = logger.child({ module: 'job-queue-manager' });
+
+/**
+ * Configuration for job queue behavior
+ */
+export const JOB_QUEUE_CONFIG = {
+  /** Block timeout for XREADGROUP in milliseconds */
+  BLOCK_TIMEOUT_MS: 5000,
+  /** Block timeout for concurrent consumer in milliseconds */
+  CONCURRENT_BLOCK_TIMEOUT_MS: 1000,
+  /** Sleep interval when at capacity in milliseconds */
+  CAPACITY_CHECK_INTERVAL_MS: 50,
+  /** Session lock TTL in milliseconds (5 minutes) */
+  SESSION_LOCK_TTL_MS: 300_000,
+  /** Maximum backoff delay for retries in milliseconds */
+  MAX_BACKOFF_MS: 30_000,
+  /** Shutdown grace period in milliseconds (60 seconds) */
+  SHUTDOWN_GRACE_PERIOD_MS: 60_000,
+  /** Maximum consecutive errors before stopping consumer */
+  MAX_CONSECUTIVE_ERRORS: 10,
+} as const;
 
 // Zod schema for agent jobs
 export const AgentJobSchema = z.object({
@@ -35,25 +58,21 @@ export class JobQueueManager {
    */
   async ensureConsumerGroup(groupName: string): Promise<void> {
     try {
-      console.log(
-        `[JobQueueManager] Creating consumer group: ${groupName} for stream: ${JOB_STREAM}`
-      );
+      log.info('Creating consumer group', { groupName, stream: JOB_STREAM });
       await this.redis.xgroup('CREATE', JOB_STREAM, groupName, '0', 'MKSTREAM');
-      console.log(`[JobQueueManager] Consumer group ${groupName} created`);
+      log.info('Consumer group created', { groupName });
     } catch (error) {
       // Group already exists - that's fine
       if (
         error instanceof Error &&
         error.message.includes('BUSYGROUP Consumer Group name already exists')
       ) {
-        console.log(
-          `[JobQueueManager] Consumer group ${groupName} already exists`
-        );
+        log.info('Consumer group already exists', { groupName });
       } else {
-        console.error(
-          `[JobQueueManager] Error creating consumer group:`,
-          error
-        );
+        log.error('Error creating consumer group', {
+          groupName,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         throw error;
       }
     }
@@ -63,16 +82,13 @@ export class JobQueueManager {
    * Enqueue an agent job to the job stream
    */
   async enqueue(job: Omit<AgentJob, 'id' | 'createdAt'>): Promise<string> {
-    const startTime = Date.now();
     const fullJob: AgentJob = {
       ...job,
       id: randomUUID(),
       createdAt: new Date().toISOString(),
     };
 
-    console.log(
-      `[JobQueueManager] Enqueuing job: ${fullJob.id} at ${startTime}`
-    );
+    log.info('Enqueuing job', { jobId: fullJob.id, sessionId: job.sessionId });
 
     try {
       const messageId = await this.redis.xadd(
@@ -82,13 +98,17 @@ export class JobQueueManager {
         JSON.stringify(fullJob)
       );
 
-      console.log(
-        `[JobQueueManager] Job enqueued, Redis messageId: ${messageId}`
-      );
+      log.info('Job enqueued', {
+        jobId: fullJob.id,
+        messageId: messageId ?? undefined,
+      });
 
       return messageId ?? fullJob.id;
     } catch (error) {
-      console.error('[JobQueueManager] Error enqueueing job:', error);
+      log.error('Error enqueueing job', {
+        jobId: fullJob.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -104,20 +124,21 @@ export class JobQueueManager {
     handler: JobHandler,
     options: { blockMs?: number; count?: number; signal?: AbortSignal } = {}
   ): Promise<void> {
-    const { blockMs = 5000, count = 1, signal } = options;
+    const {
+      blockMs = JOB_QUEUE_CONFIG.BLOCK_TIMEOUT_MS,
+      count = 1,
+      signal,
+    } = options;
 
-    console.log(
-      `[JobQueueManager] Setting up consumer group: ${groupName}, consumer: ${consumerName}`
-    );
+    log.info('Setting up consumer', { groupName, consumerName });
 
     await this.ensureConsumerGroup(groupName);
 
-    console.log(
-      `[JobQueueManager] Consumer group ready, starting to consume jobs from ${JOB_STREAM}`
-    );
+    log.info('Consumer ready, starting job consumption', {
+      stream: JOB_STREAM,
+    });
 
     let consecutiveErrors = 0;
-    const maxConsecutiveErrors = 10;
 
     while (!signal?.aborted) {
       try {
@@ -141,29 +162,25 @@ export class JobQueueManager {
           continue;
         }
 
-        console.log(
-          `[JobQueueManager] XREADGROUP returned ${result.length} stream(s)`
-        );
+        log.debug('XREADGROUP returned streams', { count: result.length });
 
         for (const [streamName, messages] of result) {
-          console.log(
-            `[JobQueueManager] Stream ${streamName} has ${messages.length} message(s)`
-          );
+          log.debug('Processing stream messages', {
+            streamName,
+            messageCount: messages.length,
+          });
 
           for (const [messageId, fields] of messages) {
             try {
               const dataIndex = fields.indexOf('data');
               if (dataIndex === -1 || dataIndex + 1 >= fields.length) {
-                console.warn(
-                  `[JobQueueManager] Invalid message format, fields:`,
-                  fields
-                );
+                log.warn('Invalid message format', { messageId });
                 continue;
               }
 
               const rawData = fields[dataIndex + 1];
               if (!rawData) {
-                console.warn(`[JobQueueManager] Empty data field`);
+                log.warn('Empty data field', { messageId });
                 continue;
               }
 
@@ -172,29 +189,35 @@ export class JobQueueManager {
                 const parsed = JSON.parse(rawData);
                 job = AgentJobSchema.parse(parsed);
               } catch (parseError) {
-                console.error(
-                  '[JobQueueManager] Failed to parse job data:',
-                  parseError,
-                  { messageId, rawData: rawData.slice(0, 200) }
-                );
+                log.error('Failed to parse job data', {
+                  messageId,
+                  error:
+                    parseError instanceof Error
+                      ? parseError.message
+                      : 'Parse error',
+                });
                 // Acknowledge malformed message to prevent infinite redelivery
                 await this.redis.xack(JOB_STREAM, groupName, messageId);
                 continue;
               }
 
-              console.log('[JobQueueManager] Processing job:', job.id, {
+              log.info('Processing job', {
+                jobId: job.id,
                 sessionId: job.sessionId,
                 agentId: job.agentId,
               });
 
               await handler(job);
 
-              console.log('[JobQueueManager] Job completed:', job.id);
+              log.info('Job completed', { jobId: job.id });
 
               // Acknowledge the message
               await this.redis.xack(JOB_STREAM, groupName, messageId);
             } catch (error) {
-              console.error('[JobQueueManager] Error processing job:', error);
+              log.error('Error processing job', {
+                messageId,
+                error: error instanceof Error ? error.message : 'Unknown error',
+              });
               // Don't ack - message will be redelivered
             }
           }
@@ -204,26 +227,25 @@ export class JobQueueManager {
         consecutiveErrors = 0;
       } catch (error) {
         consecutiveErrors++;
-        console.error(
-          `[JobQueueManager] Error consuming jobs (attempt ${consecutiveErrors}/${maxConsecutiveErrors}):`,
-          error
-        );
+        log.error('Error consuming jobs', {
+          attempt: consecutiveErrors,
+          maxAttempts: JOB_QUEUE_CONFIG.MAX_CONSECUTIVE_ERRORS,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
-        if (consecutiveErrors >= maxConsecutiveErrors) {
-          console.error(
-            '[JobQueueManager] Max consecutive errors reached, stopping consumer'
-          );
+        if (consecutiveErrors >= JOB_QUEUE_CONFIG.MAX_CONSECUTIVE_ERRORS) {
+          log.error('Max consecutive errors reached, stopping consumer');
           throw new Error(
-            `Job consumer stopped after ${maxConsecutiveErrors} consecutive errors`
+            `Job consumer stopped after ${JOB_QUEUE_CONFIG.MAX_CONSECUTIVE_ERRORS} consecutive errors`
           );
         }
 
-        // Exponential backoff: 1s, 2s, 4s, 8s, ... up to 30s max
+        // Exponential backoff: 1s, 2s, 4s, 8s, ... up to max
         const delay = Math.min(
           1000 * Math.pow(2, consecutiveErrors - 1),
-          30000
+          JOB_QUEUE_CONFIG.MAX_BACKOFF_MS
         );
-        console.log(`[JobQueueManager] Retrying in ${delay}ms...`);
+        log.info('Retrying after backoff', { delayMs: delay });
 
         // Wait with abort support
         await new Promise<void>((resolve) => {
@@ -241,7 +263,7 @@ export class JobQueueManager {
     }
 
     if (signal?.aborted) {
-      console.log('[JobQueueManager] Consumer stopped via abort signal');
+      log.info('Consumer stopped via abort signal');
     }
   }
 
@@ -249,7 +271,7 @@ export class JobQueueManager {
    * Consume jobs concurrently with per-session locking
    * - Multiple jobs can run in parallel (up to maxConcurrent)
    * - Only ONE job per session can run at a time (Redis lock)
-   * - Jobs for locked sessions are skipped and redelivered later
+   * - Jobs for locked sessions are re-enqueued for later processing
    */
   async consumeConcurrently(
     groupName: string,
@@ -260,24 +282,25 @@ export class JobQueueManager {
     const { maxConcurrent = 10, signal } = options;
     const activeJobs = new Set<string>(); // Track active session IDs
 
-    console.log(
-      `[JobQueueManager] Setting up concurrent consumer: ${groupName}, consumer: ${consumerName}, maxConcurrent: ${maxConcurrent}`
-    );
+    log.info('Setting up concurrent consumer', {
+      groupName,
+      consumerName,
+      maxConcurrent,
+    });
 
     await this.ensureConsumerGroup(groupName);
 
-    console.log(
-      `[JobQueueManager] Consumer group ready, starting concurrent consumption from ${JOB_STREAM}`
-    );
+    log.info('Concurrent consumer ready', { stream: JOB_STREAM });
 
     let consecutiveErrors = 0;
-    const maxConsecutiveErrors = 10;
 
     while (!signal?.aborted) {
       try {
         // Don't fetch if at capacity
         if (activeJobs.size >= maxConcurrent) {
-          await new Promise((r) => setTimeout(r, 50));
+          await new Promise((r) =>
+            setTimeout(r, JOB_QUEUE_CONFIG.CAPACITY_CHECK_INTERVAL_MS)
+          );
           continue;
         }
 
@@ -289,7 +312,7 @@ export class JobQueueManager {
           groupName,
           consumerName,
           'BLOCK',
-          '1000',
+          String(JOB_QUEUE_CONFIG.CONCURRENT_BLOCK_TIMEOUT_MS),
           'COUNT',
           String(fetchCount),
           'STREAMS',
@@ -311,34 +334,43 @@ export class JobQueueManager {
               continue;
             }
 
-            // Try to acquire session lock (5 min TTL for safety)
+            // Try to acquire session lock
             const lockKey = `agent:session:${job.sessionId}:lock`;
             const acquired = await this.redis.set(
               lockKey,
               consumerName,
               'PX',
-              300000,
+              JOB_QUEUE_CONFIG.SESSION_LOCK_TTL_MS,
               'NX'
             );
 
             if (acquired !== 'OK') {
-              // Session is busy - don't ack, message will be redelivered
-              console.log(
-                `[JobQueueManager] Session ${job.sessionId} is locked, skipping job ${job.id}`
+              // Session is busy - re-enqueue the job for later processing
+              // ACK the current message and add a new one to the stream
+              log.info('Session locked, re-enqueuing job', {
+                jobId: job.id,
+                sessionId: job.sessionId,
+              });
+              // Re-add to stream (creates new message ID)
+              await this.redis.xadd(
+                JOB_STREAM,
+                '*',
+                'data',
+                JSON.stringify(job)
               );
+              // ACK the original message to remove it from pending
+              await this.redis.xack(JOB_STREAM, groupName, messageId);
               continue;
             }
 
-            console.log(
-              `[JobQueueManager] Processing job concurrently: ${job.id}`,
-              {
-                sessionId: job.sessionId,
-                agentId: job.agentId,
-                activeJobs: activeJobs.size + 1,
-              }
-            );
+            log.info('Processing job concurrently', {
+              jobId: job.id,
+              sessionId: job.sessionId,
+              agentId: job.agentId,
+              activeJobs: activeJobs.size + 1,
+            });
 
-            // Process concurrently (don't await)
+            // Track job and process concurrently
             activeJobs.add(job.sessionId);
             this.processJobWithLock(
               job,
@@ -346,10 +378,9 @@ export class JobQueueManager {
               groupName,
               lockKey,
               consumerName,
-              handler
-            ).finally(() => {
-              activeJobs.delete(job.sessionId);
-            });
+              handler,
+              activeJobs
+            );
           }
         }
 
@@ -357,26 +388,25 @@ export class JobQueueManager {
         consecutiveErrors = 0;
       } catch (error) {
         consecutiveErrors++;
-        console.error(
-          `[JobQueueManager] Error in concurrent consumer (attempt ${consecutiveErrors}/${maxConsecutiveErrors}):`,
-          error
-        );
+        log.error('Error in concurrent consumer', {
+          attempt: consecutiveErrors,
+          maxAttempts: JOB_QUEUE_CONFIG.MAX_CONSECUTIVE_ERRORS,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
-        if (consecutiveErrors >= maxConsecutiveErrors) {
-          console.error(
-            '[JobQueueManager] Max consecutive errors reached, stopping consumer'
-          );
+        if (consecutiveErrors >= JOB_QUEUE_CONFIG.MAX_CONSECUTIVE_ERRORS) {
+          log.error('Max consecutive errors reached, stopping consumer');
           throw new Error(
-            `Job consumer stopped after ${maxConsecutiveErrors} consecutive errors`
+            `Job consumer stopped after ${JOB_QUEUE_CONFIG.MAX_CONSECUTIVE_ERRORS} consecutive errors`
           );
         }
 
         // Exponential backoff
         const delay = Math.min(
           1000 * Math.pow(2, consecutiveErrors - 1),
-          30000
+          JOB_QUEUE_CONFIG.MAX_BACKOFF_MS
         );
-        console.log(`[JobQueueManager] Retrying in ${delay}ms...`);
+        log.info('Retrying after backoff', { delayMs: delay });
 
         await new Promise<void>((resolve) => {
           const timeout = setTimeout(resolve, delay);
@@ -392,20 +422,37 @@ export class JobQueueManager {
       }
     }
 
-    // Wait for active jobs to complete before exiting
+    // Wait for active jobs to complete before exiting (configurable grace period)
     if (activeJobs.size > 0) {
-      console.log(
-        `[JobQueueManager] Waiting for ${activeJobs.size} active jobs to complete...`
-      );
-      // Give active jobs a grace period to complete
-      await new Promise((r) => setTimeout(r, 5000));
+      log.info('Waiting for active jobs to complete', {
+        activeJobs: activeJobs.size,
+        gracePeriodMs: JOB_QUEUE_CONFIG.SHUTDOWN_GRACE_PERIOD_MS,
+      });
+
+      const startTime = Date.now();
+      while (
+        activeJobs.size > 0 &&
+        Date.now() - startTime < JOB_QUEUE_CONFIG.SHUTDOWN_GRACE_PERIOD_MS
+      ) {
+        await new Promise((r) => setTimeout(r, 1000));
+        log.info('Still waiting for active jobs', {
+          activeJobs: activeJobs.size,
+        });
+      }
+
+      if (activeJobs.size > 0) {
+        log.warn('Forcing shutdown with active jobs remaining', {
+          activeJobs: activeJobs.size,
+        });
+      }
     }
 
-    console.log('[JobQueueManager] Concurrent consumer stopped');
+    log.info('Concurrent consumer stopped');
   }
 
   /**
    * Process a job with lock management
+   * Ensures activeJobs set is always cleaned up and lock is released
    */
   private async processJobWithLock(
     job: AgentJob,
@@ -413,16 +460,24 @@ export class JobQueueManager {
     groupName: string,
     lockKey: string,
     consumerName: string,
-    handler: JobHandler
+    handler: JobHandler,
+    activeJobs: Set<string>
   ): Promise<void> {
     try {
       await handler(job);
       await this.redis.xack(JOB_STREAM, groupName, messageId);
-      console.log(`[JobQueueManager] Job completed: ${job.id}`);
+      log.info('Job completed', { jobId: job.id, sessionId: job.sessionId });
     } catch (error) {
-      console.error(`[JobQueueManager] Job failed: ${job.id}`, error);
+      log.error('Job failed', {
+        jobId: job.id,
+        sessionId: job.sessionId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       // Don't ack - will be redelivered after lock expires
     } finally {
+      // Always clean up activeJobs tracking
+      activeJobs.delete(job.sessionId);
+
       // Release lock only if we still own it (Lua script for atomicity)
       const script = `
         if redis.call("get", KEYS[1]) == ARGV[1] then
@@ -440,13 +495,13 @@ export class JobQueueManager {
   private parseJob(fields: string[]): AgentJob | null {
     const dataIndex = fields.indexOf('data');
     if (dataIndex === -1 || dataIndex + 1 >= fields.length) {
-      console.warn(`[JobQueueManager] Invalid message format, fields:`, fields);
+      log.warn('Invalid message format in job stream');
       return null;
     }
 
     const rawData = fields[dataIndex + 1];
     if (!rawData) {
-      console.warn(`[JobQueueManager] Empty data field`);
+      log.warn('Empty data field in job message');
       return null;
     }
 
@@ -454,8 +509,8 @@ export class JobQueueManager {
       const parsed = JSON.parse(rawData);
       return AgentJobSchema.parse(parsed);
     } catch (parseError) {
-      console.error('[JobQueueManager] Failed to parse job data:', parseError, {
-        rawData: rawData.slice(0, 200),
+      log.error('Failed to parse job data', {
+        error: parseError instanceof Error ? parseError.message : 'Parse error',
       });
       return null;
     }

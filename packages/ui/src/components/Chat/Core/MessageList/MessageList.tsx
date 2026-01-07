@@ -11,7 +11,7 @@ export interface MessageListProps {
 }
 
 // Threshold in pixels from bottom to consider "at bottom"
-const SCROLL_BUTTON_THRESHOLD = 150;
+const SCROLL_BUTTON_THRESHOLD = 100;
 
 export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(
   ({ children, onScrollPositionChange, showScrollButton = false }, ref) => {
