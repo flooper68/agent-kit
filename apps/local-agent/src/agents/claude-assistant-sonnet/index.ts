@@ -22,6 +22,7 @@ const DISALLOWED_TOOLS = [
   'Read',
   'Write',
   'Edit',
+  'MultiEdit',
   'Glob',
   'Grep',
   'Task',
