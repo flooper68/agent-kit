@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@agent-kit/auth": "workspace:*",
+    "@agent-kit/shared": "workspace:*",
     "@ai-sdk/anthropic": "3.0.2",
     "@ai-sdk/google": "3.0.2",
     "@ai-sdk/openai": "3.0.2",

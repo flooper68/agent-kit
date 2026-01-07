@@ -3,6 +3,7 @@ import type { IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { z } from 'zod';
+import { SERVER_TOOL_NAMES } from '@agent-kit/shared';
 import { logger } from './logger';
 import { EventBuffer } from './event-buffer';
 import {
@@ -92,39 +93,12 @@ const ArtifactToolRequestSchema = z.object({
   timestamp: z.string(),
 });
 
-// Schema for server tool requests from local agents (all server tools)
+// Schema for server tool requests from local agents (uses shared tool names)
 const ServerToolRequestSchema = z.object({
   type: z.literal('server_tool_request'),
   requestId: z.string().uuid(),
   sessionId: z.string().uuid(),
-  tool: z.enum([
-    // Static tools
-    'webSearch',
-    'fetch',
-    // Artifact tools
-    'writeArtifact',
-    'readArtifact',
-    'searchArtifacts',
-    // Project tools
-    'listProjects',
-    'searchProjects',
-    'getProject',
-    'createProject',
-    'updateProject',
-    // Task tools
-    'listTasks',
-    'searchTasks',
-    'getTask',
-    'createTask',
-    'updateTask',
-    'moveTask',
-    'reorderTask',
-    'attachArtifactToTask',
-    'detachArtifactFromTask',
-    // Client tools
-    'navigateTo',
-    'getCurrentUIState',
-  ]),
+  tool: z.enum(SERVER_TOOL_NAMES),
   params: z.record(z.string(), z.unknown()),
   timestamp: z.string(),
 });
@@ -157,6 +131,22 @@ interface AgentInfo {
   connectionId: string;
 }
 
+// Session cache TTL in milliseconds (5 minutes)
+const SESSION_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute window
+const RATE_LIMIT_MAX_REQUESTS = 100; // Max 100 requests per minute per agent
+
+interface CachedSession {
+  session: { orgId: string };
+  cachedAt: number;
+}
+
+interface RateLimitEntry {
+  requests: number[];
+}
+
 /**
  * Service for managing WebSocket connections from local agents.
  * Handles connection lifecycle, message processing, and event forwarding.
@@ -166,6 +156,10 @@ export class LocalAgentWebSocketService {
   private log = logger.child({ component: 'LocalAgentWebSocketService' });
   // Track last heartbeat time per session to avoid excessive Redis calls
   private lastHeartbeatBySession = new Map<string, number>();
+  // Cache session info to reduce DB lookups for server tool requests
+  private sessionCache = new Map<string, CachedSession>();
+  // Rate limiting per agent
+  private rateLimitByAgent = new Map<string, RateLimitEntry>();
 
   constructor(
     private wsRegistry: LocalAgentWebSocketRegistry,
@@ -493,6 +487,67 @@ export class LocalAgentWebSocketService {
       await this.streamingStateManager.sendHeartbeat(sessionId);
       this.lastHeartbeatBySession.set(sessionId, now);
     }
+  }
+
+  /**
+   * Get session info with caching to reduce DB lookups.
+   * Cache entries expire after SESSION_CACHE_TTL_MS.
+   */
+  private async getSessionCached(
+    sessionId: string
+  ): Promise<{ orgId: string } | null> {
+    const now = Date.now();
+    const cached = this.sessionCache.get(sessionId);
+
+    // Return cached value if still valid
+    if (cached && now - cached.cachedAt < SESSION_CACHE_TTL_MS) {
+      return cached.session;
+    }
+
+    // Fetch from database
+    const session = await this.agentsFeature.sessions.getById(sessionId);
+    if (!session) {
+      // Remove stale cache entry if session no longer exists
+      this.sessionCache.delete(sessionId);
+      return null;
+    }
+
+    // Cache the session info
+    this.sessionCache.set(sessionId, {
+      session: { orgId: session.orgId },
+      cachedAt: now,
+    });
+
+    return { orgId: session.orgId };
+  }
+
+  /**
+   * Check if an agent has exceeded the rate limit.
+   * Uses a sliding window algorithm.
+   *
+   * @returns true if the request is allowed, false if rate limited
+   */
+  private checkRateLimit(agentId: string): boolean {
+    const now = Date.now();
+    const windowStart = now - RATE_LIMIT_WINDOW_MS;
+
+    let entry = this.rateLimitByAgent.get(agentId);
+    if (!entry) {
+      entry = { requests: [] };
+      this.rateLimitByAgent.set(agentId, entry);
+    }
+
+    // Remove expired requests (outside the sliding window)
+    entry.requests = entry.requests.filter((ts) => ts > windowStart);
+
+    // Check if under the limit
+    if (entry.requests.length >= RATE_LIMIT_MAX_REQUESTS) {
+      return false;
+    }
+
+    // Add current request
+    entry.requests.push(now);
+    return true;
   }
 
   /**
@@ -901,8 +956,27 @@ export class LocalAgentWebSocketService {
       tool,
     });
 
-    // Get session to retrieve orgId
-    const session = await this.agentsFeature.sessions.getById(sessionId);
+    // Check rate limit
+    if (!this.checkRateLimit(agent.id)) {
+      this.log.warn('Server tool request rate limited', {
+        agentId: agent.id,
+        requestId: requestId.slice(0, 8) + '...',
+        tool,
+      });
+      this.sendServerToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        {
+          error: `Rate limit exceeded. Max ${RATE_LIMIT_MAX_REQUESTS} requests per minute.`,
+        },
+        true
+      );
+      return;
+    }
+
+    // Get session to retrieve orgId (uses cache to reduce DB lookups)
+    const session = await this.getSessionCached(sessionId);
     if (!session) {
       this.log.warn('Session not found for server tool request', {
         sessionId: sessionId.slice(0, 8) + '...',

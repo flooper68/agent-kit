@@ -1,19 +1,10 @@
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-code';
 import { z } from 'zod';
+import { TaskStatusSchema, TaskPrioritySchema } from '@agent-kit/shared';
 import type { ServerToolRelay } from './server-tool-relay';
 import { createLogger } from './logger';
 
 const log = createLogger('ServerToolsMcpServer');
-
-// Re-usable schemas
-const TaskStatusSchema = z.enum([
-  'backlog',
-  'todo',
-  'in_progress',
-  'review',
-  'done',
-]);
-const TaskPrioritySchema = z.enum(['low', 'medium', 'high', 'urgent']);
 
 /**
  * Format a result as an MCP tool response.
@@ -323,6 +314,28 @@ export function createServerToolsMcpServer(
         }
       ),
 
+      tool(
+        'deleteProject',
+        'Delete a project and all its tasks. This action is permanent and cannot be undone.',
+        {
+          projectId: z
+            .string()
+            .uuid()
+            .describe('The ID of the project to delete'),
+        },
+        async (args) => {
+          log.debug('deleteProject tool called', {
+            projectId: args.projectId.slice(0, 8) + '...',
+          });
+          const result = await serverRelay.executeServerTool(
+            'deleteProject',
+            args,
+            sessionId
+          );
+          return formatMcpResult(result);
+        }
+      ),
+
       // ============= Task Tools =============
 
       tool(
@@ -470,6 +483,25 @@ export function createServerToolsMcpServer(
           });
           const result = await serverRelay.executeServerTool(
             'updateTask',
+            args,
+            sessionId
+          );
+          return formatMcpResult(result);
+        }
+      ),
+
+      tool(
+        'deleteTask',
+        'Delete a task. This action is permanent and cannot be undone. Any attached artifacts will be unlinked but not deleted.',
+        {
+          taskId: z.string().uuid().describe('The ID of the task to delete'),
+        },
+        async (args) => {
+          log.debug('deleteTask tool called', {
+            taskId: args.taskId.slice(0, 8) + '...',
+          });
+          const result = await serverRelay.executeServerTool(
+            'deleteTask',
             args,
             sessionId
           );

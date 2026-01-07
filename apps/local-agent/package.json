@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@agent-kit/auth": "workspace:*",
+    "@agent-kit/shared": "workspace:*",
     "@anthropic-ai/claude-code": "^1.0.0",
     "ws": "8.18.3",
     "zod": "^3.23.8"

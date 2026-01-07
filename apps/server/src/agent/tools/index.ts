@@ -16,6 +16,7 @@ import { createSearchProjectsTool } from './search-projects';
 import { createGetProjectTool } from './get-project';
 import { createCreateProjectTool } from './create-project';
 import { createUpdateProjectTool } from './update-project';
+import { createDeleteProjectTool } from './delete-project';
 import { createListTasksTool } from './list-tasks';
 import { createSearchTasksTool } from './search-tasks';
 import { createGetTaskTool } from './get-task';
@@ -25,6 +26,7 @@ import { createMoveTaskTool } from './move-task';
 import { createReorderTaskTool } from './reorder-task';
 import { createAttachArtifactToTaskTool } from './attach-artifact-to-task';
 import { createDetachArtifactFromTaskTool } from './detach-artifact-from-task';
+import { createDeleteTaskTool } from './delete-task';
 import {
   createNavigateToTool,
   createGetCurrentUIStateTool,
@@ -50,12 +52,14 @@ const CONTEXT_TOOL_IDS = [
   'getProject',
   'createProject',
   'updateProject',
+  'deleteProject',
   // Task tools
   'listTasks',
   'searchTasks',
   'getTask',
   'createTask',
   'updateTask',
+  'deleteTask',
   'moveTask',
   'reorderTask',
   'attachArtifactToTask',
@@ -163,6 +167,15 @@ export function getToolsById(
             });
           }
           break;
+        case 'deleteProject':
+          if (context.projectsFeature) {
+            result[id] = createDeleteProjectTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              projectsFeature: context.projectsFeature,
+            });
+          }
+          break;
         // Task tools
         case 'listTasks':
           if (context.tasksFeature) {
@@ -203,6 +216,15 @@ export function getToolsById(
         case 'updateTask':
           if (context.tasksFeature) {
             result[id] = createUpdateTaskTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              tasksFeature: context.tasksFeature,
+            });
+          }
+          break;
+        case 'deleteTask':
+          if (context.tasksFeature) {
+            result[id] = createDeleteTaskTool({
               userId: context.userId,
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,

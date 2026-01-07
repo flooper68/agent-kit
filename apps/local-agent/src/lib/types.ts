@@ -1,5 +1,10 @@
 // Note: Using Zod v3 (not v4) for compatibility with @anthropic-ai/claude-code SDK
 import { z } from 'zod';
+import { ServerToolNameSchema } from '@agent-kit/shared';
+
+// Re-export shared types for convenience
+export { ServerToolNameSchema } from '@agent-kit/shared';
+export type { ServerToolName } from '@agent-kit/shared';
 
 // ============= Server → Agent Messages =============
 
@@ -72,38 +77,6 @@ export const ArtifactToolResponsePayloadSchema = z.object({
 export type ArtifactToolResponsePayload = z.infer<
   typeof ArtifactToolResponsePayloadSchema
 >;
-
-// Server tool names (all server-side tools accessible via relay)
-export const ServerToolNameSchema = z.enum([
-  // Static tools
-  'webSearch',
-  'fetch',
-  // Artifact tools
-  'writeArtifact',
-  'readArtifact',
-  'searchArtifacts',
-  // Project tools
-  'listProjects',
-  'searchProjects',
-  'getProject',
-  'createProject',
-  'updateProject',
-  // Task tools
-  'listTasks',
-  'searchTasks',
-  'getTask',
-  'createTask',
-  'updateTask',
-  'moveTask',
-  'reorderTask',
-  'attachArtifactToTask',
-  'detachArtifactFromTask',
-  // Client tools (relayed through server)
-  'navigateTo',
-  'getCurrentUIState',
-]);
-
-export type ServerToolName = z.infer<typeof ServerToolNameSchema>;
 
 // Server tool response from server (after agent sends request)
 export const ServerToolResponsePayloadSchema = z.object({

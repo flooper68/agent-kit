@@ -1,10 +1,27 @@
 import type WebSocket from 'ws';
+import type { ServerToolName } from '@agent-kit/shared';
 import { createLogger } from './logger';
-import type { ServerToolName } from './types';
 
 const log = createLogger('ServerToolRelay');
 
 const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds
+
+/**
+ * Tool-specific timeout overrides in milliseconds.
+ * Tools not listed here use DEFAULT_TIMEOUT_MS.
+ */
+const TOOL_TIMEOUTS: Partial<Record<ServerToolName, number>> = {
+  // Web operations may take longer
+  webSearch: 60000, // 60 seconds
+  fetch: 60000, // 60 seconds
+};
+
+/**
+ * Get the timeout for a specific tool.
+ */
+function getToolTimeout(tool: ServerToolName): number {
+  return TOOL_TIMEOUTS[tool] ?? DEFAULT_TIMEOUT_MS;
+}
 
 interface PendingRequest {
   resolve: (result: unknown) => void;
@@ -68,15 +85,16 @@ export class ServerToolRelay {
    * @param tool - The server tool to execute
    * @param params - Parameters for the tool
    * @param sessionId - The session ID for this request
-   * @param timeoutMs - Timeout in milliseconds (default: 30 seconds)
+   * @param timeoutMs - Timeout in milliseconds (uses tool-specific default if not provided)
    * @returns The tool result from the server
    */
   async executeServerTool(
     tool: ServerToolName,
     params: Record<string, unknown>,
     sessionId: string,
-    timeoutMs = DEFAULT_TIMEOUT_MS
+    timeoutMs?: number
   ): Promise<unknown> {
+    const timeout = timeoutMs ?? getToolTimeout(tool);
     const ws = this.ws;
     if (!ws) {
       throw new Error('Not connected to server');
@@ -97,10 +115,10 @@ export class ServerToolRelay {
         log.warn('Server tool request timed out', {
           requestId: requestId.slice(0, 8) + '...',
           tool,
-          timeoutMs,
+          timeoutMs: timeout,
         });
-        reject(new Error(`Server tool request timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
+        reject(new Error(`Server tool request timed out after ${timeout}ms`));
+      }, timeout);
 
       this.pendingRequests.set(requestId, { resolve, reject, timeoutId, tool });
 
