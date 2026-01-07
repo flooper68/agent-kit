@@ -27,6 +27,8 @@ export interface AgentDefinition {
   model: string;
   tools: string[];
   releasedAt: Date;
+  /** Timeout in milliseconds for spawned agent responses (default: 120000) */
+  spawnTimeout?: number;
 }
 
 // Command input types
@@ -36,6 +38,10 @@ export interface CreateSessionInput {
   agentId: string;
   title?: string;
   isLocalAgent?: boolean;
+  /** Parent session ID for spawned sessions */
+  parentSessionId?: string;
+  /** Spawn depth for tracking recursion (0 for root sessions) */
+  spawnDepth?: number;
 }
 
 export interface UpdateSessionTitleInput {

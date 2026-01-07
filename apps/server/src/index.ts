@@ -24,6 +24,7 @@ import {
   LocalAgentsConnectionManager,
   LocalAgentWebSocketRegistry,
   LocalAgentWebSocketService,
+  AgentSpawner,
 } from './agent';
 import { AgentsFeature } from './features/agents';
 import { AnalyticsFeature } from './features/analytics';
@@ -158,6 +159,17 @@ fastify.addHook('onReady', async () => {
     pubsub
   );
 
+  // Create the agent spawner for spawning sub-agents
+  const agentSpawner = new AgentSpawner(
+    agentsFeature,
+    localAgentsFeature,
+    jobQueueManager,
+    eventStreamManager,
+    streamingStateManager,
+    localAgentWSRegistry,
+    cacheInvalidation
+  );
+
   // Create the agent worker with new architecture
   const agentWorker = new AgentWorker(
     jobQueueManager,
@@ -169,7 +181,9 @@ fastify.addHook('onReady', async () => {
     pubsub,
     cacheInvalidation,
     projectsFeature,
-    tasksFeature
+    tasksFeature,
+    localAgentsFeature,
+    agentSpawner
   );
 
   fastify.log.info('Starting agent worker...');

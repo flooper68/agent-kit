@@ -90,6 +90,8 @@ const STANDARD_TOOLS = [
   // Client-side tools
   'navigateTo',
   'getCurrentUIState',
+  // Agent spawning
+  'spawnAgent',
 ];
 
 // Standard system prompt for all assistants

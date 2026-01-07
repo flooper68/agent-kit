@@ -62,4 +62,4 @@ debug.log
 .worktrees/
 
 # Playwright MCP screenshots
-.playwright-mcp/
+.playwright-mcp

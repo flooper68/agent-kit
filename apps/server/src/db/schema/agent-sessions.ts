@@ -73,6 +73,10 @@ export const agentSessions = pgTable('agent_sessions', {
     .notNull()
     .default('active'),
 
+  // Spawn hierarchy tracking
+  parentSessionId: uuid('parent_session_id'),
+  spawnDepth: integer('spawn_depth').notNull().default(0),
+
   // Usage metrics
   usage: jsonb('usage').$type<AgentSessionUsage>(),
 
