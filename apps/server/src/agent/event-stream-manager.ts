@@ -209,15 +209,36 @@ export class EventStreamManager {
       });
 
       // If replayHistory is true, first yield all historical events
+      // Paginate through all events to handle sessions with >1000 events
       if (replayHistory) {
-        const historicalEvents = await this.getEvents(sessionId);
-        for (const event of historicalEvents) {
-          yield event;
+        const BATCH_SIZE = 1000;
+        let cursor = '-';
+        let lastMessageId: string | undefined;
+
+        // Paginate through all historical events
+        while (true) {
+          const batch = await this.getEventsWithIds(sessionId, {
+            start: cursor,
+            count: BATCH_SIZE,
+          });
+
+          if (batch.length === 0) break;
+
+          for (const { messageId, event } of batch) {
+            yield event;
+            lastMessageId = messageId;
+          }
+
+          // If we got fewer than BATCH_SIZE, we've reached the end
+          if (batch.length < BATCH_SIZE) break;
+
+          // Move cursor past the last message ID for next batch
+          // Redis XRANGE exclusive start uses '(' prefix
+          cursor = `(${lastMessageId}`;
         }
-        // After replaying history, get the last ID to continue from
-        // This ensures we don't miss any events that arrived during history replay
-        const latestId = await this.getLastId(sessionId);
-        lastId = latestId;
+
+        // Use the last message ID from replay, or get it if no events were replayed
+        lastId = lastMessageId ?? (await this.getLastId(sessionId));
       }
 
       // Default to '$' (new events only) - client should ensure subscription is
@@ -310,12 +331,12 @@ export class EventStreamManager {
   }
 
   /**
-   * Get all events for a session (for history replay)
+   * Get events with their Redis message IDs for pagination
    */
-  async getEvents(
+  private async getEventsWithIds(
     sessionId: string,
     options: { start?: string; end?: string; count?: number } = {}
-  ): Promise<StreamEvent[]> {
+  ): Promise<Array<{ messageId: string; event: StreamEvent }>> {
     const streamName = getSessionStream(sessionId);
     const { start = '-', end = '+', count = 1000 } = options;
 
@@ -328,35 +349,38 @@ export class EventStreamManager {
     );
 
     return result
-      .map(([id, fields]) => {
+      .map(([messageId, fields]) => {
         const dataIndex = fields.indexOf('data');
         if (dataIndex === -1 || dataIndex + 1 >= fields.length) {
           console.warn(
             '[EventStreamManager] Invalid stream event format, skipping:',
-            { id }
+            { messageId }
           );
           return null;
         }
         const rawData = fields[dataIndex + 1];
         if (!rawData) {
           console.warn('[EventStreamManager] Missing event data, skipping:', {
-            id,
+            messageId,
           });
           return null;
         }
         try {
           const parsed = JSON.parse(rawData);
-          return StreamEventSchema.parse(parsed);
+          return { messageId, event: StreamEventSchema.parse(parsed) };
         } catch (parseError) {
           console.error(
             '[EventStreamManager] Failed to parse event in history:',
             parseError,
-            { id, rawData: rawData.slice(0, 200) }
+            { messageId, rawData: rawData.slice(0, 200) }
           );
           return null;
         }
       })
-      .filter((event): event is StreamEvent => event !== null);
+      .filter(
+        (item): item is { messageId: string; event: StreamEvent } =>
+          item !== null
+      );
   }
 
   /**
