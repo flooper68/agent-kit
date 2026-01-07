@@ -331,56 +331,6 @@ export class EventStreamManager {
   }
 
   /**
-   * Get all events for a session (for history replay)
-   */
-  async getEvents(
-    sessionId: string,
-    options: { start?: string; end?: string; count?: number } = {}
-  ): Promise<StreamEvent[]> {
-    const streamName = getSessionStream(sessionId);
-    const { start = '-', end = '+', count = 1000 } = options;
-
-    const result = await this.redis.xrange(
-      streamName,
-      start,
-      end,
-      'COUNT',
-      count
-    );
-
-    return result
-      .map(([id, fields]) => {
-        const dataIndex = fields.indexOf('data');
-        if (dataIndex === -1 || dataIndex + 1 >= fields.length) {
-          console.warn(
-            '[EventStreamManager] Invalid stream event format, skipping:',
-            { id }
-          );
-          return null;
-        }
-        const rawData = fields[dataIndex + 1];
-        if (!rawData) {
-          console.warn('[EventStreamManager] Missing event data, skipping:', {
-            id,
-          });
-          return null;
-        }
-        try {
-          const parsed = JSON.parse(rawData);
-          return StreamEventSchema.parse(parsed);
-        } catch (parseError) {
-          console.error(
-            '[EventStreamManager] Failed to parse event in history:',
-            parseError,
-            { id, rawData: rawData.slice(0, 200) }
-          );
-          return null;
-        }
-      })
-      .filter((event): event is StreamEvent => event !== null);
-  }
-
-  /**
    * Get events with their Redis message IDs for pagination
    */
   private async getEventsWithIds(
@@ -401,13 +351,29 @@ export class EventStreamManager {
     return result
       .map(([messageId, fields]) => {
         const dataIndex = fields.indexOf('data');
-        if (dataIndex === -1 || dataIndex + 1 >= fields.length) return null;
+        if (dataIndex === -1 || dataIndex + 1 >= fields.length) {
+          console.warn(
+            '[EventStreamManager] Invalid stream event format, skipping:',
+            { messageId }
+          );
+          return null;
+        }
         const rawData = fields[dataIndex + 1];
-        if (!rawData) return null;
+        if (!rawData) {
+          console.warn('[EventStreamManager] Missing event data, skipping:', {
+            messageId,
+          });
+          return null;
+        }
         try {
           const parsed = JSON.parse(rawData);
           return { messageId, event: StreamEventSchema.parse(parsed) };
-        } catch {
+        } catch (parseError) {
+          console.error(
+            '[EventStreamManager] Failed to parse event in history:',
+            parseError,
+            { messageId, rawData: rawData.slice(0, 200) }
+          );
           return null;
         }
       })
