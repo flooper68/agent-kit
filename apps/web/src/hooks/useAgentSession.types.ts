@@ -103,6 +103,12 @@ export interface ClientToolRequestEvent extends BaseStreamEvent {
   requiresResponse: boolean;
 }
 
+export interface SpawnSessionCreatedEvent extends BaseStreamEvent {
+  type: 'spawn_session_created';
+  toolCallId: string;
+  spawnedSessionId: string;
+}
+
 export type StreamEvent =
   | UserMessageCreatedEvent
   | MessageStartEvent
@@ -113,7 +119,8 @@ export type StreamEvent =
   | MessageCompleteEvent
   | ErrorEvent
   | InterruptedEvent
-  | ClientToolRequestEvent;
+  | ClientToolRequestEvent
+  | SpawnSessionCreatedEvent;
 
 // Query result interface
 export interface SessionQueryResult {

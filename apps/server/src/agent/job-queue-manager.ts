@@ -15,8 +15,8 @@ export const JOB_QUEUE_CONFIG = {
   CONCURRENT_BLOCK_TIMEOUT_MS: 1000,
   /** Sleep interval when at capacity in milliseconds */
   CAPACITY_CHECK_INTERVAL_MS: 50,
-  /** Session lock TTL in milliseconds (10 minutes) */
-  SESSION_LOCK_TTL_MS: 600_000,
+  /** Session lock TTL in milliseconds (60 minutes - matches max spawn timeout) */
+  SESSION_LOCK_TTL_MS: 3_600_000,
   /** Maximum backoff delay for retries in milliseconds */
   MAX_BACKOFF_MS: 30_000,
   /** Shutdown grace period in milliseconds (60 seconds) */

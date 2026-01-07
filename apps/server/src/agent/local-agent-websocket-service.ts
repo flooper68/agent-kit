@@ -128,7 +128,7 @@ const AgentMessageSchema = z.discriminatedUnion('type', [
 ]);
 
 interface AgentInfo {
-  agent: { id: string; userId: string; name: string };
+  agent: { id: string; key: string; userId: string; name: string };
   connectionId: string;
 }
 
@@ -463,10 +463,10 @@ export class LocalAgentWebSocketService {
     // Register WebSocket connection for message forwarding
     this.wsRegistry.register(agent.id, ws);
 
-    // Register connection in Redis
+    // Register connection in Redis (use key for UI matching)
     await this.connectionManager.registerConnection(
       agent.userId,
-      agent.id,
+      agent.key,
       connectionId
     );
 
@@ -479,12 +479,12 @@ export class LocalAgentWebSocketService {
     const pingInterval = setInterval(() => {
       if (ws.readyState === ws.OPEN) {
         ws.ping();
-        void this.connectionManager.updatePing(agent.userId, agent.id);
+        void this.connectionManager.updatePing(agent.userId, agent.key);
       }
     }, 30000);
 
     ws.on('pong', () => {
-      void this.connectionManager.updatePing(agent.userId, agent.id);
+      void this.connectionManager.updatePing(agent.userId, agent.key);
     });
 
     ws.on('message', async (data: Buffer) => {
@@ -494,7 +494,10 @@ export class LocalAgentWebSocketService {
     ws.on('close', async () => {
       clearInterval(pingInterval);
       this.wsRegistry.unregister(agent.id);
-      await this.connectionManager.unregisterConnection(agent.userId, agent.id);
+      await this.connectionManager.unregisterConnection(
+        agent.userId,
+        agent.key
+      );
       // Clean up any remaining message tracking on disconnect
       messageSequences.clear();
       messageBuffers.clear();
@@ -510,7 +513,7 @@ export class LocalAgentWebSocketService {
    * Handle a message from a local agent
    */
   private async handleMessage(
-    agent: { id: string; userId: string; name: string },
+    agent: { id: string; key: string; userId: string; name: string },
     data: Buffer,
     messageSequences: Map<string, number>,
     messageBuffers: Map<string, EventBuffer>
@@ -641,7 +644,7 @@ export class LocalAgentWebSocketService {
    * Handle an event message from a local agent
    */
   private async handleEventMessage(
-    agent: { id: string; userId: string; name: string },
+    agent: { id: string; key: string; userId: string; name: string },
     message: { sessionId: string; messageId: string; event: AgentEvent },
     messageSequences: Map<string, number>,
     messageBuffers: Map<string, EventBuffer>
@@ -844,7 +847,7 @@ export class LocalAgentWebSocketService {
    * Handle an artifact tool request from a local agent
    */
   private async handleArtifactToolRequest(
-    agent: { id: string; userId: string; name: string },
+    agent: { id: string; key: string; userId: string; name: string },
     message: {
       requestId: string;
       sessionId: string;
@@ -1027,7 +1030,7 @@ export class LocalAgentWebSocketService {
    * Uses getToolsById to execute any server-side tool.
    */
   private async handleServerToolRequest(
-    agent: { id: string; userId: string; name: string },
+    agent: { id: string; key: string; userId: string; name: string },
     message: {
       requestId: string;
       sessionId: string;

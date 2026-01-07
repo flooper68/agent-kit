@@ -387,19 +387,21 @@ export function getToolsById(
           break;
         // Agent spawning tool
         case 'spawnAgent':
-          if (context.agentSpawner && context.sessionId) {
+          if (context.agentSpawner && context.sessionId && context.messageId) {
             result[id] = createSpawnAgentTool({
               userId: context.userId,
               orgId: context.orgId,
               sessionId: context.sessionId,
               currentSpawnDepth: context.currentSpawnDepth ?? 0,
               agentSpawner: context.agentSpawner,
+              messageId: context.messageId,
             });
           } else {
             logger.debug('Skipping tool due to missing context', {
               tool: id,
               hasAgentSpawner: !!context.agentSpawner,
               hasSessionId: !!context.sessionId,
+              hasMessageId: !!context.messageId,
             });
           }
           break;

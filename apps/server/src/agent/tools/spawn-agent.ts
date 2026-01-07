@@ -10,6 +10,8 @@ export interface SpawnAgentContext {
   sessionId: string;
   currentSpawnDepth: number;
   agentSpawner: AgentSpawner;
+  /** Message ID for the current assistant message (for spawn_session_created event) */
+  messageId: string;
 }
 
 export function createSpawnAgentTool(context: SpawnAgentContext): Tool {
@@ -23,7 +25,7 @@ Use this tool to:
 
 The tool will wait for the spawned agent to complete and return its full response.
 
-Available agents are listed in the system prompt. Local agents have "(local)" suffix in their ID.`,
+Available agents are listed in the system prompt under "Built-in Agents" and "Local Agents". Use the agent ID shown in bold (e.g., "assistant-opus-4.5" or "my-custom-agent").`,
     inputSchema: z.object({
       agentId: z
         .string()
@@ -41,21 +43,17 @@ Available agents are listed in the system prompt. Local agents have "(local)" su
         .min(1, 'Message is required')
         .max(50000, 'Message must be 50,000 characters or less')
         .describe('The task/message to send to the spawned agent'),
-      isLocalAgent: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe('Set to true if spawning a local agent'),
     }),
-    execute: async ({
-      agentId,
-      message,
-      isLocalAgent,
-    }: {
-      agentId: string;
-      message: string;
-      isLocalAgent?: boolean;
-    }) => {
+    execute: async (
+      {
+        agentId,
+        message,
+      }: {
+        agentId: string;
+        message: string;
+      },
+      { toolCallId }: { toolCallId: string }
+    ) => {
       // Check spawn depth limit
       if (context.currentSpawnDepth >= SPAWN_CONFIG.MAX_SPAWN_DEPTH) {
         return {
@@ -65,14 +63,15 @@ Available agents are listed in the system prompt. Local agents have "(local)" su
       }
 
       try {
-        const result = await context.agentSpawner.spawn({
+        const result = await context.agentSpawner.spawnAndWait({
           agentId,
           message,
           userId: context.userId,
           orgId: context.orgId,
           parentSessionId: context.sessionId,
           parentSpawnDepth: context.currentSpawnDepth,
-          isLocalAgent: isLocalAgent ?? false,
+          toolCallId,
+          messageId: context.messageId,
         });
 
         if (result.finishReason === 'error') {
@@ -105,6 +104,7 @@ Available agents are listed in the system prompt. Local agents have "(local)" su
           success: true,
           sessionId: result.sessionId,
           response: result.response,
+          agentName: result.agentName,
           usage: result.usage,
         };
       } catch (error) {

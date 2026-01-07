@@ -7,14 +7,21 @@ import type {
   ToolInvocationPart,
   ToolResultPart,
   ImagePart,
+  AgentType,
 } from '../../../types/chat';
 import { MarkdownRenderer } from '../CodeDisplay/MarkdownRenderer';
 import { ReasoningDisplay } from '../AIFeatures/ReasoningDisplay';
 import { ToolBadge } from '../ToolDisplay/ToolBadge';
+import { SubAgentCard } from '../ToolDisplay/SubAgentCard';
+import type { RenderSubAgentCardProps } from './types';
 
 interface MessagePartItemProps {
   part: MessagePart;
   message: TaskMessage; // For finding tool results
+  onOpenSubAgentDialog?: (sessionId: string) => void;
+  renderSubAgentCard?: (props: RenderSubAgentCardProps) => React.ReactNode;
+  /** Available agents for looking up full names from agent IDs */
+  agents?: AgentType[];
 }
 
 /**
@@ -28,6 +35,28 @@ function findToolResult(
     (p): p is ToolResultPart =>
       p.type === 'tool_result' && p.toolCallId === toolCallId
   );
+}
+
+/**
+ * Map tool invocation state to SubAgentCard status
+ */
+function mapToolStateToSubAgentStatus(
+  toolState: ToolInvocationPart['state'],
+  result?: ToolResultPart
+): 'pending' | 'running' | 'complete' | 'error' {
+  if (result?.isError) return 'error';
+  switch (toolState) {
+    case 'pending':
+      return 'pending';
+    case 'running':
+      return 'running';
+    case 'completed':
+      return 'complete';
+    case 'error':
+      return 'error';
+    default:
+      return 'pending';
+  }
 }
 
 /**
@@ -45,6 +74,12 @@ function areMessagePartsEqual(
   }
   // Different types means different parts
   if (prev.part.type !== next.part.type) return false;
+
+  // Check callback references
+  if (prev.onOpenSubAgentDialog !== next.onOpenSubAgentDialog) return false;
+  if (prev.renderSubAgentCard !== next.renderSubAgentCard) return false;
+  // Check agents reference (used for name lookup)
+  if (prev.agents !== next.agents) return false;
 
   // Type-specific content comparisons
   switch (prev.part.type) {
@@ -92,6 +127,9 @@ function areMessagePartsEqual(
 export const MessagePartItem = memo(function MessagePartItem({
   part,
   message,
+  onOpenSubAgentDialog,
+  renderSubAgentCard,
+  agents,
 }: MessagePartItemProps) {
   switch (part.type) {
     case 'text': {
@@ -111,6 +149,68 @@ export const MessagePartItem = memo(function MessagePartItem({
     case 'tool_invocation': {
       const toolPart = part as ToolInvocationPart;
       const result = findToolResult(message, toolPart.toolCallId);
+
+      // Special handling for spawnAgent tool
+      if (toolPart.toolName === 'spawnAgent') {
+        // Prefer agentName from result (full display name) over agentId (key used for spawning)
+        const resultData = result?.result as {
+          sessionId?: string;
+          response?: string;
+          agentName?: string;
+        };
+        const agentId = toolPart.args?.agentId as string | undefined;
+        // Look up full name: 1) from result, 2) from agents list, 3) fallback to agentId
+        const agentFromList = agentId
+          ? agents?.find((a) => a.id === agentId)
+          : undefined;
+        const agentName =
+          resultData?.agentName || agentFromList?.name || agentId || 'Agent';
+        // Check spawnedSessionId in args (set by spawn_session_created event while running)
+        // or fall back to sessionId in tool result (available after completion)
+        const sessionId =
+          (toolPart.args?.spawnedSessionId as string) || resultData?.sessionId;
+        const response = resultData?.response;
+
+        const onOpenFullView =
+          sessionId && onOpenSubAgentDialog
+            ? () => onOpenSubAgentDialog(sessionId)
+            : undefined;
+
+        // Use custom render function if provided (for connected streaming version)
+        if (renderSubAgentCard) {
+          return (
+            <div className="block">
+              {renderSubAgentCard({
+                sessionId,
+                agentName,
+                toolState: toolPart.state,
+                toolResult: result,
+                onOpenFullView,
+                onOpenSubAgentDialog,
+              })}
+            </div>
+          );
+        }
+
+        // Fallback to default SubAgentCard (static, no streaming)
+        return (
+          <div className="block">
+            <SubAgentCard
+              agentName={agentName}
+              sessionId={sessionId}
+              status={mapToolStateToSubAgentStatus(toolPart.state, result)}
+              summary={response?.slice(0, 150)}
+              latestAction={
+                toolPart.state === 'running' ? 'Processing...' : undefined
+              }
+              errorMessage={result?.isError ? String(result.result) : undefined}
+              onOpenFullView={onOpenFullView}
+            />
+          </div>
+        );
+      }
+
+      // Default ToolBadge for other tools
       return (
         <div className="block">
           <ToolBadge

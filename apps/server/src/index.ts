@@ -104,6 +104,7 @@ let pubsub!: PubSubManager;
 let localAgentsConnectionManager!: LocalAgentsConnectionManager;
 let cacheInvalidation!: CacheInvalidationService;
 let localAgentWSService!: LocalAgentWebSocketService;
+let agentSpawner!: AgentSpawner;
 
 // Hook to initialize Redis-dependent services after Redis plugin is registered
 fastify.addHook('onReady', async () => {
@@ -160,7 +161,7 @@ fastify.addHook('onReady', async () => {
   );
 
   // Create the agent spawner for spawning sub-agents
-  const agentSpawner = new AgentSpawner(
+  agentSpawner = new AgentSpawner(
     agentsFeature,
     localAgentsFeature,
     jobQueueManager,
@@ -223,6 +224,7 @@ fastify.register(fastifyTRPCPlugin, {
         localAgentsConnectionManager,
         localAgentWSRegistry,
         cacheInvalidation,
+        agentSpawner,
       })(opts);
     },
     onError({ path, error }) {
@@ -327,6 +329,7 @@ const start = async () => {
           localAgentsConnectionManager,
           localAgentWSRegistry,
           cacheInvalidation,
+          agentSpawner,
         };
       },
     });

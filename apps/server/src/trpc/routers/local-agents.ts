@@ -29,6 +29,15 @@ export const localAgentsRouter = router({
   create: protectedProcedureWithErrors
     .input(
       z.object({
+        key: z
+          .string()
+          .trim()
+          .min(1)
+          .max(64)
+          .regex(
+            /^[a-zA-Z0-9_-]+$/,
+            'Key can only contain letters, numbers, underscores, and hyphens'
+          ),
         name: z.string().trim().min(1).max(255),
         description: z.string().optional(),
       })
@@ -36,6 +45,7 @@ export const localAgentsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const result = await ctx.localAgentsFeature.create({
         userId: ctx.auth.userId,
+        key: input.key,
         name: input.name,
         description: input.description,
       });
@@ -43,6 +53,7 @@ export const localAgentsRouter = router({
       return {
         agent: {
           id: result.agent.id,
+          key: result.agent.key,
           name: result.agent.name,
           description: result.agent.description,
           disabled: result.agent.disabled,
@@ -58,6 +69,16 @@ export const localAgentsRouter = router({
     .input(
       z.object({
         id: z.string().uuid(),
+        key: z
+          .string()
+          .trim()
+          .min(1)
+          .max(64)
+          .regex(
+            /^[a-zA-Z0-9_-]+$/,
+            'Key can only contain letters, numbers, underscores, and hyphens'
+          )
+          .optional(),
         name: z.string().trim().min(1).max(255).optional(),
         description: z.string().optional(),
       })
@@ -79,6 +100,7 @@ export const localAgentsRouter = router({
 
       return {
         id: agent.id,
+        key: agent.key,
         name: agent.name,
         description: agent.description,
         disabled: agent.disabled,

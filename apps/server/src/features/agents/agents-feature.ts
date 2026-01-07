@@ -49,6 +49,8 @@ import {
   GetSessionResourcesQuery,
   GetSessionMessagesAndEventsQuery,
   GetActiveSessionIdsQuery,
+  GetSessionChildrenQuery,
+  GetSessionLineageQuery,
 } from './queries';
 import type {
   AgentDefinition,
@@ -414,6 +416,10 @@ export class AgentsFeature {
   // Late-initialized queries (require infrastructure dependencies)
   private getActiveSessionIdsQuery?: GetActiveSessionIdsQuery;
 
+  // Session hierarchy queries
+  private getSessionChildrenQuery: GetSessionChildrenQuery;
+  private getSessionLineageQuery: GetSessionLineageQuery;
+
   constructor(db: typeof DbType, localAgentsFeature: LocalAgentsFeature) {
     // Initialize agents map with defaults
     this.agentsMap = new Map();
@@ -427,7 +433,7 @@ export class AgentsFeature {
     this.deleteAgentCommand = new DeleteAgentCommand(this.agentsMap);
     this.createSessionCommand = new CreateSessionCommand(db, {
       hasBuiltInAgent: (id) => this.agentsMap.has(id),
-      getLocalAgent: (id, userId) => localAgentsFeature.getById(id, userId),
+      getLocalAgent: (key, userId) => localAgentsFeature.getByKey(key, userId),
     });
     this.updateSessionTitleCommand = new UpdateSessionTitleCommand(db);
     this.updateSessionTimestampCommand = new UpdateSessionTimestampCommand(db);
@@ -447,13 +453,25 @@ export class AgentsFeature {
     this.getSessionByIdForUserQuery = new GetSessionByIdForUserQuery(db);
     this.getAgentIdForSessionQuery = new GetAgentIdForSessionQuery(db);
     this.getSessionAgentInfoQuery = new GetSessionAgentInfoQuery(db);
-    this.getSessionWithMessagesQuery = new GetSessionWithMessagesQuery(db);
+    // Create agentNames map for name lookups
+    const agentNames = new Map<string, string>();
+    for (const [id, agent] of this.agentsMap) {
+      agentNames.set(id, agent.name);
+    }
+    this.getSessionWithMessagesQuery = new GetSessionWithMessagesQuery(
+      db,
+      agentNames
+    );
     this.listSessionsByUserQuery = new ListSessionsByUserQuery(db);
     this.verifySessionOwnershipQuery = new VerifySessionOwnershipQuery(db);
     this.getMessagesBySessionIdQuery = new GetMessagesBySessionIdQuery(db);
     this.getSessionResourcesQuery = new GetSessionResourcesQuery(db);
     this.getSessionMessagesAndEventsQuery =
       new GetSessionMessagesAndEventsQuery(db);
+
+    // Initialize session hierarchy queries
+    this.getSessionChildrenQuery = new GetSessionChildrenQuery(db);
+    this.getSessionLineageQuery = new GetSessionLineageQuery(db);
 
     // Initialize orchestration commands (compose existing commands)
     this.sendUserMessageCommand = new SendUserMessageCommand(
@@ -537,8 +555,13 @@ export class AgentsFeature {
         this.getSessionByIdForUserQuery.execute(sessionId, userId),
       getWithMessages: (sessionId: string) =>
         this.getSessionWithMessagesQuery.execute(sessionId),
-      listByUser: (userId: string, limit: number) =>
-        this.listSessionsByUserQuery.execute(userId, limit),
+      listByUser: (
+        userId: string,
+        limit: number,
+        filter?: 'my_chats' | 'all' | 'sub_agents',
+        cursor?: string
+      ) =>
+        this.listSessionsByUserQuery.execute({ userId, limit, filter, cursor }),
       getAgentId: (sessionId: string) =>
         this.getAgentIdForSessionQuery.execute(sessionId),
       getAgentInfo: (sessionId: string) =>
@@ -549,6 +572,10 @@ export class AgentsFeature {
         this.getSessionResourcesQuery.execute(sessionId),
       getMessagesAndEvents: (sessionId: string) =>
         this.getSessionMessagesAndEventsQuery.execute(sessionId),
+      getChildren: (sessionId: string) =>
+        this.getSessionChildrenQuery.execute(sessionId),
+      getLineage: (sessionId: string) =>
+        this.getSessionLineageQuery.execute(sessionId),
     };
   }
 

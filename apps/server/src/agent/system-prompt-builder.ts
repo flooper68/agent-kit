@@ -66,8 +66,9 @@ async function generateSpawnableAgentsSection(
     lines.push('No local agents available.');
   } else {
     for (const agent of activeLocalAgents) {
+      // Use key (not UUID) as the identifier for spawning
       lines.push(
-        `- **${agent.id}** (local): ${agent.name} - ${agent.description ?? 'No description'}`
+        `- **${agent.key}** (local): ${agent.name} - ${agent.description ?? 'No description'}`
       );
     }
   }
@@ -96,12 +97,12 @@ export async function getAvailableAgents(
     isLocal: false,
   }));
 
-  // Get local agents
+  // Get local agents - use key (not UUID) as the id for spawning
   const localAgents = await localAgentsFeature.list(userId);
   const activeLocalAgents = localAgents
     .filter((agent) => !agent.disabled)
     .map((agent) => ({
-      id: agent.id,
+      id: agent.key,
       name: agent.name,
       description: agent.description ?? 'Local agent',
       isLocal: true,

@@ -34,3 +34,6 @@ export type { ProviderIconProps } from './ProviderIcons';
 
 // AgentPanel
 export * from './AgentPanel';
+
+// SubAgent Full View
+export * from './SubAgentFullView';

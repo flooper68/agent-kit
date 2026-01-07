@@ -326,6 +326,7 @@ export function AnalyticsPage() {
       <SessionDetailModal
         sessionId={selectedSessionId}
         onClose={() => setSelectedSessionId(null)}
+        onNavigateToSession={setSelectedSessionId}
       />
     </div>
   );

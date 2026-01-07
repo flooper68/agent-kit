@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RunningTimeIndicator } from './RunningTimeIndicator';
 
 const meta: Meta<typeof RunningTimeIndicator> = {
@@ -14,12 +14,44 @@ const meta: Meta<typeof RunningTimeIndicator> = {
 export default meta;
 type Story = StoryObj<typeof RunningTimeIndicator>;
 
+// Helper to format duration (same as app layer)
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
+// Hook for storybook demos (simulates app layer behavior)
+function useElapsedLabel(
+  isRunning: boolean,
+  initialSeconds = 0
+): string | null {
+  const [seconds, setSeconds] = useState(initialSeconds);
+  const [finalLabel, setFinalLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isRunning) {
+      setFinalLabel(null);
+      const interval = setInterval(() => {
+        setSeconds((s) => s + 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    } else if (seconds > 0) {
+      setFinalLabel(formatDuration(seconds));
+    }
+  }, [isRunning, seconds]);
+
+  if (finalLabel) return finalLabel;
+  if (seconds === 0 && !isRunning) return null;
+  return formatDuration(seconds);
+}
+
 // Interactive streaming story that updates in real-time
 const StreamingDemo = () => {
-  const [startTime] = useState(() => Date.now());
-
+  const elapsedLabel = useElapsedLabel(true, 0);
   return (
-    <RunningTimeIndicator status="streaming" streamingStartTime={startTime} />
+    <RunningTimeIndicator status="streaming" elapsedLabel={elapsedLabel} />
   );
 };
 
@@ -29,10 +61,9 @@ export const Streaming: Story = {
 
 // Streaming for longer duration (simulated at 65 seconds)
 const StreamingLongDemo = () => {
-  const [startTime] = useState(() => Date.now() - 65000); // Started 65 seconds ago
-
+  const elapsedLabel = useElapsedLabel(true, 65);
   return (
-    <RunningTimeIndicator status="streaming" streamingStartTime={startTime} />
+    <RunningTimeIndicator status="streaming" elapsedLabel={elapsedLabel} />
   );
 };
 
@@ -41,58 +72,31 @@ export const StreamingLong: Story = {
 };
 
 // Completed state
-const CompletedDemo = () => {
-  const [startTime] = useState(() => Date.now() - 5000);
-  const [status, setStatus] = useState<'streaming' | 'ready'>('streaming');
-
-  useEffect(() => {
-    // Simulate streaming for 1 second then complete
-    const timer = setTimeout(() => {
-      setStatus('ready');
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  return (
-    <RunningTimeIndicator status={status} streamingStartTime={startTime} />
-  );
-};
-
 export const Completed: Story = {
-  render: () => <CompletedDemo />,
+  args: {
+    status: 'ready',
+    elapsedLabel: '5s',
+  },
 };
 
 // Completed with longer duration
-const CompletedLongDemo = () => {
-  const [startTime] = useState(() => Date.now() - 125000); // 2m 5s ago
-  const [status, setStatus] = useState<'streaming' | 'ready'>('streaming');
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setStatus('ready');
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  return (
-    <RunningTimeIndicator status={status} streamingStartTime={startTime} />
-  );
-};
-
 export const CompletedLong: Story = {
-  render: () => <CompletedLongDemo />,
+  args: {
+    status: 'ready',
+    elapsedLabel: '2m 5s',
+  },
 };
 
 // No time - renders nothing
 export const NoTime: Story = {
   args: {
     status: 'ready',
-    streamingStartTime: null,
+    elapsedLabel: null,
   },
   parameters: {
     docs: {
       description: {
-        story: 'When status is ready and no start time, renders nothing.',
+        story: 'When elapsedLabel is null, renders nothing.',
       },
     },
   },
@@ -102,13 +106,13 @@ export const NoTime: Story = {
 export const Submitted: Story = {
   args: {
     status: 'submitted',
-    streamingStartTime: null,
+    elapsedLabel: null,
   },
   parameters: {
     docs: {
       description: {
         story:
-          'When status is submitted (before streaming starts), renders nothing.',
+          'When status is submitted (before streaming starts), typically no elapsed label.',
       },
     },
   },
@@ -119,23 +123,44 @@ const FullLifecycleDemo = () => {
   const [status, setStatus] = useState<
     'ready' | 'submitted' | 'streaming' | 'error' | 'loading'
   >('ready');
-  const [startTime, setStartTime] = useState<number | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+  const [finalLabel, setFinalLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isRunning) {
+      setFinalLabel(null);
+      const interval = setInterval(() => {
+        setSeconds((s) => s + 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    } else if (seconds > 0) {
+      setFinalLabel(formatDuration(seconds));
+    }
+  }, [isRunning, seconds]);
+
+  const elapsedLabel =
+    finalLabel ?? (seconds > 0 ? formatDuration(seconds) : null);
 
   const handleStart = () => {
     setStatus('submitted');
+    setSeconds(0);
     setTimeout(() => {
-      setStartTime(Date.now());
       setStatus('streaming');
+      setIsRunning(true);
     }, 500);
   };
 
   const handleStop = () => {
     setStatus('ready');
+    setIsRunning(false);
   };
 
   const handleReset = () => {
     setStatus('ready');
-    setStartTime(null);
+    setIsRunning(false);
+    setSeconds(0);
+    setFinalLabel(null);
   };
 
   return (
@@ -163,7 +188,7 @@ const FullLifecycleDemo = () => {
         </button>
       </div>
       <div className="min-h-[24px]">
-        <RunningTimeIndicator status={status} streamingStartTime={startTime} />
+        <RunningTimeIndicator status={status} elapsedLabel={elapsedLabel} />
       </div>
       <div className="text-xs text-muted-foreground">Status: {status}</div>
     </div>

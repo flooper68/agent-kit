@@ -459,6 +459,7 @@ export class AgentJobHandler {
           toolName: event.toolName,
           toolCallId: event.toolCallId,
         });
+
         await this.agentsFeature.events.insert({
           sessionId,
           messageId,

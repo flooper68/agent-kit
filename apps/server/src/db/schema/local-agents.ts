@@ -6,6 +6,7 @@ import {
   timestamp,
   boolean,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 export const localAgents = pgTable(
@@ -17,6 +18,8 @@ export const localAgents = pgTable(
     userId: varchar('user_id', { length: 255 }).notNull(),
 
     // Agent identity
+    // key: unique per-user identifier for spawning (e.g., "code-reviewer")
+    key: varchar('key', { length: 64 }).notNull(),
     name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
 
@@ -43,6 +46,8 @@ export const localAgents = pgTable(
   (table) => [
     index('local_agents_user_id_idx').on(table.userId),
     index('local_agents_secret_key_idx').on(table.secretKey),
+    // Per-user unique key for spawning
+    uniqueIndex('local_agents_user_key_idx').on(table.userId, table.key),
   ]
 );
 

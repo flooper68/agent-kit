@@ -5,17 +5,20 @@ import { localAgents, type LocalAgent } from '../../db/schema';
 
 export interface CreateLocalAgentInput {
   userId: string;
+  key: string;
   name: string;
   description?: string;
 }
 
 export interface UpdateLocalAgentInput {
+  key?: string;
   name?: string;
   description?: string;
 }
 
 export interface LocalAgentListItem {
   id: string;
+  key: string;
   name: string;
   description: string | null;
   disabled: boolean;
@@ -70,6 +73,7 @@ export class LocalAgentsFeature {
       .insert(localAgents)
       .values({
         userId: input.userId,
+        key: input.key,
         name: input.name,
         description: input.description,
         secretKey: secretKeyHash,
@@ -93,6 +97,7 @@ export class LocalAgentsFeature {
     const agents = await this.db
       .select({
         id: localAgents.id,
+        key: localAgents.key,
         name: localAgents.name,
         description: localAgents.description,
         disabled: localAgents.disabled,
@@ -115,6 +120,19 @@ export class LocalAgentsFeature {
       .select()
       .from(localAgents)
       .where(and(eq(localAgents.id, id), eq(localAgents.userId, userId)));
+
+    return agent ?? null;
+  }
+
+  /**
+   * Get a single local agent by key (verifies ownership)
+   * Used for agent spawning where the key is used as the identifier
+   */
+  async getByKey(key: string, userId: string): Promise<LocalAgent | null> {
+    const [agent] = await this.db
+      .select()
+      .from(localAgents)
+      .where(and(eq(localAgents.key, key), eq(localAgents.userId, userId)));
 
     return agent ?? null;
   }

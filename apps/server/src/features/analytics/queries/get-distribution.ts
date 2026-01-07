@@ -1,6 +1,6 @@
-import { sql, eq, and, gte, sum, count, desc } from 'drizzle-orm';
+import { sql, eq, and, gte, sum, count, desc, inArray } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { agentSessions } from '../../../db/schema';
+import { agentSessions, localAgents } from '../../../db/schema';
 import type {
   AgentDistributionItem,
   ProviderDistributionItem,
@@ -42,9 +42,34 @@ export class GetAgentDistributionQuery {
       .orderBy(desc(count()))
       .limit(10);
 
+    // Find local agent names for agentIds not in the built-in agentNames map
+    // These are local agent keys that need name resolution
+    const unknownAgentIds = results
+      .map((r) => r.agentId)
+      .filter((id) => !this.agentNames.has(id));
+
+    const localAgentNames = new Map<string, string>();
+    if (unknownAgentIds.length > 0) {
+      // Look up local agents by key to get their display names
+      const localAgentResults = await this.db
+        .select({
+          key: localAgents.key,
+          name: localAgents.name,
+        })
+        .from(localAgents)
+        .where(inArray(localAgents.key, unknownAgentIds));
+
+      for (const la of localAgentResults) {
+        localAgentNames.set(la.key, la.name);
+      }
+    }
+
     return results.map((row) => ({
       agentId: row.agentId,
-      agentName: this.agentNames.get(row.agentId) ?? row.agentId,
+      agentName:
+        this.agentNames.get(row.agentId) ??
+        localAgentNames.get(row.agentId) ??
+        row.agentId,
       sessions: Number(row.sessions),
       messages: Number(row.messages ?? 0),
       cost: Number(row.cost),

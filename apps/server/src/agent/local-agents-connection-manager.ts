@@ -6,7 +6,7 @@ import { logger } from './logger';
  * Interface for listing agents (dependency injection)
  */
 interface AgentLister {
-  list(userId: string): Promise<Array<{ id: string }>>;
+  list(userId: string): Promise<Array<{ id: string; key: string }>>;
 }
 
 export interface LocalAgentConnection {
@@ -196,17 +196,18 @@ export class LocalAgentsConnectionManager {
   /**
    * Subscribe to connection status updates for all of a user's local agents.
    * Yields initial status for all agents, then streams updates from pubsub.
+   * Uses agent.key (not UUID) as agentId for UI matching consistency.
    */
   async *subscribeToStatusUpdates(
     userId: string,
     agentLister: AgentLister
   ): AsyncGenerator<ConnectionStatusUpdate> {
-    // Yield initial status for all user's agents
+    // Yield initial status for all user's agents (use key for UI matching)
     const agents = await agentLister.list(userId);
     for (const agent of agents) {
-      const connection = await this.getConnectionStatus(userId, agent.id);
+      const connection = await this.getConnectionStatus(userId, agent.key);
       yield {
-        agentId: agent.id,
+        agentId: agent.key,
         userId,
         status: connection ? 'connected' : 'disconnected',
         timestamp: new Date().toISOString(),

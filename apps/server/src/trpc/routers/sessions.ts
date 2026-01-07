@@ -31,12 +31,15 @@ export const sessionsRouter = router({
       z.object({
         limit: z.number().min(1).max(100).default(20),
         cursor: z.string().uuid().optional(),
+        filter: z.enum(['my_chats', 'all', 'sub_agents']).default('my_chats'),
       })
     )
     .query(async ({ ctx, input }) => {
       const result = await ctx.agentsFeature.sessions.listByUser(
         ctx.auth.userId,
-        input.limit
+        input.limit,
+        input.filter,
+        input.cursor
       );
 
       // Batch fetch all streaming session IDs for efficient lookup
@@ -52,6 +55,7 @@ export const sessionsRouter = router({
       return {
         items: itemsWithStreaming,
         nextCursor: result.nextCursor,
+        totalCount: result.totalCount,
       };
     }),
 
@@ -159,5 +163,26 @@ export const sessionsRouter = router({
     .query(async ({ ctx, input }) => {
       // Session ownership already verified by sessionProcedure middleware
       return ctx.streamingStateManager.isStreaming(input.sessionId);
+    }),
+
+  /**
+   * Get all child sessions spawned from a parent session
+   */
+  getChildren: sessionProcedure
+    .input(z.object({ sessionId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      // Session ownership already verified by sessionProcedure middleware
+      return ctx.agentsFeature.sessions.getChildren(input.sessionId);
+    }),
+
+  /**
+   * Get the lineage (path from root to current session)
+   * Returns array ordered from root (depth 0) to current session
+   */
+  getLineage: sessionProcedure
+    .input(z.object({ sessionId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      // Session ownership already verified by sessionProcedure middleware
+      return ctx.agentsFeature.sessions.getLineage(input.sessionId);
     }),
 });

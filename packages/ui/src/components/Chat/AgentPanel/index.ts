@@ -1,4 +1,6 @@
 export { AgentPanel } from './AgentPanel';
+export { CompactAgentCard } from './CompactAgentCard';
+export { CompactMessageView } from './CompactMessageView';
 export type {
   AgentPanelProps,
   AgentPanelRef,
@@ -6,6 +8,8 @@ export type {
   TaskError,
   EmptyStateConfig,
   AvatarConfig,
+  CompactStatus,
+  RenderSubAgentCardProps,
 } from './types';
 
 // Re-export mocks for Storybook usage

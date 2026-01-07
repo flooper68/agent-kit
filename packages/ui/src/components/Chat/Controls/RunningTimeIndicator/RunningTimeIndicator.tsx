@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useState, useRef } from 'react';
+import { forwardRef } from 'react';
 import { Clock, CheckCircle } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
 import type { TaskStatus } from '../../../../types/chat';
@@ -7,84 +7,35 @@ import { Tooltip } from '../../../Tooltip';
 export interface RunningTimeIndicatorProps
   extends React.HTMLAttributes<HTMLDivElement> {
   status: TaskStatus;
-  streamingStartTime?: number | null;
+  /** Formatted elapsed time label (e.g., "5s" or "1m 23s"). Pass null to hide. */
+  elapsedLabel?: string | null;
 }
-
-const formatDuration = (seconds: number): string => {
-  if (seconds < 60) {
-    return `${seconds}s`;
-  }
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
-};
 
 export const RunningTimeIndicator = forwardRef<
   HTMLDivElement,
   RunningTimeIndicatorProps
->(({ status, streamingStartTime, className, ...props }, ref) => {
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [finalDuration, setFinalDuration] = useState<number | null>(null);
-  const wasStreamingRef = useRef(false);
+>(({ status, elapsedLabel, className, ...props }, ref) => {
+  const isStreaming = status === 'streaming';
+  const isReady = status === 'ready';
 
-  // Track elapsed seconds in a ref for capturing final duration without dependency cycles
-  const elapsedSecondsRef = useRef(0);
-
-  useEffect(() => {
-    if (status === 'streaming' && streamingStartTime) {
-      wasStreamingRef.current = true;
-      setFinalDuration(null);
-
-      // Calculate initial elapsed time
-      const initialElapsed = Math.floor(
-        (Date.now() - streamingStartTime) / 1000
-      );
-      setElapsedSeconds(initialElapsed);
-      elapsedSecondsRef.current = initialElapsed;
-
-      const interval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - streamingStartTime) / 1000);
-        setElapsedSeconds(elapsed);
-        elapsedSecondsRef.current = elapsed;
-      }, 1000);
-
-      return () => clearInterval(interval);
-    } else if (wasStreamingRef.current && status === 'ready') {
-      // Lock the final duration when streaming ends using ref value
-      if (elapsedSecondsRef.current > 0) {
-        setFinalDuration(elapsedSecondsRef.current);
-      }
-      wasStreamingRef.current = false;
-    }
-  }, [status, streamingStartTime]);
-
-  // Reset when a new streaming session starts (streamingStartTime changes)
-  useEffect(() => {
-    if (streamingStartTime && status !== 'streaming') {
-      // Reset for next session
-      setElapsedSeconds(0);
-    }
-  }, [streamingStartTime, status]);
-
-  const isStreaming = status === 'streaming' && streamingStartTime;
-  const showCompleted = finalDuration !== null && status === 'ready';
-
-  if (!isStreaming && !showCompleted) {
+  // Don't show if no label provided
+  if (!elapsedLabel) {
     return null;
   }
 
-  const displayDuration = isStreaming ? elapsedSeconds : (finalDuration ?? 0);
   const Icon = isStreaming ? Clock : CheckCircle;
   const label = isStreaming
-    ? `Running for ${formatDuration(displayDuration)}`
-    : `Worked for ${formatDuration(displayDuration)}`;
+    ? `Running for ${elapsedLabel}`
+    : `Worked for ${elapsedLabel}`;
 
   const tooltipContent = (
     <div className="text-xs">
       {isStreaming ? (
         <div>Agent is working...</div>
+      ) : isReady ? (
+        <div>Completed in {elapsedLabel}</div>
       ) : (
-        <div>Completed in {formatDuration(displayDuration)}</div>
+        <div>{elapsedLabel}</div>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
-import { eq, and, gte, sql } from 'drizzle-orm';
+import { eq, and, gte, sql, inArray } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { artifacts } from '../../../db/schema';
+import { artifacts, localAgents } from '../../../db/schema';
 import type { TimeRange, ArtifactsByAgent } from '../types';
 import { getTimeRangeStart } from './utils';
 
@@ -34,10 +34,32 @@ export class GetArtifactsByAgentQuery {
       .groupBy(artifacts.agentId)
       .orderBy(sql`count(*) desc`);
 
+    // Find local agent names for agentIds not in the built-in agentNames map
+    const unknownAgentIds = results
+      .map((r) => r.agentId)
+      .filter((id): id is string => id !== null && !this.agentNames.has(id));
+
+    const localAgentNames = new Map<string, string>();
+    if (unknownAgentIds.length > 0) {
+      const localAgentResults = await this.db
+        .select({
+          key: localAgents.key,
+          name: localAgents.name,
+        })
+        .from(localAgents)
+        .where(inArray(localAgents.key, unknownAgentIds));
+
+      for (const la of localAgentResults) {
+        localAgentNames.set(la.key, la.name);
+      }
+    }
+
     return results.map((row) => ({
       agentId: row.agentId,
       agentName: row.agentId
-        ? (this.agentNames.get(row.agentId) ?? row.agentId)
+        ? (this.agentNames.get(row.agentId) ??
+          localAgentNames.get(row.agentId) ??
+          row.agentId)
         : 'Standalone',
       count: row.count,
     }));

@@ -10,30 +10,58 @@ import { SPAWN_CONFIG } from './spawn-config';
 import { getAvailableAgents as getAvailableAgentsFromBuilder } from './system-prompt-builder';
 import { logger } from './logger';
 
-export interface SpawnAgentInput {
+/**
+ * Input for both spawn() and spawnAndWait() methods.
+ * Can either use an existing session (sessionId) or create a new one (parentSessionId).
+ */
+export interface SpawnInput {
   /** ID of the agent to spawn */
   agentId: string;
-  /** Message to send to the spawned agent */
+  /** Message to send to the agent */
   message: string;
   /** User ID for ownership */
   userId: string;
   /** Organization ID */
   orgId: string;
-  /** Parent session ID for hierarchy tracking */
+
+  // Session options (provide one):
+  /** Use an existing session (for messagesRouter.send) */
+  sessionId?: string;
+  /** Create new session with parent tracking (for spawnAgent tool) */
   parentSessionId?: string;
   /** Current spawn depth of the parent session */
   parentSpawnDepth?: number;
+
   /** Timeout in milliseconds (defaults to agent's spawnTimeout or SPAWN_CONFIG.DEFAULT_TIMEOUT_MS) */
   timeout?: number;
-  /** Whether this is a local agent */
-  isLocalAgent?: boolean;
+  /** Tool call ID from the parent's spawnAgent tool call (for spawn_session_created event) */
+  toolCallId?: string;
+  /** Message ID in the parent session (for spawn_session_created event) */
+  messageId?: string;
 }
 
-export interface SpawnAgentResult {
-  /** ID of the created session */
+/**
+ * Result from spawn() - fire-and-forget, returns immediately after dispatching
+ */
+export interface SpawnResult {
+  /** ID of the session (existing or newly created) */
+  sessionId: string;
+  /** Whether the message was successfully dispatched */
+  dispatched: boolean;
+  /** Error message if dispatch failed */
+  error?: string;
+}
+
+/**
+ * Result from spawnAndWait() - waits for agent completion
+ */
+export interface SpawnAndWaitResult {
+  /** ID of the session */
   sessionId: string;
   /** Complete text response from the spawned agent */
   response: string;
+  /** Human-readable name of the spawned agent (for display in UI) */
+  agentName?: string;
   /** Token usage if available */
   usage?: {
     promptTokens: number;
@@ -45,14 +73,22 @@ export interface SpawnAgentResult {
   error?: string;
 }
 
+// Legacy aliases for backwards compatibility
+/** @deprecated Use SpawnInput instead */
+export type SpawnAgentInput = SpawnInput;
+/** @deprecated Use SpawnAndWaitResult instead */
+export type SpawnAgentResult = SpawnAndWaitResult;
+
 const log = logger.child({ module: 'agent-spawner' });
 
 /**
- * AgentSpawner - Service for spawning agents and waiting for their responses
+ * AgentSpawner - Service for dispatching messages to agents
  *
- * This service abstracts the logic for spawning agents, used by both:
- * - The spawnAgent tool (waits for completion)
- * - Potentially other internal use cases
+ * Provides two public methods:
+ * - spawn(): Fire-and-forget, dispatches and returns immediately (for messagesRouter.send)
+ * - spawnAndWait(): Waits for agent completion (for spawnAgent tool)
+ *
+ * Both methods can use an existing session (sessionId) or create a new one (parentSessionId).
  */
 export class AgentSpawner {
   constructor(
@@ -67,105 +103,68 @@ export class AgentSpawner {
   ) {}
 
   /**
-   * Spawn an agent and wait for its response
+   * Spawn an agent and wait for its response.
+   * Can use existing session (input.sessionId) or create new (input.parentSessionId).
    */
-  async spawn(input: SpawnAgentInput): Promise<SpawnAgentResult> {
-    const {
-      agentId,
-      message,
-      userId,
-      orgId,
-      parentSessionId,
-      parentSpawnDepth = 0,
-      isLocalAgent = false,
-    } = input;
+  async spawnAndWait(input: SpawnInput): Promise<SpawnAndWaitResult> {
+    const { agentId, message, userId, orgId, toolCallId, messageId } = input;
 
-    const newSpawnDepth = parentSpawnDepth + 1;
+    // Resolve agent info (validates agent exists and is available)
+    const agentInfo = await this.resolveAgentInfo(agentId, userId);
+    if ('error' in agentInfo) {
+      return {
+        sessionId: input.sessionId ?? '',
+        response: '',
+        finishReason: 'error',
+        error: agentInfo.error,
+      };
+    }
 
-    // Validate spawn depth
-    if (newSpawnDepth > SPAWN_CONFIG.MAX_SPAWN_DEPTH) {
+    const { localAgentUuid, resolvedAgentName, isLocalAgent } = agentInfo;
+
+    // Resolve or create session
+    const sessionResult = await this.resolveOrCreateSession(
+      input,
+      isLocalAgent
+    );
+    if ('error' in sessionResult) {
       return {
         sessionId: '',
         response: '',
         finishReason: 'error',
-        error: `Maximum spawn depth of ${SPAWN_CONFIG.MAX_SPAWN_DEPTH} exceeded`,
+        error: sessionResult.error,
       };
     }
 
+    const { sessionId, isNewSession } = sessionResult;
+
     // Determine timeout
-    let timeout = input.timeout ?? SPAWN_CONFIG.DEFAULT_TIMEOUT_MS;
-
-    // Get agent-specific timeout if available (for built-in agents)
-    if (!isLocalAgent) {
-      const agent = this.agentsFeature.agents.get(agentId);
-      if (!agent) {
-        return {
-          sessionId: '',
-          response: '',
-          finishReason: 'error',
-          error: `Agent not found: ${agentId}`,
-        };
-      }
-      if (agent.spawnTimeout) {
-        timeout = agent.spawnTimeout;
-      }
-    } else {
-      // Validate local agent exists and is not disabled
-      const localAgent = await this.localAgentsFeature.getById(agentId, userId);
-      if (!localAgent) {
-        return {
-          sessionId: '',
-          response: '',
-          finishReason: 'error',
-          error: `Local agent not found: ${agentId}`,
-        };
-      }
-      if (localAgent.disabled) {
-        return {
-          sessionId: '',
-          response: '',
-          finishReason: 'error',
-          error: `Local agent is disabled: ${agentId}`,
-        };
-      }
-
-      // Check if local agent is connected
-      if (!this.localAgentWSRegistry.isConnected(agentId)) {
-        return {
-          sessionId: '',
-          response: '',
-          finishReason: 'error',
-          error: `Local agent is not connected: ${agentId}`,
-        };
-      }
-    }
-
-    // Clamp timeout to valid range
+    let timeout = input.timeout ?? agentInfo.timeout;
     timeout = Math.max(
       SPAWN_CONFIG.MIN_TIMEOUT_MS,
       Math.min(timeout, SPAWN_CONFIG.MAX_TIMEOUT_MS)
     );
 
-    log.info('Spawning agent', {
-      agentId,
-      parentSessionId,
-      spawnDepth: newSpawnDepth,
-      timeout,
-      isLocalAgent,
-    });
+    // Emit spawn_session_created event to the PARENT session so UI can update
+    // Only for newly created sessions with parent tracking
+    if (isNewSession && input.parentSessionId && toolCallId && messageId) {
+      await this.eventStreamManager.publish(input.parentSessionId, {
+        type: 'spawn_session_created',
+        sessionId: input.parentSessionId,
+        messageId,
+        toolCallId,
+        spawnedSessionId: sessionId,
+      } as Omit<
+        import('./event-stream-manager').StreamEvent,
+        'id' | 'timestamp'
+      >);
 
-    // Create new session with parent tracking
-    const session = await this.agentsFeature.sessions.create({
-      userId,
-      orgId,
-      agentId,
-      isLocalAgent,
-      parentSessionId,
-      spawnDepth: newSpawnDepth,
-      title: `Spawned from ${parentSessionId ?? 'root'}`,
-    });
-
-    const sessionId = session.id;
+      log.info('Emitted spawn_session_created event', {
+        parentSessionId: input.parentSessionId,
+        spawnedSessionId: sessionId,
+        toolCallId,
+      });
+    }
 
     try {
       // Start streaming state
@@ -176,28 +175,34 @@ export class AgentSpawner {
         isLocalAgent
       );
 
+      // Dispatch to agent
       if (isLocalAgent) {
-        // Handle local agent spawn
-        return await this.spawnLocalAgent(
+        await this.dispatchToLocalAgent(
           sessionId,
-          agentId,
+          localAgentUuid!,
           message,
-          userId,
-          timeout
+          userId
         );
       } else {
-        // Handle server agent spawn
-        return await this.spawnServerAgent(
+        await this.dispatchToServerAgent(
           sessionId,
           agentId,
           message,
           userId,
-          orgId,
-          timeout
+          orgId
         );
       }
+
+      // Wait for completion
+      const result = await this.waitForCompletion(sessionId, timeout);
+
+      // Add agent name to result for UI display
+      return {
+        ...result,
+        agentName: resolvedAgentName,
+      };
     } catch (error) {
-      log.error('Spawn failed', {
+      log.error('SpawnAndWait failed', {
         sessionId,
         agentId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -206,6 +211,7 @@ export class AgentSpawner {
       return {
         sessionId,
         response: '',
+        agentName: resolvedAgentName,
         finishReason: 'error',
         error: error instanceof Error ? error.message : 'Unknown error',
       };
@@ -216,42 +222,194 @@ export class AgentSpawner {
   }
 
   /**
-   * Spawn a server agent and wait for response
+   * Dispatch a message to an agent and return immediately (fire-and-forget).
+   * Can use existing session (input.sessionId) or create new (input.parentSessionId).
    */
-  private async spawnServerAgent(
-    sessionId: string,
-    agentId: string,
-    message: string,
-    userId: string,
-    orgId: string,
-    timeout: number
-  ): Promise<SpawnAgentResult> {
-    // Enqueue job for processing
-    await this.jobQueueManager.enqueue({
-      sessionId,
-      agentId,
-      userId,
-      orgId,
-      content: message,
-    });
+  async spawn(input: SpawnInput): Promise<SpawnResult> {
+    const { agentId, message, userId, orgId } = input;
 
-    // Publish cache invalidation
-    await this.cacheInvalidation.publishSessionMessageAdded(userId, sessionId);
+    // Resolve agent info (validates agent exists and is available)
+    const agentInfo = await this.resolveAgentInfo(agentId, userId);
+    if ('error' in agentInfo) {
+      return {
+        sessionId: input.sessionId ?? '',
+        dispatched: false,
+        error: agentInfo.error,
+      };
+    }
 
-    // Wait for completion
-    return this.waitForCompletion(sessionId, timeout);
+    const { localAgentUuid, isLocalAgent } = agentInfo;
+
+    // Resolve or create session
+    const sessionResult = await this.resolveOrCreateSession(
+      input,
+      isLocalAgent
+    );
+    if ('error' in sessionResult) {
+      return {
+        sessionId: '',
+        dispatched: false,
+        error: sessionResult.error,
+      };
+    }
+
+    const { sessionId } = sessionResult;
+
+    try {
+      // Start streaming state
+      await this.streamingStateManager.startStreaming(
+        sessionId,
+        userId,
+        agentId,
+        isLocalAgent
+      );
+
+      // Dispatch to agent
+      if (isLocalAgent) {
+        await this.dispatchToLocalAgent(
+          sessionId,
+          localAgentUuid!,
+          message,
+          userId
+        );
+      } else {
+        await this.dispatchToServerAgent(
+          sessionId,
+          agentId,
+          message,
+          userId,
+          orgId
+        );
+      }
+
+      return { sessionId, dispatched: true };
+    } catch (error) {
+      // Clean up streaming state on failure
+      await this.streamingStateManager.stopStreaming(sessionId);
+
+      log.error('Spawn failed', {
+        sessionId,
+        agentId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      return {
+        sessionId,
+        dispatched: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
   }
 
   /**
-   * Spawn a local agent and wait for response
+   * Resolve agent info - validates agent exists and is available
    */
-  private async spawnLocalAgent(
-    sessionId: string,
+  private async resolveAgentInfo(
     agentId: string,
+    userId: string
+  ): Promise<
+    | {
+        localAgentUuid: string | undefined;
+        resolvedAgentName: string | undefined;
+        isLocalAgent: boolean;
+        timeout: number;
+      }
+    | { error: string }
+  > {
+    let timeout: number = SPAWN_CONFIG.DEFAULT_TIMEOUT_MS;
+    let localAgentUuid: string | undefined;
+    let resolvedAgentName: string | undefined;
+    let isLocalAgent = false;
+
+    // Auto-detect agent type: first check built-in, then local
+    const builtInAgent = this.agentsFeature.agents.get(agentId);
+    if (builtInAgent) {
+      // Found as built-in agent
+      if (builtInAgent.spawnTimeout) {
+        timeout = builtInAgent.spawnTimeout;
+      }
+      resolvedAgentName = builtInAgent.name;
+      isLocalAgent = false;
+    } else {
+      // Not a built-in agent, check if it's a local agent by key
+      const localAgent = await this.localAgentsFeature.getByKey(
+        agentId,
+        userId
+      );
+      if (!localAgent) {
+        return {
+          error: `Agent not found: ${agentId}. Check that the agent ID is correct and the agent is available.`,
+        };
+      }
+      if (localAgent.disabled) {
+        return { error: `Local agent is disabled: ${agentId}` };
+      }
+
+      // Check if local agent is connected (using UUID for WebSocket registry)
+      if (!this.localAgentWSRegistry.isConnected(localAgent.id)) {
+        return { error: `Local agent is not connected: ${agentId}` };
+      }
+
+      // Store UUID and name for later use
+      localAgentUuid = localAgent.id;
+      resolvedAgentName = localAgent.name;
+      isLocalAgent = true;
+    }
+
+    return { localAgentUuid, resolvedAgentName, isLocalAgent, timeout };
+  }
+
+  /**
+   * Resolve or create session based on input
+   */
+  private async resolveOrCreateSession(
+    input: SpawnInput,
+    isLocalAgent: boolean
+  ): Promise<{ sessionId: string; isNewSession: boolean } | { error: string }> {
+    // If sessionId provided, use existing session
+    if (input.sessionId) {
+      return { sessionId: input.sessionId, isNewSession: false };
+    }
+
+    // Otherwise create new session
+    const newSpawnDepth = (input.parentSpawnDepth ?? 0) + 1;
+
+    // Validate spawn depth (only for new sessions)
+    if (newSpawnDepth > SPAWN_CONFIG.MAX_SPAWN_DEPTH) {
+      return {
+        error: `Maximum spawn depth of ${SPAWN_CONFIG.MAX_SPAWN_DEPTH} exceeded`,
+      };
+    }
+
+    log.info('Creating new session for agent', {
+      agentId: input.agentId,
+      parentSessionId: input.parentSessionId,
+      spawnDepth: newSpawnDepth,
+      isLocalAgent,
+    });
+
+    const session = await this.agentsFeature.sessions.create({
+      userId: input.userId,
+      orgId: input.orgId,
+      agentId: input.agentId,
+      isLocalAgent,
+      parentSessionId: input.parentSessionId,
+      spawnDepth: newSpawnDepth,
+      title: `Spawned from ${input.parentSessionId ?? 'root'}`,
+    });
+
+    return { sessionId: session.id, isNewSession: true };
+  }
+
+  /**
+   * Dispatch message to local agent via WebSocket
+   */
+  private async dispatchToLocalAgent(
+    sessionId: string,
+    localAgentUuid: string,
     message: string,
-    userId: string,
-    timeout: number
-  ): Promise<SpawnAgentResult> {
+    userId: string
+  ): Promise<void> {
     // Create user message + assistant placeholder
     const { userMessageId, assistantMessageId } =
       await this.agentsFeature.messageLifecycle.sendUserMessage({
@@ -267,6 +425,9 @@ export class AgentSpawner {
       content: message,
     } as Omit<StreamEvent, 'id' | 'timestamp'>);
 
+    // Publish cache invalidation
+    await this.cacheInvalidation.publishSessionMessageAdded(userId, sessionId);
+
     // Fetch session history for local agent
     const sessionHistory =
       await this.agentsFeature.sessions.getMessagesAndEvents(sessionId);
@@ -275,8 +436,8 @@ export class AgentSpawner {
       throw new Error('Failed to fetch session history');
     }
 
-    // Send to local agent via WebSocket
-    const sent = this.localAgentWSRegistry.sendMessage(agentId, {
+    // Send to local agent via WebSocket (using UUID for registry lookup)
+    const sent = this.localAgentWSRegistry.sendMessage(localAgentUuid, {
       type: 'user_message',
       sessionId,
       messageId: assistantMessageId,
@@ -296,9 +457,29 @@ export class AgentSpawner {
       });
       throw new Error('Local agent is not connected');
     }
+  }
 
-    // Wait for completion
-    return this.waitForCompletion(sessionId, timeout);
+  /**
+   * Dispatch message to server agent via job queue
+   */
+  private async dispatchToServerAgent(
+    sessionId: string,
+    agentId: string,
+    message: string,
+    userId: string,
+    orgId: string
+  ): Promise<void> {
+    // Enqueue job for processing
+    await this.jobQueueManager.enqueue({
+      sessionId,
+      agentId,
+      userId,
+      orgId,
+      content: message,
+    });
+
+    // Publish cache invalidation
+    await this.cacheInvalidation.publishSessionMessageAdded(userId, sessionId);
   }
 
   /**
@@ -307,11 +488,13 @@ export class AgentSpawner {
   private async waitForCompletion(
     sessionId: string,
     timeout: number
-  ): Promise<SpawnAgentResult> {
+  ): Promise<SpawnAndWaitResult> {
     return new Promise((resolve) => {
-      let textContent = '';
+      // Track text in segments - only return the final segment (after last tool call)
+      let currentTextSegment = '';
+      let lastTextSegment = '';
       let usage: { promptTokens: number; completionTokens: number } | undefined;
-      let finishReason: SpawnAgentResult['finishReason'] = 'complete';
+      let finishReason: SpawnAndWaitResult['finishReason'] = 'complete';
       let errorMessage: string | undefined;
       let resolved = false;
 
@@ -325,9 +508,13 @@ export class AgentSpawner {
         // Signal the subscription to terminate
         abortController.abort();
 
+        // Use final segment, or fall back to last segment if agent ended on a tool call
+        const finalResponse =
+          currentTextSegment.trim() || lastTextSegment.trim();
+
         resolve({
           sessionId,
-          response: textContent.trim(),
+          response: finalResponse,
           usage,
           finishReason,
           error: errorMessage,
@@ -373,8 +560,16 @@ export class AgentSpawner {
             if (resolved) break;
 
             switch (event.type) {
+              case 'tool_call_start':
+                // Tool call starting - save current segment and reset for new segment
+                if (currentTextSegment.trim()) {
+                  lastTextSegment = currentTextSegment;
+                }
+                currentTextSegment = '';
+                break;
+
               case 'text_delta':
-                textContent += event.delta;
+                currentTextSegment += event.delta;
                 break;
 
               case 'message_complete':

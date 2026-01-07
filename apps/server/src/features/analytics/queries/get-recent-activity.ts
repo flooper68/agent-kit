@@ -1,6 +1,6 @@
-import { eq, desc, lt, and } from 'drizzle-orm';
+import { eq, desc, lt, and, inArray } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { agentSessions } from '../../../db/schema';
+import { agentSessions, localAgents } from '../../../db/schema';
 import type { PaginatedRecentActivity, RecentActivityItem } from '../types';
 
 export interface GetRecentActivityInput {
@@ -55,6 +55,8 @@ export class GetRecentActivityQuery {
         status: agentSessions.status,
         messageCount: agentSessions.messageCount,
         updatedAt: agentSessions.updatedAt,
+        parentSessionId: agentSessions.parentSessionId,
+        spawnDepth: agentSessions.spawnDepth,
       })
       .from(agentSessions)
       .where(and(...conditions))
@@ -68,15 +70,42 @@ export class GetRecentActivityQuery {
       nextCursor = nextItem?.sessionId;
     }
 
+    // Find local agent names for agentIds not in the built-in agentNames map
+    const unknownAgentIds = [
+      ...new Set(
+        results.map((r) => r.agentId).filter((id) => !this.agentNames.has(id))
+      ),
+    ];
+
+    const localAgentNames = new Map<string, string>();
+    if (unknownAgentIds.length > 0) {
+      const localAgentResults = await this.db
+        .select({
+          key: localAgents.key,
+          name: localAgents.name,
+        })
+        .from(localAgents)
+        .where(inArray(localAgents.key, unknownAgentIds));
+
+      for (const la of localAgentResults) {
+        localAgentNames.set(la.key, la.name);
+      }
+    }
+
     const items: RecentActivityItem[] = results.map((row) => ({
       sessionId: row.sessionId,
       userId: row.userId,
       agentId: row.agentId,
-      agentName: this.agentNames.get(row.agentId) ?? row.agentId,
+      agentName:
+        this.agentNames.get(row.agentId) ??
+        localAgentNames.get(row.agentId) ??
+        row.agentId,
       title: row.title,
       status: row.status,
       messageCount: row.messageCount,
       updatedAt: row.updatedAt,
+      parentSessionId: row.parentSessionId,
+      spawnDepth: row.spawnDepth,
     }));
 
     return { items, nextCursor };

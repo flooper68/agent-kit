@@ -778,3 +778,351 @@ Demonstrates the ChatGPT-like scroll behavior:
     },
   },
 };
+
+// ============================================
+// 12. Compact Mode (Sub-Agent Card View)
+// ============================================
+
+export const CompactPending: Story = {
+  render: () => (
+    <div className="w-[400px] p-4">
+      <AgentPanel
+        variant="compact"
+        agentName="researcher"
+        compactStatus="pending"
+        messages={[]}
+        status="ready"
+        onSend={() => {}}
+        onOpenFullView={() => console.log('Open full view')}
+      />
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Compact mode showing pending state before agent starts processing.',
+      },
+    },
+  },
+};
+
+export const CompactRunning: Story = {
+  render: () => (
+    <div className="w-[400px] p-4">
+      <AgentPanel
+        variant="compact"
+        agentName="researcher"
+        compactStatus="running"
+        messages={[
+          createMessage('assistant', [
+            createTextPart(
+              'Searching academic databases for recent publications on machine learning optimization techniques...'
+            ),
+          ]),
+        ]}
+        status="streaming"
+        onSend={() => {}}
+        onOpenFullView={() => console.log('Open full view')}
+      />
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Compact mode showing running state with streaming text content.',
+      },
+    },
+  },
+};
+
+export const CompactWithToolCall: Story = {
+  render: () => (
+    <div className="w-[400px] p-4">
+      <AgentPanel
+        variant="compact"
+        agentName="code-analyzer"
+        compactStatus="running"
+        messages={[
+          createMessage('assistant', [
+            createToolInvocationPart(
+              'read_file',
+              { path: 'src/components/Button.tsx' },
+              'running'
+            ),
+          ]),
+        ]}
+        status="streaming"
+        onSend={() => {}}
+        onOpenFullView={() => console.log('Open full view')}
+      />
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Compact mode showing a tool invocation (file read) in progress.',
+      },
+    },
+  },
+};
+
+export const CompactWithReasoning: Story = {
+  render: () => (
+    <div className="w-[400px] p-4">
+      <AgentPanel
+        variant="compact"
+        agentName="planner"
+        compactStatus="running"
+        messages={[
+          createMessage('assistant', [
+            createReasoningPart(
+              'Analyzing the codebase structure to determine the best approach for implementing the new feature. Need to consider existing patterns and dependencies...',
+              false
+            ),
+          ]),
+        ]}
+        status="streaming"
+        onSend={() => {}}
+        onOpenFullView={() => console.log('Open full view')}
+      />
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: 'Compact mode showing reasoning/thinking content.',
+      },
+    },
+  },
+};
+
+export const CompactComplete: Story = {
+  render: () => (
+    <div className="w-[400px] p-4">
+      <AgentPanel
+        variant="compact"
+        agentName="researcher"
+        compactStatus="complete"
+        messages={[
+          createMessage('assistant', [
+            createTextPart(
+              'Found 12 relevant papers on transformer architectures and attention mechanisms. Key findings include improvements in efficiency and scalability.'
+            ),
+          ]),
+        ]}
+        status="ready"
+        onSend={() => {}}
+        onOpenFullView={() => console.log('Open full view')}
+      />
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: 'Compact mode showing completed state with final summary.',
+      },
+    },
+  },
+};
+
+export const CompactError: Story = {
+  render: () => (
+    <div className="w-[400px] p-4">
+      <AgentPanel
+        variant="compact"
+        agentName="api-caller"
+        compactStatus="error"
+        messages={[
+          createMessage('assistant', [
+            createTextPart(
+              'Connection timeout after 30000ms. The remote server did not respond.'
+            ),
+          ]),
+        ]}
+        status="error"
+        onSend={() => {}}
+        onOpenFullView={() => console.log('Open full view')}
+        onCompactRetry={() => console.log('Retry')}
+      />
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: 'Compact mode showing error state with retry button.',
+      },
+    },
+  },
+};
+
+const CompactStreamingDemoComponent = () => {
+  const [messages, setMessages] = useState<TaskMessage[]>([]);
+  const [compactStatus, setCompactStatus] = useState<
+    'pending' | 'running' | 'complete'
+  >('pending');
+
+  useEffect(() => {
+    // Simulate streaming behavior
+    const steps: Array<{
+      delay: number;
+      status: 'pending' | 'running' | 'complete';
+      text: string;
+    }> = [
+      { delay: 500, status: 'running', text: '' },
+      { delay: 1000, status: 'running', text: 'Analyzing' },
+      { delay: 1500, status: 'running', text: 'Analyzing the codebase' },
+      {
+        delay: 2000,
+        status: 'running',
+        text: 'Analyzing the codebase structure...',
+      },
+      {
+        delay: 2500,
+        status: 'running',
+        text: 'Analyzing the codebase structure and identifying patterns...',
+      },
+      {
+        delay: 3500,
+        status: 'complete',
+        text: 'Analysis complete. Found 5 potential optimization opportunities in the authentication module.',
+      },
+    ];
+
+    const timeouts: NodeJS.Timeout[] = [];
+
+    steps.forEach(({ delay, status, text }) => {
+      const timeout = setTimeout(() => {
+        setCompactStatus(status);
+        if (text) {
+          setMessages([createMessage('assistant', [createTextPart(text)])]);
+        }
+      }, delay);
+      timeouts.push(timeout);
+    });
+
+    return () => timeouts.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div className="w-[400px] p-4">
+      <AgentPanel
+        variant="compact"
+        agentName="code-analyzer"
+        compactStatus={compactStatus}
+        messages={messages}
+        status={compactStatus === 'complete' ? 'ready' : 'streaming'}
+        onSend={() => {}}
+        onOpenFullView={() => console.log('Open full view')}
+      />
+    </div>
+  );
+};
+
+export const CompactStreaming: Story = {
+  render: () => <CompactStreamingDemoComponent />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Interactive demo showing text streaming in compact mode. Watch the content appear character by character.',
+      },
+    },
+  },
+};
+
+export const CompactAllStates: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4 p-4" style={{ maxWidth: '450px' }}>
+      <AgentPanel
+        variant="compact"
+        agentName="pending-agent"
+        compactStatus="pending"
+        messages={[]}
+        status="ready"
+        onSend={() => {}}
+        onOpenFullView={() => console.log('Open full view')}
+      />
+      <AgentPanel
+        variant="compact"
+        agentName="running-agent"
+        compactStatus="running"
+        messages={[
+          createMessage('assistant', [
+            createTextPart('Processing your request and analyzing data...'),
+          ]),
+        ]}
+        status="streaming"
+        onSend={() => {}}
+        onOpenFullView={() => console.log('Open full view')}
+      />
+      <AgentPanel
+        variant="compact"
+        agentName="complete-agent"
+        compactStatus="complete"
+        messages={[
+          createMessage('assistant', [
+            createTextPart(
+              'Task finished successfully with 15 items processed.'
+            ),
+          ]),
+        ]}
+        status="ready"
+        onSend={() => {}}
+        onOpenFullView={() => console.log('Open full view')}
+      />
+      <AgentPanel
+        variant="compact"
+        agentName="error-agent"
+        compactStatus="error"
+        messages={[
+          createMessage('assistant', [
+            createTextPart('Failed to connect to external API.'),
+          ]),
+        ]}
+        status="error"
+        onSend={() => {}}
+        onOpenFullView={() => console.log('Open full view')}
+        onCompactRetry={() => console.log('Retry')}
+      />
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: 'All compact mode states displayed together for comparison.',
+      },
+    },
+  },
+};
+
+export const CompactWithMarkdown: Story = {
+  render: () => (
+    <div className="w-[400px] p-4">
+      <AgentPanel
+        variant="compact"
+        agentName="documenter"
+        compactStatus="complete"
+        messages={[
+          createMessage('assistant', [
+            createTextPart(
+              '## Summary\n\nFound **3 issues** in the codebase:\n- Missing type annotations\n- Unused imports\n- Deprecated API usage'
+            ),
+          ]),
+        ]}
+        status="ready"
+        onSend={() => {}}
+        onOpenFullView={() => console.log('Open full view')}
+      />
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: 'Compact mode with markdown content rendering.',
+      },
+    },
+  },
+};

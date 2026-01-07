@@ -27,7 +27,7 @@ export interface AgentDefinition {
   model: string;
   tools: string[];
   releasedAt: Date;
-  /** Timeout in milliseconds for spawned agent responses (default: 120000) */
+  /** Timeout in milliseconds for spawned agent responses (default: 900000 / 15 minutes) */
   spawnTimeout?: number;
 }
 
@@ -70,6 +70,8 @@ export interface UpdateMessageStatusInput {
 // Query result types
 export interface SessionWithMessages extends AgentSession {
   messages: Array<AgentSessionMessage & { parts: MessagePart[] }>;
+  /** Resolved agent name (for display). For local agents, this is the full name, not the key. */
+  agentName?: string;
 }
 
 export interface MessageWithParts {
@@ -81,4 +83,5 @@ export interface MessageWithParts {
 export interface PaginatedSessions {
   items: AgentSession[];
   nextCursor: string | undefined;
+  totalCount: number;
 }

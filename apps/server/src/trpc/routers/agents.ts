@@ -16,7 +16,7 @@ export const agentsRouter = router({
     const activeLocalAgents = localAgents
       .filter((agent) => !agent.disabled)
       .map((agent) => ({
-        id: agent.id,
+        id: agent.key,
         name: agent.name,
         description: agent.description,
         createdAt: agent.createdAt,

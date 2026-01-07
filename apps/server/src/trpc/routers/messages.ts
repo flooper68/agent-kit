@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, sessionProcedure } from '../trpc';
-import type { StreamEvent } from '../../agent';
 
 export const messagesRouter = router({
   send: sessionProcedure
@@ -32,106 +31,25 @@ export const messagesRouter = router({
         });
       }
 
-      // Handle local agent messages via WebSocket
-      if (agentInfo.isLocalAgent) {
-        try {
-          // Create user message + assistant placeholder using feature command
-          const { userMessageId, assistantMessageId } =
-            await ctx.agentsFeature.messageLifecycle.sendUserMessage({
-              sessionId: input.sessionId,
-              content: input.content,
-            });
-
-          // Publish user message created event for real-time update
-          await ctx.eventStreamManager.publish(input.sessionId, {
-            type: 'user_message_created',
-            sessionId: input.sessionId,
-            messageId: userMessageId,
-            content: input.content,
-          } as Omit<StreamEvent, 'id' | 'timestamp'>);
-
-          // Publish cache invalidation for session list update
-          await ctx.cacheInvalidation.publishSessionMessageAdded(
-            ctx.auth.userId,
-            input.sessionId
-          );
-
-          // Fetch session messages and events for local agent
-          const sessionHistory =
-            await ctx.agentsFeature.sessions.getMessagesAndEvents(
-              input.sessionId
-            );
-
-          if (!sessionHistory) {
-            throw new Error('Failed to fetch session history');
-          }
-
-          // Forward message with session history to local agent via WebSocket
-          const sent = ctx.localAgentWSRegistry.sendMessage(agentInfo.agentId, {
-            type: 'user_message',
-            sessionId: input.sessionId,
-            messageId: assistantMessageId, // Assistant message ID for event association
-            userMessageId,
-            content: input.content,
-            userId: ctx.auth.userId,
-            timestamp: new Date().toISOString(),
-            messages: sessionHistory.messages,
-            events: sessionHistory.events,
-          });
-
-          if (!sent) {
-            // Rollback assistant message on failure
-            await ctx.agentsFeature.messages.updateStatus({
-              messageId: assistantMessageId,
-              status: 'error',
-            });
-            throw new Error('Local agent is not connected');
-          }
-
-          // Register streaming state for reliable client state management
-          await ctx.streamingStateManager.startStreaming(
-            input.sessionId,
-            ctx.auth.userId,
-            agentInfo.agentId,
-            true // local agent
-          );
-
-          return { sessionId: input.sessionId };
-        } catch (error) {
-          // Convert service errors to TRPCError
-          const message =
-            error instanceof Error ? error.message : 'Unknown error';
-          const code =
-            message === 'Local agent is not connected'
-              ? 'PRECONDITION_FAILED'
-              : 'INTERNAL_SERVER_ERROR';
-          throw new TRPCError({ code, message });
-        }
-      }
-
-      // Register streaming state BEFORE enqueueing job
-      // This ensures client gets streaming state immediately, not after worker picks up
-      await ctx.streamingStateManager.startStreaming(
-        input.sessionId,
-        ctx.auth.userId,
-        agentInfo.agentId,
-        false // server agent
-      );
-
-      // Enqueue job for server agent processing - message creation happens in job handler
-      await ctx.jobQueueManager.enqueue({
+      // Delegate to AgentSpawner.spawn() for unified message dispatching
+      const result = await ctx.agentSpawner.spawn({
         sessionId: input.sessionId,
         agentId: agentInfo.agentId,
+        message: input.content,
         userId: ctx.auth.userId,
         orgId: ctx.auth.orgId,
-        content: input.content,
       });
 
-      // Publish cache invalidation for session list update
-      await ctx.cacheInvalidation.publishSessionMessageAdded(
-        ctx.auth.userId,
-        input.sessionId
-      );
+      if (!result.dispatched) {
+        const code =
+          result.error === 'Local agent is not connected'
+            ? 'PRECONDITION_FAILED'
+            : 'INTERNAL_SERVER_ERROR';
+        throw new TRPCError({
+          code,
+          message: result.error ?? 'Failed to send message',
+        });
+      }
 
       return { sessionId: input.sessionId };
     }),
