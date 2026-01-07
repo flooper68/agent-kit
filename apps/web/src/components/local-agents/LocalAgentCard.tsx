@@ -50,11 +50,11 @@ export function LocalAgentCard({
   };
 
   return (
-    <ActionCard disabled={disabled} className="min-w-[320px]">
+    <ActionCard disabled={disabled}>
       <ActionCard.Header
         icon={<Bot className="h-5 w-5" />}
         title={name}
-        badge={
+        rightContent={
           disabled ? (
             <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
               Disabled
@@ -104,11 +104,9 @@ export function LocalAgentCard({
       />
 
       <ActionCard.Content className="pt-0">
-        {description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-            {description}
-          </p>
-        )}
+        <p className="text-sm text-muted-foreground line-clamp-2 mb-2 min-h-[2.5rem]">
+          {description || <span className="italic">No description</span>}
+        </p>
         {/* Agent ID display */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">ID:</span>
