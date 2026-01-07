@@ -4,6 +4,7 @@ import type { ProjectsFeature } from '../../features/projects';
 import type { TasksFeature } from '../../features/tasks';
 import type { EventStreamManager } from '../event-stream-manager';
 import type { PubSubManager } from '../../real-time';
+import { logger } from '../logger';
 import { getTimeTool } from './get-time';
 import { webSearchTool } from './web-search';
 import { extractContentTool } from './extract-content';
@@ -16,6 +17,7 @@ import { createSearchProjectsTool } from './search-projects';
 import { createGetProjectTool } from './get-project';
 import { createCreateProjectTool } from './create-project';
 import { createUpdateProjectTool } from './update-project';
+import { createDeleteProjectTool } from './delete-project';
 import { createListTasksTool } from './list-tasks';
 import { createSearchTasksTool } from './search-tasks';
 import { createGetTaskTool } from './get-task';
@@ -25,6 +27,7 @@ import { createMoveTaskTool } from './move-task';
 import { createReorderTaskTool } from './reorder-task';
 import { createAttachArtifactToTaskTool } from './attach-artifact-to-task';
 import { createDetachArtifactFromTaskTool } from './detach-artifact-from-task';
+import { createDeleteTaskTool } from './delete-task';
 import {
   createNavigateToTool,
   createGetCurrentUIStateTool,
@@ -50,12 +53,14 @@ const CONTEXT_TOOL_IDS = [
   'getProject',
   'createProject',
   'updateProject',
+  'deleteProject',
   // Task tools
   'listTasks',
   'searchTasks',
   'getTask',
   'createTask',
   'updateTask',
+  'deleteTask',
   'moveTask',
   'reorderTask',
   'attachArtifactToTask',
@@ -125,6 +130,10 @@ export function getToolsById(
               orgId: context.orgId,
               projectsFeature: context.projectsFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing projectsFeature', {
+              tool: id,
+            });
           }
           break;
         case 'searchProjects':
@@ -133,6 +142,10 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               projectsFeature: context.projectsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing projectsFeature', {
+              tool: id,
             });
           }
           break;
@@ -143,6 +156,10 @@ export function getToolsById(
               orgId: context.orgId,
               projectsFeature: context.projectsFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing projectsFeature', {
+              tool: id,
+            });
           }
           break;
         case 'createProject':
@@ -152,6 +169,10 @@ export function getToolsById(
               orgId: context.orgId,
               projectsFeature: context.projectsFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing projectsFeature', {
+              tool: id,
+            });
           }
           break;
         case 'updateProject':
@@ -160,6 +181,23 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               projectsFeature: context.projectsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing projectsFeature', {
+              tool: id,
+            });
+          }
+          break;
+        case 'deleteProject':
+          if (context.projectsFeature) {
+            result[id] = createDeleteProjectTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              projectsFeature: context.projectsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing projectsFeature', {
+              tool: id,
             });
           }
           break;
@@ -171,6 +209,10 @@ export function getToolsById(
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
+            });
           }
           break;
         case 'searchTasks':
@@ -179,6 +221,10 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
             });
           }
           break;
@@ -189,6 +235,10 @@ export function getToolsById(
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
+            });
           }
           break;
         case 'createTask':
@@ -197,6 +247,10 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
             });
           }
           break;
@@ -207,6 +261,23 @@ export function getToolsById(
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
+            });
+          }
+          break;
+        case 'deleteTask':
+          if (context.tasksFeature) {
+            result[id] = createDeleteTaskTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              tasksFeature: context.tasksFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
+            });
           }
           break;
         case 'moveTask':
@@ -215,6 +286,10 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
             });
           }
           break;
@@ -225,6 +300,10 @@ export function getToolsById(
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
+            });
           }
           break;
         case 'attachArtifactToTask':
@@ -234,6 +313,10 @@ export function getToolsById(
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
+            });
           }
           break;
         case 'detachArtifactFromTask':
@@ -242,6 +325,10 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
             });
           }
           break;
@@ -258,6 +345,13 @@ export function getToolsById(
               messageId: context.messageId,
               eventStreamManager: context.eventStreamManager,
             });
+          } else {
+            logger.debug('Skipping tool due to missing context', {
+              tool: id,
+              hasEventStreamManager: !!context.eventStreamManager,
+              hasSessionId: !!context.sessionId,
+              hasMessageId: !!context.messageId,
+            });
           }
           break;
         case 'getCurrentUIState':
@@ -272,6 +366,14 @@ export function getToolsById(
               messageId: context.messageId,
               eventStreamManager: context.eventStreamManager,
               pubsub: context.pubsub,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing context', {
+              tool: id,
+              hasEventStreamManager: !!context.eventStreamManager,
+              hasSessionId: !!context.sessionId,
+              hasMessageId: !!context.messageId,
+              hasPubsub: !!context.pubsub,
             });
           }
           break;

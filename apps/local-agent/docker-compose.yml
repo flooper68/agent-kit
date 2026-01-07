@@ -75,3 +75,31 @@ services:
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
+
+  claude-assistant-opus:
+    build:
+      context: ../..
+      dockerfile: apps/local-agent/src/agents/claude-assistant-opus/Dockerfile
+    environment:
+      - SERVER_URL=${SERVER_URL}
+      - AGENT_API_KEY=${CLAUDE_ASSISTANT_OPUS_AGENT_API_KEY}
+      - AGENT_ID=${CLAUDE_ASSISTANT_OPUS_AGENT_ID:-claude-assistant-opus}
+      - MODEL=${CLAUDE_ASSISTANT_OPUS_MODEL:-}
+      - MAX_THINKING_TOKENS=${CLAUDE_ASSISTANT_OPUS_MAX_THINKING_TOKENS:-}
+    volumes:
+      - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro
+    restart: unless-stopped
+
+  claude-assistant-sonnet:
+    build:
+      context: ../..
+      dockerfile: apps/local-agent/src/agents/claude-assistant-sonnet/Dockerfile
+    environment:
+      - SERVER_URL=${SERVER_URL}
+      - AGENT_API_KEY=${CLAUDE_ASSISTANT_SONNET_AGENT_API_KEY}
+      - AGENT_ID=${CLAUDE_ASSISTANT_SONNET_AGENT_ID:-claude-assistant-sonnet}
+      - MODEL=${CLAUDE_ASSISTANT_SONNET_MODEL:-}
+      - MAX_THINKING_TOKENS=${CLAUDE_ASSISTANT_SONNET_MAX_THINKING_TOKENS:-}
+    volumes:
+      - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro
+    restart: unless-stopped

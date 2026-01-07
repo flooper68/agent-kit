@@ -3,6 +3,7 @@ import { createHandler } from './handlers';
 import { createLogger } from './logger';
 import { EventBufferQueue } from './event-buffer-queue';
 import { ArtifactToolRelay } from './artifact-tool-relay';
+import { ServerToolRelay } from './server-tool-relay';
 import type { AgentHandler } from './types';
 import {
   ServerToAgentMessageSchema,
@@ -12,6 +13,7 @@ import {
   type UserMessagePayload,
   type InterruptPayload,
   type ArtifactToolResponsePayload,
+  type ServerToolResponsePayload,
 } from './types';
 
 const log = createLogger('Handler');
@@ -32,16 +34,19 @@ export class MessageHandler {
   private eventsSentCount: Map<string, number> = new Map();
   private eventBuffer: EventBufferQueue;
   private artifactRelay: ArtifactToolRelay;
+  private serverRelay: ServerToolRelay;
 
   constructor(ws: WebSocket, options: MessageHandlerOptions) {
     this.ws = ws;
     this.eventBuffer = options.eventBuffer;
     this.artifactRelay = new ArtifactToolRelay();
+    this.serverRelay = new ServerToolRelay();
     // Create handler once and reuse for all messages
     // This allows stateful providers (like ClaudeCliProvider) to persist session data
-    // Pass artifact relay to handler for server artifact operations
+    // Pass artifact relay and server relay to handler for server operations
     this.handler = createHandler(options.handlerType, options.config, {
       artifactRelay: this.artifactRelay,
+      serverRelay: this.serverRelay,
     });
     log.debug('MessageHandler constructed', {
       handlerType: options.handlerType,
@@ -56,6 +61,13 @@ export class MessageHandler {
    */
   getArtifactRelay(): ArtifactToolRelay {
     return this.artifactRelay;
+  }
+
+  /**
+   * Get the server tool relay for handlers to use.
+   */
+  getServerRelay(): ServerToolRelay {
+    return this.serverRelay;
   }
 
   async handleMessage(data: string): Promise<void> {
@@ -105,6 +117,13 @@ export class MessageHandler {
         });
         this.handleArtifactToolResponse(message);
         break;
+      case 'server_tool_response':
+        log.debug('Received server_tool_response', {
+          requestId: message.requestId.slice(0, 8) + '...',
+          isError: message.isError,
+        });
+        this.handleServerToolResponse(message);
+        break;
     }
   }
 
@@ -120,8 +139,9 @@ export class MessageHandler {
       eventsCount: events.length,
     });
 
-    // Set artifact relay WebSocket connection
+    // Set relay WebSocket connections
     this.artifactRelay.setConnection(this.ws);
+    this.serverRelay.setConnection(this.ws);
 
     // Create abort controller for this session
     const abortController = new AbortController();
@@ -209,9 +229,10 @@ export class MessageHandler {
     } finally {
       this.activeSessions.delete(sessionId);
       this.eventsSentCount.delete(sessionId);
-      // Clear artifact relay connection when no more active sessions
+      // Clear relay connections when no more active sessions
       if (this.activeSessions.size === 0) {
         this.artifactRelay.clearConnection();
+        this.serverRelay.clearConnection();
       }
       log.debug('Session cleaned up', {
         sessionId,
@@ -359,6 +380,17 @@ export class MessageHandler {
     message: ArtifactToolResponsePayload
   ): void {
     this.artifactRelay.handleResponse(
+      message.requestId,
+      message.result,
+      message.isError
+    );
+  }
+
+  /**
+   * Handle a server tool response from the server.
+   */
+  private handleServerToolResponse(message: ServerToolResponsePayload): void {
+    this.serverRelay.handleResponse(
       message.requestId,
       message.result,
       message.isError

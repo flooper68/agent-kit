@@ -29,6 +29,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@agent-kit/auth": "workspace:*",
+        "@agent-kit/shared": "workspace:*",
         "@anthropic-ai/claude-code": "^1.0.0",
         "ws": "8.18.3",
         "zod": "^3.23.8",
@@ -43,6 +44,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@agent-kit/auth": "workspace:*",
+        "@agent-kit/shared": "workspace:*",
         "@ai-sdk/anthropic": "3.0.2",
         "@ai-sdk/google": "3.0.2",
         "@ai-sdk/openai": "3.0.2",
@@ -138,6 +140,16 @@
         "vitest": "^3.1.4",
       },
     },
+    "packages/shared": {
+      "name": "@agent-kit/shared",
+      "version": "0.0.1",
+      "dependencies": {
+        "zod": "^3.24.1",
+      },
+      "devDependencies": {
+        "typescript": "5.7.2",
+      },
+    },
     "packages/ui": {
       "name": "@agent-kit/ui",
       "version": "0.0.1",
@@ -189,6 +201,8 @@
     "@agent-kit/local-agent": ["@agent-kit/local-agent@workspace:apps/local-agent"],
 
     "@agent-kit/server": ["@agent-kit/server@workspace:apps/server"],
+
+    "@agent-kit/shared": ["@agent-kit/shared@workspace:packages/shared"],
 
     "@agent-kit/storybook": ["@agent-kit/storybook@workspace:apps/storybook"],
 

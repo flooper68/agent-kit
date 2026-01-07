@@ -4,7 +4,34 @@ import { cn } from '../../../../lib/utils';
 import { Dialog } from '../../../Dialog';
 import { Button } from '../../../Button';
 import { Text } from '../../../Typography';
+import { Tooltip } from '../../../Tooltip';
 import type { ToolResultPart } from '../../../../types/chat';
+
+/**
+ * Formats a tool name to be human-readable.
+ * Handles MCP pattern (mcp__server__toolName), camelCase, PascalCase, and snake_case.
+ */
+function formatToolName(toolName: string): string {
+  // Extract tool name from MCP pattern: mcp__server__toolName
+  let name = toolName;
+  if (name.startsWith('mcp__')) {
+    const parts = name.split('__');
+    // Get the last part (the actual tool name)
+    name = parts[parts.length - 1] ?? name;
+  }
+
+  // Handle snake_case: replace underscores with spaces
+  name = name.replace(/_/g, ' ');
+
+  // Handle camelCase and PascalCase: insert space before capital letters
+  name = name.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+  // Capitalize first letter of each word
+  return name
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 type ToolState = 'pending' | 'running' | 'completed' | 'error';
 
@@ -197,15 +224,17 @@ export const ToolBadge = memo(
       const hasDialogData = args !== undefined;
       const isError = state === 'error' || result?.isError;
 
+      const displayName = formatToolName(toolName);
+
       const content = (
         <>
           <ToolIcon />
-          <span className="font-mono truncate max-w-[120px]">{toolName}</span>
+          <span className="truncate max-w-[120px]">{displayName}</span>
           <StateIcon state={state} />
         </>
       );
 
-      const badge = hasDialogData ? (
+      const badgeElement = hasDialogData ? (
         <button
           ref={ref}
           type="button"
@@ -218,6 +247,12 @@ export const ToolBadge = memo(
         <span className={cn(toolBadgeVariants({ state, interactive: false }))}>
           {content}
         </span>
+      );
+
+      const badge = (
+        <Tooltip content={toolName} side="bottom">
+          {badgeElement}
+        </Tooltip>
       );
 
       // If no dialog data, just render the badge
@@ -234,22 +269,18 @@ export const ToolBadge = memo(
               <Dialog.Header>
                 <Dialog.Title>
                   <div className="flex items-center gap-3">
-                    <span>Tool Execution</span>
+                    <span>{displayName}</span>
                     <span
                       className={cn(
                         toolBadgeVariants({ state, interactive: false })
                       )}
                     >
-                      <ToolIcon />
-                      <span className="font-mono truncate max-w-[120px]">
-                        {toolName}
-                      </span>
                       <StateIcon state={state} />
                     </span>
                   </div>
                 </Dialog.Title>
                 <Dialog.Description>
-                  Details of the tool invocation and its result
+                  <code className="text-xs">{toolName}</code>
                 </Dialog.Description>
               </Dialog.Header>
 

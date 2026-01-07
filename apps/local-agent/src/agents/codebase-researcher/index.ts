@@ -19,6 +19,9 @@ const ALLOWED_TOOLS = [
   'WebFetch',
   // Artifact tools via MCP server (write-only)
   'mcp__agent-kit-artifacts__writeArtifact',
+  // Todo tools for task tracking
+  'TodoRead',
+  'TodoWrite',
   // Git commands for repository inspection and navigation
   'Bash(git status:*)',
   'Bash(git branch:*)',
@@ -35,6 +38,9 @@ const ALLOWED_TOOLS = [
   'Bash(git describe:*)',
   'Bash(git tag:*)',
 ];
+
+// Block write/edit tools - this agent is read-only
+const DISALLOWED_TOOLS = ['Write', 'Edit', 'NotebookEdit'];
 
 // System prompt for focused codebase research with structured artifact output
 const SYSTEM_PROMPT = `You are a codebase exploration and research specialist. Your purpose is to thoroughly analyze codebases, understand architecture, find patterns, and deliver comprehensive research findings as structured artifacts.
@@ -168,6 +174,7 @@ const client = new LocalAgentClient({
   handlerConfig: {
     cwd: env.WORKING_DIRECTORY ?? process.cwd(),
     allowedTools: ALLOWED_TOOLS,
+    disallowedTools: DISALLOWED_TOOLS,
     model: env.MODEL,
     maxThinkingTokens: env.MAX_THINKING_TOKENS,
     includePartialMessages: true,

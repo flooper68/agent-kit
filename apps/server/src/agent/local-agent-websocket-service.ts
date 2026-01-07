@@ -3,6 +3,7 @@ import type { IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { z } from 'zod';
+import { SERVER_TOOL_NAMES } from '@agent-kit/shared';
 import { logger } from './logger';
 import { EventBuffer } from './event-buffer';
 import {
@@ -23,6 +24,10 @@ import { STREAMING_HEARTBEAT_INTERVAL_MS } from './streaming-state-manager';
 import type { AgentsFeature } from '../features/agents';
 import type { LocalAgentsFeature } from '../features/local-agents';
 import type { ArtifactsFeature } from '../features/artifacts';
+import type { ProjectsFeature } from '../features/projects';
+import type { TasksFeature } from '../features/tasks';
+import type { PubSubManager } from '../real-time';
+import { getToolsById } from './tools';
 
 // Zod schemas for validating WebSocket messages from local agents
 const AgentEventSchema = z.discriminatedUnion('type', [
@@ -64,9 +69,9 @@ const AgentEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('error'),
-    code: z.string(),
+    code: z.string().optional(),
     error: z.string(),
-    retryable: z.boolean(),
+    retryable: z.boolean().optional(),
   }),
   z.object({ type: z.literal('interrupted') }),
 ]);
@@ -84,6 +89,16 @@ const ArtifactToolRequestSchema = z.object({
   requestId: z.string().uuid(),
   sessionId: z.string().uuid(),
   tool: z.enum(['writeArtifact', 'readArtifact', 'searchArtifacts']),
+  params: z.record(z.string(), z.unknown()),
+  timestamp: z.string(),
+});
+
+// Schema for server tool requests from local agents (uses shared tool names)
+const ServerToolRequestSchema = z.object({
+  type: z.literal('server_tool_request'),
+  requestId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  tool: z.enum(SERVER_TOOL_NAMES),
   params: z.record(z.string(), z.unknown()),
   timestamp: z.string(),
 });
@@ -108,11 +123,28 @@ const SearchArtifactsParamsSchema = z.object({
 const AgentMessageSchema = z.discriminatedUnion('type', [
   EventMessageSchema,
   ArtifactToolRequestSchema,
+  ServerToolRequestSchema,
 ]);
 
 interface AgentInfo {
   agent: { id: string; userId: string; name: string };
   connectionId: string;
+}
+
+// Session cache TTL in milliseconds (5 minutes)
+const SESSION_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute window
+const RATE_LIMIT_MAX_REQUESTS = 100; // Max 100 requests per minute per agent
+
+interface CachedSession {
+  session: { orgId: string; userId: string };
+  cachedAt: number;
+}
+
+interface RateLimitEntry {
+  requests: number[];
 }
 
 /**
@@ -124,6 +156,12 @@ export class LocalAgentWebSocketService {
   private log = logger.child({ component: 'LocalAgentWebSocketService' });
   // Track last heartbeat time per session to avoid excessive Redis calls
   private lastHeartbeatBySession = new Map<string, number>();
+  // Cache session info to reduce DB lookups for server tool requests
+  private sessionCache = new Map<string, CachedSession>();
+  // Rate limiting per agent
+  private rateLimitByAgent = new Map<string, RateLimitEntry>();
+  // Cleanup interval for stale cache entries
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private wsRegistry: LocalAgentWebSocketRegistry,
@@ -132,10 +170,81 @@ export class LocalAgentWebSocketService {
     private streamingStateManager: StreamingStateManager,
     private agentsFeature: AgentsFeature,
     private localAgentsFeature: LocalAgentsFeature,
-    private artifactsFeature: ArtifactsFeature
+    private artifactsFeature: ArtifactsFeature,
+    private projectsFeature?: ProjectsFeature,
+    private tasksFeature?: TasksFeature,
+    private pubsub?: PubSubManager
   ) {
     this.wss = new WebSocketServer({ noServer: true });
     this.setupConnectionHandler();
+    this.startCacheCleanup();
+  }
+
+  /**
+   * Start periodic cleanup of stale cache entries.
+   * Runs every 5 minutes to remove expired session cache and empty rate limit entries.
+   */
+  private startCacheCleanup(): void {
+    // Clean up every 5 minutes
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanupStaleCaches();
+      },
+      5 * 60 * 1000
+    );
+  }
+
+  /**
+   * Stop the service and clean up resources.
+   * Call this during graceful shutdown.
+   */
+  shutdown(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.sessionCache.clear();
+    this.rateLimitByAgent.clear();
+    this.lastHeartbeatBySession.clear();
+    this.log.info('LocalAgentWebSocketService shutdown complete');
+  }
+
+  /**
+   * Clean up stale cache entries to prevent memory leaks.
+   */
+  private cleanupStaleCaches(): void {
+    const now = Date.now();
+    let sessionCacheCleared = 0;
+    let rateLimitCleared = 0;
+
+    // Clean expired session cache entries
+    for (const [sessionId, cached] of this.sessionCache) {
+      if (now - cached.cachedAt > SESSION_CACHE_TTL_MS) {
+        this.sessionCache.delete(sessionId);
+        sessionCacheCleared++;
+      }
+    }
+
+    // Clean rate limit entries for agents with no recent requests
+    const windowStart = now - RATE_LIMIT_WINDOW_MS;
+    for (const [agentId, entry] of this.rateLimitByAgent) {
+      // Filter out old requests first
+      entry.requests = entry.requests.filter((ts) => ts > windowStart);
+      // Remove entry if no requests remain
+      if (entry.requests.length === 0) {
+        this.rateLimitByAgent.delete(agentId);
+        rateLimitCleared++;
+      }
+    }
+
+    if (sessionCacheCleared > 0 || rateLimitCleared > 0) {
+      this.log.debug('Cleaned up stale cache entries', {
+        sessionCacheCleared,
+        rateLimitCleared,
+        sessionCacheSize: this.sessionCache.size,
+        rateLimitSize: this.rateLimitByAgent.size,
+      });
+    }
   }
 
   /**
@@ -425,6 +534,10 @@ export class LocalAgentWebSocketService {
           await this.handleArtifactToolRequest(agent, message);
           break;
         }
+        case 'server_tool_request': {
+          await this.handleServerToolRequest(agent, message);
+          break;
+        }
       }
     } catch (err) {
       this.log.error('Failed to handle message from local agent', {
@@ -444,6 +557,72 @@ export class LocalAgentWebSocketService {
       await this.streamingStateManager.sendHeartbeat(sessionId);
       this.lastHeartbeatBySession.set(sessionId, now);
     }
+  }
+
+  /**
+   * Get session info with caching to reduce DB lookups.
+   * Cache entries expire after SESSION_CACHE_TTL_MS.
+   */
+  private async getSessionCached(
+    sessionId: string
+  ): Promise<{ orgId: string; userId: string } | null> {
+    const now = Date.now();
+    const cached = this.sessionCache.get(sessionId);
+
+    // Return cached value if still valid
+    if (cached && now - cached.cachedAt < SESSION_CACHE_TTL_MS) {
+      return cached.session;
+    }
+
+    // Fetch from database
+    const session = await this.agentsFeature.sessions.getById(sessionId);
+    if (!session) {
+      // Remove stale cache entry if session no longer exists
+      this.sessionCache.delete(sessionId);
+      return null;
+    }
+
+    // Cache the session info
+    this.sessionCache.set(sessionId, {
+      session: { orgId: session.orgId, userId: session.userId },
+      cachedAt: now,
+    });
+
+    return { orgId: session.orgId, userId: session.userId };
+  }
+
+  /**
+   * Check if an agent has exceeded the rate limit.
+   * Uses a sliding window algorithm.
+   *
+   * @returns true if the request is allowed, false if rate limited
+   */
+  private checkRateLimit(agentId: string): boolean {
+    const now = Date.now();
+    const windowStart = now - RATE_LIMIT_WINDOW_MS;
+
+    // Defensive cleanup if map grows too large
+    if (this.rateLimitByAgent.size > 10000) {
+      this.cleanupStaleCaches();
+    }
+
+    let entry = this.rateLimitByAgent.get(agentId);
+    if (!entry) {
+      entry = { requests: [] };
+      this.rateLimitByAgent.set(agentId, entry);
+    }
+
+    // Remove expired requests (outside the sliding window)
+    entry.requests = entry.requests.filter((ts) => ts > windowStart);
+
+    // Check if under the limit
+    if (entry.requests.length >= RATE_LIMIT_MAX_REQUESTS) {
+      return false;
+    }
+
+    // Add current request
+    entry.requests.push(now);
+    return true;
   }
 
   /**
@@ -830,6 +1009,177 @@ export class LocalAgentWebSocketService {
       );
     }
   }
+
+  /**
+   * Handle a server tool request from a local agent.
+   * Uses getToolsById to execute any server-side tool.
+   */
+  private async handleServerToolRequest(
+    agent: { id: string; userId: string; name: string },
+    message: {
+      requestId: string;
+      sessionId: string;
+      tool: string;
+      params: Record<string, unknown>;
+    }
+  ): Promise<void> {
+    const { requestId, sessionId, tool, params } = message;
+
+    this.log.debug('Handling server tool request', {
+      agentId: agent.id,
+      requestId: requestId.slice(0, 8) + '...',
+      tool,
+    });
+
+    // Check rate limit
+    if (!this.checkRateLimit(agent.id)) {
+      this.log.warn('Server tool request rate limited', {
+        agentId: agent.id,
+        requestId: requestId.slice(0, 8) + '...',
+        tool,
+      });
+      this.sendServerToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        {
+          error: `Rate limit exceeded. Max ${RATE_LIMIT_MAX_REQUESTS} requests per minute.`,
+        },
+        true
+      );
+      return;
+    }
+
+    // Get session to retrieve orgId (uses cache to reduce DB lookups)
+    const session = await this.getSessionCached(sessionId);
+    if (!session) {
+      this.log.warn('Session not found for server tool request', {
+        sessionId: sessionId.slice(0, 8) + '...',
+      });
+      this.sendServerToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        { error: 'Session not found' },
+        true
+      );
+      return;
+    }
+
+    // Verify agent owns this session
+    if (session.userId !== agent.userId) {
+      this.log.warn('Agent attempted to access session it does not own', {
+        agentId: agent.id,
+        sessionId: sessionId.slice(0, 8) + '...',
+      });
+      this.sendServerToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        { error: 'Unauthorized: session access denied' },
+        true
+      );
+      return;
+    }
+
+    try {
+      // Build tool context with all available features
+      const toolContext = {
+        userId: agent.userId,
+        orgId: session.orgId,
+        sessionId,
+        messageId: requestId, // Use requestId as messageId for client tools
+        agentId: agent.id,
+        artifactsFeature: this.artifactsFeature,
+        projectsFeature: this.projectsFeature,
+        tasksFeature: this.tasksFeature,
+        eventStreamManager: this.eventStreamManager,
+        pubsub: this.pubsub,
+      };
+
+      // Get the tool implementation
+      const tools = getToolsById([tool], toolContext);
+      const toolImpl = tools[tool];
+
+      if (!toolImpl) {
+        this.log.warn('Tool not found or not available', {
+          tool,
+          agentId: agent.id,
+        });
+        this.sendServerToolResponse(
+          agent.id,
+          sessionId,
+          requestId,
+          { error: `Tool '${tool}' not found or not available` },
+          true
+        );
+        return;
+      }
+
+      // Execute the tool
+      const result = await toolImpl.execute(params);
+
+      this.log.debug('Server tool executed successfully', {
+        agentId: agent.id,
+        tool,
+        requestId: requestId.slice(0, 8) + '...',
+      });
+
+      this.sendServerToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        result,
+        false
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log.error('Server tool execution failed', {
+        agentId: agent.id,
+        tool,
+        error: errorMessage,
+      });
+      this.sendServerToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        { error: errorMessage },
+        true
+      );
+    }
+  }
+
+  /**
+   * Send a server tool response back to a local agent
+   */
+  private sendServerToolResponse(
+    agentId: string,
+    sessionId: string,
+    requestId: string,
+    result: unknown,
+    isError: boolean
+  ): void {
+    const payload = {
+      type: 'server_tool_response',
+      requestId,
+      sessionId,
+      result,
+      isError,
+      timestamp: new Date().toISOString(),
+    };
+
+    const sent = this.wsRegistry.sendMessage(agentId, payload);
+    if (!sent) {
+      this.log.warn(
+        'Failed to send server tool response - agent not connected',
+        {
+          agentId,
+          requestId: requestId.slice(0, 8) + '...',
+        }
+      );
+    }
+  }
 }
 
 // Event types from local agents
@@ -864,5 +1214,5 @@ type AgentEvent =
       };
       finishReason?: string;
     }
-  | { type: 'error'; code: string; error: string; retryable: boolean }
+  | { type: 'error'; code?: string; error: string; retryable?: boolean }
   | { type: 'interrupted' };

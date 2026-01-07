@@ -1,4 +1,7 @@
 import { query } from '@anthropic-ai/claude-code';
+import { mkdirSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import type {
   AgentRunParams,
   AgentRunResult,
@@ -10,13 +13,17 @@ import { SDKMessageMapper } from './message-mapper';
 import { reconstructConversationFromEvents } from './conversation-builder';
 import { createLogger } from '../logger';
 import { createArtifactMcpServer } from '../artifact-mcp-server';
+import { createServerToolsMcpServer } from '../server-tools-mcp-server';
 import type { ArtifactToolRelay } from '../artifact-tool-relay';
+import type { ServerToolRelay } from '../server-tool-relay';
 
 export interface ClaudeCodeProviderConfig extends ClaudeCodeHandlerConfig {
   /** Logger name prefix */
   loggerName: string;
-  /** Artifact tool relay for communicating with the server (optional) */
+  /** Artifact tool relay for communicating with the server (optional, legacy) */
   artifactRelay?: ArtifactToolRelay;
+  /** Server tool relay for all server operations (supersedes artifactRelay) */
+  serverRelay?: ServerToolRelay;
 }
 
 /**
@@ -50,11 +57,23 @@ export class ClaudeCodeProvider {
     let messageCount = 0;
     let eventCount = 0;
 
+    // Determine cwd: use isolated temp directory or configured cwd
+    let effectiveCwd: string;
+    if (this.config.useIsolatedSessionCwd) {
+      // Create session-specific temp directory to avoid loading any Claude config files
+      // This prevents .claude.md and other settings from affecting the agent
+      effectiveCwd = join(tmpdir(), `agent-kit-session-${sessionId}`);
+      mkdirSync(effectiveCwd, { recursive: true });
+    } else {
+      effectiveCwd = this.config.cwd;
+    }
+
     this.log.info('Starting query', {
       sessionId: sessionId.slice(0, 8) + '...',
       messageId: messageId.slice(0, 8) + '...',
       promptLength: content.length,
-      cwd: this.config.cwd,
+      cwd: effectiveCwd,
+      useIsolatedSessionCwd: this.config.useIsolatedSessionCwd ?? false,
       model: this.config.model ?? 'default',
       maxThinkingTokens: this.config.maxThinkingTokens,
       includePartialMessages: this.config.includePartialMessages,
@@ -87,11 +106,20 @@ export class ClaudeCodeProvider {
 
       // Build query options
       const queryOptions: Record<string, unknown> = {
-        cwd: this.config.cwd,
-        allowedTools: this.config.allowedTools,
+        cwd: effectiveCwd,
         abortController,
         pathToClaudeCodeExecutable: process.env.CLAUDE_CODE_PATH || undefined,
+        // Use bypassPermissions for non-interactive mode
+        permissionMode: 'bypassPermissions',
       };
+
+      // Add disallowedTools if configured (blocklist approach)
+      if (
+        this.config.disallowedTools &&
+        this.config.disallowedTools.length > 0
+      ) {
+        queryOptions.disallowedTools = this.config.disallowedTools;
+      }
 
       // Add optional configuration
       if (this.config.model) {
@@ -110,23 +138,36 @@ export class ClaudeCodeProvider {
         queryOptions.customSystemPrompt = this.config.customSystemPrompt;
       }
 
-      // Add in-process MCP server for artifact tools if enabled
-      if (this.config.enableArtifactTools && this.config.artifactRelay) {
-        const artifactServer = createArtifactMcpServer(
+      // Configure MCP servers based on enabled tools
+      const mcpServers: Record<string, unknown> = {};
+
+      // Add in-process MCP server for server tools if enabled (supersedes artifact tools)
+      if (this.config.enableServerTools && this.config.serverRelay) {
+        mcpServers['agent-kit-server'] = createServerToolsMcpServer(
+          this.config.serverRelay,
+          sessionId
+        );
+        this.log.debug('In-process MCP server configured for all server tools');
+      }
+      // Add in-process MCP server for artifact tools if enabled (legacy)
+      else if (this.config.enableArtifactTools && this.config.artifactRelay) {
+        mcpServers['agent-kit-artifacts'] = createArtifactMcpServer(
           this.config.artifactRelay,
           sessionId
         );
-        queryOptions.mcpServers = {
-          'agent-kit-artifacts': artifactServer,
-        };
         this.log.debug('In-process MCP server configured for artifact tools');
+      }
+
+      if (Object.keys(mcpServers).length > 0) {
+        queryOptions.mcpServers = mcpServers;
       }
 
       this.log.debug('Query options configured', {
         hasModel: !!this.config.model,
         hasMaxThinkingTokens: this.config.maxThinkingTokens !== undefined,
         hasIncludePartialMessages: !!this.config.includePartialMessages,
-        hasMcpServers: !!queryOptions.mcpServers,
+        hasMcpServers: Object.keys(mcpServers).length > 0,
+        mcpServerNames: Object.keys(mcpServers),
       });
 
       const queryResult = query({
