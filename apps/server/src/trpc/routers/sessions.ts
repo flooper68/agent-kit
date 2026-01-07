@@ -172,7 +172,11 @@ export const sessionsRouter = router({
     .input(z.object({ sessionId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       // Session ownership already verified by sessionProcedure middleware
-      return ctx.agentsFeature.sessions.getChildren(input.sessionId);
+      // Pass userId to ensure children also belong to this user (defense-in-depth)
+      return ctx.agentsFeature.sessions.getChildren(
+        input.sessionId,
+        ctx.auth.userId
+      );
     }),
 
   /**

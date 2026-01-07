@@ -177,9 +177,14 @@ export class AgentSpawner {
 
       // Dispatch to agent
       if (isLocalAgent) {
+        if (!localAgentUuid) {
+          throw new Error(
+            'Internal error: localAgentUuid missing for local agent'
+          );
+        }
         await this.dispatchToLocalAgent(
           sessionId,
-          localAgentUuid!,
+          localAgentUuid,
           message,
           userId
         );
@@ -266,9 +271,14 @@ export class AgentSpawner {
 
       // Dispatch to agent
       if (isLocalAgent) {
+        if (!localAgentUuid) {
+          throw new Error(
+            'Internal error: localAgentUuid missing for local agent'
+          );
+        }
         await this.dispatchToLocalAgent(
           sessionId,
-          localAgentUuid!,
+          localAgentUuid,
           message,
           userId
         );

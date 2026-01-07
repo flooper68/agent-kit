@@ -1,4 +1,4 @@
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { agentSessions, type AgentSession } from '../../../db/schema';
 
@@ -12,11 +12,16 @@ export class GetSessionChildrenQuery {
     this.db = db;
   }
 
-  async execute(sessionId: string): Promise<AgentSession[]> {
+  async execute(sessionId: string, userId: string): Promise<AgentSession[]> {
     return this.db
       .select()
       .from(agentSessions)
-      .where(eq(agentSessions.parentSessionId, sessionId))
+      .where(
+        and(
+          eq(agentSessions.parentSessionId, sessionId),
+          eq(agentSessions.userId, userId)
+        )
+      )
       .orderBy(asc(agentSessions.createdAt));
   }
 }

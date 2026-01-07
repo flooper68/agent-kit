@@ -14,6 +14,24 @@ export interface SpawnAgentContext {
   messageId: string;
 }
 
+/**
+ * Result type for the spawnAgent tool
+ */
+export type SpawnAgentToolResult =
+  | {
+      success: true;
+      sessionId: string;
+      response: string;
+      agentName?: string;
+      usage?: { promptTokens: number; completionTokens: number };
+    }
+  | {
+      success: false;
+      error: string;
+      sessionId?: string;
+      partialResponse?: string;
+    };
+
 export function createSpawnAgentTool(context: SpawnAgentContext): Tool {
   return tool({
     description: `Spawn another agent to handle a specific task. The spawned agent runs in its own fresh session with only the message you provide - it does not have access to your conversation history.
@@ -53,7 +71,7 @@ Available agents are listed in the system prompt under "Built-in Agents" and "Lo
         message: string;
       },
       { toolCallId }: { toolCallId: string }
-    ) => {
+    ): Promise<SpawnAgentToolResult> => {
       // Check spawn depth limit
       if (context.currentSpawnDepth >= SPAWN_CONFIG.MAX_SPAWN_DEPTH) {
         return {

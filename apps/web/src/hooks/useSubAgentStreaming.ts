@@ -26,6 +26,10 @@ export interface UseSubAgentStreamingReturn {
   streamingStartTime: number | null;
 }
 
+// Maximum size for tracking refs to prevent memory leaks
+const MAX_PENDING_SESSIONS = 100;
+const MAX_PROCESSED_EVENTS = 1000;
+
 // Helper to generate unique part IDs
 function generatePartId(): string {
   return `part-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -446,6 +450,10 @@ export function useSubAgentStreaming(
         if (processedSpawnEventsRef.current.has(spawnKey)) {
           break;
         }
+        // Prevent memory leak by clearing if set exceeds limit
+        if (processedSpawnEventsRef.current.size >= MAX_PROCESSED_EVENTS) {
+          processedSpawnEventsRef.current.clear();
+        }
         processedSpawnEventsRef.current.add(spawnKey);
 
         // Update the spawnAgent tool invocation part with the spawned sessionId
@@ -459,6 +467,13 @@ export function useSubAgentStreaming(
 
           if (!toolInvocationExists) {
             // tool_call_start hasn't arrived yet, store for later
+            // Prevent memory leak by clearing if object exceeds limit
+            if (
+              Object.keys(pendingSpawnedSessionsRef.current).length >=
+              MAX_PENDING_SESSIONS
+            ) {
+              pendingSpawnedSessionsRef.current = {};
+            }
             pendingSpawnedSessionsRef.current[event.toolCallId] =
               event.spawnedSessionId;
             return prev;

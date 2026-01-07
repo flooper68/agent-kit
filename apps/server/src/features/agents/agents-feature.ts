@@ -572,8 +572,8 @@ export class AgentsFeature {
         this.getSessionResourcesQuery.execute(sessionId),
       getMessagesAndEvents: (sessionId: string) =>
         this.getSessionMessagesAndEventsQuery.execute(sessionId),
-      getChildren: (sessionId: string) =>
-        this.getSessionChildrenQuery.execute(sessionId),
+      getChildren: (sessionId: string, userId: string) =>
+        this.getSessionChildrenQuery.execute(sessionId, userId),
       getLineage: (sessionId: string, userId: string) =>
         this.getSessionLineageQuery.execute(sessionId, userId),
     };
