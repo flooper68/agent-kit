@@ -254,6 +254,8 @@ export function useAgentSession(
 
   const debouncedScrollToBottom = useMemo(() => {
     const callback = () => {
+      if (showScrollButtonRef.current) return;
+
       console.log('[AgentSession] Scrolling to bottom');
 
       const lastMessage = messageListRef.current?.children[
@@ -270,7 +272,7 @@ export function useAgentSession(
         clearTimeout(timeout);
       }
 
-      timeout = setTimeout(callback, 50);
+      timeout = setTimeout(callback, 100);
     };
   }, []);
 

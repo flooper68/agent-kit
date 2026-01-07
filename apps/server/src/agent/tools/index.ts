@@ -4,6 +4,7 @@ import type { ProjectsFeature } from '../../features/projects';
 import type { TasksFeature } from '../../features/tasks';
 import type { EventStreamManager } from '../event-stream-manager';
 import type { PubSubManager } from '../../real-time';
+import { logger } from '../logger';
 import { getTimeTool } from './get-time';
 import { webSearchTool } from './web-search';
 import { extractContentTool } from './extract-content';
@@ -129,6 +130,10 @@ export function getToolsById(
               orgId: context.orgId,
               projectsFeature: context.projectsFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing projectsFeature', {
+              tool: id,
+            });
           }
           break;
         case 'searchProjects':
@@ -137,6 +142,10 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               projectsFeature: context.projectsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing projectsFeature', {
+              tool: id,
             });
           }
           break;
@@ -147,6 +156,10 @@ export function getToolsById(
               orgId: context.orgId,
               projectsFeature: context.projectsFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing projectsFeature', {
+              tool: id,
+            });
           }
           break;
         case 'createProject':
@@ -155,6 +168,10 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               projectsFeature: context.projectsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing projectsFeature', {
+              tool: id,
             });
           }
           break;
@@ -165,6 +182,10 @@ export function getToolsById(
               orgId: context.orgId,
               projectsFeature: context.projectsFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing projectsFeature', {
+              tool: id,
+            });
           }
           break;
         case 'deleteProject':
@@ -173,6 +194,10 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               projectsFeature: context.projectsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing projectsFeature', {
+              tool: id,
             });
           }
           break;
@@ -184,6 +209,10 @@ export function getToolsById(
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
+            });
           }
           break;
         case 'searchTasks':
@@ -192,6 +221,10 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
             });
           }
           break;
@@ -202,6 +235,10 @@ export function getToolsById(
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
+            });
           }
           break;
         case 'createTask':
@@ -210,6 +247,10 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
             });
           }
           break;
@@ -220,6 +261,10 @@ export function getToolsById(
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
+            });
           }
           break;
         case 'deleteTask':
@@ -228,6 +273,10 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
             });
           }
           break;
@@ -238,6 +287,10 @@ export function getToolsById(
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
+            });
           }
           break;
         case 'reorderTask':
@@ -246,6 +299,10 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
             });
           }
           break;
@@ -256,6 +313,10 @@ export function getToolsById(
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
             });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
+            });
           }
           break;
         case 'detachArtifactFromTask':
@@ -264,6 +325,10 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               tasksFeature: context.tasksFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing tasksFeature', {
+              tool: id,
             });
           }
           break;
@@ -280,6 +345,13 @@ export function getToolsById(
               messageId: context.messageId,
               eventStreamManager: context.eventStreamManager,
             });
+          } else {
+            logger.debug('Skipping tool due to missing context', {
+              tool: id,
+              hasEventStreamManager: !!context.eventStreamManager,
+              hasSessionId: !!context.sessionId,
+              hasMessageId: !!context.messageId,
+            });
           }
           break;
         case 'getCurrentUIState':
@@ -294,6 +366,14 @@ export function getToolsById(
               messageId: context.messageId,
               eventStreamManager: context.eventStreamManager,
               pubsub: context.pubsub,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing context', {
+              tool: id,
+              hasEventStreamManager: !!context.eventStreamManager,
+              hasSessionId: !!context.sessionId,
+              hasMessageId: !!context.messageId,
+              hasPubsub: !!context.pubsub,
             });
           }
           break;

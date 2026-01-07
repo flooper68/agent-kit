@@ -11,13 +11,18 @@ const log = createLogger('ServerToolsMcpServer');
  * Returns an object with content array as expected by MCP protocol.
  */
 function formatMcpResult(result: unknown) {
+  let text: string;
+  if (typeof result === 'string') {
+    text = result;
+  } else {
+    try {
+      text = JSON.stringify(result);
+    } catch (e) {
+      text = `[Serialization error: ${e instanceof Error ? e.message : 'unknown'}]`;
+    }
+  }
   return {
-    content: [
-      {
-        type: 'text' as const,
-        text: typeof result === 'string' ? result : JSON.stringify(result),
-      },
-    ],
+    content: [{ type: 'text' as const, text }],
   };
 }
 
@@ -578,6 +583,10 @@ export function createServerToolsMcpServer(
             .refine(
               (path) => !path.includes('://') && !path.includes('//'),
               'Path cannot contain protocol or double slashes'
+            )
+            .refine(
+              (path) => !path.includes('..'),
+              'Path cannot contain path traversal sequences'
             )
             .describe(
               'Application route path (e.g., "/app/projects", "/app/artifacts", "/app/agents")'

@@ -139,7 +139,7 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute window
 const RATE_LIMIT_MAX_REQUESTS = 100; // Max 100 requests per minute per agent
 
 interface CachedSession {
-  session: { orgId: string };
+  session: { orgId: string; userId: string };
   cachedAt: number;
 }
 
@@ -192,6 +192,21 @@ export class LocalAgentWebSocketService {
       },
       5 * 60 * 1000
     );
+  }
+
+  /**
+   * Stop the service and clean up resources.
+   * Call this during graceful shutdown.
+   */
+  shutdown(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.sessionCache.clear();
+    this.rateLimitByAgent.clear();
+    this.lastHeartbeatBySession.clear();
+    this.log.info('LocalAgentWebSocketService shutdown complete');
   }
 
   /**
@@ -550,7 +565,7 @@ export class LocalAgentWebSocketService {
    */
   private async getSessionCached(
     sessionId: string
-  ): Promise<{ orgId: string } | null> {
+  ): Promise<{ orgId: string; userId: string } | null> {
     const now = Date.now();
     const cached = this.sessionCache.get(sessionId);
 
@@ -569,11 +584,11 @@ export class LocalAgentWebSocketService {
 
     // Cache the session info
     this.sessionCache.set(sessionId, {
-      session: { orgId: session.orgId },
+      session: { orgId: session.orgId, userId: session.userId },
       cachedAt: now,
     });
 
-    return { orgId: session.orgId };
+    return { orgId: session.orgId, userId: session.userId };
   }
 
   /**
@@ -585,6 +600,11 @@ export class LocalAgentWebSocketService {
   private checkRateLimit(agentId: string): boolean {
     const now = Date.now();
     const windowStart = now - RATE_LIMIT_WINDOW_MS;
+
+    // Defensive cleanup if map grows too large
+    if (this.rateLimitByAgent.size > 10000) {
+      this.cleanupStaleCaches();
+    }
 
     let entry = this.rateLimitByAgent.get(agentId);
     if (!entry) {
@@ -1041,6 +1061,22 @@ export class LocalAgentWebSocketService {
         sessionId,
         requestId,
         { error: 'Session not found' },
+        true
+      );
+      return;
+    }
+
+    // Verify agent owns this session
+    if (session.userId !== agent.userId) {
+      this.log.warn('Agent attempted to access session it does not own', {
+        agentId: agent.id,
+        sessionId: sessionId.slice(0, 8) + '...',
+      });
+      this.sendServerToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        { error: 'Unauthorized: session access denied' },
         true
       );
       return;

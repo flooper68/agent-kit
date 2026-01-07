@@ -61,19 +61,22 @@ export class ServerToolRelay {
    */
   clearConnection(): void {
     this.isClearing = true;
-    // Reject all pending requests
-    for (const [requestId, pending] of this.pendingRequests) {
-      clearTimeout(pending.timeoutId);
-      pending.reject(new Error('Connection lost'));
-      log.debug('Rejected pending request due to connection loss', {
-        requestId: requestId.slice(0, 8) + '...',
-        tool: pending.tool,
-      });
+    try {
+      // Reject all pending requests
+      for (const [requestId, pending] of this.pendingRequests) {
+        clearTimeout(pending.timeoutId);
+        pending.reject(new Error('Connection lost'));
+        log.debug('Rejected pending request due to connection loss', {
+          requestId: requestId.slice(0, 8) + '...',
+          tool: pending.tool,
+        });
+      }
+      this.pendingRequests.clear();
+      this.ws = null;
+      log.debug('Connection cleared for server tool relay');
+    } finally {
+      this.isClearing = false;
     }
-    this.pendingRequests.clear();
-    this.ws = null;
-    this.isClearing = false;
-    log.debug('Connection cleared for server tool relay');
   }
 
   /**
