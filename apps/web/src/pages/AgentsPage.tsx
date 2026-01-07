@@ -324,7 +324,7 @@ export function AgentsPage() {
 
         {/* Agent Cards Grid */}
         {filteredAgents.length > 0 && (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(320px,1fr))]">
             {filteredAgents.map((agent) => (
               <LocalAgentCard
                 key={agent.id}
@@ -333,7 +333,7 @@ export function AgentsPage() {
                 description={agent.description}
                 secretKeyPrefix={agent.secretKeyPrefix}
                 disabled={agent.disabled}
-                isConnected={connectionStatus.get(agent.id)}
+                isConnected={connectionStatus.get(agent.key)}
                 isLoading={loadingAgentId === agent.id}
                 onEdit={() =>
                   setEditingAgent({

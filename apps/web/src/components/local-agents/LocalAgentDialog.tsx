@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog, Button, Input, Text } from '@agent-kit/ui';
+import { Dialog, Button, Input, Text, Textarea } from '@agent-kit/ui';
 
 export interface LocalAgentFormData {
   key: string;
@@ -104,10 +104,11 @@ export function LocalAgentDialog({
             <label className="text-sm font-medium">
               Description (optional)
             </label>
-            <Input
+            <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="A helpful assistant for..."
+              rows={3}
             />
           </div>
 
