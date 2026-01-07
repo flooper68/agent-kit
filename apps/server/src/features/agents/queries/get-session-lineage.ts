@@ -21,6 +21,7 @@ interface LineageRow extends Record<string, unknown> {
 /**
  * Query to get the full lineage (path from root to current session)
  * Uses a recursive CTE to traverse the parent chain
+ * SECURITY: Only returns sessions belonging to the specified user
  */
 export class GetSessionLineageQuery {
   private db: typeof DbType;
@@ -29,12 +30,13 @@ export class GetSessionLineageQuery {
     this.db = db;
   }
 
-  async execute(sessionId: string): Promise<LineageItem[]> {
+  async execute(sessionId: string, userId: string): Promise<LineageItem[]> {
     // Use recursive CTE to traverse from target session up to root,
     // then order by depth descending (root first)
+    // SECURITY: Filter by userId to prevent accessing other users' parent sessions
     const result = await this.db.execute<LineageRow>(sql`
       WITH RECURSIVE lineage AS (
-        -- Base case: start with target session
+        -- Base case: start with target session (verify user ownership)
         SELECT
           id as "sessionId",
           title,
@@ -43,10 +45,11 @@ export class GetSessionLineageQuery {
           0 as depth
         FROM agent_sessions
         WHERE id = ${sessionId}::uuid
+          AND user_id = ${userId}
 
         UNION ALL
 
-        -- Recursive case: get parent
+        -- Recursive case: get parent (must belong to same user)
         SELECT
           s.id as "sessionId",
           s.title,
@@ -55,6 +58,7 @@ export class GetSessionLineageQuery {
           l.depth + 1
         FROM agent_sessions s
         JOIN lineage l ON s.id = l.parent_session_id
+        WHERE s.user_id = ${userId}
       )
       SELECT "sessionId", title, "agentId", depth
       FROM lineage

@@ -9,6 +9,9 @@ import {
 import type { AgentSessionEvent } from '../../../db/schema/agent-session-events';
 import type { SessionWithMessages } from '../types';
 import { reconstructPartsFromEvents } from '../utils';
+import { logger } from '../../../agent/logger';
+
+const log = logger.child({ module: 'get-session-with-messages' });
 
 export class GetSessionWithMessagesQuery {
   private db: typeof DbType;
@@ -37,6 +40,25 @@ export class GetSessionWithMessagesQuery {
         .where(eq(localAgents.key, session.agentId))
         .limit(1);
       agentName = localAgentResult[0]?.name;
+
+      if (!agentName) {
+        log.warn(
+          'Local agent not found for session, using agentId as fallback',
+          {
+            sessionId,
+            agentId: session.agentId,
+            isLocalAgent: session.isLocalAgent,
+          }
+        );
+      }
+    } else if (!agentName && !session.isLocalAgent) {
+      log.warn(
+        'Built-in agent not found for session, using agentId as fallback',
+        {
+          sessionId,
+          agentId: session.agentId,
+        }
+      );
     }
     // Fall back to agentId if no name found
     agentName = agentName ?? session.agentId;

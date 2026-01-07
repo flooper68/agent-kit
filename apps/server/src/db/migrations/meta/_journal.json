@@ -99,6 +99,13 @@
       "when": 1767795549453,
       "tag": "0013_faulty_overlord",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1767900000000,
+      "tag": "0014_add_parent_session_fk",
+      "breakpoints": true
     }
   ]
 }

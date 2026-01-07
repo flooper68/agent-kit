@@ -12,6 +12,12 @@ import type { LocalAgentsFeature } from '../features/local-agents';
 import type { AgentSpawner } from './agent-spawner';
 import { AgentJobHandler } from './agent-job-handler';
 
+// Maximum concurrent jobs per worker (configurable via environment variable)
+const MAX_CONCURRENT_JOBS = parseInt(
+  process.env.AGENT_WORKER_MAX_CONCURRENT ?? '10',
+  10
+);
+
 /**
  * Agent Worker - consumes jobs from the queue and processes them
  * Each job is handled by a new AgentJobHandler instance
@@ -93,7 +99,7 @@ export class AgentWorker {
           );
           await handler.handle(job);
         },
-        { maxConcurrent: 10 }
+        { maxConcurrent: MAX_CONCURRENT_JOBS }
       );
     } catch (error) {
       console.error(`[AgentWorker ${this.workerId}] Worker error:`, error);

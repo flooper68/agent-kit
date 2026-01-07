@@ -15,14 +15,20 @@ export const JOB_QUEUE_CONFIG = {
   CONCURRENT_BLOCK_TIMEOUT_MS: 1000,
   /** Sleep interval when at capacity in milliseconds */
   CAPACITY_CHECK_INTERVAL_MS: 50,
-  /** Session lock TTL in milliseconds (60 minutes - matches max spawn timeout) */
-  SESSION_LOCK_TTL_MS: 3_600_000,
+  /** Session lock TTL in milliseconds (90 minutes - exceeds max spawn timeout) */
+  SESSION_LOCK_TTL_MS: 5_400_000,
+  /** Lock heartbeat interval in milliseconds (extend lock every 5 minutes) */
+  LOCK_HEARTBEAT_INTERVAL_MS: 300_000,
   /** Maximum backoff delay for retries in milliseconds */
   MAX_BACKOFF_MS: 30_000,
   /** Shutdown grace period in milliseconds (60 seconds) */
   SHUTDOWN_GRACE_PERIOD_MS: 60_000,
   /** Maximum consecutive errors before stopping consumer */
   MAX_CONSECUTIVE_ERRORS: 10,
+  /** Maximum retries for session-locked jobs before dropping */
+  MAX_SESSION_LOCK_RETRIES: 10,
+  /** Base delay for session lock backoff in milliseconds */
+  SESSION_LOCK_BACKOFF_BASE_MS: 500,
 } as const;
 
 // Zod schema for agent jobs
@@ -34,6 +40,9 @@ export const AgentJobSchema = z.object({
   orgId: z.string(),
   content: z.string(),
   createdAt: z.string(),
+  // Retry tracking for session-locked jobs
+  retryCount: z.number().default(0),
+  nextAttemptAfter: z.string().optional(),
 });
 
 export type AgentJob = z.infer<typeof AgentJobSchema>;
@@ -81,11 +90,14 @@ export class JobQueueManager {
   /**
    * Enqueue an agent job to the job stream
    */
-  async enqueue(job: Omit<AgentJob, 'id' | 'createdAt'>): Promise<string> {
+  async enqueue(
+    job: Omit<AgentJob, 'id' | 'createdAt' | 'retryCount' | 'nextAttemptAfter'>
+  ): Promise<string> {
     const fullJob: AgentJob = {
       ...job,
       id: randomUUID(),
       createdAt: new Date().toISOString(),
+      retryCount: 0,
     };
 
     log.info('Enqueuing job', { jobId: fullJob.id, sessionId: job.sessionId });
@@ -334,6 +346,22 @@ export class JobQueueManager {
               continue;
             }
 
+            // Check if job should be delayed (from previous re-enqueue with backoff)
+            if (job.nextAttemptAfter) {
+              const nextAttempt = new Date(job.nextAttemptAfter).getTime();
+              if (Date.now() < nextAttempt) {
+                // Not ready yet - re-enqueue without incrementing retry count
+                await this.redis.xadd(
+                  JOB_STREAM,
+                  '*',
+                  'data',
+                  JSON.stringify(job)
+                );
+                await this.redis.xack(JOB_STREAM, groupName, messageId);
+                continue;
+              }
+            }
+
             // Try to acquire session lock
             const lockKey = `agent:session:${job.sessionId}:lock`;
             const acquired = await this.redis.set(
@@ -345,18 +373,47 @@ export class JobQueueManager {
             );
 
             if (acquired !== 'OK') {
-              // Session is busy - re-enqueue the job for later processing
-              // ACK the current message and add a new one to the stream
-              log.info('Session locked, re-enqueuing job', {
+              // Session is busy - check retry count
+              const retryCount = (job.retryCount ?? 0) + 1;
+
+              if (retryCount > JOB_QUEUE_CONFIG.MAX_SESSION_LOCK_RETRIES) {
+                log.error('Job exceeded max session lock retries, dropping', {
+                  jobId: job.id,
+                  sessionId: job.sessionId,
+                  retryCount,
+                });
+                // ACK the message to remove it (job is lost)
+                await this.redis.xack(JOB_STREAM, groupName, messageId);
+                continue;
+              }
+
+              // Calculate exponential backoff delay
+              const backoffDelay = Math.min(
+                JOB_QUEUE_CONFIG.SESSION_LOCK_BACKOFF_BASE_MS *
+                  Math.pow(2, retryCount - 1),
+                JOB_QUEUE_CONFIG.MAX_BACKOFF_MS
+              );
+              const nextAttemptAfter = new Date(
+                Date.now() + backoffDelay
+              ).toISOString();
+
+              log.info('Session locked, re-enqueuing job with backoff', {
                 jobId: job.id,
                 sessionId: job.sessionId,
+                retryCount,
+                backoffMs: backoffDelay,
               });
-              // Re-add to stream (creates new message ID)
+
+              // Re-add to stream with updated retry info
               await this.redis.xadd(
                 JOB_STREAM,
                 '*',
                 'data',
-                JSON.stringify(job)
+                JSON.stringify({
+                  ...job,
+                  retryCount,
+                  nextAttemptAfter,
+                })
               );
               // ACK the original message to remove it from pending
               await this.redis.xack(JOB_STREAM, groupName, messageId);
@@ -457,7 +514,31 @@ export class JobQueueManager {
   }
 
   /**
-   * Process a job with lock management
+   * Extend lock TTL if we still own it
+   * Returns true if lock was extended, false if lock was lost
+   */
+  private async extendLock(
+    lockKey: string,
+    consumerName: string
+  ): Promise<boolean> {
+    const script = `
+      if redis.call("get", KEYS[1]) == ARGV[1] then
+        return redis.call("pexpire", KEYS[1], ARGV[2])
+      end
+      return 0
+    `;
+    const result = await this.redis.eval(
+      script,
+      1,
+      lockKey,
+      consumerName,
+      String(JOB_QUEUE_CONFIG.SESSION_LOCK_TTL_MS)
+    );
+    return result === 1;
+  }
+
+  /**
+   * Process a job with lock management and heartbeat
    * Ensures activeJobs set is always cleaned up and lock is released
    */
   private async processJobWithLock(
@@ -469,6 +550,17 @@ export class JobQueueManager {
     handler: JobHandler,
     activeJobs: Set<string>
   ): Promise<void> {
+    // Set up heartbeat interval to extend lock during long-running jobs
+    const heartbeatInterval = setInterval(async () => {
+      const extended = await this.extendLock(lockKey, consumerName);
+      if (!extended) {
+        log.warn('Failed to extend lock, may have been stolen', {
+          jobId: job.id,
+          sessionId: job.sessionId,
+        });
+      }
+    }, JOB_QUEUE_CONFIG.LOCK_HEARTBEAT_INTERVAL_MS);
+
     try {
       await handler(job);
       await this.redis.xack(JOB_STREAM, groupName, messageId);
@@ -481,6 +573,9 @@ export class JobQueueManager {
       });
       // Don't ack - will be redelivered after lock expires
     } finally {
+      // Always clear heartbeat interval
+      clearInterval(heartbeatInterval);
+
       // Always clean up activeJobs tracking
       activeJobs.delete(job.sessionId);
 

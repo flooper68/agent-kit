@@ -31,6 +31,17 @@ function generatePartId(): string {
   return `part-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+// Type guard for ToolInvocationPart
+function isToolInvocationPart(part: unknown): part is ToolInvocationPart {
+  return (
+    typeof part === 'object' &&
+    part !== null &&
+    'type' in part &&
+    (part as { type: string }).type === 'tool_invocation' &&
+    'toolCallId' in part
+  );
+}
+
 // Helper to create a text part
 function createTextPart(content: string): TextPart {
   return { type: 'text', id: generatePartId(), content };
@@ -98,6 +109,8 @@ export function useSubAgentStreaming(
   const needsNewReasoningPartRef = useRef<Record<string, boolean>>({});
   // Track pending spawned sessions (when spawn_session_created arrives before tool_call_start)
   const pendingSpawnedSessionsRef = useRef<Record<string, string>>({});
+  // Track processed spawn events for idempotency (prevents race condition)
+  const processedSpawnEventsRef = useRef<Set<string>>(new Set());
 
   // Reset state when sessionId changes
   useEffect(() => {
@@ -112,6 +125,17 @@ export function useSubAgentStreaming(
     needsNewTextPartRef.current = {};
     needsNewReasoningPartRef.current = {};
     pendingSpawnedSessionsRef.current = {};
+    processedSpawnEventsRef.current = new Set();
+
+    // Cleanup on unmount to prevent memory leaks
+    return () => {
+      accumulatedTextRef.current = {};
+      accumulatedReasoningRef.current = {};
+      needsNewTextPartRef.current = {};
+      needsNewReasoningPartRef.current = {};
+      pendingSpawnedSessionsRef.current = {};
+      processedSpawnEventsRef.current.clear();
+    };
   }, [sessionId]);
 
   // Handle stream events
@@ -416,16 +440,21 @@ export function useSubAgentStreaming(
         setStreamingStartTime(null);
         break;
 
-      case 'spawn_session_created':
+      case 'spawn_session_created': {
+        // Idempotency check - skip if already processed (prevents race condition)
+        const spawnKey = `${event.messageId}:${event.toolCallId}`;
+        if (processedSpawnEventsRef.current.has(spawnKey)) {
+          break;
+        }
+        processedSpawnEventsRef.current.add(spawnKey);
+
         // Update the spawnAgent tool invocation part with the spawned sessionId
         // This enables the "Open Full View" button to work while the sub-agent is still running
         setMessages((prev) => {
-          // Check if the tool invocation part exists
+          // Check if the tool invocation part exists using type guard
           const msg = prev.find((m) => m.id === event.messageId);
           const toolInvocationExists = msg?.parts.some(
-            (p) =>
-              p.type === 'tool_invocation' &&
-              (p as ToolInvocationPart).toolCallId === event.toolCallId
+            (p) => isToolInvocationPart(p) && p.toolCallId === event.toolCallId
           );
 
           if (!toolInvocationExists) {
@@ -441,15 +470,14 @@ export function useSubAgentStreaming(
             return {
               ...m,
               parts: m.parts.map((part) => {
-                if (part.type !== 'tool_invocation') return part;
-                if (
-                  (part as ToolInvocationPart).toolCallId !== event.toolCallId
-                )
-                  return part;
+                if (!isToolInvocationPart(part)) return part;
+                if (part.toolCallId !== event.toolCallId) return part;
+                // Skip if already has spawnedSessionId
+                if (part.args.spawnedSessionId) return part;
                 return {
                   ...part,
                   args: {
-                    ...(part as ToolInvocationPart).args,
+                    ...part.args,
                     spawnedSessionId: event.spawnedSessionId,
                   },
                 };
@@ -458,6 +486,7 @@ export function useSubAgentStreaming(
           });
         });
         break;
+      }
     }
   }, []);
 

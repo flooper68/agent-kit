@@ -501,9 +501,18 @@ export class AgentSpawner {
       // AbortController to terminate the subscription when done
       const abortController = new AbortController();
 
+      // Timeout ID - declared here so finish() can clear it
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
       const finish = () => {
         if (resolved) return;
         resolved = true;
+
+        // Always clear timeout to prevent memory leaks
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = undefined;
+        }
 
         // Signal the subscription to terminate
         abortController.abort();
@@ -522,7 +531,7 @@ export class AgentSpawner {
       };
 
       // Set up timeout with interrupt request
-      const timeoutId = setTimeout(async () => {
+      timeoutId = setTimeout(async () => {
         if (resolved) return;
         finishReason = 'timeout';
         errorMessage = `Agent did not respond within ${timeout}ms`;
@@ -580,20 +589,17 @@ export class AgentSpawner {
                   };
                 }
                 finishReason = 'complete';
-                clearTimeout(timeoutId);
                 finish();
                 return;
 
               case 'error':
                 finishReason = 'error';
                 errorMessage = event.error;
-                clearTimeout(timeoutId);
                 finish();
                 return;
 
               case 'interrupted':
                 finishReason = 'interrupted';
-                clearTimeout(timeoutId);
                 finish();
                 return;
             }
@@ -603,7 +609,6 @@ export class AgentSpawner {
             finishReason = 'error';
             errorMessage =
               error instanceof Error ? error.message : 'Unknown error';
-            clearTimeout(timeoutId);
             finish();
           }
         }
@@ -617,7 +622,6 @@ export class AgentSpawner {
             error instanceof Error
               ? error.message
               : 'Unknown subscription error';
-          clearTimeout(timeoutId);
           finish();
         }
       });
