@@ -29,6 +29,10 @@ export const JOB_QUEUE_CONFIG = {
   MAX_SESSION_LOCK_RETRIES: 10,
   /** Base delay for session lock backoff in milliseconds */
   SESSION_LOCK_BACKOFF_BASE_MS: 500,
+  /** Maximum retries for failed jobs before dropping */
+  MAX_JOB_RETRIES: 3,
+  /** Base delay for job failure backoff in milliseconds */
+  JOB_FAILURE_BACKOFF_BASE_MS: 1000,
 } as const;
 
 // Zod schema for agent jobs
@@ -540,6 +544,7 @@ export class JobQueueManager {
   /**
    * Process a job with lock management and heartbeat
    * Ensures activeJobs set is always cleaned up and lock is released
+   * On failure, re-enqueues job for retry (up to MAX_JOB_RETRIES)
    */
   private async processJobWithLock(
     job: AgentJob,
@@ -571,7 +576,50 @@ export class JobQueueManager {
         sessionId: job.sessionId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      // Don't ack - will be redelivered after lock expires
+
+      // Re-enqueue job for retry with exponential backoff
+      const retryCount = (job.retryCount ?? 0) + 1;
+
+      if (retryCount > JOB_QUEUE_CONFIG.MAX_JOB_RETRIES) {
+        log.error('Job exceeded max retries, dropping', {
+          jobId: job.id,
+          sessionId: job.sessionId,
+          retryCount,
+        });
+        // Ack to remove from pending - job is lost after max retries
+        await this.redis.xack(JOB_STREAM, groupName, messageId);
+      } else {
+        // Calculate exponential backoff delay
+        const backoffDelay = Math.min(
+          JOB_QUEUE_CONFIG.JOB_FAILURE_BACKOFF_BASE_MS *
+            Math.pow(2, retryCount - 1),
+          JOB_QUEUE_CONFIG.MAX_BACKOFF_MS
+        );
+        const nextAttemptAfter = new Date(
+          Date.now() + backoffDelay
+        ).toISOString();
+
+        log.info('Re-enqueuing failed job with backoff', {
+          jobId: job.id,
+          sessionId: job.sessionId,
+          retryCount,
+          backoffMs: backoffDelay,
+        });
+
+        // Re-add to stream with updated retry info
+        await this.redis.xadd(
+          JOB_STREAM,
+          '*',
+          'data',
+          JSON.stringify({
+            ...job,
+            retryCount,
+            nextAttemptAfter,
+          })
+        );
+        // Ack the original message to remove from pending
+        await this.redis.xack(JOB_STREAM, groupName, messageId);
+      }
     } finally {
       // Always clear heartbeat interval
       clearInterval(heartbeatInterval);
@@ -579,7 +627,7 @@ export class JobQueueManager {
       // Always clean up activeJobs tracking
       activeJobs.delete(job.sessionId);
 
-      // Release lock only if we still own it (Lua script for atomicity)
+      // Release lock immediately (Lua script for atomicity)
       const script = `
         if redis.call("get", KEYS[1]) == ARGV[1] then
           return redis.call("del", KEYS[1])

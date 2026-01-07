@@ -1,6 +1,9 @@
 import type Redis from 'ioredis';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
+import { logger } from './logger';
+
+const log = logger.child({ module: 'event-stream-manager' });
 
 // Zod schemas for stream events
 const StreamEventTypeSchema = z.enum([
@@ -185,7 +188,7 @@ export class EventStreamManager {
 
     // Create a dedicated connection for this subscription
     // This ensures multiple concurrent subscriptions don't block each other
-    console.log('[EventStreamManager] Creating subscription connection', {
+    log.debug('Creating subscription connection', {
       sessionId,
       streamName,
     });
@@ -214,7 +217,7 @@ export class EventStreamManager {
         ),
       ]);
 
-      console.log('[EventStreamManager] Subscription connection ready', {
+      log.debug('Subscription connection ready', {
         sessionId,
       });
 
@@ -264,11 +267,14 @@ export class EventStreamManager {
                 const event = StreamEventSchema.parse(parsed);
                 yield event;
               } catch (parseError) {
-                console.error(
-                  '[EventStreamManager] Failed to parse event data:',
-                  parseError,
-                  { messageId, rawData: rawData.slice(0, 200) }
-                );
+                log.error('Failed to parse event data', {
+                  messageId,
+                  rawData: rawData.slice(0, 200),
+                  error:
+                    parseError instanceof Error
+                      ? parseError.message
+                      : 'Parse error',
+                });
                 // Skip malformed event and continue
                 continue;
               }
@@ -279,19 +285,22 @@ export class EventStreamManager {
             }
           }
         } catch (error) {
-          console.error('[EventStreamManager] Error reading stream:', error);
+          log.error('Error reading stream', {
+            sessionId,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
           // Wait before retrying
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
     } catch (error) {
-      console.error('[EventStreamManager] Subscription error', {
+      log.error('Subscription error', {
         sessionId,
-        error: error instanceof Error ? error.message : error,
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     } finally {
-      console.log('[EventStreamManager] Cleaning up subscription connection', {
+      log.debug('Cleaning up subscription connection', {
         sessionId,
       });
       // Clean up the connection when subscription ends
@@ -341,28 +350,24 @@ export class EventStreamManager {
       .map(([id, fields]) => {
         const dataIndex = fields.indexOf('data');
         if (dataIndex === -1 || dataIndex + 1 >= fields.length) {
-          console.warn(
-            '[EventStreamManager] Invalid stream event format, skipping:',
-            { id }
-          );
+          log.warn('Invalid stream event format, skipping', { id });
           return null;
         }
         const rawData = fields[dataIndex + 1];
         if (!rawData) {
-          console.warn('[EventStreamManager] Missing event data, skipping:', {
-            id,
-          });
+          log.warn('Missing event data, skipping', { id });
           return null;
         }
         try {
           const parsed = JSON.parse(rawData);
           return StreamEventSchema.parse(parsed);
         } catch (parseError) {
-          console.error(
-            '[EventStreamManager] Failed to parse event in history:',
-            parseError,
-            { id, rawData: rawData.slice(0, 200) }
-          );
+          log.error('Failed to parse event in history', {
+            id,
+            rawData: rawData.slice(0, 200),
+            error:
+              parseError instanceof Error ? parseError.message : 'Parse error',
+          });
           return null;
         }
       })

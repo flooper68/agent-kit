@@ -1,7 +1,57 @@
-import { forwardRef, memo } from 'react';
+import { Component, forwardRef, memo, type ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../../../lib/utils';
 import { Button } from '../../../Button';
+
+// Error Boundary for graceful error handling
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class SubAgentCardErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        this.props.fallback ?? (
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <path
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <span>Failed to render sub-agent card</span>
+            </div>
+          </div>
+        )
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 type SubAgentStatus = 'pending' | 'running' | 'complete' | 'error';
 
@@ -170,7 +220,7 @@ function areSubAgentCardPropsEqual(
   return true;
 }
 
-export const SubAgentCard = memo(
+const SubAgentCardInner = memo(
   forwardRef<HTMLDivElement, SubAgentCardProps>(
     (
       {
@@ -257,6 +307,20 @@ export const SubAgentCard = memo(
     }
   ),
   areSubAgentCardPropsEqual
+);
+
+SubAgentCardInner.displayName = 'SubAgentCardInner';
+
+/**
+ * SubAgentCard wrapped with error boundary for graceful error handling.
+ * Prevents malformed data from crashing the entire chat UI.
+ */
+export const SubAgentCard = forwardRef<HTMLDivElement, SubAgentCardProps>(
+  (props, ref) => (
+    <SubAgentCardErrorBoundary>
+      <SubAgentCardInner {...props} ref={ref} />
+    </SubAgentCardErrorBoundary>
+  )
 );
 
 SubAgentCard.displayName = 'SubAgentCard';
