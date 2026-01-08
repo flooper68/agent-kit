@@ -1,15 +1,19 @@
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const selectTriggerVariants = cva(
   [
     'flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm',
+    'transition-colors duration-200',
+    'hover:bg-accent hover:text-accent-foreground',
     'focus:outline-none focus:ring-1 focus:ring-ring',
-    'disabled:cursor-not-allowed disabled:opacity-50',
+    'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-background disabled:hover:text-foreground',
     'cursor-pointer',
     '[&>span]:line-clamp-1',
+    '[&>svg]:transition-transform [&>svg]:duration-200',
+    'data-[state=open]:[&>svg:last-child]:rotate-180',
   ],
   {
     variants: {
@@ -40,6 +44,7 @@ export interface SelectProps
   onChange?: (e: { target: { value: string } }) => void;
   onValueChange?: (value: string) => void;
   disabled?: boolean;
+  isLoading?: boolean;
   className?: string;
   name?: string;
 }
@@ -54,6 +59,7 @@ export function Select({
   onChange,
   onValueChange,
   disabled,
+  isLoading,
   name,
 }: SelectProps) {
   const handleValueChange = (newValue: string) => {
@@ -62,12 +68,14 @@ export function Select({
     onChange?.({ target: { value: newValue } });
   };
 
+  const isDisabled = disabled || isLoading;
+
   return (
     <SelectPrimitive.Root
       value={value}
       defaultValue={defaultValue}
       onValueChange={handleValueChange}
-      disabled={disabled}
+      disabled={isDisabled}
       name={name}
     >
       <SelectPrimitive.Trigger
@@ -75,7 +83,11 @@ export function Select({
       >
         <SelectPrimitive.Value placeholder={placeholder} />
         <SelectPrimitive.Icon asChild>
-          <ChevronDown className="h-4 w-4 opacity-50" />
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin opacity-50" />
+          ) : (
+            <ChevronDown className="h-4 w-4 opacity-50" />
+          )}
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
@@ -101,9 +113,11 @@ export function Select({
                 value={option.value}
                 disabled={option.disabled}
                 className={cn(
-                  'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none',
+                  'relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none',
+                  'transition-colors duration-150',
+                  'hover:bg-accent hover:text-accent-foreground',
                   'focus:bg-accent focus:text-accent-foreground',
-                  'data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
+                  'data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[disabled]:cursor-default'
                 )}
               >
                 <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">

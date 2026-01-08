@@ -1,23 +1,65 @@
-import type { AgentSession } from '../../db/schema/agent-sessions';
-import type {
-  AgentSessionMessage,
-  MessagePart,
-  AgentSessionMessageStatus,
-  AgentSessionMessageMetadata,
-} from '../../db/schema/agent-session-messages';
-import type { NewAgentSessionEvent } from '../../db/schema/agent-session-events';
+/**
+ * Shared domain types for the agents feature.
+ * Input/result types for individual handlers are co-located with their handlers.
+ */
+
+import type { ThinkingConfig } from '../../db/schema/agents';
 
 // Re-export for convenience
-export type {
-  AgentSession,
-  AgentSessionMessage,
-  MessagePart,
-  AgentSessionMessageStatus,
-  AgentSessionMessageMetadata,
-  NewAgentSessionEvent,
-};
+export type { ThinkingConfig };
 
-// Agent definition (from registry, prepared for DB)
+/**
+ * External agent - WebSocket-based agent that connects from external process
+ */
+export interface ExternalAgentListItem {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  secretKeyPrefix: string;
+  disabled: boolean;
+  isFavorite: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Server agent - LLM agent that runs on the server
+ */
+export interface ServerAgentListItem {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  provider: string;
+  model: string;
+  systemPrompt: string;
+  tools: string[];
+  temperature: number | null;
+  maxOutputTokens: number | null;
+  thinkingConfig: ThinkingConfig | null;
+  disabled: boolean;
+  isFavorite: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Combined response for endpoints that return both agent types
+ */
+export interface AgentsListResponse {
+  external: ExternalAgentListItem[];
+  server: ServerAgentListItem[];
+}
+
+/**
+ * Union type for when we need to work with either agent type
+ */
+export type AnyAgentListItem =
+  | (ExternalAgentListItem & { type: 'external' })
+  | (ServerAgentListItem & { type: 'server' });
+
+// Legacy type - agent definition (for in-memory agent registry)
 export interface AgentDefinition {
   id: string;
   name: string;
@@ -29,59 +71,4 @@ export interface AgentDefinition {
   releasedAt: Date;
   /** Timeout in milliseconds for spawned agent responses (default: 900000 / 15 minutes) */
   spawnTimeout?: number;
-}
-
-// Command input types
-export interface CreateSessionInput {
-  userId: string;
-  orgId: string;
-  agentId: string;
-  title?: string;
-  isLocalAgent?: boolean;
-  /** Parent session ID for spawned sessions */
-  parentSessionId?: string;
-  /** Spawn depth for tracking recursion (0 for root sessions) */
-  spawnDepth?: number;
-}
-
-export interface UpdateSessionTitleInput {
-  sessionId: string;
-  title: string;
-}
-
-export interface UpdateSessionSummaryInput {
-  sessionId: string;
-  title: string;
-  description: string;
-}
-
-export interface CreateMessageInput {
-  sessionId: string;
-  role: 'user' | 'assistant' | 'system';
-  status: AgentSessionMessageStatus;
-}
-
-export interface UpdateMessageStatusInput {
-  messageId: string;
-  status: AgentSessionMessageStatus;
-  metadata?: AgentSessionMessageMetadata;
-}
-
-// Query result types
-export interface SessionWithMessages extends AgentSession {
-  messages: Array<AgentSessionMessage & { parts: MessagePart[] }>;
-  /** Resolved agent name (for display). For local agents, this is the full name, not the key. */
-  agentName?: string;
-}
-
-export interface MessageWithParts {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  parts: MessagePart[];
-}
-
-export interface PaginatedSessions {
-  items: AgentSession[];
-  nextCursor: string | undefined;
-  totalCount: number;
 }

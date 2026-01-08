@@ -1,6 +1,18 @@
 import type { db as DbType } from '../../../db';
 import { artifacts, type Artifact } from '../../../db/schema';
-import type { CreateArtifactInput } from '../types';
+
+export interface CreateArtifactInput {
+  userId: string;
+  orgId: string;
+  title: string;
+  content: string;
+  format?: 'markdown';
+  sessionId?: string;
+  agentId?: string;
+  summary?: string;
+}
+
+export type CreateArtifactResult = Artifact;
 
 export class CreateArtifactCommand {
   private db: typeof DbType;
@@ -9,7 +21,7 @@ export class CreateArtifactCommand {
     this.db = db;
   }
 
-  async execute(input: CreateArtifactInput): Promise<Artifact> {
+  async execute(input: CreateArtifactInput): Promise<CreateArtifactResult> {
     const sizeBytes = Buffer.byteLength(input.content, 'utf8');
 
     const [artifact] = await this.db

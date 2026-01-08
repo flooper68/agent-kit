@@ -81,27 +81,14 @@ export const messagesRouter = router({
     .input(z.object({ sessionId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       // Session ownership already verified by sessionProcedure middleware
-      // Check if this is a local agent session
       const agentInfo = await ctx.agentsFeature.sessions.getAgentInfo(
         input.sessionId
       );
 
-      if (agentInfo?.isLocalAgent) {
-        // Forward interrupt to local agent via WebSocket
-        const sent = ctx.localAgentWSRegistry.sendMessage(agentInfo.agentId, {
-          type: 'interrupt',
-          sessionId: input.sessionId,
-          timestamp: new Date().toISOString(),
-        });
-
-        return { success: sent };
-      }
-
-      // Request interrupt via job registry for server agents
-      const success = await ctx.jobRegistryManager.requestInterrupt(
-        input.sessionId
-      );
-
-      return { success };
+      return ctx.agentsFeature.sessions.interrupt({
+        sessionId: input.sessionId,
+        isLocalAgent: agentInfo?.isLocalAgent ?? false,
+        agentId: agentInfo?.agentId ?? '',
+      });
     }),
 });

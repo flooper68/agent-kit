@@ -17,11 +17,11 @@ export function createDeleteTaskTool(context: DeleteTaskContext): Tool {
       taskId: z.string().uuid().describe('The ID of the task to delete'),
     }),
     execute: async ({ taskId }: { taskId: string }) => {
-      const task = await context.tasksFeature.delete(
-        taskId,
-        context.userId,
-        context.orgId
-      );
+      const task = await context.tasksFeature.delete({
+        id: taskId,
+        userId: context.userId,
+        orgId: context.orgId,
+      });
 
       if (!task) {
         return {

@@ -1,12 +1,41 @@
 import { sql, eq, and, gte, sum, count, desc, inArray } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { agentSessions, localAgents } from '../../../db/schema';
-import type {
-  AgentDistributionItem,
-  ProviderDistributionItem,
-  AnalyticsFilters,
-} from '../types';
+import { agentSessions, externalAgents, serverAgents } from '../../../db/schema';
+import type { TimeRange } from '../types';
 import { getStartDate } from './utils';
+
+export interface GetAgentDistributionInput {
+  orgId: string;
+  timeRange: TimeRange;
+  userId?: string;
+}
+
+export interface AgentDistributionItem {
+  agentId: string;
+  agentName: string;
+  sessions: number;
+  messages: number;
+  cost: number;
+}
+
+export type GetAgentDistributionResult = AgentDistributionItem[];
+
+export interface GetProviderDistributionInput {
+  orgId: string;
+  timeRange: TimeRange;
+  userId?: string;
+}
+
+export interface ProviderDistributionItem {
+  provider: string;
+  sessions: number;
+  tokens: number;
+  promptTokens: number;
+  completionTokens: number;
+  cost: number;
+}
+
+export type GetProviderDistributionResult = ProviderDistributionItem[];
 
 export class GetAgentDistributionQuery {
   private db: typeof DbType;
@@ -17,16 +46,18 @@ export class GetAgentDistributionQuery {
     this.agentNames = agentNames;
   }
 
-  async execute(filters: AnalyticsFilters): Promise<AgentDistributionItem[]> {
-    const startDate = getStartDate(filters.timeRange);
+  async execute(
+    input: GetAgentDistributionInput
+  ): Promise<GetAgentDistributionResult> {
+    const startDate = getStartDate(input.timeRange);
 
     // Build conditions - always filter by orgId
-    const conditions = [eq(agentSessions.orgId, filters.orgId)];
+    const conditions = [eq(agentSessions.orgId, input.orgId)];
     if (startDate) {
       conditions.push(gte(agentSessions.createdAt, startDate));
     }
-    if (filters.userId) {
-      conditions.push(eq(agentSessions.userId, filters.userId));
+    if (input.userId) {
+      conditions.push(eq(agentSessions.userId, input.userId));
     }
 
     const results = await this.db
@@ -50,16 +81,25 @@ export class GetAgentDistributionQuery {
 
     const localAgentNames = new Map<string, string>();
     if (unknownAgentIds.length > 0) {
-      // Look up local agents by key to get their display names
-      const localAgentResults = await this.db
-        .select({
-          key: localAgents.key,
-          name: localAgents.name,
-        })
-        .from(localAgents)
-        .where(inArray(localAgents.key, unknownAgentIds));
+      // Look up agents by key from both tables to get their display names
+      const [externalResults, serverResults] = await Promise.all([
+        this.db
+          .select({
+            key: externalAgents.key,
+            name: externalAgents.name,
+          })
+          .from(externalAgents)
+          .where(inArray(externalAgents.key, unknownAgentIds)),
+        this.db
+          .select({
+            key: serverAgents.key,
+            name: serverAgents.name,
+          })
+          .from(serverAgents)
+          .where(inArray(serverAgents.key, unknownAgentIds)),
+      ]);
 
-      for (const la of localAgentResults) {
+      for (const la of [...externalResults, ...serverResults]) {
         localAgentNames.set(la.key, la.name);
       }
     }
@@ -85,20 +125,20 @@ export class GetProviderDistributionQuery {
   }
 
   async execute(
-    filters: AnalyticsFilters
-  ): Promise<ProviderDistributionItem[]> {
-    const startDate = getStartDate(filters.timeRange);
+    input: GetProviderDistributionInput
+  ): Promise<GetProviderDistributionResult> {
+    const startDate = getStartDate(input.timeRange);
 
     // Build conditions - always filter by orgId
     const conditions = [
-      eq(agentSessions.orgId, filters.orgId),
+      eq(agentSessions.orgId, input.orgId),
       sql`${agentSessions.usage} IS NOT NULL`,
     ];
     if (startDate) {
       conditions.push(gte(agentSessions.createdAt, startDate));
     }
-    if (filters.userId) {
-      conditions.push(eq(agentSessions.userId, filters.userId));
+    if (input.userId) {
+      conditions.push(eq(agentSessions.userId, input.userId));
     }
 
     const providerField = sql<string>`${agentSessions.usage}->>'lastProvider'`;

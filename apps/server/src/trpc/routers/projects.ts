@@ -26,11 +26,11 @@ export const projectsRouter = router({
   get: orgProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      const project = await ctx.projectsFeature.getById(
-        input.id,
-        ctx.auth.userId,
-        ctx.auth.orgId
-      );
+      const project = await ctx.projectsFeature.getById({
+        id: input.id,
+        userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
+      });
       if (!project) {
         throw new TRPCError({
           code: 'NOT_FOUND',
@@ -87,11 +87,11 @@ export const projectsRouter = router({
   delete: orgProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const deleted = await ctx.projectsFeature.delete(
-        input.id,
-        ctx.auth.userId,
-        ctx.auth.orgId
-      );
+      const deleted = await ctx.projectsFeature.delete({
+        id: input.id,
+        userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
+      });
       if (!deleted) {
         throw new TRPCError({
           code: 'NOT_FOUND',
@@ -120,6 +120,6 @@ export const projectsRouter = router({
 
   // Get stats (admin only)
   getStats: adminProcedure.query(async ({ ctx }) => {
-    return ctx.projectsFeature.getStats(ctx.auth.orgId);
+    return ctx.projectsFeature.getStats({ orgId: ctx.auth.orgId });
   }),
 });

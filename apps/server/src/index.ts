@@ -21,9 +21,9 @@ import {
   JobRegistryManager,
   StreamingStateManager,
   SessionSummarizer,
-  LocalAgentsConnectionManager,
-  LocalAgentWebSocketRegistry,
-  LocalAgentWebSocketService,
+  ExternalAgentsConnectionManager,
+  ExternalAgentWebSocketRegistry,
+  ExternalAgentWebSocketService,
   AgentSpawner,
 } from './agent';
 import { AgentsFeature } from './features/agents';
@@ -31,7 +31,6 @@ import { AnalyticsFeature } from './features/analytics';
 import { ArtifactsFeature } from './features/artifacts';
 import { ProjectsFeature } from './features/projects';
 import { TasksFeature } from './features/tasks';
-import { LocalAgentsFeature } from './features/local-agents';
 import { CacheInvalidationService, type PubSubManager } from './real-time';
 
 const clerk = createClerkClient({
@@ -68,20 +67,14 @@ fastify.addHook('onRequest', async (request, reply) => {
   }
 });
 
-// Create local agents feature (needed by agents feature)
-const localAgentsFeature = new LocalAgentsFeature(db);
-
-// Create WebSocket registry for local agents (tracks active connections)
-const localAgentWSRegistry = new LocalAgentWebSocketRegistry();
+// Create WebSocket registry for external agents (tracks active connections)
+const externalAgentWSRegistry = new ExternalAgentWebSocketRegistry();
 
 // Create agents feature (single instance)
-const agentsFeature = new AgentsFeature(db, localAgentsFeature);
+const agentsFeature = new AgentsFeature(db);
 
-// Create agent names map for analytics display
+// Agent names map for analytics display (names are looked up from DB)
 const agentNameMap = new Map<string, string>();
-for (const agent of agentsFeature.agents.list()) {
-  agentNameMap.set(agent.id, agent.name);
-}
 
 // Create analytics feature
 const analyticsFeature = new AnalyticsFeature(db, agentNameMap);
@@ -101,9 +94,9 @@ let eventStreamManager!: EventStreamManager;
 let jobRegistryManager!: JobRegistryManager;
 let streamingStateManager!: StreamingStateManager;
 let pubsub!: PubSubManager;
-let localAgentsConnectionManager!: LocalAgentsConnectionManager;
+let externalAgentsConnectionManager!: ExternalAgentsConnectionManager;
 let cacheInvalidation!: CacheInvalidationService;
-let localAgentWSService!: LocalAgentWebSocketService;
+let externalAgentWSService!: ExternalAgentWebSocketService;
 let agentSpawner!: AgentSpawner;
 
 // Hook to initialize Redis-dependent services after Redis plugin is registered
@@ -116,19 +109,21 @@ fastify.addHook('onReady', async () => {
   // Store pubsub reference for tRPC context
   pubsub = fastify.redis.pubsub;
 
-  // Create local agents connection manager
-  localAgentsConnectionManager = new LocalAgentsConnectionManager(
+  // Create external agents connection manager
+  externalAgentsConnectionManager = new ExternalAgentsConnectionManager(
     redis,
     pubsub
   );
 
   // Clean up stale connections from previous server instance
-  await localAgentsConnectionManager.cleanupAllConnections();
+  await externalAgentsConnectionManager.cleanupAllConnections();
 
   // Create cache invalidation service and attach to features
   cacheInvalidation = new CacheInvalidationService(pubsub);
   projectsFeature.setCacheInvalidation(cacheInvalidation);
   tasksFeature.setCacheInvalidation(cacheInvalidation);
+  agentsFeature.setAgentCacheInvalidation(cacheInvalidation);
+  artifactsFeature.setCacheInvalidation(cacheInvalidation);
 
   // Create infrastructure managers (split from AgentSessionManager)
   jobQueueManager = new JobQueueManager(redis, workerRedis);
@@ -145,15 +140,21 @@ fastify.addHook('onReady', async () => {
   // Wire up late-initialized dependencies on AgentsFeature
   agentsFeature.setSummarizer(sessionSummarizer, cacheInvalidation);
   agentsFeature.setStreamingStateManager(streamingStateManager);
+  agentsFeature.setInterruptDependencies({
+    eventStreamManager,
+    streamingStateManager,
+    jobRegistryManager,
+    jobQueueManager,
+    externalAgentWSRegistry,
+  });
 
-  // Create local agent WebSocket service
-  localAgentWSService = new LocalAgentWebSocketService(
-    localAgentWSRegistry,
-    localAgentsConnectionManager,
+  // Create external agent WebSocket service
+  externalAgentWSService = new ExternalAgentWebSocketService(
+    externalAgentWSRegistry,
+    externalAgentsConnectionManager,
     eventStreamManager,
     streamingStateManager,
     agentsFeature,
-    localAgentsFeature,
     artifactsFeature,
     projectsFeature,
     tasksFeature,
@@ -163,17 +164,16 @@ fastify.addHook('onReady', async () => {
   // Create the agent spawner for spawning sub-agents
   agentSpawner = new AgentSpawner(
     agentsFeature,
-    localAgentsFeature,
     jobQueueManager,
     eventStreamManager,
     streamingStateManager,
-    localAgentWSRegistry,
+    externalAgentWSRegistry,
     cacheInvalidation,
     jobRegistryManager
   );
 
-  // Wire up agent spawner to local agent WebSocket service for sub-agent delegation
-  localAgentWSService.setAgentSpawner(agentSpawner);
+  // Wire up agent spawner to external agent WebSocket service for sub-agent delegation
+  externalAgentWSService.setAgentSpawner(agentSpawner);
 
   // Create the agent worker with new architecture
   const agentWorker = new AgentWorker(
@@ -187,7 +187,6 @@ fastify.addHook('onReady', async () => {
     cacheInvalidation,
     projectsFeature,
     tasksFeature,
-    localAgentsFeature,
     agentSpawner
   );
 
@@ -215,14 +214,13 @@ fastify.register(fastifyTRPCPlugin, {
         artifactsFeature,
         projectsFeature,
         tasksFeature,
-        localAgentsFeature,
         jobQueueManager,
         eventStreamManager,
         jobRegistryManager,
         streamingStateManager,
         pubsub,
-        localAgentsConnectionManager,
-        localAgentWSRegistry,
+        externalAgentsConnectionManager,
+        externalAgentWSRegistry,
         cacheInvalidation,
         agentSpawner,
       })(opts);
@@ -320,14 +318,13 @@ const start = async () => {
           artifactsFeature,
           projectsFeature,
           tasksFeature,
-          localAgentsFeature,
           jobQueueManager,
           eventStreamManager,
           jobRegistryManager,
           streamingStateManager,
           pubsub,
-          localAgentsConnectionManager,
-          localAgentWSRegistry,
+          externalAgentsConnectionManager,
+          externalAgentWSRegistry,
           cacheInvalidation,
           agentSpawner,
         };
@@ -344,8 +341,8 @@ const start = async () => {
       const url = new URL(request.url || '', `http://${request.headers.host}`);
 
       if (url.pathname === '/agents') {
-        // Local agent connection - delegate to service
-        localAgentWSService.handleUpgrade(request, socket, head);
+        // External agent connection - delegate to service
+        externalAgentWSService.handleUpgrade(request, socket, head);
       } else if (url.pathname === '/trpc') {
         wss.handleUpgrade(request, socket, head, (ws) => {
           wss.emit('connection', ws, request);
@@ -359,7 +356,7 @@ const start = async () => {
       `WebSocket server is running at ws://${env.HOST}:${env.PORT}/trpc`
     );
     console.log(
-      `Local agents WebSocket endpoint: ws://${env.HOST}:${env.PORT}/agents`
+      `External agents WebSocket endpoint: ws://${env.HOST}:${env.PORT}/agents`
     );
 
     process.on('SIGTERM', () => {

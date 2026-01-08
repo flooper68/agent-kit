@@ -193,10 +193,10 @@ export const analyticsRouter = router({
 
   // Project & Task Analytics
   getProjectStats: adminProcedure.query(async ({ ctx }) => {
-    return ctx.projectsFeature.getStats(ctx.auth.orgId);
+    return ctx.projectsFeature.getStats({ orgId: ctx.auth.orgId });
   }),
 
   getTaskStats: adminProcedure.query(async ({ ctx }) => {
-    return ctx.tasksFeature.getStats(ctx.auth.orgId);
+    return ctx.tasksFeature.getStats({ orgId: ctx.auth.orgId });
   }),
 });

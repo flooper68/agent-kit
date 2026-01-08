@@ -2,7 +2,16 @@ import { eq, and, or, ilike, sql, desc } from 'drizzle-orm';
 import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
 import { projects, tasks } from '../../../db/schema';
-import type { SearchProjectsInput, ProjectListItem } from '../types';
+import type { ProjectListItem } from './list-projects';
+
+export interface SearchProjectsInput {
+  userId: string;
+  orgId: string;
+  query: string;
+  limit: number;
+}
+
+export type SearchProjectsResult = ProjectListItem[];
 
 export class SearchProjectsQuery {
   private db: typeof DbType;
@@ -11,7 +20,7 @@ export class SearchProjectsQuery {
     this.db = db;
   }
 
-  async execute(input: SearchProjectsInput): Promise<ProjectListItem[]> {
+  async execute(input: SearchProjectsInput): Promise<SearchProjectsResult> {
     const { userId, orgId, query, limit } = input;
 
     const searchPattern = `%${escapeLikePattern(query.trim())}%`;

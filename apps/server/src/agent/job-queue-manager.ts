@@ -92,6 +92,15 @@ export class JobQueueManager {
   }
 
   /**
+   * Force-release a session lock
+   * Used by interrupt endpoint to allow new messages when worker may be dead
+   */
+  async releaseSessionLock(sessionId: string): Promise<void> {
+    const lockKey = `agent:session:${sessionId}:lock`;
+    await this.redis.del(lockKey);
+  }
+
+  /**
    * Enqueue an agent job to the job stream
    */
   async enqueue(

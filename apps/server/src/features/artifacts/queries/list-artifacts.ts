@@ -2,7 +2,29 @@ import { eq, desc, lt, and, or, ilike, type SQL } from 'drizzle-orm';
 import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
 import { artifacts } from '../../../db/schema';
-import type { ListArtifactsInput, PaginatedArtifacts } from '../types';
+
+export interface ListArtifactsInput {
+  userId: string;
+  orgId: string;
+  limit: number;
+  cursor?: string;
+  search?: string;
+}
+
+export interface ArtifactListItem {
+  id: string;
+  title: string;
+  summary: string | null;
+  format: string;
+  sizeBytes: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ListArtifactsResult {
+  items: ArtifactListItem[];
+  nextCursor: string | undefined;
+}
 
 export class ListArtifactsQuery {
   private db: typeof DbType;
@@ -11,7 +33,7 @@ export class ListArtifactsQuery {
     this.db = db;
   }
 
-  async execute(input: ListArtifactsInput): Promise<PaginatedArtifacts> {
+  async execute(input: ListArtifactsInput): Promise<ListArtifactsResult> {
     const { userId, orgId, limit, cursor, search } = input;
 
     // If cursor is provided, get the cursor artifact's createdAt for filtering

@@ -4,12 +4,30 @@ import {
   agentSessions,
   agentSessionMessages,
   agentSessionEvents,
-  localAgents,
+  externalAgents,
+  serverAgents,
+  type AgentSession,
+  type AgentSessionMessage,
+  type MessagePart,
 } from '../../../db/schema';
 import type { AgentSessionEvent } from '../../../db/schema/agent-session-events';
-import type { SessionWithMessages } from '../types';
 import { reconstructPartsFromEvents } from '../utils';
 import { logger } from '../../../agent/logger';
+import { getModelInfo } from '../../../agent/model-config';
+
+export interface GetSessionWithMessagesInput {
+  sessionId: string;
+}
+
+export interface SessionWithMessages extends AgentSession {
+  messages: Array<AgentSessionMessage & { parts: MessagePart[] }>;
+  /** Resolved agent name (for display). For local agents, this is the full name, not the key. */
+  agentName?: string;
+  /** Max context tokens for the agent (from agent config or model default) */
+  maxContextTokens?: number;
+}
+
+export type GetSessionWithMessagesResult = SessionWithMessages | undefined;
 
 const log = logger.child({ module: 'get-session-with-messages' });
 
@@ -22,7 +40,10 @@ export class GetSessionWithMessagesQuery {
     this.agentNames = agentNames;
   }
 
-  async execute(sessionId: string): Promise<SessionWithMessages | undefined> {
+  async execute(
+    input: GetSessionWithMessagesInput
+  ): Promise<GetSessionWithMessagesResult> {
+    const { sessionId } = input;
     const [session] = await this.db
       .select()
       .from(agentSessions)
@@ -30,20 +51,48 @@ export class GetSessionWithMessagesQuery {
 
     if (!session) return undefined;
 
-    // Resolve agent name - check built-in agents first, then local agents
+    // Resolve agent name and max context - check built-in agents first, then custom agents
     let agentName = this.agentNames.get(session.agentId);
+    let maxContextTokens: number | undefined;
+
     if (!agentName && session.isLocalAgent) {
-      // Look up local agent name by key
-      const localAgentResult = await this.db
-        .select({ name: localAgents.name })
-        .from(localAgents)
-        .where(eq(localAgents.key, session.agentId))
+      // Look up custom agent name by key - check external agents first
+      const externalResult = await this.db
+        .select({ name: externalAgents.name })
+        .from(externalAgents)
+        .where(eq(externalAgents.key, session.agentId))
         .limit(1);
-      agentName = localAgentResult[0]?.name;
+
+      if (externalResult[0]) {
+        agentName = externalResult[0].name;
+        // External agents don't have maxContextTokens config
+      } else {
+        // Check server agents - get model and maxContextTokens
+        const serverResult = await this.db
+          .select({
+            name: serverAgents.name,
+            model: serverAgents.model,
+            maxContextTokens: serverAgents.maxContextTokens,
+          })
+          .from(serverAgents)
+          .where(eq(serverAgents.key, session.agentId))
+          .limit(1);
+
+        if (serverResult[0]) {
+          agentName = serverResult[0].name;
+          // Use agent's maxContextTokens if set, otherwise use model's default
+          if (serverResult[0].maxContextTokens) {
+            maxContextTokens = serverResult[0].maxContextTokens;
+          } else {
+            const modelInfo = getModelInfo(serverResult[0].model);
+            maxContextTokens = modelInfo?.contextWindow;
+          }
+        }
+      }
 
       if (!agentName) {
         log.warn(
-          'Local agent not found for session, using agentId as fallback',
+          'Custom agent not found for session, using agentId as fallback',
           {
             sessionId,
             agentId: session.agentId,
@@ -98,6 +147,7 @@ export class GetSessionWithMessagesQuery {
     return {
       ...session,
       agentName,
+      maxContextTokens,
       messages: messagesWithParts,
     };
   }

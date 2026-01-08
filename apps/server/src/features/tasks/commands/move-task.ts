@@ -6,7 +6,16 @@ import {
   type TaskEvent,
   type TaskStatus,
 } from '../../../db/schema';
-import type { MoveTaskInput } from '../types';
+
+export interface MoveTaskInput {
+  id: string;
+  userId: string;
+  orgId: string;
+  status: TaskStatus;
+  position: number;
+}
+
+export type MoveTaskResult = Task | undefined;
 
 export class MoveTaskCommand {
   private db: typeof DbType;
@@ -47,7 +56,7 @@ export class MoveTaskCommand {
       .where(inArray(tasks.id, taskIds));
   }
 
-  async execute(input: MoveTaskInput): Promise<Task | undefined> {
+  async execute(input: MoveTaskInput): Promise<MoveTaskResult> {
     return await this.db.transaction(async (tx) => {
       // Get the current task
       const [currentTask] = await tx

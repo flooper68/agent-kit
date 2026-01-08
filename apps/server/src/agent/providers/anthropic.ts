@@ -7,45 +7,13 @@ import type {
 } from '../types';
 import { classifyError } from '../errors';
 import { logger } from '../logger';
+import { getModelInfo, DEFAULT_THINKING_CONFIG } from '../model-config';
 
 /**
- * Thinking budget configuration per model.
- * Models not listed here will not have thinking enabled.
- * Budget is in tokens.
+ * Default thinking budget for Anthropic models.
  */
-const THINKING_BUDGET_BY_MODEL: Record<string, number> = {
-  'claude-sonnet-4-20250514': 10000,
-  'claude-opus-4-20250514': 16000,
-  // Add more models as needed
-};
-
-/**
- * Default thinking budget for models that support thinking but aren't explicitly configured.
- * Set to 0 to disable thinking by default.
- */
-const DEFAULT_THINKING_BUDGET = 10000;
-
-/**
- * Get the thinking configuration for a model.
- * Returns undefined if thinking should be disabled for the model.
- */
-function getThinkingConfig(
-  model: string
-): { type: 'enabled'; budgetTokens: number } | undefined {
-  // Check if model is explicitly configured
-  const configuredBudget = THINKING_BUDGET_BY_MODEL[model];
-  if (configuredBudget !== undefined) {
-    return { type: 'enabled', budgetTokens: configuredBudget };
-  }
-
-  // For Claude models with extended thinking support, use default budget
-  if (model.includes('claude-sonnet-4') || model.includes('claude-opus-4')) {
-    return { type: 'enabled', budgetTokens: DEFAULT_THINKING_BUDGET };
-  }
-
-  // Disable thinking for other models
-  return undefined;
-}
+const DEFAULT_THINKING_BUDGET =
+  DEFAULT_THINKING_CONFIG.budget.budgetTokens ?? 10000;
 
 export class AnthropicProvider implements AgentProvider {
   id = 'anthropic';
@@ -53,7 +21,16 @@ export class AnthropicProvider implements AgentProvider {
   async *createStream(
     config: StreamConfig
   ): AsyncIterable<ProviderStreamEvent> {
-    const { model, systemPrompt, messages, tools, abortSignal } = config;
+    const {
+      model,
+      systemPrompt,
+      messages,
+      tools,
+      abortSignal,
+      temperature,
+      maxTokens,
+      thinkingConfig,
+    } = config;
     const timer = logger.startTimer();
     const toolNames = Object.keys(tools);
 
@@ -63,9 +40,23 @@ export class AnthropicProvider implements AgentProvider {
       toolName: toolNames.join(', '),
     });
 
-    try {
-      const thinkingConfig = getThinkingConfig(model);
+    // Get model info for validation
+    const modelInfo = getModelInfo(model);
 
+    // Determine thinking config - use provided or fall back to defaults
+    // Thinking is enabled by default for models that support it
+    let finalThinkingConfig:
+      | { type: 'enabled'; budgetTokens: number }
+      | undefined;
+
+    if (modelInfo?.supportsThinking && thinkingConfig?.enabled !== false) {
+      finalThinkingConfig = {
+        type: 'enabled',
+        budgetTokens: thinkingConfig?.budgetTokens ?? DEFAULT_THINKING_BUDGET,
+      };
+    }
+
+    try {
       const result = streamText({
         model: anthropic(model),
         messages: [
@@ -81,9 +72,13 @@ export class AnthropicProvider implements AgentProvider {
         tools,
         abortSignal,
         stopWhen: stepCountIs(2000),
+        temperature,
+        maxOutputTokens: maxTokens
+          ? Math.min(maxTokens, modelInfo?.maxOutputTokens ?? 64000)
+          : undefined,
         providerOptions: {
           anthropic: {
-            ...(thinkingConfig && { thinking: thinkingConfig }),
+            ...(finalThinkingConfig && { thinking: finalThinkingConfig }),
             cacheControl: { type: 'ephemeral' }, // Cache tools
           },
         },

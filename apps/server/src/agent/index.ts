@@ -27,14 +27,14 @@ export {
 } from './session-summarizer';
 export type { SessionSummary, SummarizerConfig } from './session-summarizer';
 
-// Local agent connection management
-export { LocalAgentsConnectionManager } from './local-agents-connection-manager';
+// External agent connection management
+export { ExternalAgentsConnectionManager } from './external-agents-connection-manager';
 export type {
-  LocalAgentConnection,
+  ExternalAgentConnection,
   ConnectionStatusUpdate,
-} from './local-agents-connection-manager';
-export { LocalAgentWebSocketRegistry } from './local-agent-websocket-registry';
-export { LocalAgentWebSocketService } from './local-agent-websocket-service';
+} from './external-agents-connection-manager';
+export { ExternalAgentWebSocketRegistry } from './external-agent-websocket-registry';
+export { ExternalAgentWebSocketService } from './external-agent-websocket-service';
 
 // Agent spawning
 export { AgentSpawner } from './agent-spawner';

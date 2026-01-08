@@ -2,6 +2,14 @@ import { eq, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { artifacts, type Artifact } from '../../../db/schema';
 
+export interface DeleteArtifactInput {
+  id: string;
+  userId: string;
+  orgId: string;
+}
+
+export type DeleteArtifactResult = Artifact | undefined;
+
 export class DeleteArtifactCommand {
   private db: typeof DbType;
 
@@ -9,11 +17,8 @@ export class DeleteArtifactCommand {
     this.db = db;
   }
 
-  async execute(
-    id: string,
-    userId: string,
-    orgId: string
-  ): Promise<Artifact | undefined> {
+  async execute(input: DeleteArtifactInput): Promise<DeleteArtifactResult> {
+    const { id, userId, orgId } = input;
     const [deleted] = await this.db
       .delete(artifacts)
       .where(

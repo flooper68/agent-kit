@@ -17,11 +17,11 @@ export function createDeleteProjectTool(context: DeleteProjectContext): Tool {
       projectId: z.string().uuid().describe('The ID of the project to delete'),
     }),
     execute: async ({ projectId }: { projectId: string }) => {
-      const project = await context.projectsFeature.delete(
-        projectId,
-        context.userId,
-        context.orgId
-      );
+      const project = await context.projectsFeature.delete({
+        id: projectId,
+        userId: context.userId,
+        orgId: context.orgId,
+      });
 
       if (!project) {
         return {

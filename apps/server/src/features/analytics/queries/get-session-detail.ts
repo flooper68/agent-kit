@@ -4,7 +4,8 @@ import {
   agentSessions,
   agentSessionEvents,
   agentSessionMessages,
-  localAgents,
+  externalAgents,
+  serverAgents,
 } from '../../../db/schema';
 import type {
   AgentSessionUsage,
@@ -69,6 +70,8 @@ export interface SessionDetailData {
   events: SessionDetailEvent[];
 }
 
+export type GetSessionDetailResult = SessionDetailData | undefined;
+
 export class GetSessionDetailQuery {
   private db: typeof DbType;
   private agentNames: Map<string, string>;
@@ -78,9 +81,7 @@ export class GetSessionDetailQuery {
     this.agentNames = agentNames;
   }
 
-  async execute(
-    input: GetSessionDetailInput
-  ): Promise<SessionDetailData | undefined> {
+  async execute(input: GetSessionDetailInput): Promise<GetSessionDetailResult> {
     // Fetch session - filter by both sessionId and orgId for security
     const sessionResults = await this.db
       .select({
@@ -153,16 +154,28 @@ export class GetSessionDetailQuery {
         asc(agentSessionEvents.sequence)
       );
 
-    // Resolve agent name - check built-in agents first, then local agents
+    // Resolve agent name from custom agents
     let agentName = this.agentNames.get(session.agentId);
     if (!agentName) {
-      // Look up local agent name by key
-      const localAgentResult = await this.db
-        .select({ name: localAgents.name })
-        .from(localAgents)
-        .where(eq(localAgents.key, session.agentId))
+      // Look up agent name by key
+      // Check external agents first
+      const externalResult = await this.db
+        .select({ name: externalAgents.name })
+        .from(externalAgents)
+        .where(eq(externalAgents.key, session.agentId))
         .limit(1);
-      agentName = localAgentResult[0]?.name ?? session.agentId;
+
+      if (externalResult[0]) {
+        agentName = externalResult[0].name;
+      } else {
+        // Check server agents
+        const serverResult = await this.db
+          .select({ name: serverAgents.name })
+          .from(serverAgents)
+          .where(eq(serverAgents.key, session.agentId))
+          .limit(1);
+        agentName = serverResult[0]?.name ?? session.agentId;
+      }
     }
 
     return {

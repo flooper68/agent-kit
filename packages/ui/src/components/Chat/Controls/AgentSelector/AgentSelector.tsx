@@ -14,6 +14,13 @@ import type { AgentType } from '../../../../types/chat';
 
 const AGENT_USAGE_STORAGE_KEY = 'agent-kit:agent-selector-usage';
 
+// Provider display config
+const PROVIDER_LABELS: Record<string, string> = {
+  anthropic: 'Anthropic',
+  openai: 'OpenAI',
+  gemini: 'Google',
+};
+
 interface AgentUsage {
   [agentId: string]: number; // timestamp of last use
 }
@@ -117,9 +124,13 @@ export const AgentSelector = memo(
           .trim();
       }, []);
 
-      // Sort agents by recency (most recently used first)
+      // Sort agents: favorites first, then by recency (most recently used first)
       const sortedAgents = useMemo(() => {
         return [...agents].sort((a, b) => {
+          // Favorites first
+          if (a.isFavorite && !b.isFavorite) return -1;
+          if (!a.isFavorite && b.isFavorite) return 1;
+          // Then by recency
           const aUsage = agentUsage[a.id] ?? 0;
           const bUsage = agentUsage[b.id] ?? 0;
           return bUsage - aUsage; // Most recent first
@@ -282,11 +293,27 @@ export const AgentSelector = memo(
                                 <span className="font-medium">
                                   {agent.name}
                                 </span>
+                                {agent.isFavorite && (
+                                  <svg
+                                    className="h-3 w-3 fill-yellow-400 text-yellow-400"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                  >
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                  </svg>
+                                )}
                                 {agent.isLocal && !agent.disabled && (
                                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
-                                    Local
+                                    Custom
                                   </span>
                                 )}
+                                {agent.provider &&
+                                  PROVIDER_LABELS[agent.provider] && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {PROVIDER_LABELS[agent.provider]}
+                                    </span>
+                                  )}
                                 {agent.disabled && (
                                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
                                     Offline

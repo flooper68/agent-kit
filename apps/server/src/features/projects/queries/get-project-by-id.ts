@@ -6,7 +6,34 @@ import {
   taskArtifacts,
   type TaskStatus,
 } from '../../../db/schema';
-import type { ProjectWithTasks, TaskSummary } from '../types';
+
+export interface GetProjectByIdInput {
+  id: string;
+  userId: string;
+  orgId: string;
+}
+
+export interface TaskSummary {
+  id: string;
+  title: string;
+  description: string | null;
+  priority: string;
+  position: number;
+  artifactCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ProjectWithTasks {
+  id: string;
+  title: string;
+  summary: string | null;
+  tasksByStatus: Record<TaskStatus, TaskSummary[]>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type GetProjectByIdResult = ProjectWithTasks | undefined;
 
 export class GetProjectByIdQuery {
   private db: typeof DbType;
@@ -15,11 +42,8 @@ export class GetProjectByIdQuery {
     this.db = db;
   }
 
-  async execute(
-    id: string,
-    userId: string,
-    orgId: string
-  ): Promise<ProjectWithTasks | undefined> {
+  async execute(input: GetProjectByIdInput): Promise<GetProjectByIdResult> {
+    const { id, userId, orgId } = input;
     // Get the project
     const [project] = await this.db
       .select()

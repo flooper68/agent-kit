@@ -1,9 +1,8 @@
 import type { AgentsFeature } from '../features/agents';
-import type { LocalAgentsFeature } from '../features/local-agents';
 import type { JobQueueManager } from './job-queue-manager';
 import type { EventStreamManager, StreamEvent } from './event-stream-manager';
 import type { StreamingStateManager } from './streaming-state-manager';
-import type { LocalAgentWebSocketRegistry } from './local-agent-websocket-registry';
+import type { ExternalAgentWebSocketRegistry } from './external-agent-websocket-registry';
 import type { JobRegistryManager } from './job-registry-manager';
 import type { CacheInvalidationService } from '../real-time';
 import { SPAWN_CONFIG } from './spawn-config';
@@ -93,11 +92,10 @@ const log = logger.child({ module: 'agent-spawner' });
 export class AgentSpawner {
   constructor(
     private agentsFeature: AgentsFeature,
-    private localAgentsFeature: LocalAgentsFeature,
     private jobQueueManager: JobQueueManager,
     private eventStreamManager: EventStreamManager,
     private streamingStateManager: StreamingStateManager,
-    private localAgentWSRegistry: LocalAgentWebSocketRegistry,
+    private externalAgentWSRegistry: ExternalAgentWebSocketRegistry,
     private cacheInvalidation: CacheInvalidationService,
     private jobRegistryManager: JobRegistryManager
   ) {}
@@ -120,7 +118,9 @@ export class AgentSpawner {
       };
     }
 
-    const { localAgentUuid, resolvedAgentName, isLocalAgent } = agentInfo;
+    const { agentUuid, resolvedAgentName, isExternalAgent } = agentInfo;
+    // All custom agents are "local" in the DB sense (isLocalAgent=true means it's a custom agent, not builtin)
+    const isLocalAgent = true;
 
     // Resolve or create session
     const sessionResult = await this.resolveOrCreateSession(
@@ -176,15 +176,15 @@ export class AgentSpawner {
       );
 
       // Dispatch to agent
-      if (isLocalAgent) {
-        if (!localAgentUuid) {
+      if (isExternalAgent) {
+        if (!agentUuid) {
           throw new Error(
-            'Internal error: localAgentUuid missing for local agent'
+            'Internal error: agentUuid missing for external agent'
           );
         }
-        await this.dispatchToLocalAgent(
+        await this.dispatchToExternalAgent(
           sessionId,
-          localAgentUuid,
+          agentUuid,
           message,
           userId
         );
@@ -243,7 +243,9 @@ export class AgentSpawner {
       };
     }
 
-    const { localAgentUuid, isLocalAgent } = agentInfo;
+    const { agentUuid, isExternalAgent } = agentInfo;
+    // All custom agents are "local" in the DB sense (isLocalAgent=true means it's a custom agent, not builtin)
+    const isLocalAgent = true;
 
     // Resolve or create session
     const sessionResult = await this.resolveOrCreateSession(
@@ -270,15 +272,15 @@ export class AgentSpawner {
       );
 
       // Dispatch to agent
-      if (isLocalAgent) {
-        if (!localAgentUuid) {
+      if (isExternalAgent) {
+        if (!agentUuid) {
           throw new Error(
-            'Internal error: localAgentUuid missing for local agent'
+            'Internal error: agentUuid missing for external agent'
           );
         }
-        await this.dispatchToLocalAgent(
+        await this.dispatchToExternalAgent(
           sessionId,
-          localAgentUuid,
+          agentUuid,
           message,
           userId
         );
@@ -319,54 +321,44 @@ export class AgentSpawner {
     userId: string
   ): Promise<
     | {
-        localAgentUuid: string | undefined;
+        agentUuid: string | undefined;
         resolvedAgentName: string | undefined;
-        isLocalAgent: boolean;
+        isExternalAgent: boolean;
         timeout: number;
       }
     | { error: string }
   > {
-    let timeout: number = SPAWN_CONFIG.DEFAULT_TIMEOUT_MS;
-    let localAgentUuid: string | undefined;
-    let resolvedAgentName: string | undefined;
-    let isLocalAgent = false;
-
-    // Auto-detect agent type: first check built-in, then local
-    const builtInAgent = this.agentsFeature.agents.get(agentId);
-    if (builtInAgent) {
-      // Found as built-in agent
-      if (builtInAgent.spawnTimeout) {
-        timeout = builtInAgent.spawnTimeout;
-      }
-      resolvedAgentName = builtInAgent.name;
-      isLocalAgent = false;
-    } else {
-      // Not a built-in agent, check if it's a local agent by key
-      const localAgent = await this.localAgentsFeature.getByKey(
-        agentId,
-        userId
-      );
-      if (!localAgent) {
-        return {
-          error: `Agent not found: ${agentId}. Check that the agent ID is correct and the agent is available.`,
-        };
-      }
-      if (localAgent.disabled) {
-        return { error: `Local agent is disabled: ${agentId}` };
-      }
-
-      // Check if local agent is connected (using UUID for WebSocket registry)
-      if (!this.localAgentWSRegistry.isConnected(localAgent.id)) {
-        return { error: `Local agent is not connected: ${agentId}` };
-      }
-
-      // Store UUID and name for later use
-      localAgentUuid = localAgent.id;
-      resolvedAgentName = localAgent.name;
-      isLocalAgent = true;
+    // Look up custom agent by key
+    const agentResult = await this.agentsFeature.customAgents.getByKey(
+      agentId,
+      userId
+    );
+    if (!agentResult) {
+      return {
+        error: `Agent not found: ${agentId}. Check that the agent ID is correct and the agent is available.`,
+      };
     }
 
-    return { localAgentUuid, resolvedAgentName, isLocalAgent, timeout };
+    const isExternalAgent = agentResult.type === 'external';
+    const agent = agentResult.agent;
+
+    if (agent.disabled) {
+      return { error: `Agent is disabled: ${agentId}` };
+    }
+
+    // For external agents, check WebSocket connection (using UUID for registry)
+    if (isExternalAgent) {
+      if (!this.externalAgentWSRegistry.isConnected(agent.id)) {
+        return { error: `External agent is not connected: ${agentId}` };
+      }
+    }
+
+    // All agents are now custom agents
+    const timeout = SPAWN_CONFIG.DEFAULT_TIMEOUT_MS;
+    const agentUuid = agent.id;
+    const resolvedAgentName = agent.name;
+
+    return { agentUuid, resolvedAgentName, isExternalAgent, timeout };
   }
 
   /**
@@ -412,11 +404,11 @@ export class AgentSpawner {
   }
 
   /**
-   * Dispatch message to local agent via WebSocket
+   * Dispatch message to external agent via WebSocket
    */
-  private async dispatchToLocalAgent(
+  private async dispatchToExternalAgent(
     sessionId: string,
-    localAgentUuid: string,
+    agentUuid: string,
     message: string,
     userId: string
   ): Promise<void> {
@@ -438,7 +430,7 @@ export class AgentSpawner {
     // Publish cache invalidation
     await this.cacheInvalidation.publishSessionMessageAdded(userId, sessionId);
 
-    // Fetch session history for local agent
+    // Fetch session history for external agent
     const sessionHistory =
       await this.agentsFeature.sessions.getMessagesAndEvents(sessionId);
 
@@ -446,8 +438,8 @@ export class AgentSpawner {
       throw new Error('Failed to fetch session history');
     }
 
-    // Send to local agent via WebSocket (using UUID for registry lookup)
-    const sent = this.localAgentWSRegistry.sendMessage(localAgentUuid, {
+    // Send to external agent via WebSocket (using UUID for registry lookup)
+    const sent = this.externalAgentWSRegistry.sendMessage(agentUuid, {
       type: 'user_message',
       sessionId,
       messageId: assistantMessageId,
@@ -465,7 +457,7 @@ export class AgentSpawner {
         messageId: assistantMessageId,
         status: 'error',
       });
-      throw new Error('Local agent is not connected');
+      throw new Error('External agent is not connected');
     }
   }
 
@@ -639,7 +631,7 @@ export class AgentSpawner {
   }
 
   /**
-   * Get all available agents for spawning (built-in + local)
+   * Get all available agents for spawning (custom agents)
    * Delegates to shared implementation in system-prompt-builder
    */
   async getAvailableAgents(
@@ -647,10 +639,6 @@ export class AgentSpawner {
   ): Promise<
     Array<{ id: string; name: string; description: string; isLocal: boolean }>
   > {
-    return getAvailableAgentsFromBuilder(
-      this.agentsFeature,
-      this.localAgentsFeature,
-      userId
-    );
+    return getAvailableAgentsFromBuilder(this.agentsFeature, userId);
   }
 }

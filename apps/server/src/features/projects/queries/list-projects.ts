@@ -2,11 +2,37 @@ import { eq, desc, lt, and, or, ilike, sql, type SQL } from 'drizzle-orm';
 import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
 import { projects, tasks } from '../../../db/schema';
-import type {
-  ListProjectsInput,
-  PaginatedProjects,
-  ProjectListItem,
-} from '../types';
+
+export interface ListProjectsInput {
+  userId: string;
+  orgId: string;
+  limit: number;
+  cursor?: string;
+  search?: string;
+}
+
+export interface TaskCounts {
+  backlog: number;
+  todo: number;
+  inProgress: number;
+  review: number;
+  done: number;
+  total: number;
+}
+
+export interface ProjectListItem {
+  id: string;
+  title: string;
+  summary: string | null;
+  taskCounts: TaskCounts;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ListProjectsResult {
+  items: ProjectListItem[];
+  nextCursor: string | undefined;
+}
 
 export class ListProjectsQuery {
   private db: typeof DbType;
@@ -15,7 +41,7 @@ export class ListProjectsQuery {
     this.db = db;
   }
 
-  async execute(input: ListProjectsInput): Promise<PaginatedProjects> {
+  async execute(input: ListProjectsInput): Promise<ListProjectsResult> {
     const { userId, orgId, limit, cursor, search } = input;
 
     // If cursor is provided, get the cursor project's createdAt for filtering

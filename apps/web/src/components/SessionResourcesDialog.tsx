@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, Text, Button } from '@agent-kit/ui';
 import { FileText, Globe, ExternalLink, Layers } from 'lucide-react';
 import { trpc } from '../lib/trpc';
-import { ArtifactDetailModal } from './artifacts/ArtifactDetailModal';
 
 interface SessionResourcesDialogProps {
   sessionId: string | null;
@@ -13,9 +12,7 @@ export function SessionResourcesDialog({
   sessionId,
   onClose,
 }: SessionResourcesDialogProps) {
-  const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(
-    null
-  );
+  const navigate = useNavigate();
 
   const resourcesQuery = trpc.sessions.getResources.useQuery(
     { sessionId: sessionId! },
@@ -23,21 +20,8 @@ export function SessionResourcesDialog({
   );
 
   const handleArtifactClick = (artifactId: string) => {
-    setSelectedArtifactId(artifactId);
-  };
-
-  const handleArtifactClose = () => {
-    setSelectedArtifactId(null);
-  };
-
-  const handleDownload = (artifact: { title: string; content: string }) => {
-    const blob = new Blob([artifact.content], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${artifact.title}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    onClose();
+    navigate(`/app/artifacts/${artifactId}`);
   };
 
   const artifacts = resourcesQuery.data?.artifacts ?? [];
@@ -152,12 +136,6 @@ export function SessionResourcesDialog({
           </Dialog.Footer>
         </Dialog.Content>
       </Dialog>
-
-      <ArtifactDetailModal
-        artifactId={selectedArtifactId}
-        onClose={handleArtifactClose}
-        onDownload={handleDownload}
-      />
     </>
   );
 }

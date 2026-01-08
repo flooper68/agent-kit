@@ -24,6 +24,8 @@ export interface SessionData {
   }>;
   lastStreamId?: string;
   isStreaming: boolean;
+  /** Max context tokens for this session's agent (from agent config or model default) */
+  maxContextTokens?: number;
   usage?: {
     promptTokens: number;
     completionTokens: number;

@@ -2,6 +2,10 @@ import { eq, sql } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { agentSessions } from '../../../db/schema';
 
+export interface IncrementMessageCountInput {
+  sessionId: string;
+}
+
 export interface IncrementMessageCountResult {
   sessionId: string;
   messageCount: number;
@@ -18,8 +22,9 @@ export class IncrementMessageCountCommand {
    * Atomically increment message count and return new value
    */
   async execute(
-    sessionId: string
+    input: IncrementMessageCountInput
   ): Promise<IncrementMessageCountResult | undefined> {
+    const { sessionId } = input;
     const [result] = await this.db
       .update(agentSessions)
       .set({

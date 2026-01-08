@@ -18,6 +18,8 @@ import {
   ProjectsPageSkeleton,
   ProjectDetailPageSkeleton,
   AgentsPageSkeleton,
+  AgentFormPageSkeleton,
+  ArtifactDetailPageSkeleton,
 } from '../components/skeletons';
 import { ArtifactsPageSkeleton } from '../components/skeletons/ArtifactsPageSkeleton';
 
@@ -41,8 +43,6 @@ const NoProjectPage = lazy(() =>
     default: m.NoProjectPage,
   }))
 );
-// DashboardPage is not lazy-loaded since it handles its own loading state
-import { DashboardPage } from '../pages/DashboardPage';
 const SettingsPage = lazy(() =>
   import('../pages/admin/SettingsPage').then((m) => ({
     default: m.SettingsPage,
@@ -58,6 +58,11 @@ const ArtifactsPage = lazy(() =>
     default: m.ArtifactsPage,
   }))
 );
+const ArtifactDetailPage = lazy(() =>
+  import('../pages/artifacts/ArtifactDetailPage').then((m) => ({
+    default: m.ArtifactDetailPage,
+  }))
+);
 const ProjectsPage = lazy(() =>
   import('../pages/ProjectsPage').then((m) => ({
     default: m.ProjectsPage,
@@ -71,6 +76,21 @@ const ProjectDetailPage = lazy(() =>
 const AgentsPage = lazy(() =>
   import('../pages/AgentsPage').then((m) => ({
     default: m.AgentsPage,
+  }))
+);
+const CreateServerAgentPage = lazy(() =>
+  import('../pages/agents/CreateServerAgentPage').then((m) => ({
+    default: m.CreateServerAgentPage,
+  }))
+);
+const CreateExternalAgentPage = lazy(() =>
+  import('../pages/agents/CreateExternalAgentPage').then((m) => ({
+    default: m.CreateExternalAgentPage,
+  }))
+);
+const EditAgentPage = lazy(() =>
+  import('../pages/agents/EditAgentPage').then((m) => ({
+    default: m.EditAgentPage,
   }))
 );
 const NotFoundPage = lazy(() =>
@@ -165,14 +185,83 @@ const router = createBrowserRouter([
                   </Suspense>
                 ),
               },
+              // Single DashboardLayout instance wraps all dashboard routes
+              // This prevents remounting when navigating between routes
               {
-                index: true,
-                element: (
-                  <DashboardLayout>
-                    <DashboardPage />
-                  </DashboardLayout>
-                ),
+                element: <DashboardLayout />,
+                children: [
+                  {
+                    index: true,
+                    // Home page: layout renders AppAgentPanel as main content
+                    element: null,
+                  },
+                  {
+                    path: 'agents',
+                    element: (
+                      <Suspense fallback={<AgentsPageSkeleton />}>
+                        <AgentsPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'agents/new',
+                    element: (
+                      <Suspense fallback={<AgentFormPageSkeleton />}>
+                        <CreateServerAgentPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'agents/new/external',
+                    element: (
+                      <Suspense fallback={<AgentFormPageSkeleton />}>
+                        <CreateExternalAgentPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'agents/:id/edit',
+                    element: (
+                      <Suspense fallback={<AgentFormPageSkeleton />}>
+                        <EditAgentPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'artifacts',
+                    element: (
+                      <Suspense fallback={<ArtifactsPageSkeleton />}>
+                        <ArtifactsPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'artifacts/:id',
+                    element: (
+                      <Suspense fallback={<ArtifactDetailPageSkeleton />}>
+                        <ArtifactDetailPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'projects',
+                    element: (
+                      <Suspense fallback={<ProjectsPageSkeleton />}>
+                        <ProjectsPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'projects/:projectId',
+                    element: (
+                      <Suspense fallback={<ProjectDetailPageSkeleton />}>
+                        <ProjectDetailPage />
+                      </Suspense>
+                    ),
+                  },
+                ],
               },
+              // Admin routes use a different layout
               {
                 path: 'users',
                 element: (
@@ -191,46 +280,6 @@ const router = createBrowserRouter([
                       <AnalyticsPage />
                     </Suspense>
                   </AdminPageLayout>
-                ),
-              },
-              {
-                path: 'artifacts',
-                element: (
-                  <DashboardLayout showAgentPanel>
-                    <Suspense fallback={<ArtifactsPageSkeleton />}>
-                      <ArtifactsPage />
-                    </Suspense>
-                  </DashboardLayout>
-                ),
-              },
-              {
-                path: 'projects',
-                element: (
-                  <DashboardLayout showAgentPanel>
-                    <Suspense fallback={<ProjectsPageSkeleton />}>
-                      <ProjectsPage />
-                    </Suspense>
-                  </DashboardLayout>
-                ),
-              },
-              {
-                path: 'projects/:projectId',
-                element: (
-                  <DashboardLayout showAgentPanel>
-                    <Suspense fallback={<ProjectDetailPageSkeleton />}>
-                      <ProjectDetailPage />
-                    </Suspense>
-                  </DashboardLayout>
-                ),
-              },
-              {
-                path: 'agents',
-                element: (
-                  <DashboardLayout showAgentPanel>
-                    <Suspense fallback={<AgentsPageSkeleton />}>
-                      <AgentsPage />
-                    </Suspense>
-                  </DashboardLayout>
                 ),
               },
             ],

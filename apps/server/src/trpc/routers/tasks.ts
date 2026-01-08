@@ -32,22 +32,22 @@ export const tasksRouter = router({
   getByStatus: orgProcedure
     .input(z.object({ projectId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      return ctx.tasksFeature.getByStatus(
-        input.projectId,
-        ctx.auth.userId,
-        ctx.auth.orgId
-      );
+      return ctx.tasksFeature.getByStatus({
+        projectId: input.projectId,
+        userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
+      });
     }),
 
   // Get single task with details
   get: orgProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      const task = await ctx.tasksFeature.getById(
-        input.id,
-        ctx.auth.userId,
-        ctx.auth.orgId
-      );
+      const task = await ctx.tasksFeature.getById({
+        id: input.id,
+        userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
+      });
       if (!task) {
         throw new TRPCError({
           code: 'NOT_FOUND',
@@ -140,11 +140,11 @@ export const tasksRouter = router({
   delete: orgProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const deleted = await ctx.tasksFeature.delete(
-        input.id,
-        ctx.auth.userId,
-        ctx.auth.orgId
-      );
+      const deleted = await ctx.tasksFeature.delete({
+        id: input.id,
+        userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
+      });
       if (!deleted) {
         throw new TRPCError({
           code: 'NOT_FOUND',
@@ -163,12 +163,12 @@ export const tasksRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const attached = await ctx.tasksFeature.attachArtifact(
-        input.taskId,
-        input.artifactId,
-        ctx.auth.userId,
-        ctx.auth.orgId
-      );
+      const attached = await ctx.tasksFeature.attachArtifact({
+        taskId: input.taskId,
+        artifactId: input.artifactId,
+        userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
+      });
       return { success: true, alreadyAttached: !attached };
     }),
 
@@ -181,12 +181,12 @@ export const tasksRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const detached = await ctx.tasksFeature.detachArtifact(
-        input.taskId,
-        input.artifactId,
-        ctx.auth.userId,
-        ctx.auth.orgId
-      );
+      const detached = await ctx.tasksFeature.detachArtifact({
+        taskId: input.taskId,
+        artifactId: input.artifactId,
+        userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
+      });
       return { success: true, wasAttached: detached };
     }),
 
@@ -209,6 +209,6 @@ export const tasksRouter = router({
 
   // Get task stats (admin only)
   getStats: adminProcedure.query(async ({ ctx }) => {
-    return ctx.tasksFeature.getStats(ctx.auth.orgId);
+    return ctx.tasksFeature.getStats({ orgId: ctx.auth.orgId });
   }),
 });

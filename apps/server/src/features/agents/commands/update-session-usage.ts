@@ -21,6 +21,8 @@ export interface UpdateSessionUsageInput {
   provider?: string;
 }
 
+export type UpdateSessionUsageResult = void;
+
 export class UpdateSessionUsageCommand {
   private db: typeof DbType;
 
@@ -28,7 +30,7 @@ export class UpdateSessionUsageCommand {
     this.db = db;
   }
 
-  async execute(input: UpdateSessionUsageInput): Promise<void> {
+  async execute(input: UpdateSessionUsageInput): Promise<UpdateSessionUsageResult> {
     const {
       sessionId,
       promptTokens,

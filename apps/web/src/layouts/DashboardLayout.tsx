@@ -5,7 +5,7 @@ import {
   useOrganization,
   useOrganizationList,
 } from '@clerk/clerk-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
   AppLayout,
   ProjectSwitcher,
@@ -24,6 +24,7 @@ import type {
   AgentType,
   AppLayoutRef,
   SessionFilter,
+  TaskHistoryItem,
 } from '@agent-kit/ui';
 import {
   Bot,
@@ -35,7 +36,6 @@ import {
 } from 'lucide-react';
 import { checkIsAdmin } from '../lib/auth';
 import { useChatHistory } from '../hooks/useChatHistory';
-import { useLocalAgentConnectionStatus } from '../hooks/useCacheInvalidation';
 import { useGlobalKeyboardShortcut } from '../hooks/useGlobalKeyboardShortcut';
 import { useSession } from '../contexts/SessionContext';
 import {
@@ -53,12 +53,6 @@ import { AppCommandPalette } from '../components/AppCommandPalette';
 
 const PANEL_WIDTH_STORAGE_KEY = 'agent-kit-panel-width';
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-  /** Show the agent panel alongside the main content */
-  showAgentPanel?: boolean;
-}
-
 function getDefaultPanelWidth(): number {
   if (typeof window === 'undefined') return 0;
   const saved = localStorage.getItem(PANEL_WIDTH_STORAGE_KEY);
@@ -70,12 +64,14 @@ function getDefaultPanelWidth(): number {
   return Math.round(window.innerWidth * 0.5);
 }
 
-function DashboardLayoutInner({
-  children,
-  showAgentPanel = false,
-}: DashboardLayoutProps) {
+function DashboardLayoutInner() {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Determine layout mode based on route
+  const isHomePage = location.pathname === '/app';
+  // Always show the side panel to keep a single AppAgentPanel instance across routes
+  const showSidePanel = true;
   const { user } = useUser();
   const { signOut } = useClerk();
   const { organization, membership } = useOrganization();
@@ -140,13 +136,13 @@ function DashboardLayoutInner({
     (agent: AgentType) => {
       setSelectedAgentId(agent.id);
       // Expand panel if on a page with side panel
-      if (showAgentPanel) {
+      if (showSidePanel) {
         handleExpandPanel();
       }
       // Always request input focus (works on home page and side panel pages)
       requestInputFocus();
     },
-    [setSelectedAgentId, showAgentPanel, handleExpandPanel, requestInputFocus]
+    [setSelectedAgentId, showSidePanel, handleExpandPanel, requestInputFocus]
   );
 
   // Clear pending focus flag
@@ -173,6 +169,13 @@ function DashboardLayoutInner({
     cursor: currentHistoryCursor,
   });
 
+  // Fetch recent chats for home page display
+  const { sessions: recentChats, refetch: refetchRecentChats } = useChatHistory(
+    {
+      limit: 3,
+    }
+  );
+
   // Reset pagination when filter changes
   useEffect(() => {
     setHistoryCursors([]);
@@ -192,37 +195,26 @@ function DashboardLayoutInner({
   // Fetch agents for the agent panel and command palette
   const agentsQuery = trpc.agents.list.useQuery();
 
-  // Track local agent connection status
-  const hasLocalAgents = agentsQuery.data?.some((a) => a.isLocal) ?? false;
-  const localAgentConnectionStatus =
-    useLocalAgentConnectionStatus(hasLocalAgents);
-
-  // Map server agents to UI AgentType format (with disabled state for disconnected local agents)
+  // Map server agents to UI AgentType format
   const agents: AgentType[] = useMemo(() => {
     return (agentsQuery.data || []).map((agent) => ({
       id: agent.id,
       name: agent.name,
       description: agent.description ?? undefined,
       isLocal: agent.isLocal,
-      // Local agents are disabled when not connected
-      disabled: agent.isLocal
-        ? !localAgentConnectionStatus.get(agent.id)
-        : false,
-      // Built-in agents have tools, model, provider; local agents don't
-      ...(agent.isLocal
-        ? {}
-        : {
-            tools: agent.tools,
-            model: agent.model,
-            provider: agent.provider,
-          }),
+      isFavorite: agent.isFavorite,
+      model: agent.model ?? undefined,
+      provider: agent.provider ?? undefined,
+      // External local agents are disabled when not connected (server agents are always enabled)
+      disabled: false,
     }));
-  }, [agentsQuery.data, localAgentConnectionStatus]);
+  }, [agentsQuery.data]);
 
   // Delete session mutation
   const deleteSessionMutation = trpc.sessions.delete.useMutation({
     onSuccess: () => {
       refetchSessions();
+      refetchRecentChats();
     },
   });
 
@@ -246,10 +238,31 @@ function DashboardLayoutInner({
     [deleteSessionMutation]
   );
 
+  // Handlers for recent chats on home page
+  const handleRecentChatClick = useCallback(
+    (chat: TaskHistoryItem) => {
+      setSessionId(chat.id);
+    },
+    [setSessionId]
+  );
+
+  const handleRecentChatDelete = useCallback(
+    async (chat: TaskHistoryItem) => {
+      try {
+        await deleteSessionMutation.mutateAsync({ sessionId: chat.id });
+      } catch (error) {
+        console.error('Failed to delete session:', error);
+      }
+    },
+    [deleteSessionMutation]
+  );
+
   const handleNewSession = useCallback(() => {
     clearSession();
-    handleExpandPanel();
-  }, [clearSession, handleExpandPanel]);
+    if (showSidePanel) {
+      handleExpandPanel();
+    }
+  }, [clearSession, showSidePanel, handleExpandPanel]);
 
   const projects: Project[] = useMemo(() => {
     if (!userMemberships?.data) return [];
@@ -313,7 +326,7 @@ function DashboardLayoutInner({
                   label: 'Local Agents',
                   icon: <Bot className="h-4 w-4" />,
                   onClick: () => navigate('/app/agents'),
-                  active: currentPath === '/app/agents',
+                  active: currentPath.startsWith('/app/agents'),
                 },
                 {
                   id: 'artifacts',
@@ -414,7 +427,7 @@ function DashboardLayoutInner({
                   variant="ghost"
                   size="sm"
                   className={
-                    currentPath === '/app/agents'
+                    currentPath.startsWith('/app/agents')
                       ? 'bg-accent text-accent-foreground'
                       : undefined
                   }
@@ -469,42 +482,47 @@ function DashboardLayoutInner({
               </div>
             ) : undefined,
         }}
-        panelConfig={
-          showAgentPanel
-            ? {
-                defaultWidth: panelWidth,
-                minWidth: 300,
-                maxWidth: 1200,
-                defaultCollapsed: false,
-              }
-            : undefined
-        }
+        panelConfig={{
+          defaultWidth: panelWidth,
+          minWidth: 300,
+          maxWidth: 1200,
+          defaultCollapsed: false,
+        }}
         panelWidth={panelWidth}
         onPanelWidthChange={handlePanelWidthChange}
+        // On home page: hide main + resizer, make panel full width
+        className={
+          isHomePage
+            ? '[&>div>main]:hidden [&>div>div:nth-child(2)]:hidden [&>div>div:first-child]:!w-full [&>div>div:first-child>div]:!w-full'
+            : undefined
+        }
+        panelToggleDisabled={isHomePage}
         assistantPanel={
-          showAgentPanel ? (
-            <AppAgentPanel
-              agents={agents}
-              selectedAgentId={selectedAgentId}
-              onAgentSelect={handleAgentSelectFromPalette}
-              onNewChat={handleNewSession}
-              pendingInputFocus={pendingInputFocus}
-              onInputFocused={handleInputFocused}
-              emptyStateConfig={{
-                title: 'How can I help?',
-                description:
-                  'Ask me anything or try one of the suggestions below.',
-              }}
-              suggestions={[
-                { id: '1', text: 'What time is it?' },
-                { id: '2', text: 'Tell me a joke' },
-                { id: '3', text: 'Help me with code' },
-              ]}
-            />
-          ) : undefined
+          <AppAgentPanel
+            agents={agents}
+            selectedAgentId={selectedAgentId}
+            onAgentSelect={handleAgentSelectFromPalette}
+            onNewChat={handleNewSession}
+            pendingInputFocus={pendingInputFocus}
+            onInputFocused={handleInputFocused}
+            emptyStateConfig={{
+              title: 'How can I help?',
+              description:
+                'Ask me anything or try one of the suggestions below.',
+            }}
+            suggestions={[
+              { id: '1', text: 'What time is it?' },
+              { id: '2', text: 'Tell me a joke' },
+              { id: '3', text: 'Help me with code' },
+            ]}
+            // Only show recentChats on home page
+            recentChats={isHomePage ? recentChats : undefined}
+            onRecentChatClick={isHomePage ? handleRecentChatClick : undefined}
+            onRecentChatDelete={isHomePage ? handleRecentChatDelete : undefined}
+          />
         }
       >
-        {children}
+        {isHomePage ? null : <Outlet />}
       </AppLayout>
       <TaskHistorySidebar
         open={isHistoryOpen}
@@ -524,9 +542,9 @@ function DashboardLayoutInner({
       <AppCommandPalette
         open={isCommandPaletteOpen}
         onOpenChange={setIsCommandPaletteOpen}
-        onTogglePanel={showAgentPanel ? handleTogglePanel : undefined}
-        onSetPanelWidth={showAgentPanel ? handleSetPanelWidth : undefined}
-        onExpandPanel={showAgentPanel ? handleExpandPanel : undefined}
+        onTogglePanel={showSidePanel ? handleTogglePanel : undefined}
+        onSetPanelWidth={showSidePanel ? handleSetPanelWidth : undefined}
+        onExpandPanel={showSidePanel ? handleExpandPanel : undefined}
         onToggleHistory={handleToggleHistory}
         agents={agents}
         onAgentSelect={handleAgentSelectFromPalette}
@@ -536,13 +554,13 @@ function DashboardLayoutInner({
   );
 }
 
-export function DashboardLayout(props: DashboardLayoutProps) {
+export function DashboardLayout() {
   return (
     <ToastProvider>
       <AgentSelectionProvider>
         <CommandRegistryProvider>
           <HeaderActionsProvider>
-            <DashboardLayoutInner {...props} />
+            <DashboardLayoutInner />
           </HeaderActionsProvider>
         </CommandRegistryProvider>
       </AgentSelectionProvider>

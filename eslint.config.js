@@ -44,7 +44,12 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/storybook-static/**'],
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/storybook-static/**',
+      '**/migrations/**',
+    ],
   },
   prettier
 );

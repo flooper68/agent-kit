@@ -1,7 +1,36 @@
 import { eq, and, inArray, sql, type SQL, gt } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { tasks, taskArtifacts } from '../../../db/schema';
-import type { ListTasksInput, TaskListItem } from '../types';
+import {
+  tasks,
+  taskArtifacts,
+  type TaskStatus,
+  type TaskPriority,
+} from '../../../db/schema';
+
+export interface ListTasksInput {
+  projectId: string;
+  userId: string;
+  orgId: string;
+  status?: TaskStatus[];
+  priority?: TaskPriority[];
+  hasArtifacts?: boolean;
+}
+
+export interface TaskListItem {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  position: number;
+  completedAt: Date | null;
+  artifactCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type ListTasksByProjectResult = TaskListItem[];
 
 export class ListTasksByProjectQuery {
   private db: typeof DbType;
@@ -10,7 +39,7 @@ export class ListTasksByProjectQuery {
     this.db = db;
   }
 
-  async execute(input: ListTasksInput): Promise<TaskListItem[]> {
+  async execute(input: ListTasksInput): Promise<ListTasksByProjectResult> {
     const conditions: SQL[] = [
       eq(tasks.projectId, input.projectId),
       eq(tasks.userId, input.userId),

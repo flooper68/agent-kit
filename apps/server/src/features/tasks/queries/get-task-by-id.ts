@@ -1,7 +1,43 @@
 import { eq, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { tasks, taskArtifacts, artifacts } from '../../../db/schema';
-import type { TaskWithDetails, ArtifactSummary } from '../types';
+import {
+  tasks,
+  taskArtifacts,
+  artifacts,
+  type TaskStatus,
+  type TaskPriority,
+  type TaskEvent,
+} from '../../../db/schema';
+
+export interface GetTaskByIdInput {
+  id: string;
+  userId: string;
+  orgId: string;
+}
+
+export interface ArtifactSummary {
+  id: string;
+  title: string;
+  format: string;
+  createdAt: Date;
+}
+
+export interface TaskWithDetails {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  position: number;
+  completedAt: Date | null;
+  events: TaskEvent[];
+  artifacts: ArtifactSummary[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type GetTaskByIdResult = TaskWithDetails | undefined;
 
 export class GetTaskByIdQuery {
   private db: typeof DbType;
@@ -10,11 +46,8 @@ export class GetTaskByIdQuery {
     this.db = db;
   }
 
-  async execute(
-    id: string,
-    userId: string,
-    orgId: string
-  ): Promise<TaskWithDetails | undefined> {
+  async execute(input: GetTaskByIdInput): Promise<GetTaskByIdResult> {
+    const { id, userId, orgId } = input;
     // Get the task
     const [task] = await this.db
       .select()

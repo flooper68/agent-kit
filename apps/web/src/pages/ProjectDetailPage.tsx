@@ -41,7 +41,6 @@ import {
 } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { useHeaderActions } from '../contexts/HeaderActionsContext';
-import { ArtifactDetailModal } from '../components/artifacts/ArtifactDetailModal';
 
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -60,9 +59,6 @@ export function ProjectDetailPage() {
   const [taskDialogMode, setTaskDialogMode] = useState<
     'view' | 'edit' | 'create'
   >('view');
-  const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(
-    null
-  );
 
   // Form state for new task
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -681,22 +677,7 @@ export function ProjectDetailPage() {
         isDeleting={deleteTaskMutation.isPending}
         autoSave
         autoSaveDelay={800}
-        onArtifactClick={setSelectedArtifactId}
-      />
-
-      {/* Artifact Detail Modal */}
-      <ArtifactDetailModal
-        artifactId={selectedArtifactId}
-        onClose={() => setSelectedArtifactId(null)}
-        onDownload={(artifact) => {
-          const blob = new Blob([artifact.content], { type: 'text/markdown' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `${artifact.title}.md`;
-          a.click();
-          URL.revokeObjectURL(url);
-        }}
+        onArtifactClick={(artifactId) => navigate(`/app/artifacts/${artifactId}`)}
       />
 
       {/* Edit Project Dialog */}

@@ -1,7 +1,18 @@
 import { eq } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { agentSessionMessages } from '../../../db/schema';
-import type { UpdateMessageStatusInput } from '../types';
+import {
+  agentSessionMessages,
+  type AgentSessionMessageStatus,
+  type AgentSessionMessageMetadata,
+} from '../../../db/schema';
+
+export interface UpdateMessageStatusInput {
+  messageId: string;
+  status: AgentSessionMessageStatus;
+  metadata?: AgentSessionMessageMetadata;
+}
+
+export type UpdateMessageStatusResult = void;
 
 export class UpdateMessageStatusCommand {
   private db: typeof DbType;
@@ -10,7 +21,7 @@ export class UpdateMessageStatusCommand {
     this.db = db;
   }
 
-  async execute(input: UpdateMessageStatusInput): Promise<void> {
+  async execute(input: UpdateMessageStatusInput): Promise<UpdateMessageStatusResult> {
     await this.db
       .update(agentSessionMessages)
       .set({

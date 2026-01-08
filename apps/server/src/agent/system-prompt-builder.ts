@@ -1,5 +1,4 @@
 import type { AgentsFeature } from '../features/agents';
-import type { LocalAgentsFeature } from '../features/local-agents';
 
 export interface SpawnableAgent {
   id: string;
@@ -14,7 +13,6 @@ export interface SpawnableAgent {
 export async function buildSystemPrompt(
   basePrompt: string,
   agentsFeature: AgentsFeature,
-  localAgentsFeature: LocalAgentsFeature,
   userId: string,
   includeSpawnableAgents: boolean
 ): Promise<string> {
@@ -24,7 +22,6 @@ export async function buildSystemPrompt(
 
   const spawnableAgentsSection = await generateSpawnableAgentsSection(
     agentsFeature,
-    localAgentsFeature,
     userId
   );
 
@@ -33,18 +30,32 @@ export async function buildSystemPrompt(
 
 /**
  * Generate the available agents section for the system prompt
+ * All enabled agents are available for spawning.
  */
 async function generateSpawnableAgentsSection(
   agentsFeature: AgentsFeature,
-  localAgentsFeature: LocalAgentsFeature,
   userId: string
 ): Promise<string> {
-  // Get built-in agents
-  const builtInAgents = agentsFeature.agents.list();
+  // Get custom agents (both external and server)
+  const agentsResult = await agentsFeature.customAgents.list(userId);
 
-  // Get local agents
-  const localAgents = await localAgentsFeature.list(userId);
-  const activeLocalAgents = localAgents.filter((agent) => !agent.disabled);
+  // Combine external and server agents with their keys
+  const allAgents = [
+    ...agentsResult.external.map((a) => ({
+      key: a.key,
+      name: a.name,
+      description: a.description,
+      disabled: a.disabled,
+    })),
+    ...agentsResult.server.map((a) => ({
+      key: a.key,
+      name: a.name,
+      description: a.description,
+      disabled: a.disabled,
+    })),
+  ];
+
+  const activeAgents = allAgents.filter((agent) => !agent.disabled);
 
   // Build the section
   const lines: string[] = [
@@ -52,28 +63,22 @@ async function generateSpawnableAgentsSection(
     '',
     'You can use the `spawnAgent` tool to delegate tasks to other agents. Each spawned agent runs in its own fresh session with only the message you provide.',
     '',
-    '### Built-in Agents',
   ];
 
-  for (const agent of builtInAgents) {
-    lines.push(`- **${agent.id}**: ${agent.name} - ${agent.description}`);
-  }
-
-  lines.push('');
-  lines.push('### Local Agents');
-
-  if (activeLocalAgents.length === 0) {
-    lines.push('No local agents available.');
-  } else {
-    for (const agent of activeLocalAgents) {
+  if (activeAgents.length > 0) {
+    lines.push('### Available Agents');
+    for (const agent of activeAgents) {
       // Use key (not UUID) as the identifier for spawning
       lines.push(
-        `- **${agent.key}** (local): ${agent.name} - ${agent.description ?? 'No description'}`
+        `- **${agent.key}**: ${agent.name} - ${agent.description ?? 'No description'}`
       );
     }
+    lines.push('');
+  } else {
+    lines.push('No agents are currently available for spawning.');
+    lines.push('');
   }
 
-  lines.push('');
   lines.push(
     'Use `spawnAgent` when you need specialized help, want to delegate a subtask, or need to run multiple tasks in parallel.'
   );
@@ -86,27 +91,30 @@ async function generateSpawnableAgentsSection(
  */
 export async function getAvailableAgents(
   agentsFeature: AgentsFeature,
-  localAgentsFeature: LocalAgentsFeature,
   userId: string
 ): Promise<SpawnableAgent[]> {
-  // Get built-in agents
-  const builtInAgents = agentsFeature.agents.list().map((agent) => ({
-    id: agent.id,
-    name: agent.name,
-    description: agent.description,
-    isLocal: false,
-  }));
+  // Get custom agents - use key (not UUID) as the id for spawning
+  const agentsResult = await agentsFeature.customAgents.list(userId);
 
-  // Get local agents - use key (not UUID) as the id for spawning
-  const localAgents = await localAgentsFeature.list(userId);
-  const activeLocalAgents = localAgents
-    .filter((agent) => !agent.disabled)
-    .map((agent) => ({
-      id: agent.key,
-      name: agent.name,
-      description: agent.description ?? 'Local agent',
-      isLocal: true,
-    }));
+  // Combine external and server agents
+  const activeAgents = [
+    ...agentsResult.external
+      .filter((a) => !a.disabled)
+      .map((a) => ({
+        id: a.key,
+        name: a.name,
+        description: a.description ?? 'External agent',
+        isLocal: true,
+      })),
+    ...agentsResult.server
+      .filter((a) => !a.disabled)
+      .map((a) => ({
+        id: a.key,
+        name: a.name,
+        description: a.description ?? 'Server agent',
+        isLocal: true,
+      })),
+  ];
 
-  return [...builtInAgents, ...activeLocalAgents];
+  return activeAgents;
 }

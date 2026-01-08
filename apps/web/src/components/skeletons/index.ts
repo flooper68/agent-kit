@@ -11,3 +11,5 @@ export { AnalyticsPageSkeleton } from './AnalyticsPageSkeleton';
 export { ProjectsPageSkeleton } from './ProjectsPageSkeleton';
 export { ProjectDetailPageSkeleton } from './ProjectDetailPageSkeleton';
 export { AgentsPageSkeleton } from './AgentsPageSkeleton';
+export { AgentFormPageSkeleton } from './AgentFormPageSkeleton';
+export { ArtifactDetailPageSkeleton } from './ArtifactDetailPageSkeleton';

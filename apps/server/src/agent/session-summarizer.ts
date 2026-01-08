@@ -1,6 +1,6 @@
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import type { MessageWithParts } from '../features/agents/types';
+import type { MessageWithParts } from '../features/agents/queries';
 import { logger } from './logger';
 
 // Message count thresholds that trigger summarization

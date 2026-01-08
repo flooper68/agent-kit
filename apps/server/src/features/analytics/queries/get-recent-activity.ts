@@ -1,7 +1,6 @@
 import { eq, desc, lt, and, inArray } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { agentSessions, localAgents } from '../../../db/schema';
-import type { PaginatedRecentActivity, RecentActivityItem } from '../types';
+import { agentSessions, externalAgents, serverAgents } from '../../../db/schema';
 
 export interface GetRecentActivityInput {
   orgId: string;
@@ -9,6 +8,26 @@ export interface GetRecentActivityInput {
   userId?: string;
   cursor?: string;
 }
+
+export interface RecentActivityItem {
+  sessionId: string;
+  userId: string;
+  agentId: string;
+  agentName: string;
+  title: string | null;
+  status: string;
+  messageCount: number;
+  updatedAt: Date;
+  parentSessionId: string | null;
+  spawnDepth: number;
+}
+
+export interface PaginatedRecentActivity {
+  items: RecentActivityItem[];
+  nextCursor: string | undefined;
+}
+
+export type GetRecentActivityResult = PaginatedRecentActivity;
 
 export class GetRecentActivityQuery {
   private db: typeof DbType;
@@ -21,7 +40,7 @@ export class GetRecentActivityQuery {
 
   async execute(
     input: GetRecentActivityInput
-  ): Promise<PaginatedRecentActivity> {
+  ): Promise<GetRecentActivityResult> {
     const limit = input.limit ?? 25;
 
     // If cursor is provided, get the cursor session's updatedAt for filtering
@@ -79,15 +98,25 @@ export class GetRecentActivityQuery {
 
     const localAgentNames = new Map<string, string>();
     if (unknownAgentIds.length > 0) {
-      const localAgentResults = await this.db
-        .select({
-          key: localAgents.key,
-          name: localAgents.name,
-        })
-        .from(localAgents)
-        .where(inArray(localAgents.key, unknownAgentIds));
+      // Look up agents by key from both tables
+      const [externalResults, serverResults] = await Promise.all([
+        this.db
+          .select({
+            key: externalAgents.key,
+            name: externalAgents.name,
+          })
+          .from(externalAgents)
+          .where(inArray(externalAgents.key, unknownAgentIds)),
+        this.db
+          .select({
+            key: serverAgents.key,
+            name: serverAgents.name,
+          })
+          .from(serverAgents)
+          .where(inArray(serverAgents.key, unknownAgentIds)),
+      ]);
 
-      for (const la of localAgentResults) {
+      for (const la of [...externalResults, ...serverResults]) {
         localAgentNames.set(la.key, la.name);
       }
     }

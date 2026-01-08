@@ -704,6 +704,204 @@ Available agents: ${allowedSpawnAgents.join(', ')}`,
             ),
           ]
         : []),
+
+      // ============= Agent Management Tools =============
+
+      tool(
+        'listAgents',
+        'List all agents available to the user. Returns agent names, descriptions, and configuration summary.',
+        {
+          type: z
+            .enum(['external', 'server', 'all'])
+            .optional()
+            .default('all')
+            .describe(
+              'Filter by agent type: external (WebSocket-based), server (LLM-based), or all'
+            ),
+          includeDisabled: z
+            .boolean()
+            .optional()
+            .default(false)
+            .describe('Include disabled agents in the list'),
+        },
+        async (args) => {
+          log.debug('listAgents tool called', {
+            type: args.type,
+            includeDisabled: args.includeDisabled,
+          });
+          const result = await serverRelay.executeServerTool(
+            'listAgents',
+            args,
+            sessionId,
+            messageId
+          );
+          return formatMcpResult(result);
+        }
+      ),
+
+      tool(
+        'getAgent',
+        'Get detailed information about a specific agent by ID. Returns full agent configuration including tools and settings.',
+        {
+          agentId: z.string().uuid().describe('The unique ID of the agent'),
+          agentType: z
+            .enum(['external', 'server'])
+            .describe(
+              'The type of agent: external (WebSocket-based) or server (LLM-based)'
+            ),
+        },
+        async (args) => {
+          log.debug('getAgent tool called', {
+            agentId: args.agentId.slice(0, 8) + '...',
+            agentType: args.agentType,
+          });
+          const result = await serverRelay.executeServerTool(
+            'getAgent',
+            args,
+            sessionId,
+            messageId
+          );
+          return formatMcpResult(result);
+        }
+      ),
+
+      tool(
+        'updateAgent',
+        "Update a server agent's configuration. External agents can only have their status changed via setAgentEnabled.",
+        {
+          agentId: z.string().uuid().describe('The unique ID of the agent'),
+          agentType: z
+            .enum(['server'])
+            .describe('The type of agent. Only server agents support full updates.'),
+          updates: z
+            .object({
+              key: z
+                .string()
+                .min(1)
+                .max(64)
+                .regex(/^[a-zA-Z0-9_-]+$/)
+                .optional()
+                .describe('New unique agent key'),
+              name: z
+                .string()
+                .min(1)
+                .max(255)
+                .optional()
+                .describe('New agent name'),
+              description: z
+                .string()
+                .max(1000)
+                .optional()
+                .describe('New agent description'),
+              provider: z
+                .enum(['anthropic', 'openai', 'gemini'])
+                .optional()
+                .describe('LLM provider'),
+              model: z
+                .string()
+                .optional()
+                .describe('Model ID (must match provider)'),
+              systemPrompt: z
+                .string()
+                .optional()
+                .describe('System prompt for the agent'),
+              tools: z
+                .array(z.string())
+                .optional()
+                .describe('Array of tool IDs the agent can use'),
+              temperature: z
+                .number()
+                .min(0)
+                .max(2)
+                .nullable()
+                .optional()
+                .describe('Temperature setting (0-2)'),
+              maxOutputTokens: z
+                .number()
+                .positive()
+                .nullable()
+                .optional()
+                .describe('Maximum output tokens'),
+              isFavorite: z
+                .boolean()
+                .optional()
+                .describe('Favorite status'),
+            })
+            .describe('Fields to update'),
+        },
+        async (args) => {
+          log.debug('updateAgent tool called', {
+            agentId: args.agentId.slice(0, 8) + '...',
+          });
+          const result = await serverRelay.executeServerTool(
+            'updateAgent',
+            args,
+            sessionId,
+            messageId
+          );
+          return formatMcpResult(result);
+        }
+      ),
+
+      tool(
+        'setAgentEnabled',
+        'Enable or disable an agent. Disabled agents will not appear in the agent selector and cannot be used for new sessions.',
+        {
+          agentId: z.string().uuid().describe('The unique ID of the agent'),
+          agentType: z
+            .enum(['external', 'server'])
+            .describe(
+              'The type of agent: external (WebSocket-based) or server (LLM-based)'
+            ),
+          enabled: z
+            .boolean()
+            .describe('Set to true to enable the agent, false to disable'),
+        },
+        async (args) => {
+          log.debug('setAgentEnabled tool called', {
+            agentId: args.agentId.slice(0, 8) + '...',
+            enabled: args.enabled,
+          });
+          const result = await serverRelay.executeServerTool(
+            'setAgentEnabled',
+            args,
+            sessionId,
+            messageId
+          );
+          return formatMcpResult(result);
+        }
+      ),
+
+      tool(
+        'toggleAgentFavorite',
+        'Set an agent as a favorite or remove it from favorites. Favorite agents appear at the top of the agent selector.',
+        {
+          agentId: z.string().uuid().describe('The unique ID of the agent'),
+          agentType: z
+            .enum(['external', 'server'])
+            .describe(
+              'The type of agent: external (WebSocket-based) or server (LLM-based)'
+            ),
+          isFavorite: z
+            .boolean()
+            .describe(
+              'Set to true to mark as favorite, false to remove from favorites'
+            ),
+        },
+        async (args) => {
+          log.debug('toggleAgentFavorite tool called', {
+            agentId: args.agentId.slice(0, 8) + '...',
+            isFavorite: args.isFavorite,
+          });
+          const result = await serverRelay.executeServerTool(
+            'toggleAgentFavorite',
+            args,
+            sessionId,
+            messageId
+          );
+          return formatMcpResult(result);
+        }
+      ),
     ],
   });
 }

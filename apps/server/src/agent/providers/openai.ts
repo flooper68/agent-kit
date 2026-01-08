@@ -7,6 +7,7 @@ import type {
 } from '../types';
 import { classifyError } from '../errors';
 import { logger } from '../logger';
+import { getModelInfo } from '../model-config';
 
 export class OpenAIProvider implements AgentProvider {
   id = 'openai';
@@ -14,7 +15,15 @@ export class OpenAIProvider implements AgentProvider {
   async *createStream(
     config: StreamConfig
   ): AsyncIterable<ProviderStreamEvent> {
-    const { model, systemPrompt, messages, tools, abortSignal } = config;
+    const {
+      model,
+      systemPrompt,
+      messages,
+      tools,
+      abortSignal,
+      temperature,
+      maxTokens,
+    } = config;
     const timer = logger.startTimer();
     const toolNames = Object.keys(tools);
 
@@ -24,8 +33,8 @@ export class OpenAIProvider implements AgentProvider {
       toolName: toolNames.join(', '),
     });
 
-    // o-series models (o3, o4-mini) support reasoning
-    const isReasoningModel = model.startsWith('o3') || model.startsWith('o4');
+    // Get model info for validation
+    const modelInfo = getModelInfo(model);
 
     try {
       const result = streamText({
@@ -37,14 +46,10 @@ export class OpenAIProvider implements AgentProvider {
         tools,
         abortSignal,
         stopWhen: stepCountIs(2000),
-        ...(isReasoningModel && {
-          providerOptions: {
-            openai: {
-              reasoningEffort: 'medium',
-              reasoningSummary: 'auto',
-            },
-          },
-        }),
+        temperature,
+        maxOutputTokens: maxTokens
+          ? Math.min(maxTokens, modelInfo?.maxOutputTokens ?? 128000)
+          : undefined,
       });
 
       let accumulatedText = '';

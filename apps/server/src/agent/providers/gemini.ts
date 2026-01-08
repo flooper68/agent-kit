@@ -7,6 +7,18 @@ import type {
 } from '../types';
 import { classifyError } from '../errors';
 import { logger } from '../logger';
+import {
+  getModelInfo,
+  DEFAULT_THINKING_CONFIG,
+  type ThinkingLevel,
+} from '../model-config';
+
+/**
+ * Default thinking level for Gemini 3 models.
+ * Uses 'low' as a safe default that works for both Pro (low/high) and Flash (all levels).
+ */
+const DEFAULT_THINKING_LEVEL: ThinkingLevel =
+  (DEFAULT_THINKING_CONFIG.level.thinkingLevel as ThinkingLevel) ?? 'low';
 
 export class GeminiProvider implements AgentProvider {
   id = 'gemini';
@@ -14,7 +26,16 @@ export class GeminiProvider implements AgentProvider {
   async *createStream(
     config: StreamConfig
   ): AsyncIterable<ProviderStreamEvent> {
-    const { model, systemPrompt, messages, tools, abortSignal } = config;
+    const {
+      model,
+      systemPrompt,
+      messages,
+      tools,
+      abortSignal,
+      temperature,
+      maxTokens,
+      thinkingConfig,
+    } = config;
     const timer = logger.startTimer();
     const toolNames = Object.keys(tools);
 
@@ -24,10 +45,37 @@ export class GeminiProvider implements AgentProvider {
       toolName: toolNames.join(', '),
     });
 
-    // Gemini 2.5+ and 3 models support thinking
-    const isGemini3 = model.includes('gemini-3');
-    const isGemini25 = model.includes('gemini-2.5');
-    const supportsThinking = isGemini3 || isGemini25;
+    // Get model info for validation
+    const modelInfo = getModelInfo(model);
+
+    // Gemini 3 uses level-based thinking, validate against valid levels for this model
+    let providerThinkingConfig:
+      | { thinkingLevel: string; includeThoughts: boolean }
+      | undefined;
+
+    if (modelInfo?.supportsThinking && thinkingConfig?.enabled !== false) {
+      const validLevels =
+        modelInfo.thinkingConstraints?.validThinkingLevels ?? ['low', 'high'];
+      let level: ThinkingLevel =
+        thinkingConfig?.thinkingLevel ?? DEFAULT_THINKING_LEVEL;
+
+      // Fallback if requested level isn't valid for this model
+      // (e.g., 'medium' requested for Gemini 3 Pro which only supports low/high)
+      if (!validLevels.includes(level)) {
+        const fallbackLevel = validLevels.includes('low')
+          ? 'low'
+          : validLevels[0];
+        logger.warn('Invalid thinking level for model, falling back', {
+          model,
+          requestedLevel: level,
+          fallbackLevel,
+          validLevels,
+        });
+        level = fallbackLevel as ThinkingLevel;
+      }
+
+      providerThinkingConfig = { thinkingLevel: level, includeThoughts: true };
+    }
 
     try {
       const result = streamText({
@@ -37,13 +85,13 @@ export class GeminiProvider implements AgentProvider {
         tools,
         abortSignal,
         stopWhen: stepCountIs(2000),
-        ...(supportsThinking && {
+        temperature,
+        maxOutputTokens: maxTokens
+          ? Math.min(maxTokens, modelInfo?.maxOutputTokens ?? 64000)
+          : undefined,
+        ...(providerThinkingConfig && {
           providerOptions: {
-            google: {
-              thinkingConfig: isGemini3
-                ? { thinkingLevel: 'medium', includeThoughts: true }
-                : { thinkingBudget: 8192, includeThoughts: true },
-            },
+            google: { thinkingConfig: providerThinkingConfig },
           },
         }),
       });

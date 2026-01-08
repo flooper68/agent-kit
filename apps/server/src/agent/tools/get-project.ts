@@ -20,11 +20,11 @@ export function createGetProjectTool(context: GetProjectContext): Tool {
         .describe('The unique ID of the project to retrieve'),
     }),
     execute: async ({ projectId }: { projectId: string }) => {
-      const project = await context.projectsFeature.getById(
-        projectId,
-        context.userId,
-        context.orgId
-      );
+      const project = await context.projectsFeature.getById({
+        id: projectId,
+        userId: context.userId,
+        orgId: context.orgId,
+      });
 
       if (!project) {
         return {

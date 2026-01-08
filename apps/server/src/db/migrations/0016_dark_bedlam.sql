@@ -1,0 +1,1 @@
+ALTER TABLE "local_agents" ADD COLUMN "is_external" boolean DEFAULT false NOT NULL;

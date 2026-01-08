@@ -2,6 +2,13 @@ import { eq, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { tasks, taskArtifacts, type TaskEvent } from '../../../db/schema';
 
+export interface DetachArtifactInput {
+  taskId: string;
+  artifactId: string;
+  userId: string;
+  orgId: string;
+}
+
 export interface DetachArtifactResult {
   success: boolean;
   projectId?: string;
@@ -14,12 +21,8 @@ export class DetachArtifactCommand {
     this.db = db;
   }
 
-  async execute(
-    taskId: string,
-    artifactId: string,
-    userId: string,
-    orgId: string
-  ): Promise<DetachArtifactResult> {
+  async execute(input: DetachArtifactInput): Promise<DetachArtifactResult> {
+    const { taskId, artifactId, userId, orgId } = input;
     return await this.db.transaction(async (tx) => {
       // Verify task ownership
       const [task] = await tx

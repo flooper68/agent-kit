@@ -1,10 +1,23 @@
 import type { db as DbType } from '../../../db';
-import { agentSessions } from '../../../db/schema';
-import type { AgentSession, CreateSessionInput } from '../types';
+import { agentSessions, type AgentSession } from '../../../db/schema';
+
+export interface CreateSessionInput {
+  userId: string;
+  orgId: string;
+  agentId: string;
+  title?: string;
+  isLocalAgent?: boolean;
+  /** Parent session ID for spawned sessions */
+  parentSessionId?: string;
+  /** Spawn depth for tracking recursion (0 for root sessions) */
+  spawnDepth?: number;
+}
+
+export type CreateSessionResult = AgentSession;
 
 export interface CreateSessionValidators {
   hasBuiltInAgent: (id: string) => boolean;
-  getLocalAgent: (
+  getAgent: (
     id: string,
     userId: string
   ) => Promise<{ disabled: boolean } | null>;
@@ -19,19 +32,19 @@ export class CreateSessionCommand {
     this.validators = validators;
   }
 
-  async execute(input: CreateSessionInput): Promise<AgentSession> {
+  async execute(input: CreateSessionInput): Promise<CreateSessionResult> {
     const isLocalAgent = input.isLocalAgent ?? false;
 
     // Validate agent exists
     if (isLocalAgent) {
-      const localAgent = await this.validators.getLocalAgent(
+      const agent = await this.validators.getAgent(
         input.agentId,
         input.userId
       );
-      if (!localAgent) {
-        throw new Error('Local agent not found');
+      if (!agent) {
+        throw new Error('Agent not found');
       }
-      if (localAgent.disabled) {
+      if (agent.disabled) {
         throw new Error('Cannot create session with disabled agent');
       }
     } else {

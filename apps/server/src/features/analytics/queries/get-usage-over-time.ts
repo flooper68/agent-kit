@@ -1,12 +1,7 @@
 import { sql, eq, and, gte, sum, count, type SQL } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { agentSessions } from '../../../db/schema';
-import type {
-  TimeRange,
-  Granularity,
-  UsageOverTimePoint,
-  AnalyticsFilters,
-} from '../types';
+import type { TimeRange, Granularity } from '../types';
 import { getStartDate as getStartDateBase } from './utils';
 
 /**
@@ -46,9 +41,21 @@ function getDefaultGranularity(timeRange: TimeRange): Granularity {
   }
 }
 
-export interface GetUsageOverTimeInput extends AnalyticsFilters {
+export interface GetUsageOverTimeInput {
+  orgId: string;
+  timeRange: TimeRange;
+  userId?: string;
   granularity?: Granularity;
 }
+
+export interface UsageOverTimePoint {
+  date: string;
+  sessions: number;
+  messages: number;
+  cost: number;
+}
+
+export type GetUsageOverTimeResult = UsageOverTimePoint[];
 
 export class GetUsageOverTimeQuery {
   private db: typeof DbType;
@@ -57,7 +64,7 @@ export class GetUsageOverTimeQuery {
     this.db = db;
   }
 
-  async execute(input: GetUsageOverTimeInput): Promise<UsageOverTimePoint[]> {
+  async execute(input: GetUsageOverTimeInput): Promise<GetUsageOverTimeResult> {
     const startDate = getStartDate(input.timeRange);
     const granularity =
       input.granularity ?? getDefaultGranularity(input.timeRange);

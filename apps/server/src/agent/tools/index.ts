@@ -2,6 +2,7 @@ import type { Tool } from '../types';
 import type { ArtifactsFeature } from '../../features/artifacts';
 import type { ProjectsFeature } from '../../features/projects';
 import type { TasksFeature } from '../../features/tasks';
+import type { AgentsFeature } from '../../features/agents';
 import type { EventStreamManager } from '../event-stream-manager';
 import type { PubSubManager } from '../../real-time';
 import type { AgentSpawner } from '../agent-spawner';
@@ -13,6 +14,7 @@ import { fetchTool } from './fetch';
 import { createWriteArtifactTool } from './write-artifact';
 import { createSearchArtifactsTool } from './search-artifacts';
 import { createReadArtifactTool } from './read-artifact';
+import { createUpdateArtifactTool } from './update-artifact';
 import { createListProjectsTool } from './list-projects';
 import { createSearchProjectsTool } from './search-projects';
 import { createGetProjectTool } from './get-project';
@@ -34,6 +36,11 @@ import {
   createGetCurrentUIStateTool,
 } from './client-tools';
 import { createSpawnAgentTool } from './spawn-agent';
+import { createListAgentsTool } from './list-agents';
+import { createGetAgentTool } from './get-agent';
+import { createUpdateAgentTool } from './update-agent';
+import { createSetAgentEnabledTool } from './set-agent-enabled';
+import { createToggleAgentFavoriteTool } from './toggle-agent-favorite';
 
 // Static tools (no context needed)
 const STATIC_TOOLS: Record<string, Tool> = {
@@ -49,6 +56,7 @@ const CONTEXT_TOOL_IDS = [
   'writeArtifact',
   'searchArtifacts',
   'readArtifact',
+  'updateArtifact',
   // Project tools
   'listProjects',
   'searchProjects',
@@ -70,8 +78,13 @@ const CONTEXT_TOOL_IDS = [
   // Client-side tools
   'navigateTo',
   'getCurrentUIState',
-  // Agent spawning
+  // Agent tools
   'spawnAgent',
+  'listAgents',
+  'getAgent',
+  'updateAgent',
+  'setAgentEnabled',
+  'toggleAgentFavorite',
 ] as const;
 
 export type StaticToolId = keyof typeof STATIC_TOOLS;
@@ -90,6 +103,8 @@ export interface ToolContext {
   artifactsFeature: ArtifactsFeature;
   projectsFeature?: ProjectsFeature;
   tasksFeature?: TasksFeature;
+  /** Agents feature for agent management tools */
+  agentsFeature?: AgentsFeature;
   /** Event stream manager for client-side tools */
   eventStreamManager?: EventStreamManager;
   /** Pub/Sub manager for stateful client-side tools */
@@ -129,6 +144,9 @@ export function getToolsById(
           break;
         case 'readArtifact':
           result[id] = createReadArtifactTool(context);
+          break;
+        case 'updateArtifact':
+          result[id] = createUpdateArtifactTool(context);
           break;
         // Project tools
         case 'listProjects':
@@ -405,6 +423,67 @@ export function getToolsById(
             });
           }
           break;
+        // Agent management tools
+        case 'listAgents':
+          if (context.agentsFeature) {
+            result[id] = createListAgentsTool({
+              userId: context.userId,
+              agentsFeature: context.agentsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing agentsFeature', {
+              tool: id,
+            });
+          }
+          break;
+        case 'getAgent':
+          if (context.agentsFeature) {
+            result[id] = createGetAgentTool({
+              userId: context.userId,
+              agentsFeature: context.agentsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing agentsFeature', {
+              tool: id,
+            });
+          }
+          break;
+        case 'updateAgent':
+          if (context.agentsFeature) {
+            result[id] = createUpdateAgentTool({
+              userId: context.userId,
+              agentsFeature: context.agentsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing agentsFeature', {
+              tool: id,
+            });
+          }
+          break;
+        case 'setAgentEnabled':
+          if (context.agentsFeature) {
+            result[id] = createSetAgentEnabledTool({
+              userId: context.userId,
+              agentsFeature: context.agentsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing agentsFeature', {
+              tool: id,
+            });
+          }
+          break;
+        case 'toggleAgentFavorite':
+          if (context.agentsFeature) {
+            result[id] = createToggleAgentFavoriteTool({
+              userId: context.userId,
+              agentsFeature: context.agentsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing agentsFeature', {
+              tool: id,
+            });
+          }
+          break;
       }
     }
   }
@@ -417,4 +496,256 @@ export function getToolsById(
  */
 export function listToolIds(): string[] {
   return [...Object.keys(STATIC_TOOLS), ...CONTEXT_TOOL_IDS];
+}
+
+/**
+ * Tool category for UI grouping
+ */
+export type ToolCategory =
+  | 'utility'
+  | 'artifact'
+  | 'project'
+  | 'task'
+  | 'navigation'
+  | 'agent';
+
+/**
+ * Tool metadata for UI display
+ */
+export interface ToolMetadata {
+  id: string;
+  name: string;
+  description: string;
+  category: ToolCategory;
+}
+
+/**
+ * Tool metadata registry
+ */
+const TOOL_METADATA: Record<string, ToolMetadata> = {
+  // Utility tools
+  getTime: {
+    id: 'getTime',
+    name: 'Get Time',
+    description: 'Get the current date and time',
+    category: 'utility',
+  },
+  webSearch: {
+    id: 'webSearch',
+    name: 'Web Search',
+    description: 'Search the web for information',
+    category: 'utility',
+  },
+  extractContent: {
+    id: 'extractContent',
+    name: 'Extract Content',
+    description: 'Extract text content from a URL',
+    category: 'utility',
+  },
+  fetch: {
+    id: 'fetch',
+    name: 'Fetch',
+    description: 'Fetch raw content from a URL',
+    category: 'utility',
+  },
+
+  // Artifact tools
+  writeArtifact: {
+    id: 'writeArtifact',
+    name: 'Write Artifact',
+    description: 'Save a document or note',
+    category: 'artifact',
+  },
+  searchArtifacts: {
+    id: 'searchArtifacts',
+    name: 'Search Artifacts',
+    description: 'Search for saved documents',
+    category: 'artifact',
+  },
+  readArtifact: {
+    id: 'readArtifact',
+    name: 'Read Artifact',
+    description: 'Read a saved document',
+    category: 'artifact',
+  },
+  updateArtifact: {
+    id: 'updateArtifact',
+    name: 'Update Artifact',
+    description: 'Update an existing document',
+    category: 'artifact',
+  },
+
+  // Project tools
+  listProjects: {
+    id: 'listProjects',
+    name: 'List Projects',
+    description: 'List all projects',
+    category: 'project',
+  },
+  searchProjects: {
+    id: 'searchProjects',
+    name: 'Search Projects',
+    description: 'Search for projects',
+    category: 'project',
+  },
+  getProject: {
+    id: 'getProject',
+    name: 'Get Project',
+    description: 'Get project details',
+    category: 'project',
+  },
+  createProject: {
+    id: 'createProject',
+    name: 'Create Project',
+    description: 'Create a new project',
+    category: 'project',
+  },
+  updateProject: {
+    id: 'updateProject',
+    name: 'Update Project',
+    description: 'Update project details',
+    category: 'project',
+  },
+  deleteProject: {
+    id: 'deleteProject',
+    name: 'Delete Project',
+    description: 'Delete a project',
+    category: 'project',
+  },
+
+  // Task tools
+  listTasks: {
+    id: 'listTasks',
+    name: 'List Tasks',
+    description: 'List tasks in a project',
+    category: 'task',
+  },
+  searchTasks: {
+    id: 'searchTasks',
+    name: 'Search Tasks',
+    description: 'Search for tasks',
+    category: 'task',
+  },
+  getTask: {
+    id: 'getTask',
+    name: 'Get Task',
+    description: 'Get task details',
+    category: 'task',
+  },
+  createTask: {
+    id: 'createTask',
+    name: 'Create Task',
+    description: 'Create a new task',
+    category: 'task',
+  },
+  updateTask: {
+    id: 'updateTask',
+    name: 'Update Task',
+    description: 'Update task details',
+    category: 'task',
+  },
+  deleteTask: {
+    id: 'deleteTask',
+    name: 'Delete Task',
+    description: 'Delete a task',
+    category: 'task',
+  },
+  moveTask: {
+    id: 'moveTask',
+    name: 'Move Task',
+    description: 'Move task to a different status',
+    category: 'task',
+  },
+  reorderTask: {
+    id: 'reorderTask',
+    name: 'Reorder Task',
+    description: 'Change task order in a column',
+    category: 'task',
+  },
+  attachArtifactToTask: {
+    id: 'attachArtifactToTask',
+    name: 'Attach Artifact',
+    description: 'Attach a document to a task',
+    category: 'task',
+  },
+  detachArtifactFromTask: {
+    id: 'detachArtifactFromTask',
+    name: 'Detach Artifact',
+    description: 'Detach a document from a task',
+    category: 'task',
+  },
+
+  // Navigation tools
+  navigateTo: {
+    id: 'navigateTo',
+    name: 'Navigate To',
+    description: 'Navigate the user to a page',
+    category: 'navigation',
+  },
+  getCurrentUIState: {
+    id: 'getCurrentUIState',
+    name: 'Get UI State',
+    description: 'Get current page state',
+    category: 'navigation',
+  },
+
+  // Agent tools
+  spawnAgent: {
+    id: 'spawnAgent',
+    name: 'Spawn Agent',
+    description: 'Delegate a task to another agent',
+    category: 'agent',
+  },
+  listAgents: {
+    id: 'listAgents',
+    name: 'List Agents',
+    description: 'List all available agents',
+    category: 'agent',
+  },
+  getAgent: {
+    id: 'getAgent',
+    name: 'Get Agent',
+    description: 'Get agent details',
+    category: 'agent',
+  },
+  updateAgent: {
+    id: 'updateAgent',
+    name: 'Update Agent',
+    description: 'Update agent configuration',
+    category: 'agent',
+  },
+  setAgentEnabled: {
+    id: 'setAgentEnabled',
+    name: 'Enable/Disable Agent',
+    description: 'Enable or disable an agent',
+    category: 'agent',
+  },
+  toggleAgentFavorite: {
+    id: 'toggleAgentFavorite',
+    name: 'Toggle Favorite',
+    description: 'Toggle agent favorite status',
+    category: 'agent',
+  },
+};
+
+/**
+ * Get metadata for all available tools
+ */
+export function getToolsMetadata(): ToolMetadata[] {
+  return listToolIds().map(
+    (id) =>
+      TOOL_METADATA[id] ?? {
+        id,
+        name: id,
+        description: 'No description available',
+        category: 'utility' as ToolCategory,
+      }
+  );
+}
+
+/**
+ * Get metadata for a specific tool
+ */
+export function getToolMetadata(id: string): ToolMetadata | undefined {
+  return TOOL_METADATA[id];
 }
