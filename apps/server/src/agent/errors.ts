@@ -13,6 +13,7 @@ export type AgentErrorCode =
   | 'ABORT' // User interrupted
   | 'VALIDATION_ERROR' // Input validation failed
   | 'SESSION_ERROR' // Session not found/invalid
+  | 'CONTEXT_LIMIT_REACHED' // Context window limit exceeded
   | 'UNKNOWN'; // Unknown error
 
 export interface AgentErrorDetails {

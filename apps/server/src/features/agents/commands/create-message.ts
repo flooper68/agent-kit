@@ -1,6 +1,17 @@
 import type { db as DbType } from '../../../db';
-import { agentSessionMessages } from '../../../db/schema';
-import type { AgentSessionMessage, CreateMessageInput } from '../types';
+import {
+  agentSessionMessages,
+  type AgentSessionMessage,
+  type AgentSessionMessageStatus,
+} from '../../../db/schema';
+
+export interface CreateMessageInput {
+  sessionId: string;
+  role: 'user' | 'assistant' | 'system';
+  status: AgentSessionMessageStatus;
+}
+
+export type CreateMessageResult = AgentSessionMessage;
 
 export class CreateMessageCommand {
   private db: typeof DbType;
@@ -9,7 +20,7 @@ export class CreateMessageCommand {
     this.db = db;
   }
 
-  async execute(input: CreateMessageInput): Promise<AgentSessionMessage> {
+  async execute(input: CreateMessageInput): Promise<CreateMessageResult> {
     const [message] = await this.db
       .insert(agentSessionMessages)
       .values({

@@ -29,12 +29,12 @@ export function createAttachArtifactToTaskTool(
       taskId: string;
       artifactId: string;
     }) => {
-      const attached = await context.tasksFeature.attachArtifact(
+      const attached = await context.tasksFeature.attachArtifact({
         taskId,
         artifactId,
-        context.userId,
-        context.orgId
-      );
+        userId: context.userId,
+        orgId: context.orgId,
+      });
 
       if (!attached) {
         return {

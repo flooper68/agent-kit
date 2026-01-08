@@ -51,6 +51,7 @@ export const AppLayout = forwardRef<AppLayoutRef, AppLayoutProps>(
       onPanelCollapsedChange,
       panelWidth: controlledWidth,
       onPanelWidthChange,
+      panelToggleDisabled = false,
     },
     ref
   ) => {
@@ -122,6 +123,7 @@ export const AppLayout = forwardRef<AppLayoutRef, AppLayoutProps>(
         isResizing,
         setIsResizing,
         hasPanel,
+        panelToggleDisabled,
       }),
       [
         isCollapsed,
@@ -132,6 +134,7 @@ export const AppLayout = forwardRef<AppLayoutRef, AppLayoutProps>(
         panelConfig,
         isResizing,
         hasPanel,
+        panelToggleDisabled,
       ]
     );
 

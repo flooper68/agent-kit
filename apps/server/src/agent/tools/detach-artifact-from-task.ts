@@ -29,12 +29,12 @@ export function createDetachArtifactFromTaskTool(
       taskId: string;
       artifactId: string;
     }) => {
-      const detached = await context.tasksFeature.detachArtifact(
+      const detached = await context.tasksFeature.detachArtifact({
         taskId,
         artifactId,
-        context.userId,
-        context.orgId
-      );
+        userId: context.userId,
+        orgId: context.orgId,
+      });
 
       if (!detached) {
         return {

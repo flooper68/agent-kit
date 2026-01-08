@@ -1,13 +1,21 @@
 import { eq, and, gte, count, desc } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { agentSessionEvents, agentSessions } from '../../../db/schema';
-import type { AnalyticsFilters } from '../types';
+import type { TimeRange } from '../types';
 import { getStartDate } from './utils';
+
+export interface GetWebSearchCallsInput {
+  orgId: string;
+  timeRange: TimeRange;
+  userId?: string;
+}
 
 export interface WebSearchCallsPerUserItem {
   userId: string;
   callCount: number;
 }
+
+export type GetWebSearchCallsResult = WebSearchCallsPerUserItem[];
 
 export class GetWebSearchCallsQuery {
   private db: typeof DbType;
@@ -17,21 +25,21 @@ export class GetWebSearchCallsQuery {
   }
 
   async execute(
-    filters: AnalyticsFilters
-  ): Promise<WebSearchCallsPerUserItem[]> {
-    const startDate = getStartDate(filters.timeRange);
+    input: GetWebSearchCallsInput
+  ): Promise<GetWebSearchCallsResult> {
+    const startDate = getStartDate(input.timeRange);
 
     // Build conditions - always filter by orgId
     const conditions = [
-      eq(agentSessions.orgId, filters.orgId),
+      eq(agentSessions.orgId, input.orgId),
       eq(agentSessionEvents.type, 'tool_call'),
       eq(agentSessionEvents.toolName, 'webSearch'),
     ];
     if (startDate) {
       conditions.push(gte(agentSessionEvents.createdAt, startDate));
     }
-    if (filters.userId) {
-      conditions.push(eq(agentSessions.userId, filters.userId));
+    if (input.userId) {
+      conditions.push(eq(agentSessions.userId, input.userId));
     }
 
     const results = await this.db

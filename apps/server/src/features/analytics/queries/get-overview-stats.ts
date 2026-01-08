@@ -1,8 +1,29 @@
 import { sql, eq, and, gte, countDistinct, count } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { agentSessions } from '../../../db/schema';
-import type { TimeRange, OverviewStats, AnalyticsFilters } from '../types';
+import type { TimeRange } from '../types';
 import { getStartDate } from './utils';
+
+export interface GetOverviewStatsInput {
+  orgId: string;
+  timeRange: TimeRange;
+  userId?: string;
+}
+
+export interface OverviewStats {
+  totalSessions: number;
+  activeUsers: number;
+  totalCost: number;
+  totalTokens: number;
+  trends: {
+    sessions: number;
+    users: number;
+    cost: number;
+    tokens: number;
+  };
+}
+
+export type GetOverviewStatsResult = OverviewStats;
 
 function getPreviousPeriodDates(
   timeRange: TimeRange
@@ -43,17 +64,17 @@ export class GetOverviewStatsQuery {
     this.db = db;
   }
 
-  async execute(filters: AnalyticsFilters): Promise<OverviewStats> {
-    const startDate = getStartDate(filters.timeRange);
-    const previousPeriod = getPreviousPeriodDates(filters.timeRange);
+  async execute(input: GetOverviewStatsInput): Promise<GetOverviewStatsResult> {
+    const startDate = getStartDate(input.timeRange);
+    const previousPeriod = getPreviousPeriodDates(input.timeRange);
 
     // Build conditions for current period
-    const currentConditions = [eq(agentSessions.orgId, filters.orgId)];
+    const currentConditions = [eq(agentSessions.orgId, input.orgId)];
     if (startDate) {
       currentConditions.push(gte(agentSessions.createdAt, startDate));
     }
-    if (filters.userId) {
-      currentConditions.push(eq(agentSessions.userId, filters.userId));
+    if (input.userId) {
+      currentConditions.push(eq(agentSessions.userId, input.userId));
     }
 
     // Current period stats
@@ -81,12 +102,12 @@ export class GetOverviewStatsQuery {
 
     if (previousPeriod) {
       const previousConditions = [
-        eq(agentSessions.orgId, filters.orgId),
+        eq(agentSessions.orgId, input.orgId),
         gte(agentSessions.createdAt, previousPeriod.start),
         sql`${agentSessions.createdAt} < ${previousPeriod.end.toISOString()}`,
       ];
-      if (filters.userId) {
-        previousConditions.push(eq(agentSessions.userId, filters.userId));
+      if (input.userId) {
+        previousConditions.push(eq(agentSessions.userId, input.userId));
       }
 
       const previousStats = await this.db

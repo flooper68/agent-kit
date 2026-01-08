@@ -1,7 +1,16 @@
 import { eq, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { projects, type Project } from '../../../db/schema';
-import type { UpdateProjectInput } from '../types';
+
+export interface UpdateProjectInput {
+  id: string;
+  userId: string;
+  orgId: string;
+  title?: string;
+  summary?: string | null;
+}
+
+export type UpdateProjectResult = Project | undefined;
 
 export class UpdateProjectCommand {
   private db: typeof DbType;
@@ -10,7 +19,7 @@ export class UpdateProjectCommand {
     this.db = db;
   }
 
-  async execute(input: UpdateProjectInput): Promise<Project | undefined> {
+  async execute(input: UpdateProjectInput): Promise<UpdateProjectResult> {
     const updates: Partial<{
       title: string;
       summary: string | null;

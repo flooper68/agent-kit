@@ -3,7 +3,6 @@ import type { TaskHistoryItem, AgentType } from '@agent-kit/ui';
 import { AppAgentPanel } from '../components/AppAgentPanel';
 import { DashboardPageSkeleton } from '../components/skeletons';
 import { useChatHistory } from '../hooks/useChatHistory';
-import { useLocalAgentConnectionStatus } from '../hooks/useCacheInvalidation';
 import { useSession } from '../contexts/SessionContext';
 import { useAgentSelection } from '../contexts/AgentSelectionContext';
 import { trpc } from '../lib/trpc';
@@ -17,9 +16,6 @@ export function DashboardPage() {
     limit: 3,
   });
   const agentsQuery = trpc.agents.list.useQuery();
-  const hasLocalAgents = agentsQuery.data?.some((a) => a.isLocal) ?? false;
-  const localAgentConnectionStatus =
-    useLocalAgentConnectionStatus(hasLocalAgents);
   const { setSessionId, clearSession } = useSession();
   const {
     selectedAgentId,
@@ -42,20 +38,13 @@ export function DashboardPage() {
       name: agent.name,
       description: agent.description ?? undefined,
       isLocal: agent.isLocal,
-      // Local agents are disabled when not connected
-      disabled: agent.isLocal
-        ? !localAgentConnectionStatus.get(agent.id)
-        : false,
-      // Built-in agents have tools, model, provider; local agents don't
-      ...(agent.isLocal
-        ? {}
-        : {
-            tools: agent.tools,
-            model: agent.model,
-            provider: agent.provider,
-          }),
+      isFavorite: agent.isFavorite,
+      model: agent.model ?? undefined,
+      provider: agent.provider ?? undefined,
+      // External agents are disabled when not connected (server agents are always enabled)
+      disabled: false,
     }));
-  }, [agentsQuery.data, localAgentConnectionStatus]);
+  }, [agentsQuery.data]);
 
   // Show skeleton while any critical data is loading
   const isLoading = isSessionsLoading || agentsQuery.isLoading;

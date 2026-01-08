@@ -361,7 +361,7 @@ export function AppCommandPalette({
       {
         id: 'nav-agents',
         label: 'Navigate to agents',
-        description: 'Manage local agents',
+        description: 'Manage external agents',
         icon: <Bot className="h-4 w-4" />,
         keywords: ['agents', 'local', 'ai', 'bots'],
         onSelect: () => {

@@ -102,6 +102,8 @@ export interface AppLayoutProps {
   panelWidth?: number;
   /** Callback when panel width changes */
   onPanelWidthChange?: (width: number) => void;
+  /** Disable the panel toggle button */
+  panelToggleDisabled?: boolean;
 }
 
 // Context value
@@ -115,6 +117,7 @@ export interface AppLayoutContextValue {
   isResizing: boolean;
   setIsResizing: (resizing: boolean) => void;
   hasPanel: boolean;
+  panelToggleDisabled: boolean;
 }
 
 // Ref handle

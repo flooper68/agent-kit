@@ -1,6 +1,14 @@
 import type { db as DbType } from '../../../db';
 import { projects, type Project } from '../../../db/schema';
-import type { CreateProjectInput } from '../types';
+
+export interface CreateProjectInput {
+  userId: string;
+  orgId: string;
+  title: string;
+  summary?: string;
+}
+
+export type CreateProjectResult = Project;
 
 export class CreateProjectCommand {
   private db: typeof DbType;
@@ -9,7 +17,7 @@ export class CreateProjectCommand {
     this.db = db;
   }
 
-  async execute(input: CreateProjectInput): Promise<Project> {
+  async execute(input: CreateProjectInput): Promise<CreateProjectResult> {
     const [project] = await this.db
       .insert(projects)
       .values({

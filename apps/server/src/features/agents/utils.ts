@@ -1,5 +1,27 @@
+import { createHash } from 'crypto';
 import type { AgentSessionEvent } from '../../db/schema/agent-session-events';
 import type { MessagePart } from '../../db/schema/agent-session-messages';
+
+/**
+ * Generate a new secret key with the ak_local_ prefix
+ */
+export function generateSecretKey(): string {
+  return `ak_local_${crypto.randomUUID()}`;
+}
+
+/**
+ * Hash a secret key using SHA256
+ */
+export function hashSecretKey(key: string): string {
+  return createHash('sha256').update(key).digest('hex');
+}
+
+/**
+ * Generate a display prefix from a secret key (e.g., "ak_local_abc1...")
+ */
+export function generateKeyPrefix(key: string): string {
+  return key.substring(0, 20) + '...';
+}
 
 /**
  * Reconstruct MessagePart[] from AgentSessionEvent[] rows

@@ -1,8 +1,21 @@
 import { eq, and, gte, sql } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { artifacts } from '../../../db/schema';
-import type { TimeRange, ArtifactsOverTimePoint } from '../types';
+import type { TimeRange } from '../types';
 import { getTimeRangeStart, getGranularityForTimeRange } from './utils';
+
+export interface GetArtifactsOverTimeInput {
+  orgId: string;
+  timeRange: TimeRange;
+}
+
+export interface ArtifactsOverTimePoint {
+  date: string;
+  count: number;
+  sizeBytes: number;
+}
+
+export type GetArtifactsOverTimeResult = ArtifactsOverTimePoint[];
 
 const VALID_GRANULARITIES = ['hour', 'day', 'week'] as const;
 
@@ -14,9 +27,9 @@ export class GetArtifactsOverTimeQuery {
   }
 
   async execute(
-    orgId: string,
-    timeRange: TimeRange
-  ): Promise<ArtifactsOverTimePoint[]> {
+    input: GetArtifactsOverTimeInput
+  ): Promise<GetArtifactsOverTimeResult> {
+    const { orgId, timeRange } = input;
     const startDate = getTimeRangeStart(timeRange);
     const granularity = getGranularityForTimeRange(timeRange);
 

@@ -4,8 +4,8 @@ import type { IncrementMessageCountCommand } from './increment-message-count';
 import type {
   AgentSessionMessageStatus,
   AgentSessionMessageMetadata,
-} from '../types';
-import type { TokenBreakdown } from '../../../db/schema/agent-sessions';
+  TokenBreakdown,
+} from '../../../db/schema';
 
 export interface CompleteMessageInput {
   messageId: string;
@@ -81,7 +81,9 @@ export class CompleteMessageCommand {
     // Increment message count and return for summarization threshold check
     // Only increment for successful completions
     if (status === 'complete') {
-      const result = await this.incrementMessageCountCommand.execute(sessionId);
+      const result = await this.incrementMessageCountCommand.execute({
+        sessionId,
+      });
       return { messageCount: result?.messageCount };
     }
 

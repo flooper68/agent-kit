@@ -9,16 +9,17 @@ import type { AgentsFeature } from '../features/agents';
 import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
-import type { LocalAgentsFeature } from '../features/local-agents';
 import type { AgentSpawner } from './agent-spawner';
 import { getProvider } from './providers';
 import { getToolsById } from './tools';
 import { buildSystemPrompt } from './system-prompt-builder';
+import { getModelInfo } from './model-config';
 import type {
   ProviderStreamEvent,
   Message,
   AssistantContentPart,
   ToolResultOutput,
+  AgentDefinition,
 } from './types';
 import type { AgentError } from './errors';
 import { classifyError } from './errors';
@@ -26,6 +27,7 @@ import { logger } from './logger';
 import { calculateCost } from '../features/agents/pricing';
 import { EventBuffer } from './event-buffer';
 import { calculateTokenBreakdown, type TokenBreakdown } from '../lib/tokenizer';
+import type { ThinkingConfig } from '../db/schema/agents';
 
 export interface DbMessage {
   id: string;
@@ -45,7 +47,6 @@ export class AgentJobHandler {
   private artifactsFeature: ArtifactsFeature;
   private projectsFeature?: ProjectsFeature;
   private tasksFeature?: TasksFeature;
-  private localAgentsFeature?: LocalAgentsFeature;
   private agentSpawner?: AgentSpawner;
   private pubsub: PubSubManager;
   private cacheInvalidation: CacheInvalidationService;
@@ -65,7 +66,6 @@ export class AgentJobHandler {
     workerId: string,
     projectsFeature?: ProjectsFeature,
     tasksFeature?: TasksFeature,
-    localAgentsFeature?: LocalAgentsFeature,
     agentSpawner?: AgentSpawner
   ) {
     this.eventStreamManager = eventStreamManager;
@@ -78,7 +78,6 @@ export class AgentJobHandler {
     this.workerId = workerId;
     this.projectsFeature = projectsFeature;
     this.tasksFeature = tasksFeature;
-    this.localAgentsFeature = localAgentsFeature;
     this.agentSpawner = agentSpawner;
     this.log = logger.child({ workerId });
   }
@@ -110,10 +109,58 @@ export class AgentJobHandler {
 
     const messageId = assistantMessageId;
 
-    // Get agent definition
-    const agent = this.agentsFeature.agents.get(agentId);
+    // Get session info for spawn depth and local agent flag
+    const session = await this.agentsFeature.sessions.getById(sessionId);
+    const currentSpawnDepth = session?.spawnDepth ?? 0;
+    const isLocalAgent = session?.isLocalAgent ?? false;
+
+    // Get agent definition from custom agents
+    let agent: AgentDefinition | null = null;
+    let modelSettings: {
+      temperature?: number;
+      maxTokens?: number;
+      thinkingConfig?: ThinkingConfig;
+    } = {};
+    let maxContextTokens: number | undefined;
+
+    // Fetch custom agent by key (agentId is the key for custom agents)
+    const customAgentResult = await this.agentsFeature.customAgents.getByKey(
+      agentId,
+      userId
+    );
+    // Only server agents can be run directly (external agents connect via WebSocket)
+    if (customAgentResult?.type === 'server') {
+      const customAgent = customAgentResult.agent;
+      if (!customAgent.disabled) {
+        // Build agent definition from server agent config
+        // Always include spawnAgent tool for server agents
+        agent = {
+          id: customAgent.key,
+          name: customAgent.name,
+          description: customAgent.description ?? '',
+          systemPrompt: customAgent.systemPrompt,
+          provider: customAgent.provider,
+          model: customAgent.model,
+          tools: [...customAgent.tools, 'spawnAgent'],
+        };
+        // Capture model settings from agent config
+        modelSettings = {
+          temperature: customAgent.temperature ?? undefined,
+          maxTokens: customAgent.maxOutputTokens ?? undefined,
+          thinkingConfig: customAgent.thinkingConfig ?? undefined,
+        };
+        // Capture max context tokens (use agent's setting or model's default)
+        if (customAgent.maxContextTokens) {
+          maxContextTokens = customAgent.maxContextTokens;
+        } else {
+          const modelInfo = getModelInfo(customAgent.model);
+          maxContextTokens = modelInfo?.contextWindow;
+        }
+      }
+    }
+
     if (!agent) {
-      this.log.error('Agent not found', { sessionId });
+      this.log.error('Agent not found', { sessionId, agentId, isLocalAgent });
       await this.agentsFeature.messages.updateStatus({
         messageId,
         status: 'error',
@@ -130,23 +177,16 @@ export class AgentJobHandler {
       sessionId,
       model: agent.model,
       provider: agent.provider,
+      isLocalAgent,
     });
 
-    // Get session info for spawn depth
-    const session = await this.agentsFeature.sessions.getById(sessionId);
-    const currentSpawnDepth = session?.spawnDepth ?? 0;
-
-    // Build system prompt with available agents if spawnAgent tool is enabled
-    let systemPrompt = agent.systemPrompt;
-    if (agent.tools.includes('spawnAgent') && this.localAgentsFeature) {
-      systemPrompt = await buildSystemPrompt(
-        agent.systemPrompt,
-        this.agentsFeature,
-        this.localAgentsFeature,
-        userId,
-        true
-      );
-    }
+    // Build system prompt with available agents (spawnAgent is always enabled for server agents)
+    const systemPrompt = await buildSystemPrompt(
+      agent.systemPrompt,
+      this.agentsFeature,
+      userId,
+      true
+    );
 
     // Get provider
     const provider = getProvider(agent.provider);
@@ -167,8 +207,8 @@ export class AgentJobHandler {
       return;
     }
 
-    // Register job for interruption tracking
-    await this.jobRegistryManager.register(sessionId, this.workerId);
+    // Register job for interruption tracking (includes messageId for immediate interrupt event)
+    await this.jobRegistryManager.register(sessionId, this.workerId, messageId);
 
     // Note: startStreaming is already called in messages.send router
     // This ensures streaming state is set immediately when user sends message
@@ -186,7 +226,32 @@ export class AgentJobHandler {
         await this.agentsFeature.messages.getBySessionId(sessionId);
       const messages = convertToAIMessages(dbMessages);
 
-      // Get tools for this agent (with context for artifact, planning, client-side, and spawn tools)
+      // Check context limit before processing
+      if (maxContextTokens && session?.usage) {
+        const sessionUsage = session.usage as {
+          currentContextTokens?: number;
+        };
+        const currentContext = sessionUsage.currentContextTokens ?? 0;
+        if (currentContext >= maxContextTokens) {
+          this.log.warn('Context limit reached', {
+            sessionId,
+            currentContext,
+            maxContextTokens,
+          });
+          await this.agentsFeature.messages.updateStatus({
+            messageId,
+            status: 'error',
+          });
+          await this.publishError(sessionId, messageId, {
+            code: 'CONTEXT_LIMIT_REACHED',
+            message: `Context limit reached (${Math.round(currentContext / 1000)}K / ${Math.round(maxContextTokens / 1000)}K tokens). Please start a new conversation.`,
+            retryable: false,
+          });
+          return;
+        }
+      }
+
+      // Get tools for this agent (with context for artifact, planning, client-side, spawn, and agent management tools)
       const tools = getToolsById(agent.tools, {
         userId,
         orgId,
@@ -196,6 +261,7 @@ export class AgentJobHandler {
         artifactsFeature: this.artifactsFeature,
         projectsFeature: this.projectsFeature,
         tasksFeature: this.tasksFeature,
+        agentsFeature: this.agentsFeature,
         eventStreamManager: this.eventStreamManager,
         pubsub: this.pubsub,
         agentSpawner: this.agentSpawner,
@@ -219,6 +285,7 @@ export class AgentJobHandler {
         messages,
         tools,
         abortSignal: abortController.signal,
+        ...modelSettings,
       });
 
       // Track start time for latency calculation

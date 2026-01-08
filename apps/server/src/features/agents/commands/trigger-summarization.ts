@@ -50,7 +50,9 @@ export class TriggerSummarizationCommand {
     });
 
     // Get session with messages for summarization
-    const session = await this.getSessionWithMessagesQuery.execute(sessionId);
+    const session = await this.getSessionWithMessagesQuery.execute({
+      sessionId,
+    });
 
     if (!session) {
       this.log.warn('Session not found for summarization', { sessionId });

@@ -2,6 +2,7 @@ import type Redis from 'ioredis';
 
 // Redis keys for job registry
 const ACTIVE_JOBS_KEY = 'agent:active-jobs';
+const ACTIVE_MESSAGES_KEY = 'agent:active-messages';
 const INTERRUPT_REQUESTS_KEY = 'agent:interrupt-requests';
 
 /**
@@ -14,8 +15,23 @@ export class JobRegistryManager {
   /**
    * Register that a worker is processing a job for a session
    */
-  async register(sessionId: string, workerId: string): Promise<void> {
-    await this.redis.hset(ACTIVE_JOBS_KEY, sessionId, workerId);
+  async register(
+    sessionId: string,
+    workerId: string,
+    messageId: string
+  ): Promise<void> {
+    await this.redis
+      .multi()
+      .hset(ACTIVE_JOBS_KEY, sessionId, workerId)
+      .hset(ACTIVE_MESSAGES_KEY, sessionId, messageId)
+      .exec();
+  }
+
+  /**
+   * Get the active message ID for a session (if any)
+   */
+  async getActiveMessageId(sessionId: string): Promise<string | null> {
+    return this.redis.hget(ACTIVE_MESSAGES_KEY, sessionId);
   }
 
   /**
@@ -25,6 +41,7 @@ export class JobRegistryManager {
     await this.redis
       .multi()
       .hdel(ACTIVE_JOBS_KEY, sessionId)
+      .hdel(ACTIVE_MESSAGES_KEY, sessionId)
       .hdel(INTERRUPT_REQUESTS_KEY, sessionId)
       .exec();
   }
@@ -58,6 +75,18 @@ export class JobRegistryManager {
 
     await this.redis.hset(INTERRUPT_REQUESTS_KEY, sessionId, '1');
     return true;
+  }
+
+  /**
+   * Release a session lock without clearing the interrupt flag
+   * Used by interrupt endpoint to allow new messages while still signaling worker to abort
+   */
+  async releaseSession(sessionId: string): Promise<void> {
+    await this.redis
+      .multi()
+      .hdel(ACTIVE_JOBS_KEY, sessionId)
+      .hdel(ACTIVE_MESSAGES_KEY, sessionId)
+      .exec();
   }
 
   /**

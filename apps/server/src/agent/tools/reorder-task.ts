@@ -30,11 +30,11 @@ export function createReorderTaskTool(context: ReorderTaskContext): Tool {
       position: number;
     }) => {
       // First get the task to find its current status
-      const task = await context.tasksFeature.getById(
-        taskId,
-        context.userId,
-        context.orgId
-      );
+      const task = await context.tasksFeature.getById({
+        id: taskId,
+        userId: context.userId,
+        orgId: context.orgId,
+      });
 
       if (!task) {
         return {

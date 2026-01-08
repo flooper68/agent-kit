@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Heading,
   Text,
@@ -11,7 +12,6 @@ import {
 } from '@agent-kit/ui';
 import { FileText, Trash2, Search } from 'lucide-react';
 import { trpc } from '../lib/trpc';
-import { ArtifactDetailModal } from '../components/artifacts/ArtifactDetailModal';
 
 /**
  * Custom hook for debouncing a value
@@ -28,10 +28,8 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export function ArtifactsPage() {
+  const navigate = useNavigate();
   const [cursors, setCursors] = useState<string[]>([]);
-  const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(
-    null
-  );
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     title: string;
@@ -39,6 +37,7 @@ export function ArtifactsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
   const currentCursor = cursors[cursors.length - 1];
+  const utils = trpc.useUtils();
 
   useEffect(() => {
     document.title = 'Artifacts | Agent Kit';
@@ -57,8 +56,11 @@ export function ArtifactsPage() {
 
   const deleteMutation = trpc.artifacts.delete.useMutation({
     onSuccess: () => {
-      setDeleteTarget(null);
-      artifactsQuery.refetch();
+      // Use queueMicrotask to ensure Radix UI Dialog can properly clean up
+      queueMicrotask(() => {
+        setDeleteTarget(null);
+      });
+      utils.artifacts.list.invalidate();
     },
   });
 
@@ -71,19 +73,6 @@ export function ArtifactsPage() {
   const handlePreviousPage = useCallback(() => {
     setCursors(cursors.slice(0, -1));
   }, [cursors]);
-
-  const handleDownload = useCallback(
-    (artifact: { title: string; content: string }) => {
-      const blob = new Blob([artifact.content], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${artifact.title.replace(/[^a-z0-9]/gi, '_')}.md`;
-      a.click();
-      URL.revokeObjectURL(url);
-    },
-    []
-  );
 
   const formatDate = (date: Date | string) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -161,7 +150,7 @@ export function ArtifactsPage() {
                   <DataList.Item
                     key={artifact.id}
                     className="cursor-pointer transition-colors hover:bg-muted/50"
-                    onClick={() => setSelectedArtifactId(artifact.id)}
+                    onClick={() => navigate(`/app/artifacts/${artifact.id}`)}
                   >
                     <DataList.Cell shrink>
                       <FileText className="h-5 w-5 text-muted-foreground" />
@@ -227,13 +216,6 @@ export function ArtifactsPage() {
           </>
         )}
       </div>
-
-      {/* Detail Modal */}
-      <ArtifactDetailModal
-        artifactId={selectedArtifactId}
-        onClose={() => setSelectedArtifactId(null)}
-        onDownload={handleDownload}
-      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog

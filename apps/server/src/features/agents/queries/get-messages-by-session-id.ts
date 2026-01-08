@@ -1,9 +1,24 @@
 import { eq, asc } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { agentSessionMessages, agentSessionEvents } from '../../../db/schema';
+import {
+  agentSessionMessages,
+  agentSessionEvents,
+  type MessagePart,
+} from '../../../db/schema';
 import type { AgentSessionEvent } from '../../../db/schema/agent-session-events';
-import type { MessageWithParts } from '../types';
 import { reconstructPartsFromEvents } from '../utils';
+
+export interface GetMessagesBySessionIdInput {
+  sessionId: string;
+}
+
+export interface MessageWithParts {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  parts: MessagePart[];
+}
+
+export type GetMessagesBySessionIdResult = MessageWithParts[];
 
 export class GetMessagesBySessionIdQuery {
   private db: typeof DbType;
@@ -12,7 +27,10 @@ export class GetMessagesBySessionIdQuery {
     this.db = db;
   }
 
-  async execute(sessionId: string): Promise<MessageWithParts[]> {
+  async execute(
+    input: GetMessagesBySessionIdInput
+  ): Promise<GetMessagesBySessionIdResult> {
+    const { sessionId } = input;
     // Get all messages for the session
     const sessionMessages = await this.db
       .select()

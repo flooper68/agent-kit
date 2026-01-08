@@ -1,4 +1,3 @@
-export * from './agents';
 export * from './agent-sessions';
 export * from './agent-session-messages';
 export * from './agent-session-events';
@@ -6,4 +5,5 @@ export * from './artifacts';
 export * from './projects';
 export * from './tasks';
 export * from './task-artifacts';
-export * from './local-agents';
+export * from './agents';
+export * from './relations';

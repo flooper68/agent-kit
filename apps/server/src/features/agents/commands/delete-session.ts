@@ -1,7 +1,12 @@
 import { eq } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { agentSessions } from '../../../db/schema';
-import type { AgentSession } from '../types';
+import { agentSessions, type AgentSession } from '../../../db/schema';
+
+export interface DeleteSessionInput {
+  sessionId: string;
+}
+
+export type DeleteSessionResult = AgentSession | undefined;
 
 export class DeleteSessionCommand {
   private db: typeof DbType;
@@ -10,7 +15,8 @@ export class DeleteSessionCommand {
     this.db = db;
   }
 
-  async execute(sessionId: string): Promise<AgentSession | undefined> {
+  async execute(input: DeleteSessionInput): Promise<DeleteSessionResult> {
+    const { sessionId } = input;
     const [deleted] = await this.db
       .delete(agentSessions)
       .where(eq(agentSessions.id, sessionId))

@@ -2,6 +2,12 @@ import { eq } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { agentSessions } from '../../../db/schema';
 
+export interface GetAgentIdForSessionInput {
+  sessionId: string;
+}
+
+export type GetAgentIdForSessionResult = string | undefined;
+
 export class GetAgentIdForSessionQuery {
   private db: typeof DbType;
 
@@ -9,7 +15,10 @@ export class GetAgentIdForSessionQuery {
     this.db = db;
   }
 
-  async execute(sessionId: string): Promise<string | undefined> {
+  async execute(
+    input: GetAgentIdForSessionInput
+  ): Promise<GetAgentIdForSessionResult> {
+    const { sessionId } = input;
     const [session] = await this.db
       .select({ agentId: agentSessions.agentId })
       .from(agentSessions)

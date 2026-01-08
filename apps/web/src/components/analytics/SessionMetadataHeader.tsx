@@ -136,7 +136,7 @@ export function SessionMetadataHeader({
             {getStatusBadge(session.status)}
             {session.isLocalAgent && (
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-                Local Agent
+                External Agent
               </span>
             )}
           </div>

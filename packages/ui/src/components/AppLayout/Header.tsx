@@ -8,8 +8,14 @@ import { useAppLayout } from './AppLayout';
 import type { HeaderProps } from './types';
 
 export const Header = ({ mainMenu, moreMenu, slots }: HeaderProps) => {
-  const { panelCollapsed, panelWidth, togglePanel, isResizing, hasPanel } =
-    useAppLayout();
+  const {
+    panelCollapsed,
+    panelWidth,
+    togglePanel,
+    isResizing,
+    hasPanel,
+    panelToggleDisabled,
+  } = useAppLayout();
 
   return (
     <header
@@ -57,6 +63,7 @@ export const Header = ({ mainMenu, moreMenu, slots }: HeaderProps) => {
               variant="ghost"
               size="sm"
               aria-expanded={!panelCollapsed}
+              disabled={panelToggleDisabled}
             />
           </Tooltip>
         )}

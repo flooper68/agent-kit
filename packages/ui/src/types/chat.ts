@@ -202,6 +202,7 @@ export interface AgentType {
   provider?: string;
   isLocal?: boolean;
   disabled?: boolean;
+  isFavorite?: boolean;
 }
 
 // Todo item types for TodoWrite tool visualization

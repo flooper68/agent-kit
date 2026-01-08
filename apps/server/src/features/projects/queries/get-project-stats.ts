@@ -1,7 +1,16 @@
 import { eq, sql } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { projects, tasks, type TaskStatus } from '../../../db/schema';
-import type { ProjectStats } from '../types';
+
+export interface GetProjectStatsInput {
+  orgId: string;
+}
+
+export interface GetProjectStatsResult {
+  totalProjects: number;
+  totalTasks: number;
+  tasksByStatus: Record<TaskStatus, number>;
+}
 
 export class GetProjectStatsQuery {
   private db: typeof DbType;
@@ -10,7 +19,8 @@ export class GetProjectStatsQuery {
     this.db = db;
   }
 
-  async execute(orgId: string): Promise<ProjectStats> {
+  async execute(input: GetProjectStatsInput): Promise<GetProjectStatsResult> {
+    const { orgId } = input;
     // Get total projects count
     const [projectCount] = await this.db
       .select({

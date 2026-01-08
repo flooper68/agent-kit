@@ -1,8 +1,18 @@
 import { eq, and, gte, sql } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { artifacts } from '../../../db/schema';
-import type { TimeRange, ArtifactStats } from '../types';
+import type { TimeRange } from '../types';
 import { getTimeRangeStart } from './utils';
+
+export interface GetArtifactsStatsInput {
+  orgId: string;
+  timeRange: TimeRange;
+}
+
+export interface GetArtifactsStatsResult {
+  totalCount: number;
+  totalSizeBytes: number;
+}
 
 export class GetArtifactsStatsQuery {
   private db: typeof DbType;
@@ -11,7 +21,10 @@ export class GetArtifactsStatsQuery {
     this.db = db;
   }
 
-  async execute(orgId: string, timeRange: TimeRange): Promise<ArtifactStats> {
+  async execute(
+    input: GetArtifactsStatsInput
+  ): Promise<GetArtifactsStatsResult> {
+    const { orgId, timeRange } = input;
     const startDate = getTimeRangeStart(timeRange);
 
     const conditions = [eq(artifacts.orgId, orgId)];

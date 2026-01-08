@@ -1,8 +1,14 @@
 import { sql, eq, and, gte, count, desc } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { agentSessions } from '../../../db/schema';
-import type { AnalyticsFilters } from '../types';
+import type { TimeRange } from '../types';
 import { getStartDate } from './utils';
+
+export interface GetTokensPerUserInput {
+  orgId: string;
+  timeRange: TimeRange;
+  userId?: string;
+}
 
 export interface TokensPerUserItem {
   userId: string;
@@ -12,6 +18,8 @@ export interface TokensPerUserItem {
   sessions: number;
 }
 
+export type GetTokensPerUserResult = TokensPerUserItem[];
+
 export class GetTokensPerUserQuery {
   private db: typeof DbType;
 
@@ -19,19 +27,19 @@ export class GetTokensPerUserQuery {
     this.db = db;
   }
 
-  async execute(filters: AnalyticsFilters): Promise<TokensPerUserItem[]> {
-    const startDate = getStartDate(filters.timeRange);
+  async execute(input: GetTokensPerUserInput): Promise<GetTokensPerUserResult> {
+    const startDate = getStartDate(input.timeRange);
 
     // Build conditions - always filter by orgId
     const conditions = [
-      eq(agentSessions.orgId, filters.orgId),
+      eq(agentSessions.orgId, input.orgId),
       sql`${agentSessions.usage} IS NOT NULL`,
     ];
     if (startDate) {
       conditions.push(gte(agentSessions.createdAt, startDate));
     }
-    if (filters.userId) {
-      conditions.push(eq(agentSessions.userId, filters.userId));
+    if (input.userId) {
+      conditions.push(eq(agentSessions.userId, input.userId));
     }
 
     const results = await this.db

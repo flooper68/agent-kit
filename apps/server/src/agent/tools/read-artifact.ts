@@ -20,11 +20,11 @@ export function createReadArtifactTool(context: ReadArtifactContext): Tool {
         .describe('The unique ID of the document to read'),
     }),
     execute: async ({ artifactId }: { artifactId: string }) => {
-      const artifact = await context.artifactsFeature.getById(
-        artifactId,
-        context.userId,
-        context.orgId
-      );
+      const artifact = await context.artifactsFeature.getById({
+        id: artifactId,
+        userId: context.userId,
+        orgId: context.orgId,
+      });
 
       if (!artifact) {
         return {

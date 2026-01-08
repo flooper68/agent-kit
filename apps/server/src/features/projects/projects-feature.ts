@@ -6,6 +6,11 @@ import {
   UpdateProjectCommand,
   DeleteProjectCommand,
 } from './commands';
+import type {
+  CreateProjectInput,
+  UpdateProjectInput,
+  DeleteProjectInput,
+} from './commands';
 import {
   GetProjectByIdQuery,
   ListProjectsQuery,
@@ -13,15 +18,15 @@ import {
   GetProjectStatsQuery,
 } from './queries';
 import type {
-  CreateProjectInput,
-  UpdateProjectInput,
+  GetProjectByIdInput,
+  GetProjectByIdResult,
   ListProjectsInput,
+  ListProjectsResult,
   SearchProjectsInput,
-  PaginatedProjects,
-  ProjectWithTasks,
-  ProjectListItem,
-  ProjectStats,
-} from './types';
+  SearchProjectsResult,
+  GetProjectStatsInput,
+  GetProjectStatsResult,
+} from './queries';
 
 /**
  * ProjectsFeature - provides project CRUD and query operations
@@ -71,37 +76,32 @@ export class ProjectsFeature {
     return project;
   }
 
-  async delete(
-    id: string,
-    userId: string,
-    orgId: string
-  ): Promise<Project | undefined> {
-    const project = await this.deleteProjectCommand.execute(id, userId, orgId);
+  async delete(input: DeleteProjectInput): Promise<Project | undefined> {
+    const project = await this.deleteProjectCommand.execute(input);
     if (project) {
-      await this.cacheInvalidation?.publishProjectDeleted(orgId, project.id);
+      await this.cacheInvalidation?.publishProjectDeleted(
+        input.orgId,
+        project.id
+      );
     }
     return project;
   }
 
   // Queries
-  getById(
-    id: string,
-    userId: string,
-    orgId: string
-  ): Promise<ProjectWithTasks | undefined> {
-    return this.getProjectByIdQuery.execute(id, userId, orgId);
+  getById(input: GetProjectByIdInput): Promise<GetProjectByIdResult> {
+    return this.getProjectByIdQuery.execute(input);
   }
 
-  list(input: ListProjectsInput): Promise<PaginatedProjects> {
+  list(input: ListProjectsInput): Promise<ListProjectsResult> {
     return this.listProjectsQuery.execute(input);
   }
 
-  search(input: SearchProjectsInput): Promise<ProjectListItem[]> {
+  search(input: SearchProjectsInput): Promise<SearchProjectsResult> {
     return this.searchProjectsQuery.execute(input);
   }
 
   // Stats
-  getStats(orgId: string): Promise<ProjectStats> {
-    return this.getProjectStatsQuery.execute(orgId);
+  getStats(input: GetProjectStatsInput): Promise<GetProjectStatsResult> {
+    return this.getProjectStatsQuery.execute(input);
   }
 }

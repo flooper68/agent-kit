@@ -1,17 +1,50 @@
-export { RegisterAgentCommand } from './register-agent';
-export { UpdateAgentCommand } from './update-agent';
-export { DeleteAgentCommand } from './delete-agent';
+// Session commands
 export { CreateSessionCommand } from './create-session';
+export type {
+  CreateSessionInput,
+  CreateSessionResult,
+  CreateSessionValidators,
+} from './create-session';
 export { UpdateSessionTitleCommand } from './update-session-title';
+export type {
+  UpdateSessionTitleInput,
+  UpdateSessionTitleResult,
+} from './update-session-title';
 export { UpdateSessionTimestampCommand } from './update-session-timestamp';
+export type {
+  UpdateSessionTimestampInput,
+  UpdateSessionTimestampResult,
+} from './update-session-timestamp';
 export { UpdateSessionSummaryCommand } from './update-session-summary';
+export type {
+  UpdateSessionSummaryInput,
+  UpdateSessionSummaryResult,
+} from './update-session-summary';
 export { UpdateSessionUsageCommand } from './update-session-usage';
+export type {
+  UpdateSessionUsageInput,
+  UpdateSessionUsageResult,
+} from './update-session-usage';
 export { IncrementMessageCountCommand } from './increment-message-count';
+export type {
+  IncrementMessageCountInput,
+  IncrementMessageCountResult,
+} from './increment-message-count';
 export { DeleteSessionCommand } from './delete-session';
+export type { DeleteSessionInput, DeleteSessionResult } from './delete-session';
+
+// Message commands
 export { CreateMessageCommand } from './create-message';
+export type { CreateMessageInput, CreateMessageResult } from './create-message';
 export { UpdateMessageStatusCommand } from './update-message-status';
+export type {
+  UpdateMessageStatusInput,
+  UpdateMessageStatusResult,
+} from './update-message-status';
 export { InsertEventCommand } from './insert-event';
-// New orchestration commands
+export type { InsertEventInput, InsertEventResult } from './insert-event';
+
+// Orchestration commands
 export { SendUserMessageCommand } from './send-user-message';
 export type {
   SendUserMessageInput,
@@ -27,3 +60,45 @@ export type {
   TriggerSummarizationInput,
   TriggerSummarizationResult,
 } from './trigger-summarization';
+export { InterruptSessionCommand } from './interrupt-session';
+export type {
+  InterruptSessionDeps,
+  InterruptSessionInput,
+} from './interrupt-session';
+
+// Custom agent commands
+export { CreateExternalAgentCommand } from './create-external-agent';
+export type {
+  CreateExternalAgentInput,
+  CreateExternalAgentResult,
+} from './create-external-agent';
+export { CreateServerAgentCommand } from './create-server-agent';
+export type {
+  CreateServerAgentInput,
+  CreateServerAgentResult,
+} from './create-server-agent';
+export { UpdateCustomAgentCommand } from './update-custom-agent';
+export type {
+  UpdateCustomAgentInput,
+  UpdateCustomAgentResult,
+} from './update-custom-agent';
+export { SetAgentDisabledCommand } from './set-agent-disabled';
+export type {
+  SetAgentDisabledInput,
+  SetAgentDisabledResult,
+} from './set-agent-disabled';
+export { RegenerateAgentKeyCommand } from './regenerate-agent-key';
+export type {
+  RegenerateAgentKeyInput,
+  RegenerateAgentKeyResult,
+} from './regenerate-agent-key';
+export { ToggleAgentFavoriteCommand } from './toggle-agent-favorite';
+export type {
+  ToggleAgentFavoriteInput,
+  ToggleAgentFavoriteResult,
+} from './toggle-agent-favorite';
+export { DeleteCustomAgentCommand } from './delete-custom-agent';
+export type {
+  DeleteCustomAgentInput,
+  DeleteCustomAgentResult,
+} from './delete-custom-agent';

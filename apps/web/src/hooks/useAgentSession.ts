@@ -920,7 +920,10 @@ export function useAgentSession(
   // Calculate context usage
   // - `used`: from latest streaming event (currentContextTokens) or server's currentContextTokens
   // - Accumulated values: from sessionQuery.data.usage (server is source of truth)
+  // - `total`: from agent's maxContextTokens config, or model's default, or fallback to 200K
   const DEFAULT_CONTEXT_WINDOW = 200000;
+  const agentMaxContext =
+    sessionQuery.data?.maxContextTokens ?? DEFAULT_CONTEXT_WINDOW;
   const sessionUsage = sessionQuery.data?.usage as
     | {
         promptTokens?: number;
@@ -947,8 +950,8 @@ export function useAgentSession(
     sessionUsage || currentContextTokens
       ? {
           used: usedContext,
-          total: DEFAULT_CONTEXT_WINDOW,
-          percentage: (usedContext / DEFAULT_CONTEXT_WINDOW) * 100,
+          total: agentMaxContext,
+          percentage: (usedContext / agentMaxContext) * 100,
           // Accumulated values from server (read-only, don't modify locally)
           promptTokens: sessionUsage?.promptTokens ?? 0,
           completionTokens: sessionUsage?.completionTokens ?? 0,

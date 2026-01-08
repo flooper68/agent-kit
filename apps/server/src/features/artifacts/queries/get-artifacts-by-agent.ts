@@ -1,8 +1,21 @@
 import { eq, and, gte, sql, inArray } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { artifacts, localAgents } from '../../../db/schema';
-import type { TimeRange, ArtifactsByAgent } from '../types';
+import { artifacts, externalAgents, serverAgents } from '../../../db/schema';
+import type { TimeRange } from '../types';
 import { getTimeRangeStart } from './utils';
+
+export interface GetArtifactsByAgentInput {
+  orgId: string;
+  timeRange: TimeRange;
+}
+
+export interface ArtifactsByAgent {
+  agentId: string | null;
+  agentName: string;
+  count: number;
+}
+
+export type GetArtifactsByAgentResult = ArtifactsByAgent[];
 
 export class GetArtifactsByAgentQuery {
   private db: typeof DbType;
@@ -14,9 +27,9 @@ export class GetArtifactsByAgentQuery {
   }
 
   async execute(
-    orgId: string,
-    timeRange: TimeRange
-  ): Promise<ArtifactsByAgent[]> {
+    input: GetArtifactsByAgentInput
+  ): Promise<GetArtifactsByAgentResult> {
+    const { orgId, timeRange } = input;
     const startDate = getTimeRangeStart(timeRange);
 
     const conditions = [eq(artifacts.orgId, orgId)];
@@ -41,15 +54,25 @@ export class GetArtifactsByAgentQuery {
 
     const localAgentNames = new Map<string, string>();
     if (unknownAgentIds.length > 0) {
-      const localAgentResults = await this.db
-        .select({
-          key: localAgents.key,
-          name: localAgents.name,
-        })
-        .from(localAgents)
-        .where(inArray(localAgents.key, unknownAgentIds));
+      // Look up agents by key from both tables
+      const [externalResults, serverResults] = await Promise.all([
+        this.db
+          .select({
+            key: externalAgents.key,
+            name: externalAgents.name,
+          })
+          .from(externalAgents)
+          .where(inArray(externalAgents.key, unknownAgentIds)),
+        this.db
+          .select({
+            key: serverAgents.key,
+            name: serverAgents.name,
+          })
+          .from(serverAgents)
+          .where(inArray(serverAgents.key, unknownAgentIds)),
+      ]);
 
-      for (const la of localAgentResults) {
+      for (const la of [...externalResults, ...serverResults]) {
         localAgentNames.set(la.key, la.name);
       }
     }

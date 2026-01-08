@@ -1,4 +1,5 @@
 import type { AgentError } from './errors';
+import type { ThinkingConfig } from '../db/schema/agents';
 
 // Agent definition stored in the registry
 export interface AgentDefinition {
@@ -63,6 +64,11 @@ export interface StreamConfig {
   messages: Message[];
   tools: Record<string, Tool>;
   abortSignal?: AbortSignal;
+
+  // Model settings (optional - providers use defaults if not specified)
+  temperature?: number;
+  maxTokens?: number;
+  thinkingConfig?: ThinkingConfig;
 }
 
 // Events emitted by the provider during streaming

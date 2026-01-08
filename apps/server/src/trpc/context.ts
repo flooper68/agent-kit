@@ -6,8 +6,8 @@ import type {
   EventStreamManager,
   JobRegistryManager,
   StreamingStateManager,
-  LocalAgentsConnectionManager,
-  LocalAgentWebSocketRegistry,
+  ExternalAgentsConnectionManager,
+  ExternalAgentWebSocketRegistry,
   AgentSpawner,
 } from '../agent';
 import type { AgentsFeature } from '../features/agents';
@@ -15,7 +15,6 @@ import type { AnalyticsFeature } from '../features/analytics';
 import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
-import type { LocalAgentsFeature } from '../features/local-agents';
 import type { PubSubManager, CacheInvalidationService } from '../real-time';
 
 export type ClerkClient = ReturnType<typeof createClerkClient>;
@@ -27,14 +26,13 @@ export interface ContextDeps {
   artifactsFeature: ArtifactsFeature;
   projectsFeature: ProjectsFeature;
   tasksFeature: TasksFeature;
-  localAgentsFeature: LocalAgentsFeature;
   jobQueueManager: JobQueueManager;
   eventStreamManager: EventStreamManager;
   jobRegistryManager: JobRegistryManager;
   streamingStateManager: StreamingStateManager;
   pubsub: PubSubManager;
-  localAgentsConnectionManager: LocalAgentsConnectionManager;
-  localAgentWSRegistry: LocalAgentWebSocketRegistry;
+  externalAgentsConnectionManager: ExternalAgentsConnectionManager;
+  externalAgentWSRegistry: ExternalAgentWebSocketRegistry;
   cacheInvalidation: CacheInvalidationService;
   agentSpawner: AgentSpawner;
 }
@@ -58,14 +56,13 @@ export function createContext(deps: ContextDeps) {
       artifactsFeature: deps.artifactsFeature,
       projectsFeature: deps.projectsFeature,
       tasksFeature: deps.tasksFeature,
-      localAgentsFeature: deps.localAgentsFeature,
       jobQueueManager: deps.jobQueueManager,
       eventStreamManager: deps.eventStreamManager,
       jobRegistryManager: deps.jobRegistryManager,
       streamingStateManager: deps.streamingStateManager,
       pubsub: deps.pubsub,
-      localAgentsConnectionManager: deps.localAgentsConnectionManager,
-      localAgentWSRegistry: deps.localAgentWSRegistry,
+      externalAgentsConnectionManager: deps.externalAgentsConnectionManager,
+      externalAgentWSRegistry: deps.externalAgentWSRegistry,
       cacheInvalidation: deps.cacheInvalidation,
       agentSpawner: deps.agentSpawner,
     };

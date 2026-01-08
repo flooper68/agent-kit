@@ -11,12 +11,16 @@ import {
   GetWebSearchCallsQuery,
 } from './queries';
 import type {
+  GetOverviewStatsInput,
   GetUsageOverTimeInput,
+  GetAgentDistributionInput,
+  GetProviderDistributionInput,
   GetRecentActivityInput,
   GetUsersWithSessionsInput,
+  GetTokensPerUserInput,
   GetSessionDetailInput,
+  GetWebSearchCallsInput,
 } from './queries';
-import type { AnalyticsFilters } from './types';
 
 /**
  * AnalyticsFeature - provides analytics queries for the admin dashboard
@@ -47,20 +51,20 @@ export class AnalyticsFeature {
     this.getWebSearchCallsQuery = new GetWebSearchCallsQuery(db);
   }
 
-  getOverviewStats(filters: AnalyticsFilters) {
-    return this.getOverviewStatsQuery.execute(filters);
+  getOverviewStats(input: GetOverviewStatsInput) {
+    return this.getOverviewStatsQuery.execute(input);
   }
 
   getUsageOverTime(input: GetUsageOverTimeInput) {
     return this.getUsageOverTimeQuery.execute(input);
   }
 
-  getAgentDistribution(filters: AnalyticsFilters) {
-    return this.getAgentDistributionQuery.execute(filters);
+  getAgentDistribution(input: GetAgentDistributionInput) {
+    return this.getAgentDistributionQuery.execute(input);
   }
 
-  getProviderDistribution(filters: AnalyticsFilters) {
-    return this.getProviderDistributionQuery.execute(filters);
+  getProviderDistribution(input: GetProviderDistributionInput) {
+    return this.getProviderDistributionQuery.execute(input);
   }
 
   getRecentActivity(input: GetRecentActivityInput) {
@@ -71,15 +75,15 @@ export class AnalyticsFeature {
     return this.getUsersWithSessionsQuery.execute(input);
   }
 
-  getTokensPerUser(filters: AnalyticsFilters) {
-    return this.getTokensPerUserQuery.execute(filters);
+  getTokensPerUser(input: GetTokensPerUserInput) {
+    return this.getTokensPerUserQuery.execute(input);
   }
 
   getSessionDetail(input: GetSessionDetailInput) {
     return this.getSessionDetailQuery.execute(input);
   }
 
-  getWebSearchCalls(filters: AnalyticsFilters) {
-    return this.getWebSearchCallsQuery.execute(filters);
+  getWebSearchCalls(input: GetWebSearchCallsInput) {
+    return this.getWebSearchCallsQuery.execute(input);
   }
 }

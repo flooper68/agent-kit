@@ -1,5 +1,7 @@
 import type { StreamingStateManager } from '../../../agent/streaming-state-manager';
 
+export type GetActiveSessionIdsResult = Set<string>;
+
 /**
  * GetActiveSessionIdsQuery - Gets all session IDs that are currently streaming
  * Used to enrich session lists with streaming status
@@ -7,7 +9,7 @@ import type { StreamingStateManager } from '../../../agent/streaming-state-manag
 export class GetActiveSessionIdsQuery {
   constructor(private streamingStateManager: StreamingStateManager) {}
 
-  async execute(): Promise<Set<string>> {
+  async execute(): Promise<GetActiveSessionIdsResult> {
     return this.streamingStateManager.getActiveSessionIds();
   }
 }

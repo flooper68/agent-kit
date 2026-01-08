@@ -2,7 +2,20 @@ import { eq, or, ilike, and, desc, sql } from 'drizzle-orm';
 import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
 import { artifacts } from '../../../db/schema';
-import type { SearchArtifactsInput, SearchArtifactsResult } from '../types';
+import type { ArtifactListItem } from './list-artifacts';
+
+export interface SearchArtifactsInput {
+  userId: string;
+  orgId: string;
+  query: string;
+  limit: number;
+  offset: number;
+}
+
+export interface SearchArtifactsResult {
+  results: ArtifactListItem[];
+  totalCount: number;
+}
 
 export class SearchArtifactsQuery {
   private db: typeof DbType;

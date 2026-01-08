@@ -20,11 +20,11 @@ export function createGetTaskTool(context: GetTaskContext): Tool {
         .describe('The unique ID of the task to retrieve'),
     }),
     execute: async ({ taskId }: { taskId: string }) => {
-      const task = await context.tasksFeature.getById(
-        taskId,
-        context.userId,
-        context.orgId
-      );
+      const task = await context.tasksFeature.getById({
+        id: taskId,
+        userId: context.userId,
+        orgId: context.orgId,
+      });
 
       if (!task) {
         return {

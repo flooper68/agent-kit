@@ -49,7 +49,7 @@ export class SendUserMessageCommand {
     });
 
     // Increment message count for user message
-    await this.incrementMessageCountCommand.execute(sessionId);
+    await this.incrementMessageCountCommand.execute({ sessionId });
 
     // Create assistant message placeholder
     const assistantMessage = await this.createMessageCommand.execute({
@@ -59,7 +59,7 @@ export class SendUserMessageCommand {
     });
 
     // Update session timestamp
-    await this.updateSessionTimestampCommand.execute(sessionId);
+    await this.updateSessionTimestampCommand.execute({ sessionId });
 
     return {
       userMessageId: userMessage.id,

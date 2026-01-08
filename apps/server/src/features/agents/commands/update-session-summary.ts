@@ -1,7 +1,14 @@
 import { eq } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { agentSessions } from '../../../db/schema';
-import type { AgentSession, UpdateSessionSummaryInput } from '../types';
+import { agentSessions, type AgentSession } from '../../../db/schema';
+
+export interface UpdateSessionSummaryInput {
+  sessionId: string;
+  title: string;
+  description: string;
+}
+
+export type UpdateSessionSummaryResult = AgentSession | undefined;
 
 export class UpdateSessionSummaryCommand {
   private db: typeof DbType;
@@ -12,7 +19,7 @@ export class UpdateSessionSummaryCommand {
 
   async execute(
     input: UpdateSessionSummaryInput
-  ): Promise<AgentSession | undefined> {
+  ): Promise<UpdateSessionSummaryResult> {
     const [updated] = await this.db
       .update(agentSessions)
       .set({

@@ -9,6 +9,14 @@ import {
   AttachArtifactCommand,
   DetachArtifactCommand,
 } from './commands';
+import type {
+  CreateTaskInput,
+  UpdateTaskInput,
+  DeleteTaskInput,
+  MoveTaskInput,
+  AttachArtifactInput,
+  DetachArtifactInput,
+} from './commands';
 import {
   GetTaskByIdQuery,
   ListTasksByProjectQuery,
@@ -17,16 +25,17 @@ import {
   GetTaskStatsQuery,
 } from './queries';
 import type {
-  CreateTaskInput,
-  UpdateTaskInput,
-  MoveTaskInput,
+  GetTaskByIdInput,
+  GetTaskByIdResult,
   ListTasksInput,
+  ListTasksByProjectResult,
+  GetTasksByStatusInput,
+  GetTasksByStatusResult,
   SearchTasksInput,
-  TaskListItem,
-  TaskWithDetails,
-  TasksByStatus,
-  TaskStats,
-} from './types';
+  SearchTasksResult,
+  GetTaskStatsInput,
+  GetTaskStatsResult,
+} from './queries';
 
 /**
  * TasksFeature - provides task CRUD, move, and query operations
@@ -86,15 +95,11 @@ export class TasksFeature {
     return task;
   }
 
-  async delete(
-    id: string,
-    userId: string,
-    orgId: string
-  ): Promise<Task | undefined> {
-    const task = await this.deleteTaskCommand.execute(id, userId, orgId);
+  async delete(input: DeleteTaskInput): Promise<Task | undefined> {
+    const task = await this.deleteTaskCommand.execute(input);
     if (task) {
       await this.cacheInvalidation?.publishTaskDeleted(
-        orgId,
+        input.orgId,
         task.id,
         task.projectId
       );
@@ -114,44 +119,24 @@ export class TasksFeature {
     return task;
   }
 
-  async attachArtifact(
-    taskId: string,
-    artifactId: string,
-    userId: string,
-    orgId: string
-  ): Promise<boolean> {
-    const result = await this.attachArtifactCommand.execute(
-      taskId,
-      artifactId,
-      userId,
-      orgId
-    );
+  async attachArtifact(input: AttachArtifactInput): Promise<boolean> {
+    const result = await this.attachArtifactCommand.execute(input);
     if (result.success && result.projectId) {
       await this.cacheInvalidation?.publishTaskUpdated(
-        orgId,
-        taskId,
+        input.orgId,
+        input.taskId,
         result.projectId
       );
     }
     return result.success;
   }
 
-  async detachArtifact(
-    taskId: string,
-    artifactId: string,
-    userId: string,
-    orgId: string
-  ): Promise<boolean> {
-    const result = await this.detachArtifactCommand.execute(
-      taskId,
-      artifactId,
-      userId,
-      orgId
-    );
+  async detachArtifact(input: DetachArtifactInput): Promise<boolean> {
+    const result = await this.detachArtifactCommand.execute(input);
     if (result.success && result.projectId) {
       await this.cacheInvalidation?.publishTaskUpdated(
-        orgId,
-        taskId,
+        input.orgId,
+        input.taskId,
         result.projectId
       );
     }
@@ -159,32 +144,24 @@ export class TasksFeature {
   }
 
   // Queries
-  getById(
-    id: string,
-    userId: string,
-    orgId: string
-  ): Promise<TaskWithDetails | undefined> {
-    return this.getTaskByIdQuery.execute(id, userId, orgId);
+  getById(input: GetTaskByIdInput): Promise<GetTaskByIdResult> {
+    return this.getTaskByIdQuery.execute(input);
   }
 
-  listByProject(input: ListTasksInput): Promise<TaskListItem[]> {
+  listByProject(input: ListTasksInput): Promise<ListTasksByProjectResult> {
     return this.listTasksByProjectQuery.execute(input);
   }
 
-  getByStatus(
-    projectId: string,
-    userId: string,
-    orgId: string
-  ): Promise<TasksByStatus> {
-    return this.getTasksByStatusQuery.execute(projectId, userId, orgId);
+  getByStatus(input: GetTasksByStatusInput): Promise<GetTasksByStatusResult> {
+    return this.getTasksByStatusQuery.execute(input);
   }
 
-  search(input: SearchTasksInput): Promise<TaskListItem[]> {
+  search(input: SearchTasksInput): Promise<SearchTasksResult> {
     return this.searchTasksQuery.execute(input);
   }
 
   // Stats
-  getStats(orgId: string): Promise<TaskStats> {
-    return this.getTaskStatsQuery.execute(orgId);
+  getStats(input: GetTaskStatsInput): Promise<GetTaskStatsResult> {
+    return this.getTaskStatsQuery.execute(input);
   }
 }

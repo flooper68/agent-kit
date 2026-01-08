@@ -7,7 +7,18 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from '../../../db/schema';
-import type { UpdateTaskInput } from '../types';
+
+export interface UpdateTaskInput {
+  id: string;
+  userId: string;
+  orgId: string;
+  title?: string;
+  description?: string | null;
+  priority?: TaskPriority;
+  status?: TaskStatus;
+}
+
+export type UpdateTaskResult = Task | undefined;
 
 export class UpdateTaskCommand {
   private db: typeof DbType;
@@ -16,7 +27,7 @@ export class UpdateTaskCommand {
     this.db = db;
   }
 
-  async execute(input: UpdateTaskInput): Promise<Task | undefined> {
+  async execute(input: UpdateTaskInput): Promise<UpdateTaskResult> {
     // Validate description length if provided
     if (input.description !== undefined && input.description !== null) {
       if (input.description.length > 5000) {

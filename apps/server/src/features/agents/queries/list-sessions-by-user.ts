@@ -9,8 +9,7 @@ import {
   type SQL,
 } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { agentSessions } from '../../../db/schema';
-import type { PaginatedSessions } from '../types';
+import { agentSessions, type AgentSession } from '../../../db/schema';
 
 export type SessionFilter = 'my_chats' | 'all' | 'sub_agents';
 
@@ -21,6 +20,12 @@ export interface ListSessionsByUserInput {
   cursor?: string;
 }
 
+export interface ListSessionsByUserResult {
+  items: AgentSession[];
+  nextCursor: string | undefined;
+  totalCount: number;
+}
+
 export class ListSessionsByUserQuery {
   private db: typeof DbType;
 
@@ -28,7 +33,9 @@ export class ListSessionsByUserQuery {
     this.db = db;
   }
 
-  async execute(input: ListSessionsByUserInput): Promise<PaginatedSessions> {
+  async execute(
+    input: ListSessionsByUserInput
+  ): Promise<ListSessionsByUserResult> {
     const { userId, limit, filter = 'my_chats', cursor } = input;
 
     // Build conditions based on filter (for counting and querying)

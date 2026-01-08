@@ -1,7 +1,17 @@
 import { eq, sql, gte, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { tasks, type TaskStatus, type TaskPriority } from '../../../db/schema';
-import type { TaskStats } from '../types';
+
+export interface GetTaskStatsInput {
+  orgId: string;
+}
+
+export interface GetTaskStatsResult {
+  totalTasks: number;
+  byStatus: Record<TaskStatus, number>;
+  byPriority: Record<TaskPriority, number>;
+  completedThisWeek: number;
+}
 
 export class GetTaskStatsQuery {
   private db: typeof DbType;
@@ -10,7 +20,8 @@ export class GetTaskStatsQuery {
     this.db = db;
   }
 
-  async execute(orgId: string): Promise<TaskStats> {
+  async execute(input: GetTaskStatsInput): Promise<GetTaskStatsResult> {
+    const { orgId } = input;
     // Get counts by status
     const statusCounts = await this.db
       .select({

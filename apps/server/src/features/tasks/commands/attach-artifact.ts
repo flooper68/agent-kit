@@ -7,6 +7,13 @@ import {
   type TaskEvent,
 } from '../../../db/schema';
 
+export interface AttachArtifactInput {
+  taskId: string;
+  artifactId: string;
+  userId: string;
+  orgId: string;
+}
+
 export interface AttachArtifactResult {
   success: boolean;
   projectId?: string;
@@ -19,12 +26,8 @@ export class AttachArtifactCommand {
     this.db = db;
   }
 
-  async execute(
-    taskId: string,
-    artifactId: string,
-    userId: string,
-    orgId: string
-  ): Promise<AttachArtifactResult> {
+  async execute(input: AttachArtifactInput): Promise<AttachArtifactResult> {
+    const { taskId, artifactId, userId, orgId } = input;
     return await this.db.transaction(async (tx) => {
       // Verify task ownership
       const [task] = await tx

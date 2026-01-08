@@ -2,6 +2,14 @@ import { eq, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { agentSessions } from '../../../db/schema';
 
+export interface VerifySessionOwnershipInput {
+  sessionId: string;
+  userId: string;
+  orgId?: string;
+}
+
+export type VerifySessionOwnershipResult = boolean;
+
 export class VerifySessionOwnershipQuery {
   private db: typeof DbType;
 
@@ -15,10 +23,9 @@ export class VerifySessionOwnershipQuery {
    * to prevent cross-tenant data access when switching organizations.
    */
   async execute(
-    sessionId: string,
-    userId: string,
-    orgId?: string
-  ): Promise<boolean> {
+    input: VerifySessionOwnershipInput
+  ): Promise<VerifySessionOwnershipResult> {
+    const { sessionId, userId, orgId } = input;
     const conditions = [
       eq(agentSessions.id, sessionId),
       eq(agentSessions.userId, userId),

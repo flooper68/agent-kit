@@ -3,8 +3,9 @@ import { trpc } from '../lib/trpc';
 
 /**
  * Hook that subscribes to server-sent cache invalidation events.
- * When projects, tasks, or sessions are modified (by agent tools or other clients),
- * this hook invalidates the relevant React Query caches to trigger a refetch.
+ * When projects, tasks, sessions, agents, or artifacts are modified
+ * (by agent tools or other clients), this hook invalidates the relevant
+ * React Query caches to trigger a refetch.
  *
  * Should be mounted once in the app, typically in a layout component.
  */
@@ -52,43 +53,72 @@ export function useCacheInvalidation() {
     },
   });
 
-  // User-scoped subscription for sessions
+  // User-scoped subscription for sessions, agents, and artifacts
   trpc.cache.subscribeUser.useSubscription(undefined, {
     onData: (event) => {
-      if (event.type === 'sessions') {
-        // Handle streaming status changes - just invalidate the session list
-        // to update streaming indicators in real-time
-        if (
-          event.action === 'streaming_started' ||
-          event.action === 'streaming_stopped'
-        ) {
-          utils.sessions.list.invalidate();
-          return;
-        }
+      switch (event.type) {
+        case 'sessions':
+          // Handle streaming status changes - just invalidate the session list
+          // to update streaming indicators in real-time
+          if (
+            event.action === 'streaming_started' ||
+            event.action === 'streaming_stopped'
+          ) {
+            utils.sessions.list.invalidate();
+            return;
+          }
 
-        // Handle streaming state changed events (new reliable streaming state)
-        // This is the authoritative source for streaming status
-        if (event.action === 'streaming_state_changed') {
+          // Handle streaming state changed events (new reliable streaming state)
+          // This is the authoritative source for streaming status
+          if (event.action === 'streaming_state_changed') {
+            utils.sessions.list.invalidate();
+            // Also invalidate the specific session's isStreaming query if it exists
+            if (event.entityId) {
+              utils.sessions.isStreaming.invalidate({
+                sessionId: event.entityId,
+              });
+              // Invalidate session data to refresh usage stats after streaming completes
+              utils.sessions.get.invalidate({ sessionId: event.entityId });
+            }
+            return;
+          }
+
+          // Invalidate session list (for updated timestamps or titles)
           utils.sessions.list.invalidate();
-          // Also invalidate the specific session's isStreaming query if it exists
+
+          // Invalidate specific session if we have the ID
           if (event.entityId) {
-            utils.sessions.isStreaming.invalidate({
+            utils.sessions.get.invalidate({ sessionId: event.entityId });
+            utils.sessions.getResources.invalidate({
               sessionId: event.entityId,
             });
-            // Invalidate session data to refresh usage stats after streaming completes
-            utils.sessions.get.invalidate({ sessionId: event.entityId });
           }
-          return;
-        }
+          break;
 
-        // Invalidate session list (for updated timestamps or titles)
-        utils.sessions.list.invalidate();
+        case 'agents':
+          // Invalidate all agent list queries
+          utils.agents.list.invalidate();
+          utils.agents.listServer.invalidate();
+          utils.agents.listExternal.invalidate();
+          utils.agents.listCustom.invalidate();
+          // Invalidate specific agent if we have the ID
+          if (event.entityId) {
+            utils.agents.getCustom.invalidate({ id: event.entityId });
+          }
+          break;
 
-        // Invalidate specific session if we have the ID
-        if (event.entityId) {
-          utils.sessions.get.invalidate({ sessionId: event.entityId });
-          utils.sessions.getResources.invalidate({ sessionId: event.entityId });
-        }
+        case 'artifacts':
+          // Invalidate artifact list queries
+          utils.artifacts.list.invalidate();
+          // Invalidate specific artifact if we have the ID
+          if (event.entityId) {
+            utils.artifacts.get.invalidate({ id: event.entityId });
+          }
+          // Invalidate artifact analytics queries
+          utils.artifacts.getStats.invalidate();
+          utils.artifacts.getOverTime.invalidate();
+          utils.artifacts.getByAgent.invalidate();
+          break;
       }
     },
     onError: (error) => {
@@ -98,17 +128,17 @@ export function useCacheInvalidation() {
 }
 
 /**
- * Track local agent connection status for disabling disconnected agents.
+ * Track external agent connection status for disabling disconnected agents.
  * Returns a Map of agentId -> isConnected.
  */
-export function useLocalAgentConnectionStatus(hasLocalAgents: boolean) {
+export function useExternalAgentConnectionStatus(hasExternalAgents: boolean) {
   const [connectionStatus, setConnectionStatus] = useState<
     Map<string, boolean>
   >(new Map());
 
-  trpc.localAgents.connectionStatus.useSubscription(undefined, {
-    enabled: hasLocalAgents,
-    onData: (update) => {
+  trpc.agents.externalConnectionStatus.useSubscription(undefined, {
+    enabled: hasExternalAgents,
+    onData: (update: { agentId: string; status: string }) => {
       setConnectionStatus((prev) => {
         const next = new Map(prev);
         next.set(update.agentId, update.status === 'connected');

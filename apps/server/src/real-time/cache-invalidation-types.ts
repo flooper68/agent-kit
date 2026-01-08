@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const CacheInvalidationEventSchema = z.object({
-  type: z.enum(['projects', 'tasks', 'sessions']),
+  type: z.enum(['projects', 'tasks', 'sessions', 'agents', 'artifacts']),
   action: z.enum([
     'created',
     'updated',
@@ -20,6 +20,8 @@ export const CacheInvalidationEventSchema = z.object({
   timestamp: z.string(),
   // For streaming_state_changed events
   isStreaming: z.boolean().optional(),
+  // For artifact events (to invalidate per-agent artifact queries)
+  agentId: z.string().optional(),
 });
 
 export type CacheInvalidationEvent = z.infer<

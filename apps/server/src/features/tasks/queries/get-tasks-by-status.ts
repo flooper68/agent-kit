@@ -1,7 +1,23 @@
 import { eq, and, sql } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { tasks, taskArtifacts, type TaskStatus } from '../../../db/schema';
-import type { TasksByStatus, TaskListItem } from '../types';
+import type { TaskListItem } from './list-tasks-by-project';
+
+export interface GetTasksByStatusInput {
+  projectId: string;
+  userId: string;
+  orgId: string;
+}
+
+export interface TasksByStatus {
+  backlog: TaskListItem[];
+  todo: TaskListItem[];
+  in_progress: TaskListItem[];
+  review: TaskListItem[];
+  done: TaskListItem[];
+}
+
+export type GetTasksByStatusResult = TasksByStatus;
 
 export class GetTasksByStatusQuery {
   private db: typeof DbType;
@@ -10,11 +26,8 @@ export class GetTasksByStatusQuery {
     this.db = db;
   }
 
-  async execute(
-    projectId: string,
-    userId: string,
-    orgId: string
-  ): Promise<TasksByStatus> {
+  async execute(input: GetTasksByStatusInput): Promise<GetTasksByStatusResult> {
+    const { projectId, userId, orgId } = input;
     const results = await this.db
       .select({
         id: tasks.id,

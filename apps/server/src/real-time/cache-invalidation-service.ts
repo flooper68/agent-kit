@@ -212,6 +212,79 @@ export class CacheInvalidationService {
     });
   }
 
+  // Agent events (user-scoped)
+  async publishAgentCreated(userId: string, agentId: string): Promise<void> {
+    await this.publishToUser({
+      type: 'agents',
+      action: 'created',
+      entityId: agentId,
+      userId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  async publishAgentUpdated(userId: string, agentId: string): Promise<void> {
+    await this.publishToUser({
+      type: 'agents',
+      action: 'updated',
+      entityId: agentId,
+      userId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  async publishAgentDeleted(userId: string, agentId: string): Promise<void> {
+    await this.publishToUser({
+      type: 'agents',
+      action: 'deleted',
+      entityId: agentId,
+      userId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // Artifact events (user-scoped)
+  async publishArtifactCreated(
+    userId: string,
+    artifactId: string,
+    agentId?: string
+  ): Promise<void> {
+    await this.publishToUser({
+      type: 'artifacts',
+      action: 'created',
+      entityId: artifactId,
+      userId,
+      agentId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  async publishArtifactDeleted(
+    userId: string,
+    artifactId: string
+  ): Promise<void> {
+    await this.publishToUser({
+      type: 'artifacts',
+      action: 'deleted',
+      entityId: artifactId,
+      userId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  async publishArtifactUpdated(
+    userId: string,
+    artifactId: string
+  ): Promise<void> {
+    await this.publishToUser({
+      type: 'artifacts',
+      action: 'updated',
+      entityId: artifactId,
+      userId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   private async publish(event: CacheInvalidationEvent): Promise<void> {
     try {
       const channel = getCacheInvalidationChannel(event.orgId!);

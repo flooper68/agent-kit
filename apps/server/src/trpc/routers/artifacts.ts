@@ -28,11 +28,11 @@ export const artifactsRouter = router({
   get: orgProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      const artifact = await ctx.artifactsFeature.getById(
-        input.id,
-        ctx.auth.userId,
-        ctx.auth.orgId
-      );
+      const artifact = await ctx.artifactsFeature.getById({
+        id: input.id,
+        userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
+      });
       if (!artifact) {
         throw new TRPCError({
           code: 'NOT_FOUND',
@@ -46,11 +46,11 @@ export const artifactsRouter = router({
   delete: orgProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const deleted = await ctx.artifactsFeature.delete(
-        input.id,
-        ctx.auth.userId,
-        ctx.auth.orgId
-      );
+      const deleted = await ctx.artifactsFeature.delete({
+        id: input.id,
+        userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
+      });
       if (!deleted) {
         throw new TRPCError({
           code: 'NOT_FOUND',
@@ -60,24 +60,63 @@ export const artifactsRouter = router({
       return { success: true };
     }),
 
+  // Update artifact
+  update: orgProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        title: z.string().min(1).max(255).optional(),
+        content: z.string().min(1).max(1_000_000).optional(),
+        summary: z.string().max(500).optional(),
+        format: z.enum(['markdown']).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const updated = await ctx.artifactsFeature.update({
+        id: input.id,
+        userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
+        title: input.title,
+        content: input.content,
+        summary: input.summary,
+        format: input.format,
+      });
+      if (!updated) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Artifact not found',
+        });
+      }
+      return updated;
+    }),
+
   // Analytics: Overview stats (admin only)
   getStats: adminProcedure
     .input(z.object({ timeRange: TimeRangeSchema.default('month') }))
     .query(async ({ ctx, input }) => {
-      return ctx.artifactsFeature.getStats(ctx.auth.orgId, input.timeRange);
+      return ctx.artifactsFeature.getStats({
+        orgId: ctx.auth.orgId,
+        timeRange: input.timeRange,
+      });
     }),
 
   // Analytics: Creation over time (admin only)
   getOverTime: adminProcedure
     .input(z.object({ timeRange: TimeRangeSchema.default('month') }))
     .query(async ({ ctx, input }) => {
-      return ctx.artifactsFeature.getOverTime(ctx.auth.orgId, input.timeRange);
+      return ctx.artifactsFeature.getOverTime({
+        orgId: ctx.auth.orgId,
+        timeRange: input.timeRange,
+      });
     }),
 
   // Analytics: By agent breakdown (admin only)
   getByAgent: adminProcedure
     .input(z.object({ timeRange: TimeRangeSchema.default('month') }))
     .query(async ({ ctx, input }) => {
-      return ctx.artifactsFeature.getByAgent(ctx.auth.orgId, input.timeRange);
+      return ctx.artifactsFeature.getByAgent({
+        orgId: ctx.auth.orgId,
+        timeRange: input.timeRange,
+      });
     }),
 });

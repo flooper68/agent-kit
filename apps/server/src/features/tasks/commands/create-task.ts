@@ -1,7 +1,25 @@
 import { eq, and, sql } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { tasks, projects, type Task, type TaskEvent } from '../../../db/schema';
-import type { CreateTaskInput } from '../types';
+import {
+  tasks,
+  projects,
+  type Task,
+  type TaskEvent,
+  type TaskPriority,
+  type TaskStatus,
+} from '../../../db/schema';
+
+export interface CreateTaskInput {
+  projectId: string;
+  userId: string;
+  orgId: string;
+  title: string;
+  description?: string;
+  priority?: TaskPriority;
+  status?: TaskStatus;
+}
+
+export type CreateTaskResult = Task;
 
 export class CreateTaskCommand {
   private db: typeof DbType;
@@ -10,7 +28,7 @@ export class CreateTaskCommand {
     this.db = db;
   }
 
-  async execute(input: CreateTaskInput): Promise<Task> {
+  async execute(input: CreateTaskInput): Promise<CreateTaskResult> {
     return await this.db.transaction(async (tx) => {
       // Verify project ownership
       const [project] = await tx

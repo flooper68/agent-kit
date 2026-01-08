@@ -2,6 +2,14 @@ import { eq, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { tasks, type Task } from '../../../db/schema';
 
+export interface DeleteTaskInput {
+  id: string;
+  userId: string;
+  orgId: string;
+}
+
+export type DeleteTaskResult = Task | undefined;
+
 export class DeleteTaskCommand {
   private db: typeof DbType;
 
@@ -9,11 +17,8 @@ export class DeleteTaskCommand {
     this.db = db;
   }
 
-  async execute(
-    id: string,
-    userId: string,
-    orgId: string
-  ): Promise<Task | undefined> {
+  async execute(input: DeleteTaskInput): Promise<DeleteTaskResult> {
+    const { id, userId, orgId } = input;
     // Task artifacts will be cascade deleted due to FK constraint
     const [task] = await this.db
       .delete(tasks)

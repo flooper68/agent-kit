@@ -1,6 +1,16 @@
 import type { db as DbType } from '../../db';
 import type { Artifact } from '../../db/schema';
-import { CreateArtifactCommand, DeleteArtifactCommand } from './commands';
+import type { CacheInvalidationService } from '../../real-time';
+import {
+  CreateArtifactCommand,
+  DeleteArtifactCommand,
+  UpdateArtifactCommand,
+} from './commands';
+import type {
+  CreateArtifactInput,
+  DeleteArtifactInput,
+  UpdateArtifactInput,
+} from './commands';
 import {
   GetArtifactByIdQuery,
   ListArtifactsQuery,
@@ -10,16 +20,18 @@ import {
   GetArtifactsByAgentQuery,
 } from './queries';
 import type {
-  CreateArtifactInput,
+  GetArtifactByIdInput,
   ListArtifactsInput,
+  ListArtifactsResult,
   SearchArtifactsInput,
   SearchArtifactsResult,
-  TimeRange,
-  PaginatedArtifacts,
-  ArtifactStats,
-  ArtifactsOverTimePoint,
-  ArtifactsByAgent,
-} from './types';
+  GetArtifactsStatsInput,
+  GetArtifactsStatsResult,
+  GetArtifactsOverTimeInput,
+  GetArtifactsOverTimeResult,
+  GetArtifactsByAgentInput,
+  GetArtifactsByAgentResult,
+} from './queries';
 
 /**
  * ArtifactsFeature - provides artifact CRUD and analytics operations
@@ -27,16 +39,19 @@ import type {
 export class ArtifactsFeature {
   private createArtifactCommand: CreateArtifactCommand;
   private deleteArtifactCommand: DeleteArtifactCommand;
+  private updateArtifactCommand: UpdateArtifactCommand;
   private getArtifactByIdQuery: GetArtifactByIdQuery;
   private listArtifactsQuery: ListArtifactsQuery;
   private searchArtifactsQuery: SearchArtifactsQuery;
   private getArtifactsStatsQuery: GetArtifactsStatsQuery;
   private getArtifactsOverTimeQuery: GetArtifactsOverTimeQuery;
   private getArtifactsByAgentQuery: GetArtifactsByAgentQuery;
+  private cacheInvalidation?: CacheInvalidationService;
 
   constructor(db: typeof DbType, agentNames: Map<string, string>) {
     this.createArtifactCommand = new CreateArtifactCommand(db);
     this.deleteArtifactCommand = new DeleteArtifactCommand(db);
+    this.updateArtifactCommand = new UpdateArtifactCommand(db);
     this.getArtifactByIdQuery = new GetArtifactByIdQuery(db);
     this.listArtifactsQuery = new ListArtifactsQuery(db);
     this.searchArtifactsQuery = new SearchArtifactsQuery(db);
@@ -48,29 +63,49 @@ export class ArtifactsFeature {
     );
   }
 
-  // Commands
-  create(input: CreateArtifactInput): Promise<Artifact> {
-    return this.createArtifactCommand.execute(input);
+  setCacheInvalidation(service: CacheInvalidationService): void {
+    this.cacheInvalidation = service;
   }
 
-  delete(
-    id: string,
-    userId: string,
-    orgId: string
-  ): Promise<Artifact | undefined> {
-    return this.deleteArtifactCommand.execute(id, userId, orgId);
+  // Commands
+  async create(input: CreateArtifactInput): Promise<Artifact> {
+    const artifact = await this.createArtifactCommand.execute(input);
+    await this.cacheInvalidation?.publishArtifactCreated(
+      input.userId,
+      artifact.id,
+      input.agentId
+    );
+    return artifact;
+  }
+
+  async delete(input: DeleteArtifactInput): Promise<Artifact | undefined> {
+    const artifact = await this.deleteArtifactCommand.execute(input);
+    if (artifact) {
+      await this.cacheInvalidation?.publishArtifactDeleted(
+        input.userId,
+        artifact.id
+      );
+    }
+    return artifact;
+  }
+
+  async update(input: UpdateArtifactInput): Promise<Artifact | undefined> {
+    const artifact = await this.updateArtifactCommand.execute(input);
+    if (artifact) {
+      await this.cacheInvalidation?.publishArtifactUpdated(
+        input.userId,
+        artifact.id
+      );
+    }
+    return artifact;
   }
 
   // Queries
-  getById(
-    id: string,
-    userId: string,
-    orgId: string
-  ): Promise<Artifact | undefined> {
-    return this.getArtifactByIdQuery.execute(id, userId, orgId);
+  getById(input: GetArtifactByIdInput): Promise<Artifact | undefined> {
+    return this.getArtifactByIdQuery.execute(input);
   }
 
-  list(input: ListArtifactsInput): Promise<PaginatedArtifacts> {
+  list(input: ListArtifactsInput): Promise<ListArtifactsResult> {
     return this.listArtifactsQuery.execute(input);
   }
 
@@ -79,18 +114,19 @@ export class ArtifactsFeature {
   }
 
   // Analytics
-  getStats(orgId: string, timeRange: TimeRange): Promise<ArtifactStats> {
-    return this.getArtifactsStatsQuery.execute(orgId, timeRange);
+  getStats(input: GetArtifactsStatsInput): Promise<GetArtifactsStatsResult> {
+    return this.getArtifactsStatsQuery.execute(input);
   }
 
   getOverTime(
-    orgId: string,
-    timeRange: TimeRange
-  ): Promise<ArtifactsOverTimePoint[]> {
-    return this.getArtifactsOverTimeQuery.execute(orgId, timeRange);
+    input: GetArtifactsOverTimeInput
+  ): Promise<GetArtifactsOverTimeResult> {
+    return this.getArtifactsOverTimeQuery.execute(input);
   }
 
-  getByAgent(orgId: string, timeRange: TimeRange): Promise<ArtifactsByAgent[]> {
-    return this.getArtifactsByAgentQuery.execute(orgId, timeRange);
+  getByAgent(
+    input: GetArtifactsByAgentInput
+  ): Promise<GetArtifactsByAgentResult> {
+    return this.getArtifactsByAgentQuery.execute(input);
   }
 }

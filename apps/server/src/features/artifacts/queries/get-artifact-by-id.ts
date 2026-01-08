@@ -2,6 +2,14 @@ import { eq, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { artifacts, type Artifact } from '../../../db/schema';
 
+export interface GetArtifactByIdInput {
+  id: string;
+  userId: string;
+  orgId: string;
+}
+
+export type GetArtifactByIdResult = Artifact | undefined;
+
 export class GetArtifactByIdQuery {
   private db: typeof DbType;
 
@@ -9,11 +17,8 @@ export class GetArtifactByIdQuery {
     this.db = db;
   }
 
-  async execute(
-    id: string,
-    userId: string,
-    orgId: string
-  ): Promise<Artifact | undefined> {
+  async execute(input: GetArtifactByIdInput): Promise<GetArtifactByIdResult> {
+    const { id, userId, orgId } = input;
     const [artifact] = await this.db
       .select()
       .from(artifacts)
