@@ -39,49 +39,62 @@ CREATE TABLE IF NOT EXISTS "server_agents" (
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );--> statement-breakpoint
 
--- Step 3: Create indexes for external_agents
-CREATE INDEX "external_agents_user_id_idx" ON "external_agents" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "external_agents_secret_key_idx" ON "external_agents" USING btree ("secret_key");--> statement-breakpoint
-CREATE UNIQUE INDEX "external_agents_user_key_idx" ON "external_agents" USING btree ("user_id", "key");--> statement-breakpoint
+-- Step 3: Create indexes for external_agents (if not exist)
+CREATE INDEX IF NOT EXISTS "external_agents_user_id_idx" ON "external_agents" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "external_agents_secret_key_idx" ON "external_agents" USING btree ("secret_key");--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "external_agents_user_key_idx" ON "external_agents" USING btree ("user_id", "key");--> statement-breakpoint
 
--- Step 4: Create indexes for server_agents
-CREATE INDEX "server_agents_user_id_idx" ON "server_agents" USING btree ("user_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "server_agents_user_key_idx" ON "server_agents" USING btree ("user_id", "key");--> statement-breakpoint
+-- Step 4: Create indexes for server_agents (if not exist)
+CREATE INDEX IF NOT EXISTS "server_agents_user_id_idx" ON "server_agents" USING btree ("user_id");--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "server_agents_user_key_idx" ON "server_agents" USING btree ("user_id", "key");--> statement-breakpoint
 
--- Step 5: Migrate external agents (is_external = true)
-INSERT INTO "external_agents" (
-  "id", "user_id", "key", "name", "description",
-  "secret_key", "secret_key_prefix",
-  "disabled", "is_favorite", "created_at", "updated_at"
-)
-SELECT
-  "id", "user_id", "key", "name", "description",
-  "secret_key", "secret_key_prefix",
-  "disabled", "is_favorite", "created_at", "updated_at"
-FROM "agents"
-WHERE "is_external" = true;--> statement-breakpoint
+-- Step 5: Migrate data only if source table has is_external column
+-- This handles the case where agents table was already split or doesn't have is_external
+DO $$
+BEGIN
+  -- Check if agents table exists and has is_external column
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'agents' AND column_name = 'is_external'
+  ) THEN
+    -- Migrate external agents (is_external = true)
+    INSERT INTO "external_agents" (
+      "id", "user_id", "key", "name", "description",
+      "secret_key", "secret_key_prefix",
+      "disabled", "is_favorite", "created_at", "updated_at"
+    )
+    SELECT
+      "id", "user_id", "key", "name", "description",
+      "secret_key", "secret_key_prefix",
+      "disabled", "is_favorite", "created_at", "updated_at"
+    FROM "agents"
+    WHERE "is_external" = true
+    ON CONFLICT DO NOTHING;
 
--- Step 6: Migrate server agents (is_external = false)
-INSERT INTO "server_agents" (
-  "id", "user_id", "key", "name", "description",
-  "provider", "model", "system_prompt", "tools",
-  "temperature", "max_output_tokens", "thinking_config",
-  "can_spawn_subagents", "allowed_subagents",
-  "disabled", "is_favorite", "created_at", "updated_at"
-)
-SELECT
-  "id", "user_id", "key", "name", "description",
-  "provider", "model", "system_prompt", "tools",
-  "temperature", "max_output_tokens", "thinking_config",
-  "can_spawn_subagents", "allowed_subagents",
-  "disabled", "is_favorite", "created_at", "updated_at"
-FROM "agents"
-WHERE "is_external" = false;--> statement-breakpoint
+    -- Migrate server agents (is_external = false)
+    INSERT INTO "server_agents" (
+      "id", "user_id", "key", "name", "description",
+      "provider", "model", "system_prompt", "tools",
+      "temperature", "max_output_tokens", "thinking_config",
+      "can_spawn_subagents", "allowed_subagents",
+      "disabled", "is_favorite", "created_at", "updated_at"
+    )
+    SELECT
+      "id", "user_id", "key", "name", "description",
+      "provider", "model", "system_prompt", "tools",
+      "temperature", "max_output_tokens", "thinking_config",
+      "can_spawn_subagents", "allowed_subagents",
+      "disabled", "is_favorite", "created_at", "updated_at"
+    FROM "agents"
+    WHERE "is_external" = false
+    ON CONFLICT DO NOTHING;
 
--- Step 7: Drop old agents table indexes
-DROP INDEX IF EXISTS "agents_user_id_idx";--> statement-breakpoint
-DROP INDEX IF EXISTS "agents_secret_key_idx";--> statement-breakpoint
-DROP INDEX IF EXISTS "agents_user_key_idx";--> statement-breakpoint
+    -- Drop old agents table indexes
+    DROP INDEX IF EXISTS "agents_user_id_idx";
+    DROP INDEX IF EXISTS "agents_secret_key_idx";
+    DROP INDEX IF EXISTS "agents_user_key_idx";
 
--- Step 8: Drop old agents table
-DROP TABLE IF EXISTS "agents";
+    -- Drop old agents table
+    DROP TABLE IF EXISTS "agents";
+  END IF;
+END $$;
