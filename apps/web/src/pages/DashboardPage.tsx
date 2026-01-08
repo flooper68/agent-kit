@@ -41,7 +41,7 @@ export function DashboardPage() {
       isFavorite: agent.isFavorite,
       model: agent.model ?? undefined,
       provider: agent.provider ?? undefined,
-      // External local agents are disabled when not connected (server agents are always enabled)
+      // External agents are disabled when not connected (server agents are always enabled)
       disabled: false,
     }));
   }, [agentsQuery.data]);

@@ -772,7 +772,9 @@ Available agents: ${allowedSpawnAgents.join(', ')}`,
           agentId: z.string().uuid().describe('The unique ID of the agent'),
           agentType: z
             .enum(['server'])
-            .describe('The type of agent. Only server agents support full updates.'),
+            .describe(
+              'The type of agent. Only server agents support full updates.'
+            ),
           updates: z
             .object({
               key: z
@@ -822,10 +824,7 @@ Available agents: ${allowedSpawnAgents.join(', ')}`,
                 .nullable()
                 .optional()
                 .describe('Maximum output tokens'),
-              isFavorite: z
-                .boolean()
-                .optional()
-                .describe('Favorite status'),
+              isFavorite: z.boolean().optional().describe('Favorite status'),
             })
             .describe('Fields to update'),
         },

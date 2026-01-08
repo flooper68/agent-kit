@@ -17,7 +17,9 @@ export type GetCustomAgentByIdResult = ServerAgent | null;
 export class GetCustomAgentByIdQuery {
   constructor(private db: typeof DbType) {}
 
-  async execute(input: GetCustomAgentByIdInput): Promise<GetCustomAgentByIdResult> {
+  async execute(
+    input: GetCustomAgentByIdInput
+  ): Promise<GetCustomAgentByIdResult> {
     const { id, userId } = input;
     const [agent] = await this.db
       .select()

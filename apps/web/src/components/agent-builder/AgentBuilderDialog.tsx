@@ -92,7 +92,7 @@ export function AgentBuilderDialog({
       >
         <Dialog.Header>
           <Dialog.Title>
-            {mode === 'create' ? 'Create Custom Agent' : 'Edit Agent'}
+            {mode === 'create' ? 'Create Server Agent' : 'Edit Agent'}
           </Dialog.Title>
           <Dialog.Description>
             {mode === 'create'

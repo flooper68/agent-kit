@@ -18,10 +18,14 @@ export function createToggleAgentFavoriteTool(
       agentId: z.string().uuid().describe('The unique ID of the agent'),
       agentType: z
         .enum(['external', 'server'])
-        .describe('The type of agent: external (WebSocket-based) or server (LLM-based)'),
+        .describe(
+          'The type of agent: external (WebSocket-based) or server (LLM-based)'
+        ),
       isFavorite: z
         .boolean()
-        .describe('Set to true to mark as favorite, false to remove from favorites'),
+        .describe(
+          'Set to true to mark as favorite, false to remove from favorites'
+        ),
     }),
     execute: async ({
       agentId,

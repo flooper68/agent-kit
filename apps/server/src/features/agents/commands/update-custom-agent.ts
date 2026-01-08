@@ -1,6 +1,10 @@
 import { eq, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { serverAgents, type ServerAgent, type ThinkingConfig } from '../../../db/schema';
+import {
+  serverAgents,
+  type ServerAgent,
+  type ThinkingConfig,
+} from '../../../db/schema';
 import { type Provider } from '../../../agent/model-config';
 import {
   validateAgentConfiguration,
@@ -38,7 +42,9 @@ export type UpdateCustomAgentResult = ServerAgent | null;
 export class UpdateCustomAgentCommand {
   constructor(private db: typeof DbType) {}
 
-  async execute(input: UpdateCustomAgentInput): Promise<UpdateCustomAgentResult> {
+  async execute(
+    input: UpdateCustomAgentInput
+  ): Promise<UpdateCustomAgentResult> {
     const { id, userId, updates } = input;
 
     // Validate agent configuration

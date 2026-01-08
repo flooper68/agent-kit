@@ -26,7 +26,9 @@ export class GetArtifactsOverTimeQuery {
     this.db = db;
   }
 
-  async execute(input: GetArtifactsOverTimeInput): Promise<GetArtifactsOverTimeResult> {
+  async execute(
+    input: GetArtifactsOverTimeInput
+  ): Promise<GetArtifactsOverTimeResult> {
     const { orgId, timeRange } = input;
     const startDate = getTimeRangeStart(timeRange);
     const granularity = getGranularityForTimeRange(timeRange);

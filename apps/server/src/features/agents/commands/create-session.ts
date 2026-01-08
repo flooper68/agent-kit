@@ -37,10 +37,7 @@ export class CreateSessionCommand {
 
     // Validate agent exists
     if (isLocalAgent) {
-      const agent = await this.validators.getAgent(
-        input.agentId,
-        input.userId
-      );
+      const agent = await this.validators.getAgent(input.agentId, input.userId);
       if (!agent) {
         throw new Error('Agent not found');
       }

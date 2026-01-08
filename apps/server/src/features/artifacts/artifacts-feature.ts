@@ -118,11 +118,15 @@ export class ArtifactsFeature {
     return this.getArtifactsStatsQuery.execute(input);
   }
 
-  getOverTime(input: GetArtifactsOverTimeInput): Promise<GetArtifactsOverTimeResult> {
+  getOverTime(
+    input: GetArtifactsOverTimeInput
+  ): Promise<GetArtifactsOverTimeResult> {
     return this.getArtifactsOverTimeQuery.execute(input);
   }
 
-  getByAgent(input: GetArtifactsByAgentInput): Promise<GetArtifactsByAgentResult> {
+  getByAgent(
+    input: GetArtifactsByAgentInput
+  ): Promise<GetArtifactsByAgentResult> {
     return this.getArtifactsByAgentQuery.execute(input);
   }
 }

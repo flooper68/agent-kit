@@ -398,7 +398,10 @@ export function validateAgentConfig(
   }
 
   // Check max output tokens
-  if (config.maxOutputTokens && config.maxOutputTokens > model.maxOutputTokens) {
+  if (
+    config.maxOutputTokens &&
+    config.maxOutputTokens > model.maxOutputTokens
+  ) {
     warnings.push(
       `Requested ${config.maxOutputTokens} tokens exceeds model max of ${model.maxOutputTokens}`
     );

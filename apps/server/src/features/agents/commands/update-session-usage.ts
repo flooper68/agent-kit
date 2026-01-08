@@ -30,7 +30,9 @@ export class UpdateSessionUsageCommand {
     this.db = db;
   }
 
-  async execute(input: UpdateSessionUsageInput): Promise<UpdateSessionUsageResult> {
+  async execute(
+    input: UpdateSessionUsageInput
+  ): Promise<UpdateSessionUsageResult> {
     const {
       sessionId,
       promptTokens,

@@ -1,6 +1,10 @@
 import { sql, eq, and, gte, sum, count, desc, inArray } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { agentSessions, externalAgents, serverAgents } from '../../../db/schema';
+import {
+  agentSessions,
+  externalAgents,
+  serverAgents,
+} from '../../../db/schema';
 import type { TimeRange } from '../types';
 import { getStartDate } from './utils';
 

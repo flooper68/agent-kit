@@ -9,7 +9,6 @@ import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { WebSocketServer } from 'ws';
 import { runMigrations } from './db/migrate';
 import { db } from './db';
-import redisPlugin from './plugins/redis';
 import corsPlugin from './plugins/cors';
 import clerkPlugin from './plugins/clerk';
 import { appRouter, createContext, type AppRouter } from './trpc';
@@ -31,12 +30,21 @@ import { AnalyticsFeature } from './features/analytics';
 import { ArtifactsFeature } from './features/artifacts';
 import { ProjectsFeature } from './features/projects';
 import { TasksFeature } from './features/tasks';
-import { CacheInvalidationService, type PubSubManager } from './real-time';
+import { CacheInvalidationService, PubSubManager } from './real-time';
+import { createRedisClient, createPubSubClients } from './lib/redis/client';
 
 const clerk = createClerkClient({
   secretKey: env.CLERK_SECRET_KEY,
   publishableKey: env.CLERK_PUBLISHABLE_KEY,
 });
+
+// Create Redis clients
+const redisConfig = { url: env.REDIS_URL };
+const { publisher: redisPublisher, subscriber: redisSubscriber } =
+  createPubSubClients(redisConfig);
+const redisWorker = createRedisClient(redisConfig);
+const pubsub = new PubSubManager(redisPublisher, redisSubscriber);
+const createSubscriptionConnection = () => createRedisClient(redisConfig);
 
 const fastify = Fastify({
   logger: true,
@@ -49,8 +57,6 @@ fastify.register(corsPlugin);
 
 // Register Clerk authentication
 fastify.register(clerkPlugin, { secretKey: env.CLERK_SECRET_KEY });
-
-fastify.register(redisPlugin, { url: env.REDIS_URL });
 
 // Prevent Fastify from processing WebSocket upgrade requests to /trpc
 // The ws library handles these via the 'upgrade' event on the HTTP server
@@ -88,30 +94,21 @@ const projectsFeature = new ProjectsFeature(db);
 // Create tasks feature
 const tasksFeature = new TasksFeature(db);
 
-// Will be initialized after Redis is ready (in onReady hook, before listen)
+// Will be initialized in onReady hook
 let jobQueueManager!: JobQueueManager;
 let eventStreamManager!: EventStreamManager;
 let jobRegistryManager!: JobRegistryManager;
 let streamingStateManager!: StreamingStateManager;
-let pubsub!: PubSubManager;
 let externalAgentsConnectionManager!: ExternalAgentsConnectionManager;
 let cacheInvalidation!: CacheInvalidationService;
 let externalAgentWSService!: ExternalAgentWebSocketService;
 let agentSpawner!: AgentSpawner;
 
-// Hook to initialize Redis-dependent services after Redis plugin is registered
+// Hook to initialize services that depend on Redis
 fastify.addHook('onReady', async () => {
-  const redis = fastify.redis.publisher;
-  const workerRedis = fastify.redis.worker;
-  const createSubscriptionConnection =
-    fastify.redis.createSubscriptionConnection;
-
-  // Store pubsub reference for tRPC context
-  pubsub = fastify.redis.pubsub;
-
   // Create external agents connection manager
   externalAgentsConnectionManager = new ExternalAgentsConnectionManager(
-    redis,
+    redisPublisher,
     pubsub
   );
 
@@ -126,13 +123,16 @@ fastify.addHook('onReady', async () => {
   artifactsFeature.setCacheInvalidation(cacheInvalidation);
 
   // Create infrastructure managers (split from AgentSessionManager)
-  jobQueueManager = new JobQueueManager(redis, workerRedis);
+  jobQueueManager = new JobQueueManager(redisPublisher, redisWorker);
   eventStreamManager = new EventStreamManager(
-    redis,
+    redisPublisher,
     createSubscriptionConnection
   );
-  jobRegistryManager = new JobRegistryManager(redis);
-  streamingStateManager = new StreamingStateManager(redis, cacheInvalidation);
+  jobRegistryManager = new JobRegistryManager(redisPublisher);
+  streamingStateManager = new StreamingStateManager(
+    redisPublisher,
+    cacheInvalidation
+  );
 
   // Create session summarizer for title/description generation
   const sessionSummarizer = new SessionSummarizer();
@@ -359,11 +359,14 @@ const start = async () => {
       `External agents WebSocket endpoint: ws://${env.HOST}:${env.PORT}/agents`
     );
 
-    process.on('SIGTERM', () => {
+    process.on('SIGTERM', async () => {
       console.log('SIGTERM signal received: closing servers');
       handler.broadcastReconnectNotification();
       wss.close();
-      fastify.close();
+      await fastify.close();
+      // Close Redis connections
+      await pubsub.close();
+      await redisWorker.quit();
     });
   } catch (err) {
     fastify.log.error(err);

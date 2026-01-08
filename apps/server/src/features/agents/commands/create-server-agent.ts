@@ -1,6 +1,13 @@
 import type { db as DbType } from '../../../db';
-import { serverAgents, type ServerAgent, type ThinkingConfig } from '../../../db/schema';
-import { type Provider } from '../../../agent/model-config';
+import {
+  serverAgents,
+  type ServerAgent,
+  type ThinkingConfig,
+} from '../../../db/schema';
+import {
+  type Provider,
+  getDefaultModelForProvider,
+} from '../../../agent/model-config';
 import {
   validateAgentConfiguration,
   AgentValidationError,
@@ -39,7 +46,9 @@ export type CreateServerAgentResult = ServerAgent;
 export class CreateServerAgentCommand {
   constructor(private db: typeof DbType) {}
 
-  async execute(input: CreateServerAgentInput): Promise<CreateServerAgentResult> {
+  async execute(
+    input: CreateServerAgentInput
+  ): Promise<CreateServerAgentResult> {
     // Validate agent configuration
     const validationResult = validateAgentConfiguration({
       provider: input.provider,
@@ -54,6 +63,7 @@ export class CreateServerAgentCommand {
       throw new AgentValidationError(validationResult);
     }
 
+    const provider = input.provider ?? 'anthropic';
     const [agent] = await this.db
       .insert(serverAgents)
       .values({
@@ -62,8 +72,8 @@ export class CreateServerAgentCommand {
         name: input.name,
         description: input.description,
         // Agent configuration
-        provider: input.provider ?? 'anthropic',
-        model: input.model ?? 'claude-sonnet-4-5-20250929',
+        provider,
+        model: input.model ?? getDefaultModelForProvider(provider),
         systemPrompt: input.systemPrompt ?? 'You are a helpful AI assistant.',
         tools: input.tools ?? [],
         // Model settings

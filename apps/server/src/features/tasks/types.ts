@@ -4,4 +4,9 @@
  */
 
 // Re-export schema types that are commonly used
-export type { TaskStatus, TaskPriority, TaskEvent, Task } from '../../db/schema';
+export type {
+  TaskStatus,
+  TaskPriority,
+  TaskEvent,
+  Task,
+} from '../../db/schema';

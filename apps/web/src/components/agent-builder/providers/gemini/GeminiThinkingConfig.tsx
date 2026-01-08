@@ -37,7 +37,10 @@ export function validateGeminiLevelConfig(
 ): FieldError[] {
   const errors: FieldError[] = [];
 
-  if (validThinkingLevels && !validThinkingLevels.includes(config.thinkingLevel)) {
+  if (
+    validThinkingLevels &&
+    !validThinkingLevels.includes(config.thinkingLevel)
+  ) {
     errors.push({
       code: 'INVALID_THINKING_LEVEL',
       field: 'thinkingLevel',
@@ -124,7 +127,8 @@ export function GeminiThinkingConfig({
 }: GeminiThinkingConfigComponentProps) {
   const levelError = errors.find((e) => e.field === 'thinkingLevel')?.message;
   const budgetError = errors.find((e) => e.field === 'thinkingBudget')?.message;
-  const validThinkingLevels = modelInfo?.thinkingConstraints?.validThinkingLevels;
+  const validThinkingLevels =
+    modelInfo?.thinkingConstraints?.validThinkingLevels;
 
   const handleLevelChange = (value: string) => {
     const newLevel = value as 'minimal' | 'low' | 'medium' | 'high';
@@ -136,7 +140,10 @@ export function GeminiThinkingConfig({
     onChange({ thinkingLevel: newLevel } as Partial<GeminiThinkingConfigType>);
 
     if (onValidate) {
-      const validationErrors = validateGeminiLevelConfig(newConfig, validThinkingLevels);
+      const validationErrors = validateGeminiLevelConfig(
+        newConfig,
+        validThinkingLevels
+      );
       onValidate({
         isValid: validationErrors.length === 0,
         errors: validationErrors,
@@ -146,13 +153,17 @@ export function GeminiThinkingConfig({
 
   const handleBudgetChange = (value: string) => {
     const parsed = parseInt(value);
-    const newBudget = isNaN(parsed) ? GEMINI_CONSTANTS.thinkingBudgetDefault : parsed;
+    const newBudget = isNaN(parsed)
+      ? GEMINI_CONSTANTS.thinkingBudgetDefault
+      : parsed;
     const newConfig: GeminiBudgetThinkingConfig = {
       ...config,
       thinkingType: 'budget-legacy',
       thinkingBudget: newBudget,
     };
-    onChange({ thinkingBudget: newBudget } as Partial<GeminiThinkingConfigType>);
+    onChange({
+      thinkingBudget: newBudget,
+    } as Partial<GeminiThinkingConfigType>);
 
     if (onValidate) {
       const validationErrors = validateGeminiBudgetConfig(newConfig);

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure, protectedProcedureWithErrors } from '../trpc';
+import {
+  router,
+  protectedProcedure,
+  protectedProcedureWithErrors,
+} from '../trpc';
 import { getToolsMetadata } from '../../agent/tools';
 import { getProviders, type Provider } from '../../agent/model-config';
 import { AgentValidationError } from '../../agent/validation';
@@ -30,6 +34,14 @@ const agentKeySchema = z
     /^[a-zA-Z0-9_-]+$/,
     'Key can only contain letters, numbers, underscores, and hyphens'
   );
+
+/**
+ * Normalize agent key to ensure consistency.
+ * Applies the same transformation as the UI: trim, lowercase, replace spaces with hyphens.
+ */
+function normalizeAgentKey(key: string): string {
+  return key.trim().toLowerCase().replace(/\s+/g, '-');
+}
 
 // Common validation for tools
 const toolsSchema = z.array(z.string()).optional();
@@ -149,7 +161,7 @@ export const agentsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const result = await ctx.agentsFeature.customAgents.createExternal({
         userId: ctx.auth.userId,
-        key: input.key,
+        key: normalizeAgentKey(input.key),
         name: input.name,
         description: input.description,
         isFavorite: input.isFavorite,
@@ -188,7 +200,7 @@ export const agentsRouter = router({
       try {
         const agent = await ctx.agentsFeature.customAgents.createServer({
           userId: ctx.auth.userId,
-          key: input.key,
+          key: normalizeAgentKey(input.key),
           name: input.name,
           description: input.description,
           provider: input.provider as Provider | undefined,
@@ -243,7 +255,13 @@ export const agentsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, ...updates } = input;
+      const { id, key, ...restUpdates } = input;
+
+      // Normalize key if provided
+      const updates = {
+        ...restUpdates,
+        ...(key !== undefined ? { key: normalizeAgentKey(key) } : {}),
+      };
 
       try {
         const agent = await ctx.agentsFeature.customAgents.update({

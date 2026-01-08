@@ -1,6 +1,13 @@
 import { useCallback, useState, useMemo } from 'react';
-import type { ThinkingConfigSwitchProps, FieldError, ValidationResult } from './types';
-import type { ThinkingConfig as LegacyThinkingConfig, ModelInfo } from '../types';
+import type {
+  ThinkingConfigSwitchProps,
+  FieldError,
+  ValidationResult,
+} from './types';
+import type {
+  ThinkingConfig as LegacyThinkingConfig,
+  ModelInfo,
+} from '../types';
 import { getProvider, validateThinkingConfigFromRegistry } from './registry';
 import type { ThinkingConfig } from './thinking-config-types';
 import { fromStoredThinkingConfig } from './thinking-config-types';

@@ -69,9 +69,7 @@ export function AnthropicThinkingConfig({
 
   const handleChange = (value: string) => {
     const parsed = parseInt(value);
-    const newValue = isNaN(parsed)
-      ? ANTHROPIC_CONSTANTS.budgetDefault
-      : parsed;
+    const newValue = isNaN(parsed) ? ANTHROPIC_CONSTANTS.budgetDefault : parsed;
     const newConfig = { ...config, budgetTokens: newValue };
     onChange({ budgetTokens: newValue });
 

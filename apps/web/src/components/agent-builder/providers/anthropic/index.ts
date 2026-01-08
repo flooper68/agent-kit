@@ -7,7 +7,11 @@ import {
 } from './AnthropicThinkingConfig';
 
 // Re-export for backwards compatibility
-export { AnthropicThinkingConfig, validateAnthropicConfig, ANTHROPIC_CONSTANTS };
+export {
+  AnthropicThinkingConfig,
+  validateAnthropicConfig,
+  ANTHROPIC_CONSTANTS,
+};
 
 /**
  * Anthropic provider implementation.

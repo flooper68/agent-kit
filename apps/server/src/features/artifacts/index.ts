@@ -12,7 +12,10 @@ export type {
   ListArtifactsResult,
 } from './queries';
 export type { SearchArtifactsInput, SearchArtifactsResult } from './queries';
-export type { GetArtifactsStatsInput, GetArtifactsStatsResult } from './queries';
+export type {
+  GetArtifactsStatsInput,
+  GetArtifactsStatsResult,
+} from './queries';
 export type {
   GetArtifactsOverTimeInput,
   ArtifactsOverTimePoint,

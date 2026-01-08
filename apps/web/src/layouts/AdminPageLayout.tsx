@@ -161,7 +161,7 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
                 },
                 {
                   id: 'agents',
-                  label: 'Local Agents',
+                  label: 'External Agents',
                   icon: <Bot className="h-4 w-4" />,
                   onClick: () => navigate('/app/agents'),
                   active: currentPath === '/app/agents',
@@ -239,10 +239,10 @@ export function AdminPageLayout({ children }: AdminPageLayoutProps) {
                   }
                 />
               </Tooltip>
-              <Tooltip content="Local Agents">
+              <Tooltip content="External Agents">
                 <IconButton
                   icon={<Bot className="h-4 w-4" />}
-                  label="Local Agents"
+                  label="External Agents"
                   onClick={() => navigate('/app/agents')}
                   variant="ghost"
                   size="sm"

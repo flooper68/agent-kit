@@ -677,7 +677,9 @@ export function ProjectDetailPage() {
         isDeleting={deleteTaskMutation.isPending}
         autoSave
         autoSaveDelay={800}
-        onArtifactClick={(artifactId) => navigate(`/app/artifacts/${artifactId}`)}
+        onArtifactClick={(artifactId) =>
+          navigate(`/app/artifacts/${artifactId}`)
+        }
       />
 
       {/* Edit Project Dialog */}

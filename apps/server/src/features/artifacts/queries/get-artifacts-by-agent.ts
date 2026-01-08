@@ -26,7 +26,9 @@ export class GetArtifactsByAgentQuery {
     this.agentNames = agentNames;
   }
 
-  async execute(input: GetArtifactsByAgentInput): Promise<GetArtifactsByAgentResult> {
+  async execute(
+    input: GetArtifactsByAgentInput
+  ): Promise<GetArtifactsByAgentResult> {
     const { orgId, timeRange } = input;
     const startDate = getTimeRangeStart(timeRange);
 

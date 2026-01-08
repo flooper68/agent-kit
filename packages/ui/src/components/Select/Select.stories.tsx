@@ -101,9 +101,21 @@ export const Loading: Story = {
 export const WithIcons: Story = {
   args: {
     options: [
-      { value: 'circle', label: 'Circle', icon: <Circle className="h-4 w-4" /> },
-      { value: 'square', label: 'Square', icon: <Square className="h-4 w-4" /> },
-      { value: 'triangle', label: 'Triangle', icon: <Triangle className="h-4 w-4" /> },
+      {
+        value: 'circle',
+        label: 'Circle',
+        icon: <Circle className="h-4 w-4" />,
+      },
+      {
+        value: 'square',
+        label: 'Square',
+        icon: <Square className="h-4 w-4" />,
+      },
+      {
+        value: 'triangle',
+        label: 'Triangle',
+        icon: <Triangle className="h-4 w-4" />,
+      },
       { value: 'star', label: 'Star', icon: <Star className="h-4 w-4" /> },
     ],
     placeholder: 'Select a shape...',
@@ -114,27 +126,49 @@ export const AllStates: Story = {
   render: () => (
     <div className="space-y-4 w-64">
       <div className="space-y-1">
-        <label className="text-sm font-medium text-muted-foreground">Default</label>
+        <label className="text-sm font-medium text-muted-foreground">
+          Default
+        </label>
         <Select options={sampleOptions} placeholder="Select a fruit..." />
       </div>
       <div className="space-y-1">
-        <label className="text-sm font-medium text-muted-foreground">Loading</label>
+        <label className="text-sm font-medium text-muted-foreground">
+          Loading
+        </label>
         <Select options={sampleOptions} placeholder="Loading..." isLoading />
       </div>
       <div className="space-y-1">
-        <label className="text-sm font-medium text-muted-foreground">Disabled</label>
+        <label className="text-sm font-medium text-muted-foreground">
+          Disabled
+        </label>
         <Select options={sampleOptions} placeholder="Disabled..." disabled />
       </div>
       <div className="space-y-1">
-        <label className="text-sm font-medium text-muted-foreground">Error</label>
-        <Select options={sampleOptions} placeholder="Error state..." variant="error" />
+        <label className="text-sm font-medium text-muted-foreground">
+          Error
+        </label>
+        <Select
+          options={sampleOptions}
+          placeholder="Error state..."
+          variant="error"
+        />
       </div>
       <div className="space-y-1">
-        <label className="text-sm font-medium text-muted-foreground">With Icons</label>
+        <label className="text-sm font-medium text-muted-foreground">
+          With Icons
+        </label>
         <Select
           options={[
-            { value: 'circle', label: 'Circle', icon: <Circle className="h-4 w-4" /> },
-            { value: 'square', label: 'Square', icon: <Square className="h-4 w-4" /> },
+            {
+              value: 'circle',
+              label: 'Circle',
+              icon: <Circle className="h-4 w-4" />,
+            },
+            {
+              value: 'square',
+              label: 'Square',
+              icon: <Square className="h-4 w-4" />,
+            },
           ]}
           placeholder="Select a shape..."
         />

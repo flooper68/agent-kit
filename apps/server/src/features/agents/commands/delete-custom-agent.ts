@@ -22,7 +22,9 @@ export type DeleteCustomAgentResult = ExternalAgent | ServerAgent | null;
 export class DeleteCustomAgentCommand {
   constructor(private db: typeof DbType) {}
 
-  async execute(input: DeleteCustomAgentInput): Promise<DeleteCustomAgentResult> {
+  async execute(
+    input: DeleteCustomAgentInput
+  ): Promise<DeleteCustomAgentResult> {
     const { id, userId, agentType } = input;
     const deletedAt = new Date();
 
@@ -33,7 +35,9 @@ export class DeleteCustomAgentCommand {
           deletedAt,
           updatedAt: deletedAt,
         })
-        .where(and(eq(externalAgents.id, id), eq(externalAgents.userId, userId)))
+        .where(
+          and(eq(externalAgents.id, id), eq(externalAgents.userId, userId))
+        )
         .returning();
       return agent ?? null;
     }

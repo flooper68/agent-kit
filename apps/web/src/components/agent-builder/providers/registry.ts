@@ -15,7 +15,9 @@ import type { ThinkingConfig } from './thinking-config-types';
 /**
  * Props passed to provider thinking config components
  */
-export interface ProviderComponentProps<T extends ThinkingConfig = ThinkingConfig> {
+export interface ProviderComponentProps<
+  T extends ThinkingConfig = ThinkingConfig,
+> {
   config: T;
   onChange: (updates: Partial<T>) => void;
   errors?: FieldError[];
@@ -48,7 +50,9 @@ export interface ProviderConstants {
  * Interface that each provider module must implement.
  * Encapsulates all provider-specific logic in one place.
  */
-export interface ThinkingConfigProvider<T extends ThinkingConfig = ThinkingConfig> {
+export interface ThinkingConfigProvider<
+  T extends ThinkingConfig = ThinkingConfig,
+> {
   /** Provider identifier */
   readonly id: 'anthropic' | 'openai' | 'gemini';
 

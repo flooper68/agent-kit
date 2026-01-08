@@ -74,18 +74,20 @@ export class ListAgentsForSelectorQuery {
     );
 
     // Map server agents
-    const mappedServer: AgentForSelector[] = serverAgentsResult.map((agent) => ({
-      id: agent.key,
-      name: agent.name,
-      description: agent.description,
-      provider: agent.provider,
-      model: agent.model,
-      createdAt: agent.createdAt,
-      updatedAt: agent.updatedAt,
-      isLocal: true as const,
-      isExternal: false,
-      isFavorite: agent.isFavorite,
-    }));
+    const mappedServer: AgentForSelector[] = serverAgentsResult.map(
+      (agent) => ({
+        id: agent.key,
+        name: agent.name,
+        description: agent.description,
+        provider: agent.provider,
+        model: agent.model,
+        createdAt: agent.createdAt,
+        updatedAt: agent.updatedAt,
+        isLocal: true as const,
+        isExternal: false,
+        isFavorite: agent.isFavorite,
+      })
+    );
 
     // Combine and sort: favorites first, then by name
     const allAgents = [...mappedExternal, ...mappedServer];

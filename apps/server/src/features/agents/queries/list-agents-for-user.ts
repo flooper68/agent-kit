@@ -1,7 +1,11 @@
 import { eq, desc, and, isNull } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { externalAgents, serverAgents } from '../../../db/schema';
-import type { AgentsListResponse, ExternalAgentListItem, ServerAgentListItem } from '../types';
+import type {
+  AgentsListResponse,
+  ExternalAgentListItem,
+  ServerAgentListItem,
+} from '../types';
 
 export interface ListAgentsForUserInput {
   userId: string;
@@ -21,7 +25,9 @@ export type { ExternalAgentListItem, ServerAgentListItem, AgentsListResponse };
 export class ListAgentsForUserQuery {
   constructor(private db: typeof DbType) {}
 
-  async execute(input: ListAgentsForUserInput): Promise<ListAgentsForUserResult> {
+  async execute(
+    input: ListAgentsForUserInput
+  ): Promise<ListAgentsForUserResult> {
     const { userId } = input;
 
     // Query external agents
@@ -38,7 +44,9 @@ export class ListAgentsForUserQuery {
         updatedAt: externalAgents.updatedAt,
       })
       .from(externalAgents)
-      .where(and(eq(externalAgents.userId, userId), isNull(externalAgents.deletedAt)))
+      .where(
+        and(eq(externalAgents.userId, userId), isNull(externalAgents.deletedAt))
+      )
       .orderBy(desc(externalAgents.isFavorite), desc(externalAgents.createdAt));
 
     // Query server agents
@@ -61,7 +69,9 @@ export class ListAgentsForUserQuery {
         updatedAt: serverAgents.updatedAt,
       })
       .from(serverAgents)
-      .where(and(eq(serverAgents.userId, userId), isNull(serverAgents.deletedAt)))
+      .where(
+        and(eq(serverAgents.userId, userId), isNull(serverAgents.deletedAt))
+      )
       .orderBy(desc(serverAgents.isFavorite), desc(serverAgents.createdAt));
 
     return { external, server };

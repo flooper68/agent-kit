@@ -21,7 +21,9 @@ export class UpdateMessageStatusCommand {
     this.db = db;
   }
 
-  async execute(input: UpdateMessageStatusInput): Promise<UpdateMessageStatusResult> {
+  async execute(
+    input: UpdateMessageStatusInput
+  ): Promise<UpdateMessageStatusResult> {
     await this.db
       .update(agentSessionMessages)
       .set({

@@ -81,7 +81,9 @@ export class CompleteMessageCommand {
     // Increment message count and return for summarization threshold check
     // Only increment for successful completions
     if (status === 'complete') {
-      const result = await this.incrementMessageCountCommand.execute({ sessionId });
+      const result = await this.incrementMessageCountCommand.execute({
+        sessionId,
+      });
       return { messageCount: result?.messageCount };
     }
 

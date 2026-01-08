@@ -1,6 +1,10 @@
 import { eq, desc, lt, and, inArray } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { agentSessions, externalAgents, serverAgents } from '../../../db/schema';
+import {
+  agentSessions,
+  externalAgents,
+  serverAgents,
+} from '../../../db/schema';
 
 export interface GetRecentActivityInput {
   orgId: string;

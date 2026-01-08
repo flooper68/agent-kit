@@ -79,7 +79,10 @@ export class ProjectsFeature {
   async delete(input: DeleteProjectInput): Promise<Project | undefined> {
     const project = await this.deleteProjectCommand.execute(input);
     if (project) {
-      await this.cacheInvalidation?.publishProjectDeleted(input.orgId, project.id);
+      await this.cacheInvalidation?.publishProjectDeleted(
+        input.orgId,
+        project.id
+      );
     }
     return project;
   }

@@ -1,6 +1,11 @@
 import { eq, and, isNull } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { externalAgents, serverAgents, type ExternalAgent, type ServerAgent } from '../../../db/schema';
+import {
+  externalAgents,
+  serverAgents,
+  type ExternalAgent,
+  type ServerAgent,
+} from '../../../db/schema';
 
 export interface GetAgentByKeyInput {
   key: string;

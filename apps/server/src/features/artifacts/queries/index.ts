@@ -1,5 +1,8 @@
 export { GetArtifactByIdQuery } from './get-artifact-by-id';
-export type { GetArtifactByIdInput, GetArtifactByIdResult } from './get-artifact-by-id';
+export type {
+  GetArtifactByIdInput,
+  GetArtifactByIdResult,
+} from './get-artifact-by-id';
 
 export { ListArtifactsQuery } from './list-artifacts';
 export type {
@@ -9,10 +12,16 @@ export type {
 } from './list-artifacts';
 
 export { SearchArtifactsQuery } from './search-artifacts';
-export type { SearchArtifactsInput, SearchArtifactsResult } from './search-artifacts';
+export type {
+  SearchArtifactsInput,
+  SearchArtifactsResult,
+} from './search-artifacts';
 
 export { GetArtifactsStatsQuery } from './get-artifacts-stats';
-export type { GetArtifactsStatsInput, GetArtifactsStatsResult } from './get-artifacts-stats';
+export type {
+  GetArtifactsStatsInput,
+  GetArtifactsStatsResult,
+} from './get-artifacts-stats';
 
 export { GetArtifactsOverTimeQuery } from './get-artifacts-over-time';
 export type {

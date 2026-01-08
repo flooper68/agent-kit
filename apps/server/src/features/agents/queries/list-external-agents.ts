@@ -16,7 +16,9 @@ export type ListExternalAgentsResult = ExternalAgentListItem[];
 export class ListExternalAgentsQuery {
   constructor(private db: typeof DbType) {}
 
-  async execute(input: ListExternalAgentsInput): Promise<ListExternalAgentsResult> {
+  async execute(
+    input: ListExternalAgentsInput
+  ): Promise<ListExternalAgentsResult> {
     const { userId } = input;
     const result = await this.db
       .select({
@@ -31,7 +33,9 @@ export class ListExternalAgentsQuery {
         updatedAt: externalAgents.updatedAt,
       })
       .from(externalAgents)
-      .where(and(eq(externalAgents.userId, userId), isNull(externalAgents.deletedAt)))
+      .where(
+        and(eq(externalAgents.userId, userId), isNull(externalAgents.deletedAt))
+      )
       .orderBy(desc(externalAgents.isFavorite), desc(externalAgents.createdAt));
 
     return result;

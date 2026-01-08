@@ -440,8 +440,7 @@ export class AgentsFeature {
         );
         return result;
       },
-      list: (userId: string) =>
-        this.listAgentsForUserQuery.execute({ userId }),
+      list: (userId: string) => this.listAgentsForUserQuery.execute({ userId }),
       listExternal: (userId: string) =>
         this.listExternalAgentsQuery.execute({ userId }),
       listServer: (userId: string) =>

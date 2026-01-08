@@ -205,7 +205,7 @@ function DashboardLayoutInner() {
       isFavorite: agent.isFavorite,
       model: agent.model ?? undefined,
       provider: agent.provider ?? undefined,
-      // External local agents are disabled when not connected (server agents are always enabled)
+      // External agents are disabled when not connected (server agents are always enabled)
       disabled: false,
     }));
   }, [agentsQuery.data]);
@@ -323,7 +323,7 @@ function DashboardLayoutInner() {
                 },
                 {
                   id: 'agents',
-                  label: 'Local Agents',
+                  label: 'External Agents',
                   icon: <Bot className="h-4 w-4" />,
                   onClick: () => navigate('/app/agents'),
                   active: currentPath.startsWith('/app/agents'),
@@ -419,10 +419,10 @@ function DashboardLayoutInner() {
                   }
                 />
               </Tooltip>
-              <Tooltip content="Local Agents">
+              <Tooltip content="External Agents">
                 <IconButton
                   icon={<Bot className="h-4 w-4" />}
-                  label="Local Agents"
+                  label="External Agents"
                   onClick={() => navigate('/app/agents')}
                   variant="ghost"
                   size="sm"

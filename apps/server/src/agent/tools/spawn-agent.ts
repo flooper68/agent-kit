@@ -3,6 +3,9 @@ import { z } from 'zod';
 import type { Tool } from '../types';
 import type { AgentSpawner } from '../agent-spawner';
 import { SPAWN_CONFIG } from '../spawn-config';
+import { logger } from '../logger';
+
+const log = logger.child({ module: 'spawn-agent-tool' });
 
 export interface SpawnAgentContext {
   userId: string;
@@ -126,7 +129,11 @@ Available agents are listed in the system prompt under "Built-in Agents" and "Lo
           usage: result.usage,
         };
       } catch (error) {
-        console.error('Failed to spawn agent:', error);
+        log.error('Failed to spawn agent', {
+          agentId,
+          sessionId: context.sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        });
         return {
           success: false,
           error:

@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { externalAgents } from '../../../db/schema';
 import { generateSecretKey, hashSecretKey, generateKeyPrefix } from '../utils';
@@ -33,7 +33,13 @@ export class RegenerateAgentKeyCommand {
         secretKeyPrefix,
         updatedAt: new Date(),
       })
-      .where(and(eq(externalAgents.id, id), eq(externalAgents.userId, userId)))
+      .where(
+        and(
+          eq(externalAgents.id, id),
+          eq(externalAgents.userId, userId),
+          isNull(externalAgents.deletedAt)
+        )
+      )
       .returning();
 
     if (!agent) {

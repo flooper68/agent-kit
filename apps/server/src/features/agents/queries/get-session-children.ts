@@ -19,7 +19,9 @@ export class GetSessionChildrenQuery {
     this.db = db;
   }
 
-  async execute(input: GetSessionChildrenInput): Promise<GetSessionChildrenResult> {
+  async execute(
+    input: GetSessionChildrenInput
+  ): Promise<GetSessionChildrenResult> {
     const { sessionId, userId } = input;
     return this.db
       .select()

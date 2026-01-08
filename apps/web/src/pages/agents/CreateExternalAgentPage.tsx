@@ -23,13 +23,13 @@ export function CreateExternalAgentPage() {
 
   // Set page title
   useEffect(() => {
-    document.title = 'Create Local Agent | Agent Kit';
+    document.title = 'Create External Agent | Agent Kit';
   }, []);
 
   const createMutation = trpc.agents.createExternal.useMutation({
     onSuccess: (data) => {
       addToast({
-        message: 'Local agent created successfully',
+        message: 'External agent created successfully',
         variant: 'success',
       });
       utils.agents.listExternal.invalidate();
@@ -62,8 +62,8 @@ export function CreateExternalAgentPage() {
 
   return (
     <AgentFormPageLayout
-      title="Create Local Agent"
-      description="Create a new local agent that connects via WebSocket."
+      title="Create External Agent"
+      description="Create a new external agent that connects via WebSocket."
       maxWidth="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-6">

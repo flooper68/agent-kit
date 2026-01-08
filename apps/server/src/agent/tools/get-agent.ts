@@ -16,7 +16,9 @@ export function createGetAgentTool(context: GetAgentContext): Tool {
       agentId: z.string().uuid().describe('The unique ID of the agent'),
       agentType: z
         .enum(['external', 'server'])
-        .describe('The type of agent: external (WebSocket-based) or server (LLM-based)'),
+        .describe(
+          'The type of agent: external (WebSocket-based) or server (LLM-based)'
+        ),
     }),
     execute: async ({
       agentId,

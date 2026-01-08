@@ -24,7 +24,9 @@ interface ValidationFieldError {
  */
 function parseValidationError(error: unknown): ValidationFieldError[] {
   if (error instanceof TRPCClientError) {
-    const cause = error.data?.cause as { type?: string; fieldErrors?: ValidationFieldError[] } | undefined;
+    const cause = error.data?.cause as
+      | { type?: string; fieldErrors?: ValidationFieldError[] }
+      | undefined;
     if (cause?.type === 'VALIDATION_ERROR' && cause.fieldErrors) {
       return cause.fieldErrors;
     }

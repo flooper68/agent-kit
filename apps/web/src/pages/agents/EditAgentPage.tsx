@@ -22,7 +22,9 @@ import { useHeaderActions } from '../../contexts/HeaderActionsContext';
  */
 function parseValidationError(error: unknown): FieldError[] {
   if (error instanceof TRPCClientError) {
-    const cause = error.data?.cause as { type?: string; fieldErrors?: FieldError[] } | undefined;
+    const cause = error.data?.cause as
+      | { type?: string; fieldErrors?: FieldError[] }
+      | undefined;
     if (cause?.type === 'VALIDATION_ERROR' && cause.fieldErrors) {
       return cause.fieldErrors;
     }
@@ -50,7 +52,11 @@ export function EditAgentPage() {
 
   // Refs to track last saved state for autosave
   const lastSavedServerDataRef = useRef<AgentFormData | null>(null);
-  const lastSavedExternalDataRef = useRef<{ key: string; name: string; description: string } | null>(null);
+  const lastSavedExternalDataRef = useRef<{
+    key: string;
+    name: string;
+    description: string;
+  } | null>(null);
 
   const utils = trpc.useUtils();
 
@@ -86,14 +92,19 @@ export function EditAgentPage() {
           key: agentQuery.data.key,
           name: agentQuery.data.name,
           description: agentQuery.data.description ?? '',
-          provider: (agentQuery.data.provider as 'anthropic' | 'openai' | 'gemini') ?? 'anthropic',
+          provider:
+            (agentQuery.data.provider as 'anthropic' | 'openai' | 'gemini') ??
+            'anthropic',
           model: agentQuery.data.model ?? DEFAULT_AGENT_FORM_DATA.model,
-          systemPrompt: agentQuery.data.systemPrompt ?? DEFAULT_AGENT_FORM_DATA.systemPrompt,
+          systemPrompt:
+            agentQuery.data.systemPrompt ??
+            DEFAULT_AGENT_FORM_DATA.systemPrompt,
           tools: agentQuery.data.tools ?? [],
           temperature: agentQuery.data.temperature,
           maxOutputTokens: agentQuery.data.maxOutputTokens,
           maxContextTokens: agentQuery.data.maxContextTokens ?? null,
-          thinkingConfig: agentQuery.data.thinkingConfig as AgentFormData['thinkingConfig'],
+          thinkingConfig: agentQuery.data
+            .thinkingConfig as AgentFormData['thinkingConfig'],
           isFavorite: agentQuery.data.isFavorite ?? false,
         };
         setServerFormData(formData);
@@ -139,7 +150,12 @@ export function EditAgentPage() {
         }
       }
     }
-  }, [isServerAgent, serverFormData.provider, modelsQuery.data, serverFormData.model]);
+  }, [
+    isServerAgent,
+    serverFormData.provider,
+    modelsQuery.data,
+    serverFormData.model,
+  ]);
 
   // Mutation for autosave
   const autosaveMutation = trpc.agents.updateCustom.useMutation({
@@ -164,7 +180,10 @@ export function EditAgentPage() {
           setActiveTab('advanced');
         }
       } else {
-        addToast({ message: `Failed to save: ${err.message}`, variant: 'error' });
+        addToast({
+          message: `Failed to save: ${err.message}`,
+          variant: 'error',
+        });
       }
     },
   });
@@ -177,62 +196,174 @@ export function EditAgentPage() {
     setServerFormData((prev) => ({ ...prev, ...updates }));
   };
 
-  // Autosave handler for server agent form
-  const handleServerAutosave = useCallback(() => {
-    if (!id || !lastSavedServerDataRef.current) return;
-    if (autosaveMutation.isPending) return;
+  // Ref to track pending save request
+  const pendingServerSaveRef = useRef(false);
 
-    // Don't autosave if there are validation errors
+  // Core save function for server agent
+  const saveServerForm = useCallback(() => {
+    if (!id || !lastSavedServerDataRef.current) return;
+
+    // Don't save if there are validation errors
     if (!isThinkingValid) {
       return;
     }
 
     // Compare current form data with last saved data
-    if (JSON.stringify(serverFormData) === JSON.stringify(lastSavedServerDataRef.current)) {
+    if (
+      JSON.stringify(serverFormData) ===
+      JSON.stringify(lastSavedServerDataRef.current)
+    ) {
       return; // No changes
     }
 
-    // Update the ref before mutation to prevent duplicate saves
-    lastSavedServerDataRef.current = { ...serverFormData };
+    // If a save is already pending, mark that we need another save
+    if (autosaveMutation.isPending) {
+      pendingServerSaveRef.current = true;
+      return;
+    }
 
-    autosaveMutation.mutate({
-      id,
-      key: serverFormData.key.trim().toLowerCase().replace(/\s+/g, '-'),
-      name: serverFormData.name.trim(),
-      description: serverFormData.description.trim() || undefined,
-      provider: serverFormData.provider,
-      model: serverFormData.model,
-      systemPrompt: serverFormData.systemPrompt.trim(),
-      tools: serverFormData.tools,
-      temperature: serverFormData.temperature,
-      maxOutputTokens: serverFormData.maxOutputTokens,
-      thinkingConfig: serverFormData.thinkingConfig,
-      isFavorite: serverFormData.isFavorite,
-    });
+    // Capture data to save for the onSuccess callback
+    const dataToSave = { ...serverFormData };
+
+    autosaveMutation.mutate(
+      {
+        id,
+        key: serverFormData.key.trim().toLowerCase().replace(/\s+/g, '-'),
+        name: serverFormData.name.trim(),
+        description: serverFormData.description.trim() || undefined,
+        provider: serverFormData.provider,
+        model: serverFormData.model,
+        systemPrompt: serverFormData.systemPrompt.trim(),
+        tools: serverFormData.tools,
+        temperature: serverFormData.temperature,
+        maxOutputTokens: serverFormData.maxOutputTokens,
+        thinkingConfig: serverFormData.thinkingConfig,
+        isFavorite: serverFormData.isFavorite,
+      },
+      {
+        // Only update the ref on success to allow retry on failure
+        onSuccess: () => {
+          lastSavedServerDataRef.current = dataToSave;
+          // Check if there were changes during the save
+          if (pendingServerSaveRef.current) {
+            pendingServerSaveRef.current = false;
+            // Schedule another save to capture changes made during this save
+            setTimeout(() => saveServerForm(), 0);
+          }
+        },
+        onError: () => {
+          // Clear pending flag on error to avoid infinite retry loops
+          pendingServerSaveRef.current = false;
+        },
+      }
+    );
   }, [id, serverFormData, autosaveMutation, isThinkingValid]);
 
-  // Autosave handler for external agent form
-  const handleExternalAutosave = useCallback(() => {
-    if (!id || !lastSavedExternalDataRef.current) return;
-    if (autosaveMutation.isPending) return;
+  // Debounced autosave handler - delays save by 500ms after last change
+  const serverAutosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
-    const currentData = { key: externalKey, name: externalName, description: externalDescription };
+  const handleServerAutosave = useCallback(() => {
+    // Clear any pending debounced save
+    if (serverAutosaveTimeoutRef.current) {
+      clearTimeout(serverAutosaveTimeoutRef.current);
+    }
+    // Schedule save after 500ms debounce
+    serverAutosaveTimeoutRef.current = setTimeout(() => {
+      saveServerForm();
+    }, 500);
+  }, [saveServerForm]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (serverAutosaveTimeoutRef.current) {
+        clearTimeout(serverAutosaveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Ref to track pending external save request
+  const pendingExternalSaveRef = useRef(false);
+
+  // Core save function for external agent
+  const saveExternalForm = useCallback(() => {
+    if (!id || !lastSavedExternalDataRef.current) return;
+
+    const currentData = {
+      key: externalKey,
+      name: externalName,
+      description: externalDescription,
+    };
 
     // Compare current form data with last saved data
-    if (JSON.stringify(currentData) === JSON.stringify(lastSavedExternalDataRef.current)) {
+    if (
+      JSON.stringify(currentData) ===
+      JSON.stringify(lastSavedExternalDataRef.current)
+    ) {
       return; // No changes
     }
 
-    // Update the ref before mutation to prevent duplicate saves
-    lastSavedExternalDataRef.current = { ...currentData };
+    // If a save is already pending, mark that we need another save
+    if (autosaveMutation.isPending) {
+      pendingExternalSaveRef.current = true;
+      return;
+    }
 
-    autosaveMutation.mutate({
-      id,
-      key: externalKey.trim().toLowerCase().replace(/\s+/g, '-'),
-      name: externalName.trim(),
-      description: externalDescription.trim() || undefined,
-    });
+    // Capture data to save for the onSuccess callback
+    const dataToSave = { ...currentData };
+
+    autosaveMutation.mutate(
+      {
+        id,
+        key: externalKey.trim().toLowerCase().replace(/\s+/g, '-'),
+        name: externalName.trim(),
+        description: externalDescription.trim() || undefined,
+      },
+      {
+        // Only update the ref on success to allow retry on failure
+        onSuccess: () => {
+          lastSavedExternalDataRef.current = dataToSave;
+          // Check if there were changes during the save
+          if (pendingExternalSaveRef.current) {
+            pendingExternalSaveRef.current = false;
+            // Schedule another save to capture changes made during this save
+            setTimeout(() => saveExternalForm(), 0);
+          }
+        },
+        onError: () => {
+          // Clear pending flag on error to avoid infinite retry loops
+          pendingExternalSaveRef.current = false;
+        },
+      }
+    );
   }, [id, externalKey, externalName, externalDescription, autosaveMutation]);
+
+  // Debounced autosave handler for external agent - delays save by 500ms after last change
+  const externalAutosaveTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+
+  const handleExternalAutosave = useCallback(() => {
+    // Clear any pending debounced save
+    if (externalAutosaveTimeoutRef.current) {
+      clearTimeout(externalAutosaveTimeoutRef.current);
+    }
+    // Schedule save after 500ms debounce
+    externalAutosaveTimeoutRef.current = setTimeout(() => {
+      saveExternalForm();
+    }, 500);
+  }, [saveExternalForm]);
+
+  // Cleanup external debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (externalAutosaveTimeoutRef.current) {
+        clearTimeout(externalAutosaveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const currentModel = modelsQuery.data?.find(
     (m) => m.id === serverFormData.model
@@ -249,7 +380,8 @@ export function EditAgentPage() {
       <AgentFormPageLayout title="Agent Not Found">
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Text className="text-muted-foreground mb-4">
-            The agent you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.
+            The agent you&apos;re looking for doesn&apos;t exist or you
+            don&apos;t have access to it.
           </Text>
           <Button onClick={() => navigate('/app/agents')}>
             Back to Agents
@@ -320,7 +452,6 @@ export function EditAgentPage() {
               </Tabs.Content>
             </div>
           </Tabs>
-
         </div>
       </AgentFormPageLayout>
     );
@@ -329,12 +460,11 @@ export function EditAgentPage() {
   // External agent form
   return (
     <AgentFormPageLayout
-      title="Edit Local Agent"
+      title="Edit External Agent"
       description={`Update configuration for ${agentQuery.data.name}`}
       maxWidth="lg"
     >
       <div className="space-y-6">
-
         <div className="space-y-2">
           <label className="text-sm font-medium">Key</label>
           <Input
@@ -375,7 +505,6 @@ export function EditAgentPage() {
             rows={3}
           />
         </div>
-
       </div>
     </AgentFormPageLayout>
   );

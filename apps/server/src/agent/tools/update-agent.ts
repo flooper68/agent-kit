@@ -22,12 +22,14 @@ const ThinkingConfigSchema = z
 export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
   return tool({
     description:
-      'Update an agent\'s configuration. For server agents, you can update name, description, model settings, tools, and system prompt. External agents can only have their status changed via setAgentEnabled tool.',
+      "Update an agent's configuration. For server agents, you can update name, description, model settings, tools, and system prompt. External agents can only have their status changed via setAgentEnabled tool.",
     inputSchema: z.object({
       agentId: z.string().uuid().describe('The unique ID of the agent'),
       agentType: z
         .enum(['server'])
-        .describe('The type of agent. Only server agents support full updates.'),
+        .describe(
+          'The type of agent. Only server agents support full updates.'
+        ),
       updates: z.object({
         key: z
           .string()
@@ -47,7 +49,10 @@ export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
           .optional()
           .describe('LLM provider'),
         model: z.string().optional().describe('Model ID (must match provider)'),
-        systemPrompt: z.string().optional().describe('System prompt for the agent'),
+        systemPrompt: z
+          .string()
+          .optional()
+          .describe('System prompt for the agent'),
         tools: z
           .array(z.string())
           .optional()

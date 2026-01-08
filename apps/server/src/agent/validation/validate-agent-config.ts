@@ -3,7 +3,11 @@
  * Returns structured field-level errors for frontend display.
  */
 
-import { getModelInfo, type Provider, type ThinkingLevel } from '../model-config';
+import {
+  getModelInfo,
+  type Provider,
+  type ThinkingLevel,
+} from '../model-config';
 import { listToolIds } from '../tools';
 import type { ThinkingConfig } from '../../db/schema/agents';
 import type { ValidationResult, ValidationFieldError } from './types';
@@ -90,10 +94,7 @@ export function validateAgentConfiguration(
       const constraints = modelInfo.thinkingConstraints;
 
       // Validate budget tokens (Anthropic)
-      if (
-        config.thinkingConfig.budgetTokens !== undefined &&
-        constraints
-      ) {
+      if (config.thinkingConfig.budgetTokens !== undefined && constraints) {
         const budget = config.thinkingConfig.budgetTokens;
 
         if (

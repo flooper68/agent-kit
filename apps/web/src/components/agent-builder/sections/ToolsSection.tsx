@@ -25,7 +25,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   agent: 'Agent',
 };
 
-export function ToolsSection({ formData, onChange, tools, onBlur }: ToolsSectionProps) {
+export function ToolsSection({
+  formData,
+  onChange,
+  tools,
+  onBlur,
+}: ToolsSectionProps) {
   const toggleTool = (toolId: string) => {
     const newTools = formData.tools.includes(toolId)
       ? formData.tools.filter((t) => t !== toolId)

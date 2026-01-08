@@ -93,7 +93,9 @@ export function isGeminiLevelConfig(
 export function isGeminiBudgetConfig(
   config: ThinkingConfig
 ): config is GeminiBudgetThinkingConfig {
-  return config.provider === 'gemini' && config.thinkingType === 'budget-legacy';
+  return (
+    config.provider === 'gemini' && config.thinkingType === 'budget-legacy'
+  );
 }
 
 // ============================================================================
@@ -115,7 +117,9 @@ export interface StoredThinkingConfig {
 /**
  * Convert discriminated union to flat storage format
  */
-export function toStoredThinkingConfig(config: ThinkingConfig): StoredThinkingConfig {
+export function toStoredThinkingConfig(
+  config: ThinkingConfig
+): StoredThinkingConfig {
   const stored: StoredThinkingConfig = { enabled: config.enabled };
 
   if (isAnthropicConfig(config)) {

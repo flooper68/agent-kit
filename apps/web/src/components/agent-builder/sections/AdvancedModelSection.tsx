@@ -1,7 +1,11 @@
 import { useState, useCallback } from 'react';
 import { Text, Input } from '@agent-kit/ui';
 import type { AgentFormData, ModelInfo, ThinkingConfig } from '../types';
-import { ThinkingConfigSwitch, type FieldError, getDefaultThinkingConfig } from '../providers';
+import {
+  ThinkingConfigSwitch,
+  type FieldError,
+  getDefaultThinkingConfig,
+} from '../providers';
 import { toStoredThinkingConfig } from '../providers/thinking-config-types';
 
 interface AdvancedModelSectionProps {
@@ -136,7 +140,9 @@ export function AdvancedModelSection({
           value={formData.maxContextTokens ?? ''}
           onChange={(e) =>
             onChange({
-              maxContextTokens: e.target.value ? parseInt(e.target.value) : null,
+              maxContextTokens: e.target.value
+                ? parseInt(e.target.value)
+                : null,
             })
           }
           onBlur={onBlur}

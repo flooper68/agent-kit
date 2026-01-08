@@ -21,7 +21,9 @@ export class GetArtifactsStatsQuery {
     this.db = db;
   }
 
-  async execute(input: GetArtifactsStatsInput): Promise<GetArtifactsStatsResult> {
+  async execute(
+    input: GetArtifactsStatsInput
+  ): Promise<GetArtifactsStatsResult> {
     const { orgId, timeRange } = input;
     const startDate = getTimeRangeStart(timeRange);
 

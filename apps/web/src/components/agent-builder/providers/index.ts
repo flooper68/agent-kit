@@ -33,8 +33,15 @@ export {
 } from './thinking-config-types';
 
 // Registry exports
-export type { ThinkingConfigProvider, ProviderComponentProps } from './registry';
-export { getProvider, getDefaultThinkingConfig, validateThinkingConfigFromRegistry } from './registry';
+export type {
+  ThinkingConfigProvider,
+  ProviderComponentProps,
+} from './registry';
+export {
+  getProvider,
+  getDefaultThinkingConfig,
+  validateThinkingConfigFromRegistry,
+} from './registry';
 
 // Main wrapper component
 export {

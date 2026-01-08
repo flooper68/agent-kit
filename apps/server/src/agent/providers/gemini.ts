@@ -54,8 +54,8 @@ export class GeminiProvider implements AgentProvider {
       | undefined;
 
     if (modelInfo?.supportsThinking && thinkingConfig?.enabled !== false) {
-      const validLevels =
-        modelInfo.thinkingConstraints?.validThinkingLevels ?? ['low', 'high'];
+      const validLevels = modelInfo.thinkingConstraints
+        ?.validThinkingLevels ?? ['low', 'high'];
       let level: ThinkingLevel =
         thinkingConfig?.thinkingLevel ?? DEFAULT_THINKING_LEVEL;
 

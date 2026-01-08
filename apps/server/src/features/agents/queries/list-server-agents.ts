@@ -37,7 +37,9 @@ export class ListServerAgentsQuery {
         updatedAt: serverAgents.updatedAt,
       })
       .from(serverAgents)
-      .where(and(eq(serverAgents.userId, userId), isNull(serverAgents.deletedAt)))
+      .where(
+        and(eq(serverAgents.userId, userId), isNull(serverAgents.deletedAt))
+      )
       .orderBy(desc(serverAgents.isFavorite), desc(serverAgents.createdAt));
 
     return result;

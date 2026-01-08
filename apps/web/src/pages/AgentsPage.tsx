@@ -142,7 +142,7 @@ export function AgentsPage() {
       setActions([
         {
           id: 'create-local-agent',
-          label: 'Create Local Agent',
+          label: 'Create External Agent',
           icon: <Plus className="h-4 w-4" />,
           onClick: () => navigate('/app/agents/new/external'),
         },
@@ -186,7 +186,6 @@ export function AgentsPage() {
       console.error('Connection status subscription error:', err);
     },
   });
-
 
   // Auto-copy secret key to clipboard when dialog opens
   useEffect(() => {
@@ -365,7 +364,11 @@ export function AgentsPage() {
     currentFavorite: boolean,
     agentType: 'external' | 'server'
   ) => {
-    toggleFavoriteMutation.mutate({ id, isFavorite: !currentFavorite, agentType });
+    toggleFavoriteMutation.mutate({
+      id,
+      isFavorite: !currentFavorite,
+      agentType,
+    });
   };
 
   const handleToggleDisabled = (
@@ -410,7 +413,7 @@ export function AgentsPage() {
             Agents
           </Heading>
           <Text className="text-muted-foreground">
-            Create custom agents or connect external local agents
+            Create server agents or connect external agents
           </Text>
         </div>
 
@@ -422,11 +425,11 @@ export function AgentsPage() {
           <Tabs.List>
             <Tabs.Trigger value="agents">
               <Bot className="mr-1 h-4 w-4" />
-              Agents
+              Server Agents
             </Tabs.Trigger>
             <Tabs.Trigger value="local">
               <Cable className="mr-1 h-4 w-4" />
-              Local Agents
+              External Agents
             </Tabs.Trigger>
           </Tabs.List>
 
@@ -513,7 +516,9 @@ export function AgentsPage() {
                     onToggleFavorite={() =>
                       handleToggleFavorite(agent.id, agent.isFavorite, 'server')
                     }
-                    onDelete={() => handleDelete(agent.id, agent.name, 'server')}
+                    onDelete={() =>
+                      handleDelete(agent.id, agent.name, 'server')
+                    }
                   />
                 ))}
               </div>
@@ -534,7 +539,7 @@ export function AgentsPage() {
               )}
           </Tabs.Content>
 
-          {/* Local Agents Tab - External WebSocket agents */}
+          {/* External Agents Tab - External WebSocket agents */}
           <Tabs.Content value="local">
             {/* Filter Bar */}
             {externalAgentsQuery.data &&
@@ -583,9 +588,9 @@ export function AgentsPage() {
               externalAgentsQuery.data.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <Cable className="mb-4 h-12 w-12 text-muted-foreground" />
-                  <Text className="font-medium">No local agents yet</Text>
+                  <Text className="font-medium">No external agents yet</Text>
                   <Text className="text-sm text-muted-foreground">
-                    Create a local agent to connect external processes via
+                    Create an external agent to connect external processes via
                     WebSocket
                   </Text>
                 </div>
@@ -627,7 +632,11 @@ export function AgentsPage() {
                       handleToggleDisabled(agent.id, agent.disabled, 'external')
                     }
                     onToggleFavorite={() =>
-                      handleToggleFavorite(agent.id, agent.isFavorite, 'external')
+                      handleToggleFavorite(
+                        agent.id,
+                        agent.isFavorite,
+                        'external'
+                      )
                     }
                     onDelete={() =>
                       handleDelete(agent.id, agent.name, 'external')
@@ -687,8 +696,8 @@ export function AgentsPage() {
           <Dialog.Header>
             <Dialog.Title>Delete Agent</Dialog.Title>
             <Dialog.Description>
-              Are you sure you want to delete &ldquo;{deleteTarget?.name}&rdquo;?
-              This action cannot be undone.
+              Are you sure you want to delete &ldquo;{deleteTarget?.name}
+              &rdquo;? This action cannot be undone.
             </Dialog.Description>
           </Dialog.Header>
           <div className="flex items-start gap-2 rounded-md bg-destructive/10 border border-destructive/50 p-3 my-4">

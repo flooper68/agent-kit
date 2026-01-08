@@ -103,10 +103,7 @@ export type {
   GetCustomAgentByIdResult,
 } from './get-custom-agent-by-id';
 export { GetAgentByKeyQuery } from './get-agent-by-key';
-export type {
-  GetAgentByKeyInput,
-  AgentByKeyResult,
-} from './get-agent-by-key';
+export type { GetAgentByKeyInput, AgentByKeyResult } from './get-agent-by-key';
 export { ValidateAgentKeyQuery } from './validate-agent-key';
 export type {
   ValidateAgentKeyInput,

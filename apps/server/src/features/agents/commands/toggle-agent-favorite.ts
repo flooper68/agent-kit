@@ -1,6 +1,11 @@
 import { eq, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { externalAgents, serverAgents, type ExternalAgent, type ServerAgent } from '../../../db/schema';
+import {
+  externalAgents,
+  serverAgents,
+  type ExternalAgent,
+  type ServerAgent,
+} from '../../../db/schema';
 
 export interface ToggleAgentFavoriteInput {
   id: string;
@@ -29,7 +34,9 @@ export class ToggleAgentFavoriteCommand {
           isFavorite,
           updatedAt: new Date(),
         })
-        .where(and(eq(externalAgents.id, id), eq(externalAgents.userId, userId)))
+        .where(
+          and(eq(externalAgents.id, id), eq(externalAgents.userId, userId))
+        )
         .returning();
       return agent ?? null;
     }
