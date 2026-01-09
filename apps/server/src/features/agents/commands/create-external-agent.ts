@@ -1,6 +1,11 @@
 import type { db as DbType } from '../../../db';
-import { externalAgents, type ExternalAgent } from '../../../db/schema';
+import {
+  externalAgents,
+  externalAgentAllowedSubagents,
+  type ExternalAgent,
+} from '../../../db/schema';
 import { generateSecretKey, hashSecretKey, generateKeyPrefix } from '../utils';
+import type { AllowedSubagentsInput } from './create-server-agent';
 
 /**
  * Input for creating an external agent.
@@ -12,6 +17,8 @@ export interface CreateExternalAgentInput {
   name: string;
   description?: string;
   isFavorite?: boolean;
+  // Sub-agent permissions
+  allowedSubagents?: AllowedSubagentsInput;
 }
 
 export interface CreateExternalAgentResult {
@@ -49,6 +56,38 @@ export class CreateExternalAgentCommand {
 
     if (!agent) {
       throw new Error('Failed to create external agent');
+    }
+
+    // Insert allowed subagents into junction table
+    const allowedSubagents = input.allowedSubagents;
+    if (allowedSubagents) {
+      const junctionRows: Array<{
+        externalAgentId: string;
+        allowedServerAgentId?: string;
+        allowedExternalAgentId?: string;
+      }> = [];
+
+      // Add server agent references
+      for (const serverAgentId of allowedSubagents.serverAgentIds ?? []) {
+        junctionRows.push({
+          externalAgentId: agent.id,
+          allowedServerAgentId: serverAgentId,
+        });
+      }
+
+      // Add external agent references
+      for (const externalAgentId of allowedSubagents.externalAgentIds ?? []) {
+        junctionRows.push({
+          externalAgentId: agent.id,
+          allowedExternalAgentId: externalAgentId,
+        });
+      }
+
+      if (junctionRows.length > 0) {
+        await this.db
+          .insert(externalAgentAllowedSubagents)
+          .values(junctionRows);
+      }
     }
 
     // Return plaintext key - this is the only time it's available

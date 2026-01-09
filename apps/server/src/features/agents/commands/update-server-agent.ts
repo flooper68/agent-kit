@@ -2,6 +2,7 @@ import { eq, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import {
   serverAgents,
+  serverAgentAllowedSubagents,
   type ServerAgent,
   type ThinkingConfig,
 } from '../../../db/schema';
@@ -10,8 +11,9 @@ import {
   validateAgentConfiguration,
   AgentValidationError,
 } from '../../../agent/validation';
+import type { AllowedSubagentsInput } from './create-server-agent';
 
-export interface UpdateCustomAgentInput {
+export interface UpdateServerAgentInput {
   id: string;
   userId: string;
   updates: {
@@ -30,22 +32,27 @@ export interface UpdateCustomAgentInput {
     thinkingConfig?: ThinkingConfig | null;
     // User preferences
     isFavorite?: boolean;
+    // Sub-agent permissions
+    allowedSubagents?: AllowedSubagentsInput;
   };
 }
 
-export type UpdateCustomAgentResult = ServerAgent | null;
+export type UpdateServerAgentResult = ServerAgent | null;
 
 /**
  * Update a server agent's configuration.
  * Validates model/provider compatibility and tool IDs before update.
  */
-export class UpdateCustomAgentCommand {
+export class UpdateServerAgentCommand {
   constructor(private db: typeof DbType) {}
 
   async execute(
-    input: UpdateCustomAgentInput
-  ): Promise<UpdateCustomAgentResult> {
+    input: UpdateServerAgentInput
+  ): Promise<UpdateServerAgentResult> {
     const { id, userId, updates } = input;
+
+    // Extract allowedSubagents - we handle it separately via junction table
+    const { allowedSubagents, ...dbUpdates } = updates;
 
     // Validate agent configuration
     const validationResult = validateAgentConfiguration({
@@ -64,12 +71,49 @@ export class UpdateCustomAgentCommand {
     const [agent] = await this.db
       .update(serverAgents)
       .set({
-        ...updates,
+        ...dbUpdates,
         updatedAt: new Date(),
       })
       .where(and(eq(serverAgents.id, id), eq(serverAgents.userId, userId)))
       .returning();
 
-    return agent ?? null;
+    if (!agent) {
+      return null;
+    }
+
+    // Update allowed subagents if provided
+    if (allowedSubagents !== undefined) {
+      // Delete existing junction records
+      await this.db
+        .delete(serverAgentAllowedSubagents)
+        .where(eq(serverAgentAllowedSubagents.serverAgentId, id));
+
+      // Insert new junction records
+      const junctionRows: Array<{
+        serverAgentId: string;
+        allowedServerAgentId?: string;
+        allowedExternalAgentId?: string;
+      }> = [];
+
+      for (const serverAgentId of allowedSubagents.serverAgentIds ?? []) {
+        junctionRows.push({
+          serverAgentId: id,
+          allowedServerAgentId: serverAgentId,
+        });
+      }
+
+      for (const externalAgentId of allowedSubagents.externalAgentIds ?? []) {
+        junctionRows.push({
+          serverAgentId: id,
+          allowedExternalAgentId: externalAgentId,
+        });
+      }
+
+      if (junctionRows.length > 0) {
+        await this.db.insert(serverAgentAllowedSubagents).values(junctionRows);
+      }
+    }
+
+    return agent;
   }
 }

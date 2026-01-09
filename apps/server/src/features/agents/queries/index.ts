@@ -97,11 +97,11 @@ export type {
   ListActiveAgentsInput,
   ListActiveAgentsResult,
 } from './list-active-agents';
-export { GetCustomAgentByIdQuery } from './get-custom-agent-by-id';
+export { GetAgentByIdQuery } from './get-agent-by-id';
 export type {
-  GetCustomAgentByIdInput,
-  GetCustomAgentByIdResult,
-} from './get-custom-agent-by-id';
+  GetAgentByIdInput,
+  GetAgentByIdResult,
+} from './get-agent-by-id';
 export { GetAgentByKeyQuery } from './get-agent-by-key';
 export type { GetAgentByKeyInput, AgentByKeyResult } from './get-agent-by-key';
 export { ValidateAgentKeyQuery } from './validate-agent-key';
@@ -132,3 +132,15 @@ export type {
 // Model queries
 export { ListModelsQuery } from './list-models';
 export type { ListModelsInput, ListModelsResult } from './list-models';
+
+// Permission queries
+export { CheckSpawnPermissionQuery } from './check-spawn-permission';
+export type {
+  CheckSpawnPermissionInput,
+  CheckSpawnPermissionResult,
+} from './check-spawn-permission';
+export { GetAllowedSubagentsQuery } from './get-allowed-subagents';
+export type {
+  GetAllowedSubagentsInput,
+  AllowedSubagentInfo,
+} from './get-allowed-subagents';

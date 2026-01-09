@@ -19,7 +19,8 @@ import {
   InterruptSessionCommand,
   CreateExternalAgentCommand,
   CreateServerAgentCommand,
-  UpdateCustomAgentCommand,
+  UpdateServerAgentCommand,
+  UpdateExternalAgentCommand,
   SetAgentDisabledCommand,
   RegenerateAgentKeyCommand,
   ToggleAgentFavoriteCommand,
@@ -43,7 +44,8 @@ import type {
   InterruptSessionInput,
   CreateExternalAgentInput,
   CreateServerAgentInput,
-  UpdateCustomAgentInput,
+  UpdateServerAgentInput,
+  UpdateExternalAgentInput,
 } from './commands';
 import {
   GetSessionByIdQuery,
@@ -63,14 +65,17 @@ import {
   ListExternalAgentsQuery,
   ListServerAgentsQuery,
   ListActiveAgentsQuery,
-  GetCustomAgentByIdQuery,
+  GetAgentByIdQuery,
   GetAgentByKeyQuery,
   ValidateAgentKeyQuery,
   FindAgentByKeyPrefixQuery,
   ListAgentsForSelectorQuery,
   GetAgentForSelectorQuery,
   ListModelsQuery,
+  CheckSpawnPermissionQuery,
+  GetAllowedSubagentsQuery,
 } from './queries';
+import type { CheckSpawnPermissionInput, AllowedSubagentInfo } from './queries';
 
 /**
  * AgentsFeature - main class that composes all command and query handlers
@@ -103,7 +108,8 @@ export class AgentsFeature {
   // Custom agent commands
   private createExternalAgentCommand: CreateExternalAgentCommand;
   private createServerAgentCommand: CreateServerAgentCommand;
-  private updateCustomAgentCommand: UpdateCustomAgentCommand;
+  private updateServerAgentCommand: UpdateServerAgentCommand;
+  private updateExternalAgentCommand: UpdateExternalAgentCommand;
   private setAgentDisabledCommand: SetAgentDisabledCommand;
   private regenerateAgentKeyCommand: RegenerateAgentKeyCommand;
   private toggleAgentFavoriteCommand: ToggleAgentFavoriteCommand;
@@ -133,7 +139,7 @@ export class AgentsFeature {
   private listExternalAgentsQuery: ListExternalAgentsQuery;
   private listServerAgentsQuery: ListServerAgentsQuery;
   private listActiveAgentsQuery: ListActiveAgentsQuery;
-  private getCustomAgentByIdQuery: GetCustomAgentByIdQuery;
+  private getAgentByIdQuery: GetAgentByIdQuery;
   private getAgentByKeyQuery: GetAgentByKeyQuery;
   private validateAgentKeyQuery: ValidateAgentKeyQuery;
   private findAgentByKeyPrefixQuery: FindAgentByKeyPrefixQuery;
@@ -144,6 +150,10 @@ export class AgentsFeature {
 
   // Model queries
   private listModelsQuery: ListModelsQuery;
+
+  // Permission queries
+  private checkSpawnPermissionQuery: CheckSpawnPermissionQuery;
+  private getAllowedSubagentsQuery: GetAllowedSubagentsQuery;
 
   constructor(db: typeof DbType) {
     // Initialize commands
@@ -168,7 +178,8 @@ export class AgentsFeature {
     // Initialize custom agent commands
     this.createExternalAgentCommand = new CreateExternalAgentCommand(db);
     this.createServerAgentCommand = new CreateServerAgentCommand(db);
-    this.updateCustomAgentCommand = new UpdateCustomAgentCommand(db);
+    this.updateServerAgentCommand = new UpdateServerAgentCommand(db);
+    this.updateExternalAgentCommand = new UpdateExternalAgentCommand(db);
     this.setAgentDisabledCommand = new SetAgentDisabledCommand(db);
     this.regenerateAgentKeyCommand = new RegenerateAgentKeyCommand(db);
     this.toggleAgentFavoriteCommand = new ToggleAgentFavoriteCommand(db);
@@ -199,7 +210,7 @@ export class AgentsFeature {
     this.listExternalAgentsQuery = new ListExternalAgentsQuery(db);
     this.listServerAgentsQuery = new ListServerAgentsQuery(db);
     this.listActiveAgentsQuery = new ListActiveAgentsQuery(db);
-    this.getCustomAgentByIdQuery = new GetCustomAgentByIdQuery(db);
+    this.getAgentByIdQuery = new GetAgentByIdQuery(db);
     this.getAgentByKeyQuery = new GetAgentByKeyQuery(db);
     this.validateAgentKeyQuery = new ValidateAgentKeyQuery(db);
     this.findAgentByKeyPrefixQuery = new FindAgentByKeyPrefixQuery(db);
@@ -210,6 +221,10 @@ export class AgentsFeature {
 
     // Initialize model queries
     this.listModelsQuery = new ListModelsQuery();
+
+    // Initialize permission queries
+    this.checkSpawnPermissionQuery = new CheckSpawnPermissionQuery(db);
+    this.getAllowedSubagentsQuery = new GetAllowedSubagentsQuery(db);
 
     // Initialize orchestration commands (compose existing commands)
     this.sendUserMessageCommand = new SendUserMessageCommand(
@@ -448,11 +463,21 @@ export class AgentsFeature {
       listActive: (userId: string) =>
         this.listActiveAgentsQuery.execute({ userId }),
       getById: (id: string, userId: string) =>
-        this.getCustomAgentByIdQuery.execute({ id, userId }),
+        this.getAgentByIdQuery.execute({ id, userId }),
       getByKey: (key: string, userId: string) =>
         this.getAgentByKeyQuery.execute({ key, userId }),
-      update: async (input: UpdateCustomAgentInput) => {
-        const result = await this.updateCustomAgentCommand.execute(input);
+      update: async (input: UpdateServerAgentInput) => {
+        const result = await this.updateServerAgentCommand.execute(input);
+        if (result) {
+          await this.agentCacheInvalidation?.publishAgentUpdated(
+            input.userId,
+            result.id
+          );
+        }
+        return result;
+      },
+      updateExternal: async (input: UpdateExternalAgentInput) => {
+        const result = await this.updateExternalAgentCommand.execute(input);
         if (result) {
           await this.agentCacheInvalidation?.publishAgentUpdated(
             input.userId,
@@ -540,6 +565,22 @@ export class AgentsFeature {
     return {
       list: (provider?: 'anthropic' | 'openai' | 'gemini') =>
         this.listModelsQuery.execute({ provider }),
+    };
+  }
+
+  /**
+   * Permission operations
+   * Checks for spawn permissions and other access controls
+   */
+  get permissions() {
+    return {
+      checkSpawnPermission: (input: CheckSpawnPermissionInput) =>
+        this.checkSpawnPermissionQuery.execute(input),
+      getAllowedSubagents: (
+        agentKey: string,
+        userId: string
+      ): Promise<AllowedSubagentInfo[]> =>
+        this.getAllowedSubagentsQuery.execute({ agentKey, userId }),
     };
   }
 }

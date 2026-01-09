@@ -52,6 +52,7 @@ export const UserMessagePayloadSchema = z.object({
   timestamp: z.string(),
   messages: z.array(SessionMessageSchema), // Session messages
   events: z.array(SessionEventSchema), // Raw session events
+  metadata: z.record(z.string(), z.unknown()).optional(), // Extensible metadata from server
 });
 
 export type UserMessagePayload = z.infer<typeof UserMessagePayloadSchema>;
@@ -317,6 +318,8 @@ export interface AgentRunParams {
   events: SessionEvent[];
   /** Abort signal for cancellation */
   abortSignal: AbortSignal;
+  /** Metadata from server (e.g., allowedSubagents) */
+  metadata?: Record<string, unknown>;
 }
 
 /**

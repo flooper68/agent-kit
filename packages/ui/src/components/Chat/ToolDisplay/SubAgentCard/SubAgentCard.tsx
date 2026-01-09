@@ -2,6 +2,7 @@ import { Component, forwardRef, memo, type ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../../../lib/utils';
 import { Button } from '../../../Button';
+import { Tooltip } from '../../../Tooltip';
 
 // Error Boundary for graceful error handling
 interface ErrorBoundaryProps {
@@ -278,9 +279,17 @@ const SubAgentCardInner = memo(
 
           {/* Content area */}
           <div className="rounded-md bg-background/50 p-2.5">
-            <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
-              {getStatusContent()}
-            </p>
+            {status === 'error' && errorMessage ? (
+              <Tooltip content={errorMessage} side="top">
+                <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] cursor-help">
+                  {getStatusContent()}
+                </p>
+              </Tooltip>
+            ) : (
+              <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
+                {getStatusContent()}
+              </p>
+            )}
 
             {/* Action buttons */}
             <div className="flex items-center justify-end gap-2 mt-2 min-h-[32px]">

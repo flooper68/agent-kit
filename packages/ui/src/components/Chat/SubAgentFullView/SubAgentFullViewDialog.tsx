@@ -53,6 +53,12 @@ export interface SubAgentFullViewDialogProps {
 
   /** Custom render function for nested sub-agent cards (enables streaming) */
   renderSubAgentCard?: (props: RenderSubAgentCardProps) => ReactNode;
+
+  /** Avatar configuration for messages. For spawned sessions, user avatar should show the parent agent. */
+  avatars?: {
+    user?: { src?: string; fallback?: string; name?: string };
+    assistant?: { src?: string; fallback?: string; name?: string };
+  };
 }
 
 /**
@@ -122,6 +128,11 @@ function areSubAgentFullViewDialogPropsEqual(
   // Check onInspect
   if (prev.onInspect !== next.onInspect) return false;
 
+  // Check avatars (shallow comparison)
+  if (prev.avatars?.user?.fallback !== next.avatars?.user?.fallback)
+    return false;
+  if (prev.avatars?.user?.name !== next.avatars?.user?.name) return false;
+
   return true;
 }
 
@@ -142,6 +153,7 @@ export const SubAgentFullViewDialog = memo(function SubAgentFullViewDialog({
   onInspect,
   onOpenSubAgentDialog,
   renderSubAgentCard,
+  avatars,
 }: SubAgentFullViewDialogProps) {
   // Map status for AgentPanel
   const taskStatus = useMemo(
@@ -217,6 +229,7 @@ export const SubAgentFullViewDialog = memo(function SubAgentFullViewDialog({
             onInspect={onInspect}
             onOpenSubAgentDialog={onOpenSubAgentDialog}
             renderSubAgentCard={renderSubAgentCard}
+            avatars={avatars}
           />
         </div>
       </Dialog.Content>

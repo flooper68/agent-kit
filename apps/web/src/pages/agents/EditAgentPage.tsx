@@ -10,8 +10,10 @@ import { BasicModelSection } from '../../components/agent-builder/sections/Basic
 import { AdvancedModelSection } from '../../components/agent-builder/sections/AdvancedModelSection';
 import { SystemPromptSection } from '../../components/agent-builder/sections/SystemPromptSection';
 import { ToolsSection } from '../../components/agent-builder/sections/ToolsSection';
+import { AllowedSubAgentsSection } from '../../components/agent-builder/sections/AllowedSubAgentsSection';
 import {
   type AgentFormData,
+  type AllowedSubagents,
   DEFAULT_AGENT_FORM_DATA,
 } from '../../components/agent-builder/types';
 import type { FieldError } from '../../components/agent-builder/providers';
@@ -49,6 +51,8 @@ export function EditAgentPage() {
   const [externalKey, setExternalKey] = useState('');
   const [externalName, setExternalName] = useState('');
   const [externalDescription, setExternalDescription] = useState('');
+  const [externalAllowedSubagents, setExternalAllowedSubagents] =
+    useState<AllowedSubagents>({});
 
   // Refs to track last saved state for autosave
   const lastSavedServerDataRef = useRef<AgentFormData | null>(null);
@@ -56,6 +60,7 @@ export function EditAgentPage() {
     key: string;
     name: string;
     description: string;
+    allowedSubagents: AllowedSubagents;
   } | null>(null);
 
   const utils = trpc.useUtils();
@@ -74,7 +79,7 @@ export function EditAgentPage() {
   // Determine if this is a server agent (has provider field)
   const isServerAgent = useMemo(() => {
     if (!agentQuery.data) return null;
-    return !!agentQuery.data.provider;
+    return 'provider' in agentQuery.data;
   }, [agentQuery.data]);
 
   // Set page title
@@ -87,25 +92,30 @@ export function EditAgentPage() {
   // Initialize form data when agent loads
   useEffect(() => {
     if (agentQuery.data) {
-      if (isServerAgent) {
+      // API returns allowedSubagents as { serverAgentIds, externalAgentIds }
+      const allowedSubagents: AllowedSubagents =
+        agentQuery.data.allowedSubagents ?? {};
+
+      // Check if it's a server agent using 'provider' in data for proper type narrowing
+      if ('provider' in agentQuery.data) {
+        const data = agentQuery.data;
         const formData: AgentFormData = {
-          key: agentQuery.data.key,
-          name: agentQuery.data.name,
-          description: agentQuery.data.description ?? '',
+          key: data.key,
+          name: data.name,
+          description: data.description ?? '',
           provider:
-            (agentQuery.data.provider as 'anthropic' | 'openai' | 'gemini') ??
-            'anthropic',
-          model: agentQuery.data.model ?? DEFAULT_AGENT_FORM_DATA.model,
+            (data.provider as 'anthropic' | 'openai' | 'gemini') ?? 'anthropic',
+          model: data.model ?? DEFAULT_AGENT_FORM_DATA.model,
           systemPrompt:
-            agentQuery.data.systemPrompt ??
-            DEFAULT_AGENT_FORM_DATA.systemPrompt,
-          tools: agentQuery.data.tools ?? [],
-          temperature: agentQuery.data.temperature,
-          maxOutputTokens: agentQuery.data.maxOutputTokens,
-          maxContextTokens: agentQuery.data.maxContextTokens ?? null,
-          thinkingConfig: agentQuery.data
-            .thinkingConfig as AgentFormData['thinkingConfig'],
-          isFavorite: agentQuery.data.isFavorite ?? false,
+            data.systemPrompt ?? DEFAULT_AGENT_FORM_DATA.systemPrompt,
+          tools: data.tools ?? [],
+          temperature: data.temperature,
+          maxOutputTokens: data.maxOutputTokens,
+          maxContextTokens: data.maxContextTokens ?? null,
+          thinkingConfig:
+            data.thinkingConfig as AgentFormData['thinkingConfig'],
+          isFavorite: data.isFavorite ?? false,
+          allowedSubagents,
         };
         setServerFormData(formData);
         lastSavedServerDataRef.current = formData;
@@ -114,14 +124,16 @@ export function EditAgentPage() {
           key: agentQuery.data.key,
           name: agentQuery.data.name,
           description: agentQuery.data.description ?? '',
+          allowedSubagents,
         };
         setExternalKey(externalData.key);
         setExternalName(externalData.name);
         setExternalDescription(externalData.description);
+        setExternalAllowedSubagents(externalData.allowedSubagents);
         lastSavedExternalDataRef.current = externalData;
       }
     }
-  }, [agentQuery.data, isServerAgent]);
+  }, [agentQuery.data]);
 
   // Fetch tools and models for server agent form
   const toolsQuery = trpc.agents.listTools.useQuery(undefined, {
@@ -228,6 +240,7 @@ export function EditAgentPage() {
     autosaveMutation.mutate(
       {
         id,
+        agentType: 'server' as const,
         key: serverFormData.key.trim().toLowerCase().replace(/\s+/g, '-'),
         name: serverFormData.name.trim(),
         description: serverFormData.description.trim() || undefined,
@@ -239,6 +252,7 @@ export function EditAgentPage() {
         maxOutputTokens: serverFormData.maxOutputTokens,
         thinkingConfig: serverFormData.thinkingConfig,
         isFavorite: serverFormData.isFavorite,
+        allowedSubagents: serverFormData.allowedSubagents,
       },
       {
         // Only update the ref on success to allow retry on failure
@@ -295,6 +309,7 @@ export function EditAgentPage() {
       key: externalKey,
       name: externalName,
       description: externalDescription,
+      allowedSubagents: externalAllowedSubagents,
     };
 
     // Compare current form data with last saved data
@@ -317,9 +332,10 @@ export function EditAgentPage() {
     autosaveMutation.mutate(
       {
         id,
-        key: externalKey.trim().toLowerCase().replace(/\s+/g, '-'),
+        agentType: 'external' as const,
         name: externalName.trim(),
         description: externalDescription.trim() || undefined,
+        allowedSubagents: externalAllowedSubagents,
       },
       {
         // Only update the ref on success to allow retry on failure
@@ -338,7 +354,14 @@ export function EditAgentPage() {
         },
       }
     );
-  }, [id, externalKey, externalName, externalDescription, autosaveMutation]);
+  }, [
+    id,
+    externalKey,
+    externalName,
+    externalDescription,
+    externalAllowedSubagents,
+    autosaveMutation,
+  ]);
 
   // Debounced autosave handler for external agent - delays save by 500ms after last change
   const externalAutosaveTimeoutRef = useRef<ReturnType<
@@ -439,6 +462,13 @@ export function EditAgentPage() {
                   tools={toolsQuery.data ?? []}
                   onBlur={handleServerAutosave}
                 />
+
+                <AllowedSubAgentsSection
+                  formData={serverFormData}
+                  onChange={updateServerFormData}
+                  currentAgentId={id}
+                  onBlur={handleServerAutosave}
+                />
               </Tabs.Content>
 
               <Tabs.Content value="advanced" className="mt-0 space-y-8">
@@ -462,7 +492,6 @@ export function EditAgentPage() {
     <AgentFormPageLayout
       title="Edit External Agent"
       description={`Update configuration for ${agentQuery.data.name}`}
-      maxWidth="lg"
     >
       <div className="space-y-6">
         <div className="space-y-2">
@@ -505,6 +534,20 @@ export function EditAgentPage() {
             rows={3}
           />
         </div>
+
+        <AllowedSubAgentsSection
+          formData={{
+            ...DEFAULT_AGENT_FORM_DATA,
+            allowedSubagents: externalAllowedSubagents,
+          }}
+          onChange={(updates) => {
+            if (updates.allowedSubagents) {
+              setExternalAllowedSubagents(updates.allowedSubagents);
+            }
+          }}
+          currentAgentId={id}
+          onBlur={handleExternalAutosave}
+        />
       </div>
     </AgentFormPageLayout>
   );

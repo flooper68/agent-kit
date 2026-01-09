@@ -146,3 +146,87 @@ export type NewServerAgent = typeof serverAgents.$inferInsert;
 // Legacy type aliases for backwards compatibility with analytics/artifacts features
 // These features query across both agent types using a union
 export type Agent = ServerAgent | ExternalAgent;
+
+/**
+ * Junction table for server agents' allowed subagents
+ * Defines which agents a server agent is allowed to spawn
+ */
+export const serverAgentAllowedSubagents = pgTable(
+  'server_agent_allowed_subagents',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    // The parent server agent
+    serverAgentId: uuid('server_agent_id')
+      .notNull()
+      .references(() => serverAgents.id, { onDelete: 'cascade' }),
+
+    // The allowed agent can be either a server agent or external agent (exactly one must be set)
+    allowedServerAgentId: uuid('allowed_server_agent_id').references(
+      () => serverAgents.id,
+      { onDelete: 'cascade' }
+    ),
+    allowedExternalAgentId: uuid('allowed_external_agent_id').references(
+      () => externalAgents.id,
+      { onDelete: 'cascade' }
+    ),
+
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('idx_server_allowed_server_agent').on(table.serverAgentId),
+    index('idx_server_allowed_target_server').on(table.allowedServerAgentId),
+    index('idx_server_allowed_target_external').on(
+      table.allowedExternalAgentId
+    ),
+  ]
+);
+
+export type ServerAgentAllowedSubagent =
+  typeof serverAgentAllowedSubagents.$inferSelect;
+export type NewServerAgentAllowedSubagent =
+  typeof serverAgentAllowedSubagents.$inferInsert;
+
+/**
+ * Junction table for external agents' allowed subagents
+ * Defines which agents an external agent is allowed to spawn
+ */
+export const externalAgentAllowedSubagents = pgTable(
+  'external_agent_allowed_subagents',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    // The parent external agent
+    externalAgentId: uuid('external_agent_id')
+      .notNull()
+      .references(() => externalAgents.id, { onDelete: 'cascade' }),
+
+    // The allowed agent can be either a server agent or external agent (exactly one must be set)
+    allowedServerAgentId: uuid('allowed_server_agent_id').references(
+      () => serverAgents.id,
+      { onDelete: 'cascade' }
+    ),
+    allowedExternalAgentId: uuid('allowed_external_agent_id').references(
+      () => externalAgents.id,
+      { onDelete: 'cascade' }
+    ),
+
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('idx_external_allowed_external_agent').on(table.externalAgentId),
+    index('idx_external_allowed_target_server').on(table.allowedServerAgentId),
+    index('idx_external_allowed_target_external').on(
+      table.allowedExternalAgentId
+    ),
+  ]
+);
+
+export type ExternalAgentAllowedSubagent =
+  typeof externalAgentAllowedSubagents.$inferSelect;
+export type NewExternalAgentAllowedSubagent =
+  typeof externalAgentAllowedSubagents.$inferInsert;

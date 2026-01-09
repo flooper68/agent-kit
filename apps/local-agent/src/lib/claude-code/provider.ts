@@ -2,6 +2,7 @@ import { query } from '@anthropic-ai/claude-code';
 import { mkdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { z } from 'zod';
 import type {
   AgentRunParams,
   AgentRunResult,
@@ -16,6 +17,16 @@ import { createArtifactMcpServer } from '../artifact-mcp-server';
 import { createServerToolsMcpServer } from '../server-tools-mcp-server';
 import type { ArtifactToolRelay } from '../artifact-tool-relay';
 import type { ServerToolRelay } from '../server-tool-relay';
+
+// Schema for allowed subagents from server metadata
+const AllowedSubagentSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  type: z.enum(['server', 'external']),
+});
+
+const AllowedSubagentsSchema = z.array(AllowedSubagentSchema);
 
 export interface ClaudeCodeProviderConfig extends ClaudeCodeHandlerConfig {
   /** Logger name prefix */
@@ -51,7 +62,7 @@ export class ClaudeCodeProvider {
   async *run(
     params: AgentRunParams
   ): AsyncGenerator<StreamEvent, AgentRunResult, undefined> {
-    const { sessionId, messageId, content, messages, events, abortSignal } =
+    const { sessionId, messageId, content, messages, events, abortSignal, metadata } =
       params;
     const startTime = Date.now();
     let messageCount = 0;
@@ -77,6 +88,7 @@ export class ClaudeCodeProvider {
       model: this.config.model ?? 'default',
       maxThinkingTokens: this.config.maxThinkingTokens,
       includePartialMessages: this.config.includePartialMessages,
+      metadata,
     });
 
     // Reset mapper state for this new message run
@@ -141,18 +153,28 @@ export class ClaudeCodeProvider {
       // Configure MCP servers based on enabled tools
       const mcpServers: Record<string, unknown> = {};
 
+      // Determine allowed spawn agents: prefer metadata from server, fallback to config
+      // Metadata contains full agent info objects, we just need the keys
+      const parsedSubagents = AllowedSubagentsSchema.safeParse(
+        metadata?.allowedSubagents
+      );
+      const allowedSpawnAgents = parsedSubagents.success
+        ? parsedSubagents.data.map((a) => a.key)
+        : this.config.allowedSpawnAgents;
+
       // Add in-process MCP server for server tools if enabled (supersedes artifact tools)
       if (this.config.enableServerTools && this.config.serverRelay) {
         mcpServers['agent-kit-server'] = createServerToolsMcpServer(
           this.config.serverRelay,
           sessionId,
           messageId,
-          this.config.allowedSpawnAgents
+          allowedSpawnAgents
         );
         this.log.debug(
           'In-process MCP server configured for all server tools',
           {
-            allowedSpawnAgents: this.config.allowedSpawnAgents?.length ?? 0,
+            allowedSpawnAgents: allowedSpawnAgents?.length ?? 0,
+            source: parsedSubagents.success ? 'metadata' : 'config',
           }
         );
       }

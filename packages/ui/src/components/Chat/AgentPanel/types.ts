@@ -149,6 +149,9 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
   /** Compact mode: Formatted elapsed time label (e.g., "5s" or "1m 23s"). Pass null to hide. */
   compactElapsedLabel?: string | null;
 
+  /** Compact mode: Error message to display when status is error */
+  compactErrorMessage?: string;
+
   /** Error information if status is 'error' */
   error?: TaskError | null;
 

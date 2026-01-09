@@ -6,6 +6,12 @@ import { projects } from './projects';
 import { tasks } from './tasks';
 import { taskArtifacts } from './task-artifacts';
 import { artifacts } from './artifacts';
+import {
+  serverAgents,
+  externalAgents,
+  serverAgentAllowedSubagents,
+  externalAgentAllowedSubagents,
+} from './agents';
 
 export const agentSessionMessagesRelations = relations(
   agentSessionMessages,
@@ -63,3 +69,54 @@ export const taskArtifactsRelations = relations(taskArtifacts, ({ one }) => ({
 export const artifactsRelations = relations(artifacts, ({ many }) => ({
   taskArtifacts: many(taskArtifacts),
 }));
+
+// Server agent relations
+export const serverAgentsRelations = relations(serverAgents, ({ many }) => ({
+  allowedSubagents: many(serverAgentAllowedSubagents),
+}));
+
+// External agent relations
+export const externalAgentsRelations = relations(
+  externalAgents,
+  ({ many }) => ({
+    allowedSubagents: many(externalAgentAllowedSubagents),
+  })
+);
+
+// Server agent allowed subagents relations
+export const serverAgentAllowedSubagentsRelations = relations(
+  serverAgentAllowedSubagents,
+  ({ one }) => ({
+    serverAgent: one(serverAgents, {
+      fields: [serverAgentAllowedSubagents.serverAgentId],
+      references: [serverAgents.id],
+    }),
+    allowedServerAgent: one(serverAgents, {
+      fields: [serverAgentAllowedSubagents.allowedServerAgentId],
+      references: [serverAgents.id],
+    }),
+    allowedExternalAgent: one(externalAgents, {
+      fields: [serverAgentAllowedSubagents.allowedExternalAgentId],
+      references: [externalAgents.id],
+    }),
+  })
+);
+
+// External agent allowed subagents relations
+export const externalAgentAllowedSubagentsRelations = relations(
+  externalAgentAllowedSubagents,
+  ({ one }) => ({
+    externalAgent: one(externalAgents, {
+      fields: [externalAgentAllowedSubagents.externalAgentId],
+      references: [externalAgents.id],
+    }),
+    allowedServerAgent: one(serverAgents, {
+      fields: [externalAgentAllowedSubagents.allowedServerAgentId],
+      references: [serverAgents.id],
+    }),
+    allowedExternalAgent: one(externalAgents, {
+      fields: [externalAgentAllowedSubagents.allowedExternalAgentId],
+      references: [externalAgents.id],
+    }),
+  })
+);

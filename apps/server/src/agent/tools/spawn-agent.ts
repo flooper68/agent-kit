@@ -15,25 +15,20 @@ export interface SpawnAgentContext {
   agentSpawner: AgentSpawner;
   /** Message ID for the current assistant message (for spawn_session_created event) */
   messageId: string;
+  /** Key of the parent agent making the spawn request (for allowlist validation) */
+  parentAgentKey?: string;
 }
 
 /**
- * Result type for the spawnAgent tool
+ * Result type for the spawnAgent tool (errors are thrown, not returned)
  */
-export type SpawnAgentToolResult =
-  | {
-      success: true;
-      sessionId: string;
-      response: string;
-      agentName?: string;
-      usage?: { promptTokens: number; completionTokens: number };
-    }
-  | {
-      success: false;
-      error: string;
-      sessionId?: string;
-      partialResponse?: string;
-    };
+export type SpawnAgentToolResult = {
+  success: true;
+  sessionId: string;
+  response: string;
+  agentName?: string;
+  usage?: { promptTokens: number; completionTokens: number };
+};
 
 export function createSpawnAgentTool(context: SpawnAgentContext): Tool {
   return tool({
@@ -77,10 +72,9 @@ Available agents are listed in the system prompt under "Built-in Agents" and "Lo
     ): Promise<SpawnAgentToolResult> => {
       // Check spawn depth limit
       if (context.currentSpawnDepth >= SPAWN_CONFIG.MAX_SPAWN_DEPTH) {
-        return {
-          success: false,
-          error: `Maximum spawn depth of ${SPAWN_CONFIG.MAX_SPAWN_DEPTH} exceeded. Cannot spawn more agents from this context.`,
-        };
+        throw new Error(
+          `Maximum spawn depth of ${SPAWN_CONFIG.MAX_SPAWN_DEPTH} exceeded. Cannot spawn more agents from this context.`
+        );
       }
 
       try {
@@ -93,32 +87,19 @@ Available agents are listed in the system prompt under "Built-in Agents" and "Lo
           parentSpawnDepth: context.currentSpawnDepth,
           toolCallId,
           messageId: context.messageId,
+          parentAgentKey: context.parentAgentKey,
         });
 
         if (result.finishReason === 'error') {
-          return {
-            success: false,
-            error: result.error ?? 'Spawned agent encountered an error',
-            sessionId: result.sessionId || undefined,
-          };
+          throw new Error(result.error ?? 'Spawned agent encountered an error');
         }
 
         if (result.finishReason === 'timeout') {
-          return {
-            success: false,
-            error: result.error ?? 'Spawned agent timed out',
-            sessionId: result.sessionId,
-            partialResponse: result.response || undefined,
-          };
+          throw new Error(result.error ?? 'Spawned agent timed out');
         }
 
         if (result.finishReason === 'interrupted') {
-          return {
-            success: false,
-            error: 'Spawned agent was interrupted',
-            sessionId: result.sessionId,
-            partialResponse: result.response || undefined,
-          };
+          throw new Error('Spawned agent was interrupted');
         }
 
         return {
@@ -134,13 +115,7 @@ Available agents are listed in the system prompt under "Built-in Agents" and "Lo
           sessionId: context.sessionId,
           error: error instanceof Error ? error.message : String(error),
         });
-        return {
-          success: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to spawn agent. Please try again.',
-        };
+        throw error;
       }
     },
   });

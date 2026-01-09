@@ -3,6 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Input, Text, Textarea, useToast } from '@agent-kit/ui';
 import { trpc } from '../../lib/trpc';
 import { AgentFormPageLayout } from '../../components/agents/AgentFormPageLayout';
+import { AllowedSubAgentsSection } from '../../components/agent-builder/sections/AllowedSubAgentsSection';
+import {
+  type AgentFormData,
+  type AllowedSubagents,
+  DEFAULT_AGENT_FORM_DATA,
+} from '../../components/agent-builder/types';
 import { useHeaderActions } from '../../contexts/HeaderActionsContext';
 
 export function CreateExternalAgentPage() {
@@ -12,6 +18,9 @@ export function CreateExternalAgentPage() {
   const [key, setKey] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [allowedSubagents, setAllowedSubagents] = useState<AllowedSubagents>(
+    {}
+  );
   const [error, setError] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
@@ -57,14 +66,20 @@ export function CreateExternalAgentPage() {
       key: key.trim().toLowerCase().replace(/\s+/g, '-'),
       name: name.trim(),
       description: description.trim() || undefined,
+      allowedSubagents,
     });
+  };
+
+  // Create a partial formData object for the AllowedSubAgentsSection
+  const formDataForSection: AgentFormData = {
+    ...DEFAULT_AGENT_FORM_DATA,
+    allowedSubagents,
   };
 
   return (
     <AgentFormPageLayout
       title="Create External Agent"
       description="Create a new external agent that connects via WebSocket."
-      maxWidth="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
@@ -111,6 +126,15 @@ export function CreateExternalAgentPage() {
             rows={3}
           />
         </div>
+
+        <AllowedSubAgentsSection
+          formData={formDataForSection}
+          onChange={(updates) => {
+            if (updates.allowedSubagents) {
+              setAllowedSubagents(updates.allowedSubagents);
+            }
+          }}
+        />
 
         <div className="flex justify-end gap-3 pt-4 border-t">
           <Button

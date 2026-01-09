@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { cva } from 'class-variance-authority';
 import { cn } from '../../../lib/utils';
 import { Button } from '../../Button';
+import { Tooltip } from '../../Tooltip';
 import type { TaskMessage } from '../../../types/chat';
 import type { CompactStatus } from './types';
 import { CompactMessageView } from './CompactMessageView';
@@ -153,6 +154,8 @@ export interface CompactAgentCardProps {
   onRetry?: () => void;
   /** Callback when a nested sub-agent dialog should open */
   onOpenSubAgentDialog?: (sessionId: string) => void;
+  /** Error message to display when status is error */
+  errorMessage?: string;
 }
 
 const getStatusLabel = (status: CompactStatus): string => {
@@ -180,6 +183,7 @@ export const CompactAgentCard = memo(function CompactAgentCard({
   onOpenFullView,
   onRetry,
   onOpenSubAgentDialog,
+  errorMessage,
 }: CompactAgentCardProps) {
   const isStreaming = status === 'pending' || status === 'running';
 
@@ -223,8 +227,16 @@ export const CompactAgentCard = memo(function CompactAgentCard({
         </div>
       </div>
 
-      {/* Content area - only show during streaming */}
-      {isStreaming && (
+      {/* Content area - show error message or streaming content */}
+      {status === 'error' && errorMessage ? (
+        <div className="rounded bg-background/50 p-2 mt-2">
+          <Tooltip content={errorMessage} side="top">
+            <p className="text-xs text-muted-foreground line-clamp-2 cursor-help">
+              {errorMessage}
+            </p>
+          </Tooltip>
+        </div>
+      ) : isStreaming ? (
         <div className="rounded bg-background/50 p-2 mt-2">
           <div className="h-9 overflow-hidden flex flex-col justify-end">
             <CompactMessageView
@@ -233,7 +245,7 @@ export const CompactAgentCard = memo(function CompactAgentCard({
             />
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 });

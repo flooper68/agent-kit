@@ -3,7 +3,7 @@ import { Skeleton } from '@agent-kit/ui';
 export function AgentFormPageSkeleton() {
   return (
     <div className="h-full overflow-auto p-6">
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-6xl">
         {/* Header with back button and title */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">

@@ -128,7 +128,7 @@ export class MessageHandler {
   }
 
   private async handleUserMessage(message: UserMessagePayload): Promise<void> {
-    const { sessionId, messageId, content, messages, events } = message;
+    const { sessionId, messageId, content, messages, events, metadata } = message;
     const startTime = Date.now();
 
     log.info('Starting agent execution', {
@@ -137,6 +137,7 @@ export class MessageHandler {
       promptLength: content.length,
       messagesCount: messages.length,
       eventsCount: events.length,
+      hasMetadata: !!metadata,
     });
 
     // Set relay WebSocket connections
@@ -169,6 +170,7 @@ export class MessageHandler {
         messages,
         events,
         abortSignal: abortController.signal,
+        metadata,
       });
 
       let result: IteratorResult<

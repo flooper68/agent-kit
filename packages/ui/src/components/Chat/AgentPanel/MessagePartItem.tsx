@@ -38,6 +38,29 @@ function findToolResult(
 }
 
 /**
+ * Extract error message from tool result
+ * Handles string, Error object, or object with message/error property
+ */
+function extractErrorMessage(result: unknown): string {
+  if (typeof result === 'string') {
+    return result;
+  }
+  if (result instanceof Error) {
+    return result.message;
+  }
+  if (typeof result === 'object' && result !== null) {
+    const obj = result as Record<string, unknown>;
+    if (typeof obj.message === 'string') {
+      return obj.message;
+    }
+    if (typeof obj.error === 'string') {
+      return obj.error;
+    }
+  }
+  return 'An error occurred';
+}
+
+/**
  * Map tool invocation state to SubAgentCard status
  */
 function mapToolStateToSubAgentStatus(
@@ -206,7 +229,7 @@ export const MessagePartItem = memo(function MessagePartItem({
               latestAction={
                 toolPart.state === 'running' ? 'Processing...' : undefined
               }
-              errorMessage={result?.isError ? String(result.result) : undefined}
+              errorMessage={result?.isError ? extractErrorMessage(result.result) : undefined}
               onOpenFullView={onOpenFullView}
             />
           </div>

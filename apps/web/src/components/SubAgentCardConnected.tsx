@@ -26,6 +26,29 @@ function mapSubAgentStatusToCompactStatus(
 }
 
 /**
+ * Extract error message from tool result
+ * Handles string, Error object, or object with message/error property
+ */
+function extractErrorMessage(result: unknown): string {
+  if (typeof result === 'string') {
+    return result;
+  }
+  if (result instanceof Error) {
+    return result.message;
+  }
+  if (typeof result === 'object' && result !== null) {
+    const obj = result as Record<string, unknown>;
+    if (typeof obj.message === 'string') {
+      return obj.message;
+    }
+    if (typeof obj.error === 'string') {
+      return obj.error;
+    }
+  }
+  return 'An error occurred';
+}
+
+/**
  * Map tool invocation state to CompactStatus
  */
 function mapToolStateToCompactStatus(
@@ -95,6 +118,12 @@ export const SubAgentCardConnected = memo(function SubAgentCardConnected({
       ? mapSubAgentStatusToCompactStatus(streaming.status)
       : mapToolStateToCompactStatus(toolState, toolResult);
 
+  // Extract error message from tool result
+  // The result could be a string, Error object, or object with message/error property
+  const errorMessage = toolResult?.isError
+    ? extractErrorMessage(toolResult.result)
+    : undefined;
+
   // Compute whether this sub-agent is currently "running" for elapsed time tracking
   const isRunning = compactStatus === 'pending' || compactStatus === 'running';
 
@@ -110,6 +139,7 @@ export const SubAgentCardConnected = memo(function SubAgentCardConnected({
       agentName={agentName}
       compactStatus={compactStatus}
       compactElapsedLabel={elapsedLabel}
+      compactErrorMessage={errorMessage}
       messages={streaming.messages}
       onOpenFullView={onOpenFullView}
       onCompactRetry={onRetry}

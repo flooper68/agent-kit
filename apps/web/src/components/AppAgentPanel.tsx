@@ -274,6 +274,28 @@ export function AppAgentPanel({
     [user]
   );
 
+  // Create avatars config for sub-agent dialog (shows parent agent as "user" for spawned sessions)
+  const subAgentAvatars = useMemo(() => {
+    if (
+      subAgentDialog.spawnDepth &&
+      subAgentDialog.spawnDepth > 0 &&
+      subAgentDialog.parentAgent
+    ) {
+      return {
+        user: {
+          fallback:
+            subAgentDialog.parentAgent.name?.charAt(0).toUpperCase() ?? 'A',
+          name: subAgentDialog.parentAgent.name ?? 'Agent',
+        },
+        assistant: {
+          fallback: 'AI',
+          name: 'Assistant',
+        },
+      };
+    }
+    return undefined;
+  }, [subAgentDialog.spawnDepth, subAgentDialog.parentAgent]);
+
   // Handle agent selection - session is created on first message, not here
   const handleAgentSelect = useCallback(
     (agent: AgentType) => {
@@ -497,6 +519,7 @@ export function AppAgentPanel({
         onInspect={handleSubAgentInspect}
         onOpenSubAgentDialog={subAgentDialog.navigateTo}
         renderSubAgentCard={renderSubAgentCard}
+        avatars={subAgentAvatars}
       />
     </div>
   );
