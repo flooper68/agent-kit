@@ -13,7 +13,7 @@ services:
       - MODEL=${CODEBASE_RESEARCHER_MODEL:-}
       - MAX_THINKING_TOKENS=${CODEBASE_RESEARCHER_MAX_THINKING_TOKENS:-}
     volumes:
-      - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro
+      - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json
       - ${HOME}/.gitconfig:/home/agent/.gitconfig:ro
       - ${HOME}/.config/gh:/home/agent/.config/gh:ro
     restart: unless-stopped
@@ -31,49 +31,7 @@ services:
       - HTTP_PROXY=${WEB_RESEARCHER_HTTP_PROXY:-}
       - HTTPS_PROXY=${WEB_RESEARCHER_HTTPS_PROXY:-}
     volumes:
-      - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro
-    restart: unless-stopped
-
-  mock-agent:
-    build:
-      context: ../..
-      dockerfile: apps/local-agent/src/agents/mock-agent/Dockerfile
-    environment:
-      - SERVER_URL=${SERVER_URL}
-      - AGENT_API_KEY=${MOCK_AGENT_AGENT_API_KEY}
-      - AGENT_ID=${MOCK_AGENT_AGENT_ID:-mock-agent}
-      - MOCK_DELAY_MS=${MOCK_AGENT_DELAY_MS:-100}
-      - MOCK_THINKING_ENABLED=${MOCK_AGENT_THINKING_ENABLED:-true}
-      - MOCK_TOOL_CALLS=${MOCK_AGENT_TOOL_CALLS:-2}
-    restart: unless-stopped
-
-  claude-cli:
-    build:
-      context: ../..
-      dockerfile: apps/local-agent/src/agents/claude-cli/Dockerfile
-    environment:
-      - SERVER_URL=${SERVER_URL}
-      - AGENT_API_KEY=${CLAUDE_CLI_AGENT_API_KEY}
-      - AGENT_ID=${CLAUDE_CLI_AGENT_ID:-claude-cli}
-      - WORKING_DIRECTORY=${CLAUDE_CLI_WORKING_DIRECTORY:-/workspace}
-      - MODEL=${CLAUDE_CLI_MODEL:-}
-      - MAX_THINKING_TOKENS=${CLAUDE_CLI_MAX_THINKING_TOKENS:-}
-      - MAX_TOKENS=${CLAUDE_CLI_MAX_TOKENS:-}
-      - ALLOWED_TOOLS=${CLAUDE_CLI_ALLOWED_TOOLS:-}
-      - DISALLOWED_TOOLS=${CLAUDE_CLI_DISALLOWED_TOOLS:-}
-      - CUSTOM_SYSTEM_PROMPT=${CLAUDE_CLI_CUSTOM_SYSTEM_PROMPT:-}
-      - PERMISSION_MODE=${CLAUDE_CLI_PERMISSION_MODE:-dangerously-skip-permissions}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    volumes:
-      - ${CLAUDE_CLI_WORKSPACE:-./workspace}:/workspace
-      - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro
-    deploy:
-      resources:
-        limits:
-          memory: 4g
-          cpus: '2.0'
-    security_opt:
-      - no-new-privileges:true
+      - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json
     restart: unless-stopped
 
   claude-assistant-opus:
@@ -88,7 +46,7 @@ services:
       - MAX_THINKING_TOKENS=${CLAUDE_ASSISTANT_OPUS_MAX_THINKING_TOKENS:-}
       - ALLOWED_SPAWN_AGENTS=${CLAUDE_ASSISTANT_OPUS_ALLOWED_SPAWN_AGENTS:-}
     volumes:
-      - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro
+      - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json
     restart: unless-stopped
 
   claude-assistant-sonnet:
@@ -103,5 +61,5 @@ services:
       - MAX_THINKING_TOKENS=${CLAUDE_ASSISTANT_SONNET_MAX_THINKING_TOKENS:-}
       - ALLOWED_SPAWN_AGENTS=${CLAUDE_ASSISTANT_SONNET_ALLOWED_SPAWN_AGENTS:-}
     volumes:
-      - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro
+      - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json
     restart: unless-stopped

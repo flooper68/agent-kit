@@ -10,6 +10,7 @@ COPY apps/server/package.json ./apps/server/
 COPY apps/storybook/package.json ./apps/storybook/
 COPY apps/web/package.json ./apps/web/
 COPY packages/auth/package.json ./packages/auth/
+COPY packages/shared/package.json ./packages/shared/
 COPY packages/ui/package.json ./packages/ui/
 
 # Install dependencies
@@ -21,6 +22,7 @@ COPY apps/server/ ./apps/server/
 COPY apps/storybook/ ./apps/storybook/
 COPY apps/web/ ./apps/web/
 COPY packages/auth/ ./packages/auth/
+COPY packages/shared/ ./packages/shared/
 COPY packages/ui/ ./packages/ui/
 
 # Build the mock agent
