@@ -1,4 +1,4 @@
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, sql } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import {
   serverAgents,
@@ -18,9 +18,15 @@ export interface CheckSpawnPermissionResult {
   error?: string;
 }
 
+// Generic error message to prevent information leakage
+const PERMISSION_DENIED_ERROR = 'Spawn permission denied';
+
 /**
  * Check if a parent agent is allowed to spawn a target agent.
- * Simply compares the target against the parent's allowed subagents list.
+ * Validates that both agents exist, are not deleted, are not disabled,
+ * and that the target is in the parent's allowed subagents list.
+ *
+ * Uses optimized queries to minimize database round-trips.
  */
 export class CheckSpawnPermissionQuery {
   constructor(private db: typeof DbType) {}
@@ -30,180 +36,140 @@ export class CheckSpawnPermissionQuery {
   ): Promise<CheckSpawnPermissionResult> {
     const { parentAgentKey, targetAgentKey, userId } = input;
 
-    // Find parent agent and its allowed subagent IDs
-    const parentInfo = await this.findParentWithAllowedIds(
-      parentAgentKey,
-      userId
+    // Step 1: Find parent agent (server or external) with single query
+    const parent = await this.findActiveAgent(parentAgentKey, userId);
+    if (!parent) {
+      return { allowed: false, error: PERMISSION_DENIED_ERROR };
+    }
+
+    // Step 2: Find target agent (server or external) with single query
+    const target = await this.findActiveAgent(targetAgentKey, userId);
+    if (!target) {
+      return { allowed: false, error: PERMISSION_DENIED_ERROR };
+    }
+
+    // Step 3: Check if target is in parent's allowed subagents list
+    const isAllowed = await this.checkAllowedSubagent(
+      parent.id,
+      parent.type,
+      target.id,
+      target.type
     );
 
-    if (!parentInfo) {
-      return {
-        allowed: false,
-        error: `Parent agent "${parentAgentKey}" not found or does not have spawning capabilities.`,
-      };
-    }
-
-    // Find target agent ID
-    const targetId = await this.findAgentId(targetAgentKey, userId);
-
-    if (!targetId) {
-      return {
-        allowed: false,
-        error: `Target agent "${targetAgentKey}" not found.`,
-      };
-    }
-
-    // Check if target is in allowed list
-    const isAllowed = parentInfo.allowedIds.has(targetId);
-
     if (!isAllowed) {
-      if (parentInfo.allowedIds.size === 0) {
-        return {
-          allowed: false,
-          error: `Agent "${parentAgentKey}" is not allowed to spawn any sub-agents. Configure allowed sub-agents in agent settings.`,
-        };
-      }
-      return {
-        allowed: false,
-        error: `Agent "${parentAgentKey}" is not allowed to spawn "${targetAgentKey}".`,
-      };
+      return { allowed: false, error: PERMISSION_DENIED_ERROR };
     }
 
     return { allowed: true };
   }
 
   /**
-   * Find parent agent and return its allowed subagent IDs
+   * Find an active (not deleted, not disabled) agent by key.
+   * Checks both server and external agents in a single query using UNION.
    */
-  private async findParentWithAllowedIds(
+  private async findActiveAgent(
     key: string,
     userId: string
-  ): Promise<{ id: string; allowedIds: Set<string> } | null> {
-    // Check server agents first
-    const [serverAgent] = await this.db
-      .select({ id: serverAgents.id })
+  ): Promise<{ id: string; type: 'server' | 'external' } | null> {
+    // Query server agents
+    const serverQuery = this.db
+      .select({
+        id: serverAgents.id,
+        type: sql<'server'>`'server'`.as('type'),
+      })
       .from(serverAgents)
       .where(
         and(
           eq(serverAgents.key, key),
           eq(serverAgents.userId, userId),
-          isNull(serverAgents.deletedAt)
+          isNull(serverAgents.deletedAt),
+          eq(serverAgents.disabled, false)
         )
       )
       .limit(1);
 
+    // Query external agents
+    const externalQuery = this.db
+      .select({
+        id: externalAgents.id,
+        type: sql<'external'>`'external'`.as('type'),
+      })
+      .from(externalAgents)
+      .where(
+        and(
+          eq(externalAgents.key, key),
+          eq(externalAgents.userId, userId),
+          isNull(externalAgents.deletedAt),
+          eq(externalAgents.disabled, false)
+        )
+      )
+      .limit(1);
+
+    // Execute both queries and return first result
+    // Using UNION would require raw SQL, so we run both in parallel instead
+    const [serverResults, externalResults] = await Promise.all([
+      serverQuery,
+      externalQuery,
+    ]);
+
+    const serverAgent = serverResults[0];
     if (serverAgent) {
-      const allowedIds = await this.getServerAgentAllowedIds(serverAgent.id);
-      return { id: serverAgent.id, allowedIds };
+      return { id: serverAgent.id, type: 'server' };
     }
 
-    // Check external agents
-    const [externalAgent] = await this.db
-      .select({ id: externalAgents.id })
-      .from(externalAgents)
-      .where(
-        and(
-          eq(externalAgents.key, key),
-          eq(externalAgents.userId, userId),
-          isNull(externalAgents.deletedAt)
-        )
-      )
-      .limit(1);
-
+    const externalAgent = externalResults[0];
     if (externalAgent) {
-      const allowedIds = await this.getExternalAgentAllowedIds(
-        externalAgent.id
-      );
-      return { id: externalAgent.id, allowedIds };
+      return { id: externalAgent.id, type: 'external' };
     }
 
     return null;
   }
 
   /**
-   * Find agent ID by key (checks both server and external agents)
+   * Check if the target agent is in the parent's allowed subagents list.
+   * Uses the appropriate junction table based on parent type.
    */
-  private async findAgentId(
-    key: string,
-    userId: string
-  ): Promise<string | null> {
-    const [serverAgent] = await this.db
-      .select({ id: serverAgents.id })
-      .from(serverAgents)
-      .where(
-        and(
-          eq(serverAgents.key, key),
-          eq(serverAgents.userId, userId),
-          isNull(serverAgents.deletedAt)
+  private async checkAllowedSubagent(
+    parentId: string,
+    parentType: 'server' | 'external',
+    targetId: string,
+    targetType: 'server' | 'external'
+  ): Promise<boolean> {
+    if (parentType === 'server') {
+      // Check server agent's allowed subagents
+      const [result] = await this.db
+        .select({ id: serverAgentAllowedSubagents.id })
+        .from(serverAgentAllowedSubagents)
+        .where(
+          and(
+            eq(serverAgentAllowedSubagents.serverAgentId, parentId),
+            targetType === 'server'
+              ? eq(serverAgentAllowedSubagents.allowedServerAgentId, targetId)
+              : eq(serverAgentAllowedSubagents.allowedExternalAgentId, targetId)
+          )
         )
-      )
-      .limit(1);
+        .limit(1);
 
-    if (serverAgent) return serverAgent.id;
-
-    const [externalAgent] = await this.db
-      .select({ id: externalAgents.id })
-      .from(externalAgents)
-      .where(
-        and(
-          eq(externalAgents.key, key),
-          eq(externalAgents.userId, userId),
-          isNull(externalAgents.deletedAt)
+      return !!result;
+    } else {
+      // Check external agent's allowed subagents
+      const [result] = await this.db
+        .select({ id: externalAgentAllowedSubagents.id })
+        .from(externalAgentAllowedSubagents)
+        .where(
+          and(
+            eq(externalAgentAllowedSubagents.externalAgentId, parentId),
+            targetType === 'server'
+              ? eq(externalAgentAllowedSubagents.allowedServerAgentId, targetId)
+              : eq(
+                  externalAgentAllowedSubagents.allowedExternalAgentId,
+                  targetId
+                )
+          )
         )
-      )
-      .limit(1);
+        .limit(1);
 
-    if (externalAgent) return externalAgent.id;
-
-    return null;
-  }
-
-  /**
-   * Get set of allowed agent IDs for a server agent
-   */
-  private async getServerAgentAllowedIds(
-    serverAgentId: string
-  ): Promise<Set<string>> {
-    const entries = await this.db
-      .select({
-        allowedServerAgentId: serverAgentAllowedSubagents.allowedServerAgentId,
-        allowedExternalAgentId:
-          serverAgentAllowedSubagents.allowedExternalAgentId,
-      })
-      .from(serverAgentAllowedSubagents)
-      .where(eq(serverAgentAllowedSubagents.serverAgentId, serverAgentId));
-
-    const ids = new Set<string>();
-    for (const entry of entries) {
-      if (entry.allowedServerAgentId) ids.add(entry.allowedServerAgentId);
-      if (entry.allowedExternalAgentId) ids.add(entry.allowedExternalAgentId);
+      return !!result;
     }
-    return ids;
-  }
-
-  /**
-   * Get set of allowed agent IDs for an external agent
-   */
-  private async getExternalAgentAllowedIds(
-    externalAgentId: string
-  ): Promise<Set<string>> {
-    const entries = await this.db
-      .select({
-        allowedServerAgentId:
-          externalAgentAllowedSubagents.allowedServerAgentId,
-        allowedExternalAgentId:
-          externalAgentAllowedSubagents.allowedExternalAgentId,
-      })
-      .from(externalAgentAllowedSubagents)
-      .where(
-        eq(externalAgentAllowedSubagents.externalAgentId, externalAgentId)
-      );
-
-    const ids = new Set<string>();
-    for (const entry of entries) {
-      if (entry.allowedServerAgentId) ids.add(entry.allowedServerAgentId);
-      if (entry.allowedExternalAgentId) ids.add(entry.allowedExternalAgentId);
-    }
-    return ids;
   }
 }

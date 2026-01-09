@@ -1,8 +1,6 @@
-import { and, eq, inArray, isNull } from 'drizzle-orm';
 import {
   serverAgents,
   serverAgentAllowedSubagents,
-  externalAgents,
   type ServerAgent,
   type ThinkingConfig,
 } from '../../../db/schema';
@@ -14,15 +12,14 @@ import {
   validateAgentConfiguration,
   AgentValidationError,
 } from '../../../agent/validation';
-import type { AgentsCommandContextManager } from '../context';
+import {
+  type AgentsCommandContextManager,
+  type AllowedSubagentsInput,
+  validateAllowedSubagentsOwnership,
+} from '../context';
 
-/**
- * Allowed subagents configuration - IDs of agents that can be spawned
- */
-export interface AllowedSubagentsInput {
-  serverAgentIds?: string[];
-  externalAgentIds?: string[];
-}
+// Re-export for backwards compatibility
+export type { AllowedSubagentsInput } from '../context';
 
 /**
  * Input for creating a server agent.
@@ -83,49 +80,11 @@ export class CreateServerAgentCommand {
       const allowedSubagents = input.allowedSubagents;
 
       // Validate ownership of referenced agents before creating
-      if (allowedSubagents?.serverAgentIds?.length) {
-        const validAgents = await tx
-          .select({ id: serverAgents.id })
-          .from(serverAgents)
-          .where(
-            and(
-              inArray(serverAgents.id, allowedSubagents.serverAgentIds),
-              eq(serverAgents.userId, input.userId),
-              isNull(serverAgents.deletedAt)
-            )
-          );
-        const validIds = new Set(validAgents.map((a) => a.id));
-        const invalidIds = allowedSubagents.serverAgentIds.filter(
-          (id) => !validIds.has(id)
-        );
-        if (invalidIds.length > 0) {
-          throw new Error(
-            `Invalid or inaccessible server agents: ${invalidIds.join(', ')}`
-          );
-        }
-      }
-
-      if (allowedSubagents?.externalAgentIds?.length) {
-        const validAgents = await tx
-          .select({ id: externalAgents.id })
-          .from(externalAgents)
-          .where(
-            and(
-              inArray(externalAgents.id, allowedSubagents.externalAgentIds),
-              eq(externalAgents.userId, input.userId),
-              isNull(externalAgents.deletedAt)
-            )
-          );
-        const validIds = new Set(validAgents.map((a) => a.id));
-        const invalidIds = allowedSubagents.externalAgentIds.filter(
-          (id) => !validIds.has(id)
-        );
-        if (invalidIds.length > 0) {
-          throw new Error(
-            `Invalid or inaccessible external agents: ${invalidIds.join(', ')}`
-          );
-        }
-      }
+      await validateAllowedSubagentsOwnership(
+        tx,
+        input.userId,
+        allowedSubagents
+      );
 
       const [agent] = await tx
         .insert(serverAgents)

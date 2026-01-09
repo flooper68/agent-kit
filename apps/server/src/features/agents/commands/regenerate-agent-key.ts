@@ -22,7 +22,7 @@ export class RegenerateAgentKeyCommand {
     input: RegenerateAgentKeyInput
   ): Promise<RegenerateAgentKeyResult> => {
     return this.contextManager.handleCommand(async (ctx) => {
-      const { tx } = ctx;
+      const { tx, cacheInvalidation } = ctx;
       const { id, userId } = input;
       const newSecretKey = generateSecretKey();
       const secretKeyHash = hashSecretKey(newSecretKey);
@@ -47,6 +47,9 @@ export class RegenerateAgentKeyCommand {
       if (!agent) {
         return null;
       }
+
+      // Publish cache invalidation event
+      await cacheInvalidation?.publishAgentUpdated(userId, id);
 
       // Return plaintext key - this is the only time it's available
       return newSecretKey;
