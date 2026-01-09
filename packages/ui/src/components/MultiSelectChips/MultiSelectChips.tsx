@@ -168,6 +168,8 @@ export function MultiSelectChips({
             <button
               type="button"
               disabled={disabled || isLoading}
+              aria-expanded={open}
+              aria-haspopup="listbox"
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1',
                 'border border-dashed border-border text-sm text-muted-foreground',

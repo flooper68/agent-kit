@@ -82,9 +82,9 @@ export function AllowedSubAgentsSection({
       externalAgentIds: values.filter((id) => externalAgentIds.has(id)),
     };
     onChange({ allowedSubagents: newAllowedSubagents });
-    // Defer onBlur to next tick so React can process state update first
+    // Defer onBlur to next frame so React can process state update first
     // Use ref to call latest callback, avoiding stale closure issues
-    setTimeout(() => onBlurRef.current?.(), 0);
+    requestAnimationFrame(() => onBlurRef.current?.());
   };
 
   return (

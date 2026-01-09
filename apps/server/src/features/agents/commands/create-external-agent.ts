@@ -1,11 +1,13 @@
-import type { db as DbType } from '../../../db';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import {
   externalAgents,
   externalAgentAllowedSubagents,
+  serverAgents,
   type ExternalAgent,
 } from '../../../db/schema';
 import { generateSecretKey, hashSecretKey, generateKeyPrefix } from '../utils';
 import type { AllowedSubagentsInput } from './create-server-agent';
+import type { AgentsCommandContextManager } from '../context';
 
 /**
  * Input for creating an external agent.
@@ -32,65 +34,117 @@ export interface CreateExternalAgentResult {
  * External agents connect via WebSocket.
  */
 export class CreateExternalAgentCommand {
-  constructor(private db: typeof DbType) {}
+  constructor(private readonly contextManager: AgentsCommandContextManager) {}
 
-  async execute(
+  execute = async (
     input: CreateExternalAgentInput
-  ): Promise<CreateExternalAgentResult> {
-    const secretKey = generateSecretKey();
-    const secretKeyHash = hashSecretKey(secretKey);
-    const secretKeyPrefix = generateKeyPrefix(secretKey);
+  ): Promise<CreateExternalAgentResult> => {
+    return this.contextManager.handleCommand(async (ctx) => {
+      const { tx, cacheInvalidation } = ctx;
+      const secretKey = generateSecretKey();
+      const secretKeyHash = hashSecretKey(secretKey);
+      const secretKeyPrefix = generateKeyPrefix(secretKey);
+      const allowedSubagents = input.allowedSubagents;
 
-    const [agent] = await this.db
-      .insert(externalAgents)
-      .values({
-        userId: input.userId,
-        key: input.key,
-        name: input.name,
-        description: input.description,
-        secretKey: secretKeyHash,
-        secretKeyPrefix,
-        isFavorite: input.isFavorite ?? false,
-      })
-      .returning();
-
-    if (!agent) {
-      throw new Error('Failed to create external agent');
-    }
-
-    // Insert allowed subagents into junction table
-    const allowedSubagents = input.allowedSubagents;
-    if (allowedSubagents) {
-      const junctionRows: Array<{
-        externalAgentId: string;
-        allowedServerAgentId?: string;
-        allowedExternalAgentId?: string;
-      }> = [];
-
-      // Add server agent references
-      for (const serverAgentId of allowedSubagents.serverAgentIds ?? []) {
-        junctionRows.push({
-          externalAgentId: agent.id,
-          allowedServerAgentId: serverAgentId,
-        });
+      // Validate ownership of referenced agents before creating
+      if (allowedSubagents?.serverAgentIds?.length) {
+        const validAgents = await tx
+          .select({ id: serverAgents.id })
+          .from(serverAgents)
+          .where(
+            and(
+              inArray(serverAgents.id, allowedSubagents.serverAgentIds),
+              eq(serverAgents.userId, input.userId),
+              isNull(serverAgents.deletedAt)
+            )
+          );
+        const validIds = new Set(validAgents.map((a) => a.id));
+        const invalidIds = allowedSubagents.serverAgentIds.filter(
+          (id) => !validIds.has(id)
+        );
+        if (invalidIds.length > 0) {
+          throw new Error(
+            `Invalid or inaccessible server agents: ${invalidIds.join(', ')}`
+          );
+        }
       }
 
-      // Add external agent references
-      for (const externalAgentId of allowedSubagents.externalAgentIds ?? []) {
-        junctionRows.push({
-          externalAgentId: agent.id,
-          allowedExternalAgentId: externalAgentId,
-        });
+      if (allowedSubagents?.externalAgentIds?.length) {
+        const validAgents = await tx
+          .select({ id: externalAgents.id })
+          .from(externalAgents)
+          .where(
+            and(
+              inArray(externalAgents.id, allowedSubagents.externalAgentIds),
+              eq(externalAgents.userId, input.userId),
+              isNull(externalAgents.deletedAt)
+            )
+          );
+        const validIds = new Set(validAgents.map((a) => a.id));
+        const invalidIds = allowedSubagents.externalAgentIds.filter(
+          (id) => !validIds.has(id)
+        );
+        if (invalidIds.length > 0) {
+          throw new Error(
+            `Invalid or inaccessible external agents: ${invalidIds.join(', ')}`
+          );
+        }
       }
 
-      if (junctionRows.length > 0) {
-        await this.db
-          .insert(externalAgentAllowedSubagents)
-          .values(junctionRows);
-      }
-    }
+      const [createdAgent] = await tx
+        .insert(externalAgents)
+        .values({
+          userId: input.userId,
+          key: input.key,
+          name: input.name,
+          description: input.description,
+          secretKey: secretKeyHash,
+          secretKeyPrefix,
+          isFavorite: input.isFavorite ?? false,
+        })
+        .returning();
 
-    // Return plaintext key - this is the only time it's available
-    return { agent, secretKey };
-  }
+      if (!createdAgent) {
+        throw new Error('Failed to create external agent');
+      }
+
+      // Insert allowed subagents into junction table
+      if (allowedSubagents) {
+        const junctionRows: Array<{
+          externalAgentId: string;
+          allowedServerAgentId?: string;
+          allowedExternalAgentId?: string;
+        }> = [];
+
+        // Add server agent references
+        for (const serverAgentId of allowedSubagents.serverAgentIds ?? []) {
+          junctionRows.push({
+            externalAgentId: createdAgent.id,
+            allowedServerAgentId: serverAgentId,
+          });
+        }
+
+        // Add external agent references
+        for (const externalAgentId of allowedSubagents.externalAgentIds ?? []) {
+          junctionRows.push({
+            externalAgentId: createdAgent.id,
+            allowedExternalAgentId: externalAgentId,
+          });
+        }
+
+        if (junctionRows.length > 0) {
+          await tx.insert(externalAgentAllowedSubagents).values(junctionRows);
+        }
+      }
+
+      // Publish cache invalidation event
+      await cacheInvalidation?.publishAgentCreated(
+        input.userId,
+        createdAgent.id
+      );
+
+      // Return plaintext key - this is the only time it's available
+      return { agent: createdAgent, secretKey };
+    });
+  };
 }

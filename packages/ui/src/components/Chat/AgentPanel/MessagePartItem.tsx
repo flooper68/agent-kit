@@ -229,7 +229,9 @@ export const MessagePartItem = memo(function MessagePartItem({
               latestAction={
                 toolPart.state === 'running' ? 'Processing...' : undefined
               }
-              errorMessage={result?.isError ? extractErrorMessage(result.result) : undefined}
+              errorMessage={
+                result?.isError ? extractErrorMessage(result.result) : undefined
+              }
               onOpenFullView={onOpenFullView}
             />
           </div>

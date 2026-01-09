@@ -98,10 +98,7 @@ export type {
   ListActiveAgentsResult,
 } from './list-active-agents';
 export { GetAgentByIdQuery } from './get-agent-by-id';
-export type {
-  GetAgentByIdInput,
-  GetAgentByIdResult,
-} from './get-agent-by-id';
+export type { GetAgentByIdInput, GetAgentByIdResult } from './get-agent-by-id';
 export { GetAgentByKeyQuery } from './get-agent-by-key';
 export type { GetAgentByKeyInput, AgentByKeyResult } from './get-agent-by-key';
 export { ValidateAgentKeyQuery } from './validate-agent-key';

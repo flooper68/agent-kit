@@ -1,8 +1,8 @@
-import { eq, and } from 'drizzle-orm';
-import type { db as DbType } from '../../../db';
+import { eq, and, inArray, isNull } from 'drizzle-orm';
 import {
   serverAgents,
   serverAgentAllowedSubagents,
+  externalAgents,
   type ServerAgent,
   type ThinkingConfig,
 } from '../../../db/schema';
@@ -12,6 +12,7 @@ import {
   AgentValidationError,
 } from '../../../agent/validation';
 import type { AllowedSubagentsInput } from './create-server-agent';
+import type { AgentsCommandContextManager } from '../context';
 
 export interface UpdateServerAgentInput {
   id: string;
@@ -44,76 +45,127 @@ export type UpdateServerAgentResult = ServerAgent | null;
  * Validates model/provider compatibility and tool IDs before update.
  */
 export class UpdateServerAgentCommand {
-  constructor(private db: typeof DbType) {}
+  constructor(private readonly contextManager: AgentsCommandContextManager) {}
 
-  async execute(
+  execute = async (
     input: UpdateServerAgentInput
-  ): Promise<UpdateServerAgentResult> {
-    const { id, userId, updates } = input;
+  ): Promise<UpdateServerAgentResult> => {
+    return this.contextManager.handleCommand(async (ctx) => {
+      const { tx, cacheInvalidation } = ctx;
+      const { id, userId, updates } = input;
 
-    // Extract allowedSubagents - we handle it separately via junction table
-    const { allowedSubagents, ...dbUpdates } = updates;
+      // Extract allowedSubagents - we handle it separately via junction table
+      const { allowedSubagents, ...dbUpdates } = updates;
 
-    // Validate agent configuration
-    const validationResult = validateAgentConfiguration({
-      provider: updates.provider,
-      model: updates.model,
-      tools: updates.tools,
-      thinkingConfig: updates.thinkingConfig,
-      maxOutputTokens: updates.maxOutputTokens,
-      maxContextTokens: updates.maxContextTokens,
+      // Validate agent configuration
+      const validationResult = validateAgentConfiguration({
+        provider: updates.provider,
+        model: updates.model,
+        tools: updates.tools,
+        thinkingConfig: updates.thinkingConfig,
+        maxOutputTokens: updates.maxOutputTokens,
+        maxContextTokens: updates.maxContextTokens,
+      });
+
+      if (!validationResult.valid) {
+        throw new AgentValidationError(validationResult);
+      }
+
+      // Validate ownership of referenced agents before updating
+      if (allowedSubagents?.serverAgentIds?.length) {
+        const validAgents = await tx
+          .select({ id: serverAgents.id })
+          .from(serverAgents)
+          .where(
+            and(
+              inArray(serverAgents.id, allowedSubagents.serverAgentIds),
+              eq(serverAgents.userId, userId),
+              isNull(serverAgents.deletedAt)
+            )
+          );
+        const validIds = new Set(validAgents.map((a) => a.id));
+        const invalidIds = allowedSubagents.serverAgentIds.filter(
+          (aid) => !validIds.has(aid)
+        );
+        if (invalidIds.length > 0) {
+          throw new Error(
+            `Invalid or inaccessible server agents: ${invalidIds.join(', ')}`
+          );
+        }
+      }
+
+      if (allowedSubagents?.externalAgentIds?.length) {
+        const validAgents = await tx
+          .select({ id: externalAgents.id })
+          .from(externalAgents)
+          .where(
+            and(
+              inArray(externalAgents.id, allowedSubagents.externalAgentIds),
+              eq(externalAgents.userId, userId),
+              isNull(externalAgents.deletedAt)
+            )
+          );
+        const validIds = new Set(validAgents.map((a) => a.id));
+        const invalidIds = allowedSubagents.externalAgentIds.filter(
+          (aid) => !validIds.has(aid)
+        );
+        if (invalidIds.length > 0) {
+          throw new Error(
+            `Invalid or inaccessible external agents: ${invalidIds.join(', ')}`
+          );
+        }
+      }
+
+      const [agent] = await tx
+        .update(serverAgents)
+        .set({
+          ...dbUpdates,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(serverAgents.id, id), eq(serverAgents.userId, userId)))
+        .returning();
+
+      if (!agent) {
+        return null;
+      }
+
+      // Update allowed subagents if provided
+      if (allowedSubagents !== undefined) {
+        // Delete existing junction records
+        await tx
+          .delete(serverAgentAllowedSubagents)
+          .where(eq(serverAgentAllowedSubagents.serverAgentId, id));
+
+        // Insert new junction records
+        const junctionRows: Array<{
+          serverAgentId: string;
+          allowedServerAgentId?: string;
+          allowedExternalAgentId?: string;
+        }> = [];
+
+        for (const serverAgentId of allowedSubagents.serverAgentIds ?? []) {
+          junctionRows.push({
+            serverAgentId: id,
+            allowedServerAgentId: serverAgentId,
+          });
+        }
+
+        for (const externalAgentId of allowedSubagents.externalAgentIds ?? []) {
+          junctionRows.push({
+            serverAgentId: id,
+            allowedExternalAgentId: externalAgentId,
+          });
+        }
+
+        if (junctionRows.length > 0) {
+          await tx.insert(serverAgentAllowedSubagents).values(junctionRows);
+        }
+      }
+
+      // Publish cache invalidation event
+      await cacheInvalidation?.publishAgentUpdated(userId, id);
+
+      return agent;
     });
-
-    if (!validationResult.valid) {
-      throw new AgentValidationError(validationResult);
-    }
-
-    const [agent] = await this.db
-      .update(serverAgents)
-      .set({
-        ...dbUpdates,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(serverAgents.id, id), eq(serverAgents.userId, userId)))
-      .returning();
-
-    if (!agent) {
-      return null;
-    }
-
-    // Update allowed subagents if provided
-    if (allowedSubagents !== undefined) {
-      // Delete existing junction records
-      await this.db
-        .delete(serverAgentAllowedSubagents)
-        .where(eq(serverAgentAllowedSubagents.serverAgentId, id));
-
-      // Insert new junction records
-      const junctionRows: Array<{
-        serverAgentId: string;
-        allowedServerAgentId?: string;
-        allowedExternalAgentId?: string;
-      }> = [];
-
-      for (const serverAgentId of allowedSubagents.serverAgentIds ?? []) {
-        junctionRows.push({
-          serverAgentId: id,
-          allowedServerAgentId: serverAgentId,
-        });
-      }
-
-      for (const externalAgentId of allowedSubagents.externalAgentIds ?? []) {
-        junctionRows.push({
-          serverAgentId: id,
-          allowedExternalAgentId: externalAgentId,
-        });
-      }
-
-      if (junctionRows.length > 0) {
-        await this.db.insert(serverAgentAllowedSubagents).values(junctionRows);
-      }
-    }
-
-    return agent;
-  }
+  };
 }

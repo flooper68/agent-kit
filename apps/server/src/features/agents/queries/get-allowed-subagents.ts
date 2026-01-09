@@ -26,7 +26,9 @@ export interface GetAllowedSubagentsInput {
 export class GetAllowedSubagentsQuery {
   constructor(private db: typeof DbType) {}
 
-  async execute(input: GetAllowedSubagentsInput): Promise<AllowedSubagentInfo[]> {
+  async execute(
+    input: GetAllowedSubagentsInput
+  ): Promise<AllowedSubagentInfo[]> {
     const { agentKey, userId } = input;
 
     // Find parent agent and get allowed IDs
@@ -37,7 +39,10 @@ export class GetAllowedSubagentsQuery {
       return [];
     }
 
-    if (allowedIds.serverIds.length === 0 && allowedIds.externalIds.length === 0) {
+    if (
+      allowedIds.serverIds.length === 0 &&
+      allowedIds.externalIds.length === 0
+    ) {
       // No allowed subagents configured
       return [];
     }
@@ -155,7 +160,8 @@ export class GetAllowedSubagentsQuery {
     const entries = await this.db
       .select({
         allowedServerAgentId: serverAgentAllowedSubagents.allowedServerAgentId,
-        allowedExternalAgentId: serverAgentAllowedSubagents.allowedExternalAgentId,
+        allowedExternalAgentId:
+          serverAgentAllowedSubagents.allowedExternalAgentId,
       })
       .from(serverAgentAllowedSubagents)
       .where(eq(serverAgentAllowedSubagents.serverAgentId, serverAgentId));
@@ -164,8 +170,10 @@ export class GetAllowedSubagentsQuery {
     const externalIds: string[] = [];
 
     for (const entry of entries) {
-      if (entry.allowedServerAgentId) serverIds.push(entry.allowedServerAgentId);
-      if (entry.allowedExternalAgentId) externalIds.push(entry.allowedExternalAgentId);
+      if (entry.allowedServerAgentId)
+        serverIds.push(entry.allowedServerAgentId);
+      if (entry.allowedExternalAgentId)
+        externalIds.push(entry.allowedExternalAgentId);
     }
 
     return { serverIds, externalIds };
@@ -179,18 +187,24 @@ export class GetAllowedSubagentsQuery {
   ): Promise<{ serverIds: string[]; externalIds: string[] }> {
     const entries = await this.db
       .select({
-        allowedServerAgentId: externalAgentAllowedSubagents.allowedServerAgentId,
-        allowedExternalAgentId: externalAgentAllowedSubagents.allowedExternalAgentId,
+        allowedServerAgentId:
+          externalAgentAllowedSubagents.allowedServerAgentId,
+        allowedExternalAgentId:
+          externalAgentAllowedSubagents.allowedExternalAgentId,
       })
       .from(externalAgentAllowedSubagents)
-      .where(eq(externalAgentAllowedSubagents.externalAgentId, externalAgentId));
+      .where(
+        eq(externalAgentAllowedSubagents.externalAgentId, externalAgentId)
+      );
 
     const serverIds: string[] = [];
     const externalIds: string[] = [];
 
     for (const entry of entries) {
-      if (entry.allowedServerAgentId) serverIds.push(entry.allowedServerAgentId);
-      if (entry.allowedExternalAgentId) externalIds.push(entry.allowedExternalAgentId);
+      if (entry.allowedServerAgentId)
+        serverIds.push(entry.allowedServerAgentId);
+      if (entry.allowedExternalAgentId)
+        externalIds.push(entry.allowedExternalAgentId);
     }
 
     return { serverIds, externalIds };

@@ -357,7 +357,16 @@ export class AgentSpawner {
   private async setupSpawn(
     input: SpawnInput
   ): Promise<SpawnSetupResult | { error: string }> {
-    const { agentId, userId, parentAgentKey } = input;
+    const { agentId, userId, parentAgentKey, parentSessionId } = input;
+
+    // Defensive check: if this is a spawn from another agent (has parentSessionId),
+    // require parentAgentKey for permission validation
+    if (parentSessionId && !parentAgentKey) {
+      logger.warn(
+        'Spawn operation has parentSessionId but no parentAgentKey - this may indicate a bug in the calling code'
+      );
+      return { error: 'Parent agent key required for spawn operations' };
+    }
 
     // Validate spawn permission if parent agent key is provided
     if (parentAgentKey) {
@@ -377,12 +386,16 @@ export class AgentSpawner {
       return { error: agentInfo.error };
     }
 
-    const { agentUuid, resolvedAgentName, isExternalAgent, timeout } = agentInfo;
+    const { agentUuid, resolvedAgentName, isExternalAgent, timeout } =
+      agentInfo;
     // All custom agents are "local" in the DB sense (isLocalAgent=true means it's a custom agent, not builtin)
     const isLocalAgent = true;
 
     // Resolve or create session
-    const sessionResult = await this.resolveOrCreateSession(input, isLocalAgent);
+    const sessionResult = await this.resolveOrCreateSession(
+      input,
+      isLocalAgent
+    );
     if ('error' in sessionResult) {
       return { error: sessionResult.error };
     }
@@ -421,7 +434,13 @@ export class AgentSpawner {
         userId
       );
     } else {
-      await this.dispatchToServerAgent(sessionId, agentId, message, userId, orgId);
+      await this.dispatchToServerAgent(
+        sessionId,
+        agentId,
+        message,
+        userId,
+        orgId
+      );
     }
   }
 

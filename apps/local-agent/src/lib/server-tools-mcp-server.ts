@@ -709,7 +709,10 @@ Available agents: ${allowedSpawnAgents.join(', ')}`,
                   .max(50000)
                   .describe('The task/message to send to the spawned agent'),
               },
-              async (args: { agentId: string; message: string }, extra: unknown) => {
+              async (
+                args: { agentId: string; message: string },
+                extra: unknown
+              ) => {
                 // Extract toolCallId from MCP extra context if available
                 // The SDK passes the tool_use block ID in extra._meta["claudecode/toolUseId"]
                 const toolCallId = extractToolCallId(extra);

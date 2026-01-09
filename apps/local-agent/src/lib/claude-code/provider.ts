@@ -62,8 +62,15 @@ export class ClaudeCodeProvider {
   async *run(
     params: AgentRunParams
   ): AsyncGenerator<StreamEvent, AgentRunResult, undefined> {
-    const { sessionId, messageId, content, messages, events, abortSignal, metadata } =
-      params;
+    const {
+      sessionId,
+      messageId,
+      content,
+      messages,
+      events,
+      abortSignal,
+      metadata,
+    } = params;
     const startTime = Date.now();
     let messageCount = 0;
     let eventCount = 0;

@@ -34,9 +34,7 @@ export type GetAgentByIdResult =
 export class GetAgentByIdQuery {
   constructor(private db: typeof DbType) {}
 
-  async execute(
-    input: GetAgentByIdInput
-  ): Promise<GetAgentByIdResult> {
+  async execute(input: GetAgentByIdInput): Promise<GetAgentByIdResult> {
     const { id, userId } = input;
 
     // First try to find as server agent

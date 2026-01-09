@@ -1040,7 +1040,8 @@ export class ExternalAgentWebSocketService {
       params: Record<string, unknown>;
     }
   ): Promise<void> {
-    const { requestId, sessionId, messageId, toolCallId, tool, params } = message;
+    const { requestId, sessionId, messageId, toolCallId, tool, params } =
+      message;
 
     this.log.debug('Handling server tool request', {
       agentId: agent.id,
@@ -1142,7 +1143,9 @@ export class ExternalAgentWebSocketService {
       // Execute the tool
       // Pass toolCallId for tools that need it (e.g., spawnAgent)
       // Use provided toolCallId from external agent (matches tool_call_start event), fallback to requestId
-      const result = await toolImpl.execute(params, { toolCallId: toolCallId || requestId });
+      const result = await toolImpl.execute(params, {
+        toolCallId: toolCallId || requestId,
+      });
 
       this.log.debug('Server tool executed successfully', {
         agentId: agent.id,

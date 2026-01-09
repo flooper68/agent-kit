@@ -128,7 +128,8 @@ export class MessageHandler {
   }
 
   private async handleUserMessage(message: UserMessagePayload): Promise<void> {
-    const { sessionId, messageId, content, messages, events, metadata } = message;
+    const { sessionId, messageId, content, messages, events, metadata } =
+      message;
     const startTime = Date.now();
 
     log.info('Starting agent execution', {
