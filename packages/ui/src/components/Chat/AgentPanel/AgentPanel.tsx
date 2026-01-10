@@ -79,6 +79,7 @@ export const AgentPanel = memo(
         agentName,
         compactStatus,
         compactElapsedLabel,
+        compactErrorMessage,
         onOpenFullView,
         onCompactRetry,
       },
@@ -178,6 +179,7 @@ export const AgentPanel = memo(
             status={compactStatus ?? 'pending'}
             messages={messages}
             elapsedLabel={compactElapsedLabel}
+            errorMessage={compactErrorMessage}
             onOpenFullView={onOpenFullView}
             onRetry={onCompactRetry}
             onOpenSubAgentDialog={onOpenSubAgentDialog}

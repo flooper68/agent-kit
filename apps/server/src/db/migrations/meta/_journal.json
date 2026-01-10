@@ -169,6 +169,27 @@
       "when": 1767900000007,
       "tag": "0023_add_agent_sessions_agent_id_index",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1767900000008,
+      "tag": "0024_add_allowed_subagents",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1767900000009,
+      "tag": "0025_refactor_allowed_subagents_to_junction",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1767900000010,
+      "tag": "0026_add_missing_indexes",
+      "breakpoints": true
     }
   ]
 }

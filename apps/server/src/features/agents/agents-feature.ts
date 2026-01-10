@@ -2,6 +2,7 @@ import type { db as DbType } from '../../db';
 import type { StreamingStateManager } from '../../agent/streaming-state-manager';
 import type { SessionSummarizer } from '../../agent/session-summarizer';
 import type { CacheInvalidationService } from '../../real-time';
+import { AgentsCommandContextManager } from './context';
 import {
   CreateSessionCommand,
   UpdateSessionTitleCommand,
@@ -19,7 +20,8 @@ import {
   InterruptSessionCommand,
   CreateExternalAgentCommand,
   CreateServerAgentCommand,
-  UpdateCustomAgentCommand,
+  UpdateServerAgentCommand,
+  UpdateExternalAgentCommand,
   SetAgentDisabledCommand,
   RegenerateAgentKeyCommand,
   ToggleAgentFavoriteCommand,
@@ -43,7 +45,8 @@ import type {
   InterruptSessionInput,
   CreateExternalAgentInput,
   CreateServerAgentInput,
-  UpdateCustomAgentInput,
+  UpdateServerAgentInput,
+  UpdateExternalAgentInput,
 } from './commands';
 import {
   GetSessionByIdQuery,
@@ -63,20 +66,26 @@ import {
   ListExternalAgentsQuery,
   ListServerAgentsQuery,
   ListActiveAgentsQuery,
-  GetCustomAgentByIdQuery,
+  GetAgentByIdQuery,
   GetAgentByKeyQuery,
   ValidateAgentKeyQuery,
   FindAgentByKeyPrefixQuery,
   ListAgentsForSelectorQuery,
   GetAgentForSelectorQuery,
   ListModelsQuery,
+  CheckSpawnPermissionQuery,
+  GetAllowedSubagentsQuery,
 } from './queries';
+import type { CheckSpawnPermissionInput, AllowedSubagentInfo } from './queries';
 
 /**
  * AgentsFeature - main class that composes all command and query handlers
  * for agent-related database operations
  */
 export class AgentsFeature {
+  // Context manager for transaction handling
+  private contextManager: AgentsCommandContextManager;
+
   // Cache invalidation service (optional, set via setAgentCacheInvalidation)
   private agentCacheInvalidation?: CacheInvalidationService;
 
@@ -103,7 +112,8 @@ export class AgentsFeature {
   // Custom agent commands
   private createExternalAgentCommand: CreateExternalAgentCommand;
   private createServerAgentCommand: CreateServerAgentCommand;
-  private updateCustomAgentCommand: UpdateCustomAgentCommand;
+  private updateServerAgentCommand: UpdateServerAgentCommand;
+  private updateExternalAgentCommand: UpdateExternalAgentCommand;
   private setAgentDisabledCommand: SetAgentDisabledCommand;
   private regenerateAgentKeyCommand: RegenerateAgentKeyCommand;
   private toggleAgentFavoriteCommand: ToggleAgentFavoriteCommand;
@@ -133,7 +143,7 @@ export class AgentsFeature {
   private listExternalAgentsQuery: ListExternalAgentsQuery;
   private listServerAgentsQuery: ListServerAgentsQuery;
   private listActiveAgentsQuery: ListActiveAgentsQuery;
-  private getCustomAgentByIdQuery: GetCustomAgentByIdQuery;
+  private getAgentByIdQuery: GetAgentByIdQuery;
   private getAgentByKeyQuery: GetAgentByKeyQuery;
   private validateAgentKeyQuery: ValidateAgentKeyQuery;
   private findAgentByKeyPrefixQuery: FindAgentByKeyPrefixQuery;
@@ -145,7 +155,17 @@ export class AgentsFeature {
   // Model queries
   private listModelsQuery: ListModelsQuery;
 
+  // Permission queries
+  private checkSpawnPermissionQuery: CheckSpawnPermissionQuery;
+  private getAllowedSubagentsQuery: GetAllowedSubagentsQuery;
+
   constructor(db: typeof DbType) {
+    // Initialize context manager with getter for late-initialized cache invalidation
+    this.contextManager = new AgentsCommandContextManager(
+      db,
+      () => this.agentCacheInvalidation
+    );
+
     // Initialize commands
     this.createSessionCommand = new CreateSessionCommand(db, {
       hasBuiltInAgent: () => false, // No more builtin agents
@@ -165,14 +185,31 @@ export class AgentsFeature {
     this.updateMessageStatusCommand = new UpdateMessageStatusCommand(db);
     this.insertEventCommand = new InsertEventCommand(db);
 
-    // Initialize custom agent commands
-    this.createExternalAgentCommand = new CreateExternalAgentCommand(db);
-    this.createServerAgentCommand = new CreateServerAgentCommand(db);
-    this.updateCustomAgentCommand = new UpdateCustomAgentCommand(db);
-    this.setAgentDisabledCommand = new SetAgentDisabledCommand(db);
-    this.regenerateAgentKeyCommand = new RegenerateAgentKeyCommand(db);
-    this.toggleAgentFavoriteCommand = new ToggleAgentFavoriteCommand(db);
-    this.deleteCustomAgentCommand = new DeleteCustomAgentCommand(db);
+    // Initialize custom agent commands (using context manager)
+    this.createExternalAgentCommand = new CreateExternalAgentCommand(
+      this.contextManager
+    );
+    this.createServerAgentCommand = new CreateServerAgentCommand(
+      this.contextManager
+    );
+    this.updateServerAgentCommand = new UpdateServerAgentCommand(
+      this.contextManager
+    );
+    this.updateExternalAgentCommand = new UpdateExternalAgentCommand(
+      this.contextManager
+    );
+    this.setAgentDisabledCommand = new SetAgentDisabledCommand(
+      this.contextManager
+    );
+    this.regenerateAgentKeyCommand = new RegenerateAgentKeyCommand(
+      this.contextManager
+    );
+    this.toggleAgentFavoriteCommand = new ToggleAgentFavoriteCommand(
+      this.contextManager
+    );
+    this.deleteCustomAgentCommand = new DeleteCustomAgentCommand(
+      this.contextManager
+    );
 
     // Initialize queries
     this.getSessionByIdQuery = new GetSessionByIdQuery(db);
@@ -199,7 +236,7 @@ export class AgentsFeature {
     this.listExternalAgentsQuery = new ListExternalAgentsQuery(db);
     this.listServerAgentsQuery = new ListServerAgentsQuery(db);
     this.listActiveAgentsQuery = new ListActiveAgentsQuery(db);
-    this.getCustomAgentByIdQuery = new GetCustomAgentByIdQuery(db);
+    this.getAgentByIdQuery = new GetAgentByIdQuery(db);
     this.getAgentByKeyQuery = new GetAgentByKeyQuery(db);
     this.validateAgentKeyQuery = new ValidateAgentKeyQuery(db);
     this.findAgentByKeyPrefixQuery = new FindAgentByKeyPrefixQuery(db);
@@ -210,6 +247,10 @@ export class AgentsFeature {
 
     // Initialize model queries
     this.listModelsQuery = new ListModelsQuery();
+
+    // Initialize permission queries
+    this.checkSpawnPermissionQuery = new CheckSpawnPermissionQuery(db);
+    this.getAllowedSubagentsQuery = new GetAllowedSubagentsQuery(db);
 
     // Initialize orchestration commands (compose existing commands)
     this.sendUserMessageCommand = new SendUserMessageCommand(
@@ -424,22 +465,10 @@ export class AgentsFeature {
    */
   get customAgents() {
     return {
-      createExternal: async (input: CreateExternalAgentInput) => {
-        const result = await this.createExternalAgentCommand.execute(input);
-        await this.agentCacheInvalidation?.publishAgentCreated(
-          input.userId,
-          result.agent.id
-        );
-        return result;
-      },
-      createServer: async (input: CreateServerAgentInput) => {
-        const result = await this.createServerAgentCommand.execute(input);
-        await this.agentCacheInvalidation?.publishAgentCreated(
-          input.userId,
-          result.id
-        );
-        return result;
-      },
+      createExternal: (input: CreateExternalAgentInput) =>
+        this.createExternalAgentCommand.execute(input),
+      createServer: (input: CreateServerAgentInput) =>
+        this.createServerAgentCommand.execute(input),
       list: (userId: string) => this.listAgentsForUserQuery.execute({ userId }),
       listExternal: (userId: string) =>
         this.listExternalAgentsQuery.execute({ userId }),
@@ -448,74 +477,49 @@ export class AgentsFeature {
       listActive: (userId: string) =>
         this.listActiveAgentsQuery.execute({ userId }),
       getById: (id: string, userId: string) =>
-        this.getCustomAgentByIdQuery.execute({ id, userId }),
+        this.getAgentByIdQuery.execute({ id, userId }),
       getByKey: (key: string, userId: string) =>
         this.getAgentByKeyQuery.execute({ key, userId }),
-      update: async (input: UpdateCustomAgentInput) => {
-        const result = await this.updateCustomAgentCommand.execute(input);
-        if (result) {
-          await this.agentCacheInvalidation?.publishAgentUpdated(
-            input.userId,
-            result.id
-          );
-        }
-        return result;
-      },
-      setDisabled: async (
+      update: (input: UpdateServerAgentInput) =>
+        this.updateServerAgentCommand.execute(input),
+      updateExternal: (input: UpdateExternalAgentInput) =>
+        this.updateExternalAgentCommand.execute(input),
+      setDisabled: (
         id: string,
         userId: string,
         disabled: boolean,
         agentType: 'external' | 'server'
-      ) => {
-        const result = await this.setAgentDisabledCommand.execute({
+      ) =>
+        this.setAgentDisabledCommand.execute({
           id,
           userId,
           disabled,
           agentType,
-        });
-        if (result) {
-          await this.agentCacheInvalidation?.publishAgentUpdated(userId, id);
-        }
-        return result;
-      },
+        }),
       regenerateKey: (id: string, userId: string) =>
         this.regenerateAgentKeyCommand.execute({ id, userId }),
       validateKey: (secretKey: string) =>
         this.validateAgentKeyQuery.execute({ secretKey }),
       findByKeyPrefix: (prefix: string) =>
         this.findAgentByKeyPrefixQuery.execute({ prefix }),
-      toggleFavorite: async (
+      toggleFavorite: (
         id: string,
         userId: string,
         isFavorite: boolean,
         agentType: 'external' | 'server'
-      ) => {
-        const result = await this.toggleAgentFavoriteCommand.execute({
+      ) =>
+        this.toggleAgentFavoriteCommand.execute({
           id,
           userId,
           isFavorite,
           agentType,
-        });
-        if (result) {
-          await this.agentCacheInvalidation?.publishAgentUpdated(userId, id);
-        }
-        return result;
-      },
-      delete: async (
-        id: string,
-        userId: string,
-        agentType: 'external' | 'server'
-      ) => {
-        const result = await this.deleteCustomAgentCommand.execute({
+        }),
+      delete: (id: string, userId: string, agentType: 'external' | 'server') =>
+        this.deleteCustomAgentCommand.execute({
           id,
           userId,
           agentType,
-        });
-        if (result) {
-          await this.agentCacheInvalidation?.publishAgentDeleted(userId, id);
-        }
-        return result;
-      },
+        }),
     };
   }
 
@@ -540,6 +544,22 @@ export class AgentsFeature {
     return {
       list: (provider?: 'anthropic' | 'openai' | 'gemini') =>
         this.listModelsQuery.execute({ provider }),
+    };
+  }
+
+  /**
+   * Permission operations
+   * Checks for spawn permissions and other access controls
+   */
+  get permissions() {
+    return {
+      checkSpawnPermission: (input: CheckSpawnPermissionInput) =>
+        this.checkSpawnPermissionQuery.execute(input),
+      getAllowedSubagents: (
+        agentKey: string,
+        userId: string
+      ): Promise<AllowedSubagentInfo[]> =>
+        this.getAllowedSubagentsQuery.execute({ agentKey, userId }),
     };
   }
 }

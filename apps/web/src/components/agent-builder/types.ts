@@ -8,6 +8,15 @@ export interface ThinkingConfig {
   thinkingBudget?: number;
 }
 
+/**
+ * Allowed subagents - IDs of agents this agent can spawn
+ * Uses separate arrays for proper foreign key relationships
+ */
+export interface AllowedSubagents {
+  serverAgentIds?: string[];
+  externalAgentIds?: string[];
+}
+
 export interface AgentFormData {
   // Identity
   key: string;
@@ -25,6 +34,8 @@ export interface AgentFormData {
   thinkingConfig: ThinkingConfig | null;
   // User preferences
   isFavorite: boolean;
+  // Sub-agent permissions
+  allowedSubagents: AllowedSubagents;
 }
 
 export const DEFAULT_AGENT_FORM_DATA: AgentFormData = {
@@ -40,6 +51,7 @@ export const DEFAULT_AGENT_FORM_DATA: AgentFormData = {
   maxContextTokens: null,
   thinkingConfig: null,
   isFavorite: false,
+  allowedSubagents: {},
 };
 
 export interface ToolMetadata {

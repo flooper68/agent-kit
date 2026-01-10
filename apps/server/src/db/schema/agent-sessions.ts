@@ -96,6 +96,8 @@ export const agentSessions = pgTable(
   (table) => [
     // Index for finding child sessions spawned from a parent
     index('idx_agent_sessions_parent_session_id').on(table.parentSessionId),
+    // Index for user-scoped session queries
+    index('agent_sessions_user_id_idx').on(table.userId),
   ]
 );
 

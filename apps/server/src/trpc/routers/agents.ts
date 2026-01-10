@@ -46,6 +46,14 @@ function normalizeAgentKey(key: string): string {
 // Common validation for tools
 const toolsSchema = z.array(z.string()).optional();
 
+// Schema for allowed subagents
+const allowedSubagentsSchema = z
+  .object({
+    serverAgentIds: z.array(z.string().uuid()).optional(),
+    externalAgentIds: z.array(z.string().uuid()).optional(),
+  })
+  .optional();
+
 export const agentsRouter = router({
   // ==========================================
   // Agent listing and querying
@@ -156,6 +164,8 @@ export const agentsRouter = router({
         name: z.string().trim().min(1).max(255),
         description: z.string().optional(),
         isFavorite: z.boolean().optional(),
+        // Sub-agent permissions
+        allowedSubagents: allowedSubagentsSchema,
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -165,6 +175,7 @@ export const agentsRouter = router({
         name: input.name,
         description: input.description,
         isFavorite: input.isFavorite,
+        allowedSubagents: input.allowedSubagents,
       });
 
       return {
@@ -194,6 +205,8 @@ export const agentsRouter = router({
         thinkingConfig: thinkingConfigSchema.optional(),
         // User preferences
         isFavorite: z.boolean().optional(),
+        // Sub-agent permissions
+        allowedSubagents: allowedSubagentsSchema,
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -212,6 +225,7 @@ export const agentsRouter = router({
           maxContextTokens: input.maxContextTokens,
           thinkingConfig: input.thinkingConfig,
           isFavorite: input.isFavorite,
+          allowedSubagents: input.allowedSubagents,
         });
 
         return { agent };
@@ -231,33 +245,57 @@ export const agentsRouter = router({
     }),
 
   /**
-   * Update custom agent
+   * Update custom agent (server or external)
    */
   updateCustom: protectedProcedureWithErrors
     .input(
       z.object({
         id: z.string().uuid(),
-        key: agentKeySchema.optional(),
+        agentType: z.enum(['external', 'server']),
+        // Common fields
         name: z.string().trim().min(1).max(255).optional(),
         description: z.string().optional(),
-        // Agent configuration
+        isFavorite: z.boolean().optional(),
+        allowedSubagents: allowedSubagentsSchema,
+        // Server agent only fields
+        key: agentKeySchema.optional(),
         provider: z.enum(['anthropic', 'openai', 'gemini']).optional(),
         model: z.string().optional(),
         systemPrompt: z.string().optional(),
         tools: toolsSchema,
-        // Model settings
         temperature: z.number().min(0).max(2).nullable().optional(),
         maxOutputTokens: z.number().positive().nullable().optional(),
         maxContextTokens: z.number().positive().nullable().optional(),
         thinkingConfig: thinkingConfigSchema.optional(),
-        // User preferences
-        isFavorite: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, key, ...restUpdates } = input;
+      const { id, agentType, key, ...restUpdates } = input;
 
-      // Normalize key if provided
+      if (agentType === 'external') {
+        // External agents only support name, description, isFavorite, allowedSubagents
+        const agent = await ctx.agentsFeature.customAgents.updateExternal({
+          id,
+          userId: ctx.auth.userId,
+          updates: {
+            name: restUpdates.name,
+            description: restUpdates.description,
+            isFavorite: restUpdates.isFavorite,
+            allowedSubagents: restUpdates.allowedSubagents,
+          },
+        });
+
+        if (!agent) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Agent not found',
+          });
+        }
+
+        return agent;
+      }
+
+      // Server agent update
       const updates = {
         ...restUpdates,
         ...(key !== undefined ? { key: normalizeAgentKey(key) } : {}),

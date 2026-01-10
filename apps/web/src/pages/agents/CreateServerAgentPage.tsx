@@ -9,6 +9,7 @@ import { BasicModelSection } from '../../components/agent-builder/sections/Basic
 import { AdvancedModelSection } from '../../components/agent-builder/sections/AdvancedModelSection';
 import { SystemPromptSection } from '../../components/agent-builder/sections/SystemPromptSection';
 import { ToolsSection } from '../../components/agent-builder/sections/ToolsSection';
+import { AllowedSubAgentsSection } from '../../components/agent-builder/sections/AllowedSubAgentsSection';
 import {
   type AgentFormData,
   DEFAULT_AGENT_FORM_DATA,
@@ -124,6 +125,7 @@ export function CreateServerAgentPage() {
       maxOutputTokens: formData.maxOutputTokens ?? undefined,
       thinkingConfig: formData.thinkingConfig,
       isFavorite: formData.isFavorite,
+      allowedSubagents: formData.allowedSubagents,
     });
   };
 
@@ -180,6 +182,11 @@ export function CreateServerAgentPage() {
                 formData={formData}
                 onChange={updateFormData}
                 tools={toolsQuery.data ?? []}
+              />
+
+              <AllowedSubAgentsSection
+                formData={formData}
+                onChange={updateFormData}
               />
             </Tabs.Content>
 

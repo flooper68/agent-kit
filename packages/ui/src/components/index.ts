@@ -57,6 +57,12 @@ export type { SkeletonProps } from './Skeleton';
 export { Select } from './Select';
 export type { SelectProps, SelectOption } from './Select';
 
+export { MultiSelectChips } from './MultiSelectChips';
+export type {
+  MultiSelectChipsProps,
+  MultiSelectOption,
+} from './MultiSelectChips';
+
 export { ToggleGroup, ToggleGroupItem } from './ToggleGroup';
 export type {
   ToggleGroupProps,

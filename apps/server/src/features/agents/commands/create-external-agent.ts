@@ -1,6 +1,14 @@
-import type { db as DbType } from '../../../db';
-import { externalAgents, type ExternalAgent } from '../../../db/schema';
+import {
+  externalAgents,
+  externalAgentAllowedSubagents,
+  type ExternalAgent,
+} from '../../../db/schema';
 import { generateSecretKey, hashSecretKey, generateKeyPrefix } from '../utils';
+import {
+  type AgentsCommandContextManager,
+  type AllowedSubagentsInput,
+  validateAllowedSubagentsOwnership,
+} from '../context';
 
 /**
  * Input for creating an external agent.
@@ -12,6 +20,8 @@ export interface CreateExternalAgentInput {
   name: string;
   description?: string;
   isFavorite?: boolean;
+  // Sub-agent permissions
+  allowedSubagents?: AllowedSubagentsInput;
 }
 
 export interface CreateExternalAgentResult {
@@ -25,33 +35,79 @@ export interface CreateExternalAgentResult {
  * External agents connect via WebSocket.
  */
 export class CreateExternalAgentCommand {
-  constructor(private db: typeof DbType) {}
+  constructor(private readonly contextManager: AgentsCommandContextManager) {}
 
-  async execute(
+  execute = async (
     input: CreateExternalAgentInput
-  ): Promise<CreateExternalAgentResult> {
-    const secretKey = generateSecretKey();
-    const secretKeyHash = hashSecretKey(secretKey);
-    const secretKeyPrefix = generateKeyPrefix(secretKey);
+  ): Promise<CreateExternalAgentResult> => {
+    return this.contextManager.handleCommand(async (ctx) => {
+      const { tx, cacheInvalidation } = ctx;
+      const secretKey = generateSecretKey();
+      const secretKeyHash = hashSecretKey(secretKey);
+      const secretKeyPrefix = generateKeyPrefix(secretKey);
+      const allowedSubagents = input.allowedSubagents;
 
-    const [agent] = await this.db
-      .insert(externalAgents)
-      .values({
-        userId: input.userId,
-        key: input.key,
-        name: input.name,
-        description: input.description,
-        secretKey: secretKeyHash,
-        secretKeyPrefix,
-        isFavorite: input.isFavorite ?? false,
-      })
-      .returning();
+      // Validate ownership of referenced agents before creating
+      await validateAllowedSubagentsOwnership(
+        tx,
+        input.userId,
+        allowedSubagents
+      );
 
-    if (!agent) {
-      throw new Error('Failed to create external agent');
-    }
+      const [createdAgent] = await tx
+        .insert(externalAgents)
+        .values({
+          userId: input.userId,
+          key: input.key,
+          name: input.name,
+          description: input.description,
+          secretKey: secretKeyHash,
+          secretKeyPrefix,
+          isFavorite: input.isFavorite ?? false,
+        })
+        .returning();
 
-    // Return plaintext key - this is the only time it's available
-    return { agent, secretKey };
-  }
+      if (!createdAgent) {
+        throw new Error('Failed to create external agent');
+      }
+
+      // Insert allowed subagents into junction table
+      if (allowedSubagents) {
+        const junctionRows: Array<{
+          externalAgentId: string;
+          allowedServerAgentId?: string;
+          allowedExternalAgentId?: string;
+        }> = [];
+
+        // Add server agent references
+        for (const serverAgentId of allowedSubagents.serverAgentIds ?? []) {
+          junctionRows.push({
+            externalAgentId: createdAgent.id,
+            allowedServerAgentId: serverAgentId,
+          });
+        }
+
+        // Add external agent references
+        for (const externalAgentId of allowedSubagents.externalAgentIds ?? []) {
+          junctionRows.push({
+            externalAgentId: createdAgent.id,
+            allowedExternalAgentId: externalAgentId,
+          });
+        }
+
+        if (junctionRows.length > 0) {
+          await tx.insert(externalAgentAllowedSubagents).values(junctionRows);
+        }
+      }
+
+      // Publish cache invalidation event
+      await cacheInvalidation?.publishAgentCreated(
+        input.userId,
+        createdAgent.id
+      );
+
+      // Return plaintext key - this is the only time it's available
+      return { agent: createdAgent, secretKey };
+    });
+  };
 }

@@ -98,6 +98,8 @@ const ServerToolRequestSchema = z.object({
   type: z.literal('server_tool_request'),
   requestId: z.string().uuid(),
   sessionId: z.string().uuid(),
+  messageId: z.string().uuid().optional(), // For spawn_session_created event association
+  toolCallId: z.string().optional(), // The actual tool call ID from tool_call_start event
   tool: z.enum(SERVER_TOOL_NAMES),
   params: z.record(z.string(), z.unknown()),
   timestamp: z.string(),
@@ -1033,11 +1035,13 @@ export class ExternalAgentWebSocketService {
       requestId: string;
       sessionId: string;
       messageId?: string;
+      toolCallId?: string;
       tool: string;
       params: Record<string, unknown>;
     }
   ): Promise<void> {
-    const { requestId, sessionId, messageId, tool, params } = message;
+    const { requestId, sessionId, messageId, toolCallId, tool, params } =
+      message;
 
     this.log.debug('Handling server tool request', {
       agentId: agent.id,
@@ -1114,6 +1118,7 @@ export class ExternalAgentWebSocketService {
         // Agent spawning context for sub-agent delegation
         agentSpawner: this.agentSpawner,
         currentSpawnDepth: session.spawnDepth,
+        parentAgentKey: agent.key,
       };
 
       // Get the tool implementation
@@ -1137,7 +1142,10 @@ export class ExternalAgentWebSocketService {
 
       // Execute the tool
       // Pass toolCallId for tools that need it (e.g., spawnAgent)
-      const result = await toolImpl.execute(params, { toolCallId: requestId });
+      // Use provided toolCallId from external agent (matches tool_call_start event), fallback to requestId
+      const result = await toolImpl.execute(params, {
+        toolCallId: toolCallId || requestId,
+      });
 
       this.log.debug('Server tool executed successfully', {
         agentId: agent.id,

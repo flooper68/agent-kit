@@ -27,6 +27,40 @@ function formatMcpResult(result: unknown) {
 }
 
 /**
+ * Extract toolCallId from MCP extra context.
+ * The Claude Code SDK passes tool_use block info in the extra parameter.
+ */
+function extractToolCallId(extra: unknown): string | undefined {
+  if (!extra || typeof extra !== 'object') {
+    return undefined;
+  }
+
+  const obj = extra as Record<string, unknown>;
+
+  // Check _meta for Claude Code SDK's toolUseId
+  // The SDK passes it as _meta["claudecode/toolUseId"]
+  if (obj._meta && typeof obj._meta === 'object') {
+    const meta = obj._meta as Record<string, unknown>;
+    // Claude Code SDK pattern: _meta["claudecode/toolUseId"]
+    const claudeCodeToolUseId = meta['claudecode/toolUseId'];
+    if (typeof claudeCodeToolUseId === 'string') {
+      return claudeCodeToolUseId;
+    }
+    // Fallback: check for toolUseId directly in _meta
+    if (typeof meta.toolUseId === 'string') {
+      return meta.toolUseId;
+    }
+  }
+
+  // Fallback: check for toolUseId directly on the object
+  if (typeof obj.toolUseId === 'string') {
+    return obj.toolUseId;
+  }
+
+  return undefined;
+}
+
+/**
  * Creates an in-process MCP server for all server tools.
  *
  * This uses `createSdkMcpServer()` from the Claude Code SDK which allows
@@ -675,7 +709,14 @@ Available agents: ${allowedSpawnAgents.join(', ')}`,
                   .max(50000)
                   .describe('The task/message to send to the spawned agent'),
               },
-              async (args: { agentId: string; message: string }) => {
+              async (
+                args: { agentId: string; message: string },
+                extra: unknown
+              ) => {
+                // Extract toolCallId from MCP extra context if available
+                // The SDK passes the tool_use block ID in extra._meta["claudecode/toolUseId"]
+                const toolCallId = extractToolCallId(extra);
+
                 log.debug('spawnAgent tool called', {
                   agentId: args.agentId,
                   messageLength: args.message.length,
@@ -697,7 +738,8 @@ Available agents: ${allowedSpawnAgents.join(', ')}`,
                   'spawnAgent',
                   args,
                   sessionId,
-                  messageId
+                  messageId,
+                  toolCallId
                 );
                 return formatMcpResult(result);
               }

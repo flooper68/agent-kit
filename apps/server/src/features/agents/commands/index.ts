@@ -74,14 +74,20 @@ export type {
 } from './create-external-agent';
 export { CreateServerAgentCommand } from './create-server-agent';
 export type {
+  AllowedSubagentsInput,
   CreateServerAgentInput,
   CreateServerAgentResult,
 } from './create-server-agent';
-export { UpdateCustomAgentCommand } from './update-custom-agent';
+export { UpdateServerAgentCommand } from './update-server-agent';
 export type {
-  UpdateCustomAgentInput,
-  UpdateCustomAgentResult,
-} from './update-custom-agent';
+  UpdateServerAgentInput,
+  UpdateServerAgentResult,
+} from './update-server-agent';
+export { UpdateExternalAgentCommand } from './update-external-agent';
+export type {
+  UpdateExternalAgentInput,
+  UpdateExternalAgentResult,
+} from './update-external-agent';
 export { SetAgentDisabledCommand } from './set-agent-disabled';
 export type {
   SetAgentDisabledInput,

@@ -1,4 +1,11 @@
-import { pgTable, uuid, varchar, timestamp, jsonb } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  timestamp,
+  jsonb,
+  index,
+} from 'drizzle-orm/pg-core';
 import { agentSessions } from './agent-sessions';
 
 // Message part types (used for reconstructing from events)
@@ -67,26 +74,33 @@ export type AgentSessionMessageStatus =
   | 'error'
   | 'interrupted';
 
-export const agentSessionMessages = pgTable('agent_session_messages', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  sessionId: uuid('session_id')
-    .notNull()
-    .references(() => agentSessions.id, { onDelete: 'cascade' }),
-  role: varchar('role', { length: 16 })
-    .$type<AgentSessionMessageRole>()
-    .notNull(),
-  status: varchar('status', { length: 16 })
-    .$type<AgentSessionMessageStatus>()
-    .notNull()
-    .default('pending'),
-  metadata: jsonb('metadata').$type<AgentSessionMessageMetadata>(),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const agentSessionMessages = pgTable(
+  'agent_session_messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => agentSessions.id, { onDelete: 'cascade' }),
+    role: varchar('role', { length: 16 })
+      .$type<AgentSessionMessageRole>()
+      .notNull(),
+    status: varchar('status', { length: 16 })
+      .$type<AgentSessionMessageStatus>()
+      .notNull()
+      .default('pending'),
+    metadata: jsonb('metadata').$type<AgentSessionMessageMetadata>(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // Index for fetching messages by session
+    index('agent_session_messages_session_id_idx').on(table.sessionId),
+  ]
+);
 
 export type AgentSessionMessage = typeof agentSessionMessages.$inferSelect;
 export type NewAgentSessionMessage = typeof agentSessionMessages.$inferInsert;

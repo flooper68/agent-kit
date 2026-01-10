@@ -92,6 +92,23 @@ export class OpenAIProvider implements AgentProvider {
             };
             break;
 
+          case 'tool-error':
+            logger.debug('Tool error received', {
+              toolCallId: chunk.toolCallId,
+              toolName: chunk.toolName,
+              model,
+            });
+            yield {
+              type: 'tool_result',
+              toolCallId: chunk.toolCallId,
+              result:
+                chunk.error instanceof Error
+                  ? chunk.error.message
+                  : String(chunk.error),
+              isError: true,
+            };
+            break;
+
           case 'error': {
             const agentError = classifyError(chunk.error);
             logger.error('Stream error event', {

@@ -266,6 +266,7 @@ export class AgentJobHandler {
         pubsub: this.pubsub,
         agentSpawner: this.agentSpawner,
         currentSpawnDepth,
+        parentAgentKey: agentId, // Agent key for spawn validation
       });
 
       // Publish message start event

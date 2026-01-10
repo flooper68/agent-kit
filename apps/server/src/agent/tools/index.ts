@@ -113,6 +113,8 @@ export interface ToolContext {
   agentSpawner?: AgentSpawner;
   /** Current spawn depth for recursion tracking (0 for root sessions) */
   currentSpawnDepth?: number;
+  /** Key of the current agent (for spawn validation) */
+  parentAgentKey?: string;
 }
 
 /**
@@ -413,6 +415,7 @@ export function getToolsById(
               currentSpawnDepth: context.currentSpawnDepth ?? 0,
               agentSpawner: context.agentSpawner,
               messageId: context.messageId,
+              parentAgentKey: context.parentAgentKey,
             });
           } else {
             logger.debug('Skipping tool due to missing context', {

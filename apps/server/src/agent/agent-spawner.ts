@@ -6,7 +6,6 @@ import type { ExternalAgentWebSocketRegistry } from './external-agent-websocket-
 import type { JobRegistryManager } from './job-registry-manager';
 import type { CacheInvalidationService } from '../real-time';
 import { SPAWN_CONFIG } from './spawn-config';
-import { getAvailableAgents as getAvailableAgentsFromBuilder } from './system-prompt-builder';
 import { logger } from './logger';
 
 /**
@@ -37,6 +36,8 @@ export interface SpawnInput {
   toolCallId?: string;
   /** Message ID in the parent session (for spawn_session_created event) */
   messageId?: string;
+  /** Key of the parent agent making the spawn request (for allowlist validation) */
+  parentAgentKey?: string;
 }
 
 /**
@@ -78,6 +79,18 @@ export type SpawnAgentInput = SpawnInput;
 /** @deprecated Use SpawnAndWaitResult instead */
 export type SpawnAgentResult = SpawnAndWaitResult;
 
+/**
+ * Internal result from setupSpawn() - shared setup for spawn operations
+ */
+interface SpawnSetupResult {
+  sessionId: string;
+  isNewSession: boolean;
+  agentUuid: string | undefined;
+  resolvedAgentName: string | undefined;
+  isExternalAgent: boolean;
+  timeout: number;
+}
+
 const log = logger.child({ module: 'agent-spawner' });
 
 /**
@@ -107,39 +120,28 @@ export class AgentSpawner {
   async spawnAndWait(input: SpawnInput): Promise<SpawnAndWaitResult> {
     const { agentId, message, userId, orgId, toolCallId, messageId } = input;
 
-    // Resolve agent info (validates agent exists and is available)
-    const agentInfo = await this.resolveAgentInfo(agentId, userId);
-    if ('error' in agentInfo) {
+    // Shared setup: validate permissions, resolve agent, create/reuse session
+    const setup = await this.setupSpawn(input);
+    if ('error' in setup) {
       return {
         sessionId: input.sessionId ?? '',
         response: '',
         finishReason: 'error',
-        error: agentInfo.error,
+        error: setup.error,
       };
     }
 
-    const { agentUuid, resolvedAgentName, isExternalAgent } = agentInfo;
-    // All custom agents are "local" in the DB sense (isLocalAgent=true means it's a custom agent, not builtin)
-    const isLocalAgent = true;
+    const {
+      sessionId,
+      isNewSession,
+      agentUuid,
+      resolvedAgentName,
+      isExternalAgent,
+      timeout: agentTimeout,
+    } = setup;
 
-    // Resolve or create session
-    const sessionResult = await this.resolveOrCreateSession(
-      input,
-      isLocalAgent
-    );
-    if ('error' in sessionResult) {
-      return {
-        sessionId: '',
-        response: '',
-        finishReason: 'error',
-        error: sessionResult.error,
-      };
-    }
-
-    const { sessionId, isNewSession } = sessionResult;
-
-    // Determine timeout
-    let timeout = input.timeout ?? agentInfo.timeout;
+    // Determine timeout with bounds
+    let timeout = input.timeout ?? agentTimeout;
     timeout = Math.max(
       SPAWN_CONFIG.MIN_TIMEOUT_MS,
       Math.min(timeout, SPAWN_CONFIG.MAX_TIMEOUT_MS)
@@ -166,6 +168,9 @@ export class AgentSpawner {
       });
     }
 
+    // All custom agents are "local" in the DB sense
+    const isLocalAgent = true;
+
     try {
       // Start streaming state
       await this.streamingStateManager.startStreaming(
@@ -176,27 +181,15 @@ export class AgentSpawner {
       );
 
       // Dispatch to agent
-      if (isExternalAgent) {
-        if (!agentUuid) {
-          throw new Error(
-            'Internal error: agentUuid missing for external agent'
-          );
-        }
-        await this.dispatchToExternalAgent(
-          sessionId,
-          agentUuid,
-          message,
-          userId
-        );
-      } else {
-        await this.dispatchToServerAgent(
-          sessionId,
-          agentId,
-          message,
-          userId,
-          orgId
-        );
-      }
+      await this.dispatchToAgent(
+        sessionId,
+        agentUuid,
+        agentId,
+        isExternalAgent,
+        message,
+        userId,
+        orgId
+      );
 
       // Wait for completion
       const result = await this.waitForCompletion(sessionId, timeout);
@@ -233,34 +226,20 @@ export class AgentSpawner {
   async spawn(input: SpawnInput): Promise<SpawnResult> {
     const { agentId, message, userId, orgId } = input;
 
-    // Resolve agent info (validates agent exists and is available)
-    const agentInfo = await this.resolveAgentInfo(agentId, userId);
-    if ('error' in agentInfo) {
+    // Shared setup: validate permissions, resolve agent, create/reuse session
+    const setup = await this.setupSpawn(input);
+    if ('error' in setup) {
       return {
         sessionId: input.sessionId ?? '',
         dispatched: false,
-        error: agentInfo.error,
+        error: setup.error,
       };
     }
 
-    const { agentUuid, isExternalAgent } = agentInfo;
-    // All custom agents are "local" in the DB sense (isLocalAgent=true means it's a custom agent, not builtin)
+    const { sessionId, agentUuid, isExternalAgent } = setup;
+
+    // All custom agents are "local" in the DB sense
     const isLocalAgent = true;
-
-    // Resolve or create session
-    const sessionResult = await this.resolveOrCreateSession(
-      input,
-      isLocalAgent
-    );
-    if ('error' in sessionResult) {
-      return {
-        sessionId: '',
-        dispatched: false,
-        error: sessionResult.error,
-      };
-    }
-
-    const { sessionId } = sessionResult;
 
     try {
       // Start streaming state
@@ -272,27 +251,15 @@ export class AgentSpawner {
       );
 
       // Dispatch to agent
-      if (isExternalAgent) {
-        if (!agentUuid) {
-          throw new Error(
-            'Internal error: agentUuid missing for external agent'
-          );
-        }
-        await this.dispatchToExternalAgent(
-          sessionId,
-          agentUuid,
-          message,
-          userId
-        );
-      } else {
-        await this.dispatchToServerAgent(
-          sessionId,
-          agentId,
-          message,
-          userId,
-          orgId
-        );
-      }
+      await this.dispatchToAgent(
+        sessionId,
+        agentUuid,
+        agentId,
+        isExternalAgent,
+        message,
+        userId,
+        orgId
+      );
 
       return { sessionId, dispatched: true };
     } catch (error) {
@@ -362,6 +329,122 @@ export class AgentSpawner {
   }
 
   /**
+   * Validate that the parent agent is allowed to spawn the target agent.
+   * Returns an error message if not allowed, or undefined if allowed.
+   */
+  private async validateSpawnPermission(
+    parentAgentKey: string,
+    targetAgentId: string,
+    userId: string
+  ): Promise<string | undefined> {
+    // Use the permission check query that queries the junction tables
+    const result = await this.agentsFeature.permissions.checkSpawnPermission({
+      parentAgentKey,
+      targetAgentKey: targetAgentId,
+      userId,
+    });
+
+    if (!result.allowed) {
+      return result.error;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Shared setup for spawn operations - validates permissions, resolves agent, creates session
+   */
+  private async setupSpawn(
+    input: SpawnInput
+  ): Promise<SpawnSetupResult | { error: string }> {
+    const { agentId, userId, parentAgentKey, parentSessionId } = input;
+
+    // Defensive check: if this is a spawn from another agent (has parentSessionId),
+    // require parentAgentKey for permission validation
+    if (parentSessionId && !parentAgentKey) {
+      logger.warn(
+        'Spawn operation has parentSessionId but no parentAgentKey - this may indicate a bug in the calling code'
+      );
+      return { error: 'Parent agent key required for spawn operations' };
+    }
+
+    // Validate spawn permission if parent agent key is provided
+    if (parentAgentKey) {
+      const permissionError = await this.validateSpawnPermission(
+        parentAgentKey,
+        agentId,
+        userId
+      );
+      if (permissionError) {
+        return { error: permissionError };
+      }
+    }
+
+    // Resolve agent info (validates agent exists and is available)
+    const agentInfo = await this.resolveAgentInfo(agentId, userId);
+    if ('error' in agentInfo) {
+      return { error: agentInfo.error };
+    }
+
+    const { agentUuid, resolvedAgentName, isExternalAgent, timeout } =
+      agentInfo;
+    // All custom agents are "local" in the DB sense (isLocalAgent=true means it's a custom agent, not builtin)
+    const isLocalAgent = true;
+
+    // Resolve or create session
+    const sessionResult = await this.resolveOrCreateSession(
+      input,
+      isLocalAgent
+    );
+    if ('error' in sessionResult) {
+      return { error: sessionResult.error };
+    }
+
+    return {
+      sessionId: sessionResult.sessionId,
+      isNewSession: sessionResult.isNewSession,
+      agentUuid,
+      resolvedAgentName,
+      isExternalAgent,
+      timeout,
+    };
+  }
+
+  /**
+   * Dispatch to the appropriate agent type (external or server)
+   */
+  private async dispatchToAgent(
+    sessionId: string,
+    agentUuid: string | undefined,
+    agentId: string,
+    isExternalAgent: boolean,
+    message: string,
+    userId: string,
+    orgId: string
+  ): Promise<void> {
+    if (isExternalAgent) {
+      if (!agentUuid) {
+        throw new Error('Internal error: agentUuid missing for external agent');
+      }
+      await this.dispatchToExternalAgent(
+        sessionId,
+        agentUuid,
+        agentId,
+        message,
+        userId
+      );
+    } else {
+      await this.dispatchToServerAgent(
+        sessionId,
+        agentId,
+        message,
+        userId,
+        orgId
+      );
+    }
+  }
+
+  /**
    * Resolve or create session based on input
    */
   private async resolveOrCreateSession(
@@ -409,6 +492,7 @@ export class AgentSpawner {
   private async dispatchToExternalAgent(
     sessionId: string,
     agentUuid: string,
+    agentKey: string,
     message: string,
     userId: string
   ): Promise<void> {
@@ -430,13 +514,20 @@ export class AgentSpawner {
     // Publish cache invalidation
     await this.cacheInvalidation.publishSessionMessageAdded(userId, sessionId);
 
-    // Fetch session history for external agent
-    const sessionHistory =
-      await this.agentsFeature.sessions.getMessagesAndEvents(sessionId);
+    // Fetch session history and allowed subagents in parallel
+    const [sessionHistory, allowedSubagents] = await Promise.all([
+      this.agentsFeature.sessions.getMessagesAndEvents(sessionId),
+      this.agentsFeature.permissions.getAllowedSubagents(agentKey, userId),
+    ]);
 
     if (!sessionHistory) {
       throw new Error('Failed to fetch session history');
     }
+
+    // Build metadata for external agent
+    const metadata: Record<string, unknown> = {
+      allowedSubagents,
+    };
 
     // Send to external agent via WebSocket (using UUID for registry lookup)
     const sent = this.externalAgentWSRegistry.sendMessage(agentUuid, {
@@ -449,6 +540,7 @@ export class AgentSpawner {
       timestamp: new Date().toISOString(),
       messages: sessionHistory.messages,
       events: sessionHistory.events,
+      metadata,
     });
 
     if (!sent) {
@@ -628,17 +720,5 @@ export class AgentSpawner {
         }
       });
     });
-  }
-
-  /**
-   * Get all available agents for spawning (custom agents)
-   * Delegates to shared implementation in system-prompt-builder
-   */
-  async getAvailableAgents(
-    userId: string
-  ): Promise<
-    Array<{ id: string; name: string; description: string; isLocal: boolean }>
-  > {
-    return getAvailableAgentsFromBuilder(this.agentsFeature, userId);
   }
 }
