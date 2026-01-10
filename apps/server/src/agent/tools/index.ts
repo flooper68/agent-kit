@@ -8,6 +8,7 @@ import type { EventStreamManager } from '../event-stream-manager';
 import type { PubSubManager } from '../../real-time';
 import type { AgentSpawner } from '../agent-spawner';
 import { logger } from '../logger';
+import { SERVER_TOOL_DEFINITIONS, type ToolCategory } from '@agent-kit/shared';
 import { getTimeTool } from './get-time';
 import { webSearchTool } from './web-search';
 import { extractContentTool } from './extract-content';
@@ -42,9 +43,9 @@ import { createGetAgentTool } from './get-agent';
 import { createUpdateAgentTool } from './update-agent';
 import { createSetAgentEnabledTool } from './set-agent-enabled';
 import { createToggleAgentFavoriteTool } from './toggle-agent-favorite';
-import { createGrepSkillsTool } from './grep-skills';
+import { createListSkillFilesTool } from './list-skill-files';
 import { createReadSkillFileTool } from './read-skill-file';
-import { createExecuteSkillTool } from './execute-skill';
+import { createExecuteCommandTool } from './execute-command';
 import { createCreateSkillTool } from './create-skill';
 import { createUpdateSkillTool } from './update-skill';
 import { createDeleteSkillTool } from './delete-skill';
@@ -97,9 +98,9 @@ const CONTEXT_TOOL_IDS = [
   // Skill tools
   'listSkills',
   'getSkill',
-  'grepSkills',
+  'listSkillFiles',
   'readSkillFile',
-  'executeSkill',
+  'executeCommand',
   'createSkill',
   'updateSkill',
   'deleteSkill',
@@ -135,6 +136,8 @@ export interface ToolContext {
   currentSpawnDepth?: number;
   /** Key of the current agent (for spawn validation) */
   parentAgentKey?: string;
+  /** Allowed skill IDs for this agent (empty array = no skills allowed) */
+  allowedSkillIds?: string[];
 }
 
 /**
@@ -534,12 +537,13 @@ export function getToolsById(
             });
           }
           break;
-        case 'grepSkills':
+        case 'listSkillFiles':
           if (context.skillsFeature) {
-            result[id] = createGrepSkillsTool({
+            result[id] = createListSkillFilesTool({
               userId: context.userId,
               orgId: context.orgId,
               skillsFeature: context.skillsFeature,
+              allowedSkillIds: context.allowedSkillIds ?? [],
             });
           } else {
             logger.debug('Skipping tool due to missing skillsFeature', {
@@ -553,6 +557,7 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               skillsFeature: context.skillsFeature,
+              allowedSkillIds: context.allowedSkillIds ?? [],
             });
           } else {
             logger.debug('Skipping tool due to missing skillsFeature', {
@@ -560,9 +565,9 @@ export function getToolsById(
             });
           }
           break;
-        case 'executeSkill':
-          // executeSkill needs toolContext to call other tools
-          result[id] = createExecuteSkillTool({
+        case 'executeCommand':
+          // executeCommand needs toolContext to call other tools
+          result[id] = createExecuteCommandTool({
             toolContext: context,
           });
           break;
@@ -619,17 +624,8 @@ export function listToolIds(): string[] {
   return [...Object.keys(STATIC_TOOLS), ...CONTEXT_TOOL_IDS];
 }
 
-/**
- * Tool category for UI grouping
- */
-export type ToolCategory =
-  | 'utility'
-  | 'artifact'
-  | 'project'
-  | 'task'
-  | 'navigation'
-  | 'agent'
-  | 'skill';
+// Re-export ToolCategory from shared
+export type { ToolCategory };
 
 /**
  * Tool metadata for UI display
@@ -642,263 +638,49 @@ export interface ToolMetadata {
 }
 
 /**
- * Tool metadata registry
+ * Convert camelCase tool ID to Title Case display name
  */
-const TOOL_METADATA: Record<string, ToolMetadata> = {
-  // Utility tools
-  getTime: {
-    id: 'getTime',
-    name: 'Get Time',
-    description: 'Get the current date and time',
-    category: 'utility',
-  },
-  webSearch: {
-    id: 'webSearch',
-    name: 'Web Search',
-    description: 'Search the web for information',
-    category: 'utility',
-  },
-  extractContent: {
-    id: 'extractContent',
-    name: 'Extract Content',
-    description: 'Extract text content from a URL',
-    category: 'utility',
-  },
-  fetch: {
-    id: 'fetch',
-    name: 'Fetch',
-    description: 'Fetch raw content from a URL',
-    category: 'utility',
-  },
+function formatToolName(id: string): string {
+  // Handle special cases
+  const specialCases: Record<string, string> = {
+    getCurrentUIState: 'Get UI State',
+    setAgentEnabled: 'Enable/Disable Agent',
+  };
 
-  // Artifact tools
-  writeArtifact: {
-    id: 'writeArtifact',
-    name: 'Write Artifact',
-    description: 'Save a document or note',
-    category: 'artifact',
-  },
-  searchArtifacts: {
-    id: 'searchArtifacts',
-    name: 'Search Artifacts',
-    description: 'Search for saved documents',
-    category: 'artifact',
-  },
-  readArtifact: {
-    id: 'readArtifact',
-    name: 'Read Artifact',
-    description: 'Read a saved document',
-    category: 'artifact',
-  },
-  updateArtifact: {
-    id: 'updateArtifact',
-    name: 'Update Artifact',
-    description: 'Update an existing document',
-    category: 'artifact',
-  },
+  if (specialCases[id]) {
+    return specialCases[id];
+  }
 
-  // Project tools
-  listProjects: {
-    id: 'listProjects',
-    name: 'List Projects',
-    description: 'List all projects',
-    category: 'project',
-  },
-  searchProjects: {
-    id: 'searchProjects',
-    name: 'Search Projects',
-    description: 'Search for projects',
-    category: 'project',
-  },
-  getProject: {
-    id: 'getProject',
-    name: 'Get Project',
-    description: 'Get project details',
-    category: 'project',
-  },
-  createProject: {
-    id: 'createProject',
-    name: 'Create Project',
-    description: 'Create a new project',
-    category: 'project',
-  },
-  updateProject: {
-    id: 'updateProject',
-    name: 'Update Project',
-    description: 'Update project details',
-    category: 'project',
-  },
-  deleteProject: {
-    id: 'deleteProject',
-    name: 'Delete Project',
-    description: 'Delete a project',
-    category: 'project',
-  },
+  // Convert camelCase to Title Case with spaces
+  return id
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, (str) => str.toUpperCase())
+    .trim();
+}
 
-  // Task tools
-  listTasks: {
-    id: 'listTasks',
-    name: 'List Tasks',
-    description: 'List tasks in a project',
-    category: 'task',
-  },
-  searchTasks: {
-    id: 'searchTasks',
-    name: 'Search Tasks',
-    description: 'Search for tasks',
-    category: 'task',
-  },
-  getTask: {
-    id: 'getTask',
-    name: 'Get Task',
-    description: 'Get task details',
-    category: 'task',
-  },
-  createTask: {
-    id: 'createTask',
-    name: 'Create Task',
-    description: 'Create a new task',
-    category: 'task',
-  },
-  updateTask: {
-    id: 'updateTask',
-    name: 'Update Task',
-    description: 'Update task details',
-    category: 'task',
-  },
-  deleteTask: {
-    id: 'deleteTask',
-    name: 'Delete Task',
-    description: 'Delete a task',
-    category: 'task',
-  },
-  moveTask: {
-    id: 'moveTask',
-    name: 'Move Task',
-    description: 'Move task to a different status',
-    category: 'task',
-  },
-  reorderTask: {
-    id: 'reorderTask',
-    name: 'Reorder Task',
-    description: 'Change task order in a column',
-    category: 'task',
-  },
-  attachArtifactToTask: {
-    id: 'attachArtifactToTask',
-    name: 'Attach Artifact',
-    description: 'Attach a document to a task',
-    category: 'task',
-  },
-  detachArtifactFromTask: {
-    id: 'detachArtifactFromTask',
-    name: 'Detach Artifact',
-    description: 'Detach a document from a task',
-    category: 'task',
-  },
+/**
+ * Get shortened description for UI display (first sentence only)
+ */
+function getShortDescription(description: string): string {
+  // Take first sentence or first line
+  const firstSentence = description.split(/[.\n]/)[0];
+  return firstSentence?.trim() ?? description;
+}
 
-  // Navigation tools
-  navigateTo: {
-    id: 'navigateTo',
-    name: 'Navigate To',
-    description: 'Navigate the user to a page',
-    category: 'navigation',
-  },
-  getCurrentUIState: {
-    id: 'getCurrentUIState',
-    name: 'Get UI State',
-    description: 'Get current page state',
-    category: 'navigation',
-  },
-
-  // Agent tools
-  spawnAgent: {
-    id: 'spawnAgent',
-    name: 'Spawn Agent',
-    description: 'Delegate a task to another agent',
-    category: 'agent',
-  },
-  listAgents: {
-    id: 'listAgents',
-    name: 'List Agents',
-    description: 'List all available agents',
-    category: 'agent',
-  },
-  getAgent: {
-    id: 'getAgent',
-    name: 'Get Agent',
-    description: 'Get agent details',
-    category: 'agent',
-  },
-  updateAgent: {
-    id: 'updateAgent',
-    name: 'Update Agent',
-    description: 'Update agent configuration',
-    category: 'agent',
-  },
-  setAgentEnabled: {
-    id: 'setAgentEnabled',
-    name: 'Enable/Disable Agent',
-    description: 'Enable or disable an agent',
-    category: 'agent',
-  },
-  toggleAgentFavorite: {
-    id: 'toggleAgentFavorite',
-    name: 'Toggle Favorite',
-    description: 'Toggle agent favorite status',
-    category: 'agent',
-  },
-
-  // Skill tools
-  listSkills: {
-    id: 'listSkills',
-    name: 'List Skills',
-    description: 'List all available skills',
-    category: 'skill',
-  },
-  getSkill: {
-    id: 'getSkill',
-    name: 'Get Skill',
-    description: 'Get detailed information about a specific skill',
-    category: 'skill',
-  },
-  grepSkills: {
-    id: 'grepSkills',
-    name: 'Grep Skills',
-    description: 'Search across skill files for content matching a pattern',
-    category: 'skill',
-  },
-  readSkillFile: {
-    id: 'readSkillFile',
-    name: 'Read Skill File',
-    description: 'Read a skill file with optional partial reading',
-    category: 'skill',
-  },
-  executeSkill: {
-    id: 'executeSkill',
-    name: 'Execute Skill',
-    description: 'Execute a tool using CLI-style syntax',
-    category: 'skill',
-  },
-  createSkill: {
-    id: 'createSkill',
-    name: 'Create Skill',
-    description: 'Create a new user skill with documentation',
-    category: 'skill',
-  },
-  updateSkill: {
-    id: 'updateSkill',
-    name: 'Update Skill',
-    description: 'Update an existing user skill',
-    category: 'skill',
-  },
-  deleteSkill: {
-    id: 'deleteSkill',
-    name: 'Delete Skill',
-    description: 'Delete a user skill',
-    category: 'skill',
-  },
-};
+/**
+ * Tool metadata derived from shared definitions (single source of truth)
+ */
+const TOOL_METADATA: Record<string, ToolMetadata> = Object.fromEntries(
+  Object.entries(SERVER_TOOL_DEFINITIONS).map(([id, def]) => [
+    id,
+    {
+      id,
+      name: formatToolName(id),
+      description: getShortDescription(def.description),
+      category: def.category,
+    },
+  ])
+);
 
 /**
  * Get metadata for all available tools

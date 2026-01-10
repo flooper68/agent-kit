@@ -54,6 +54,9 @@ const allowedSubagentsSchema = z
   })
   .optional();
 
+// Schema for allowed skills
+const allowedSkillIdsSchema = z.array(z.string().uuid()).optional();
+
 export const agentsRouter = router({
   // ==========================================
   // Agent listing and querying
@@ -85,6 +88,24 @@ export const agentsRouter = router({
    */
   listTools: protectedProcedure.query(() => {
     return getToolsMetadata();
+  }),
+
+  /**
+   * List all available skills for agent configuration
+   * Returns both system skills and user's custom skills
+   */
+  listSkillsForAgent: protectedProcedure.query(async ({ ctx }) => {
+    const skills = await ctx.skillsFeature.getAll({
+      userId: ctx.auth.userId,
+      orgId: ctx.auth.orgId,
+    });
+    return skills.map((s) => ({
+      id: s.id,
+      key: s.key,
+      name: s.name,
+      description: s.description ?? '',
+      isSystem: s.isSystem,
+    }));
   }),
 
   /**
@@ -166,6 +187,10 @@ export const agentsRouter = router({
         isFavorite: z.boolean().optional(),
         // Sub-agent permissions
         allowedSubagents: allowedSubagentsSchema,
+        // Skill permissions
+        allowedSkillIds: allowedSkillIdsSchema,
+        // Allowed tools - which server tools this external agent can use
+        allowedTools: toolsSchema,
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -176,6 +201,8 @@ export const agentsRouter = router({
         description: input.description,
         isFavorite: input.isFavorite,
         allowedSubagents: input.allowedSubagents,
+        allowedSkillIds: input.allowedSkillIds,
+        allowedTools: input.allowedTools,
       });
 
       return {
@@ -207,6 +234,8 @@ export const agentsRouter = router({
         isFavorite: z.boolean().optional(),
         // Sub-agent permissions
         allowedSubagents: allowedSubagentsSchema,
+        // Skill permissions
+        allowedSkillIds: allowedSkillIdsSchema,
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -226,6 +255,7 @@ export const agentsRouter = router({
           thinkingConfig: input.thinkingConfig,
           isFavorite: input.isFavorite,
           allowedSubagents: input.allowedSubagents,
+          allowedSkillIds: input.allowedSkillIds,
         });
 
         return { agent };
@@ -257,6 +287,8 @@ export const agentsRouter = router({
         description: z.string().optional(),
         isFavorite: z.boolean().optional(),
         allowedSubagents: allowedSubagentsSchema,
+        // Skill permissions (common to both types)
+        allowedSkillIds: allowedSkillIdsSchema,
         // Server agent only fields
         key: agentKeySchema.optional(),
         provider: z.enum(['anthropic', 'openai', 'gemini']).optional(),
@@ -267,13 +299,15 @@ export const agentsRouter = router({
         maxOutputTokens: z.number().positive().nullable().optional(),
         maxContextTokens: z.number().positive().nullable().optional(),
         thinkingConfig: thinkingConfigSchema.optional(),
+        // External agent only fields
+        allowedTools: toolsSchema,
       })
     )
     .mutation(async ({ ctx, input }) => {
       const { id, agentType, key, ...restUpdates } = input;
 
       if (agentType === 'external') {
-        // External agents only support name, description, isFavorite, allowedSubagents
+        // External agents support name, description, isFavorite, allowedSubagents, allowedSkillIds, allowedTools
         const agent = await ctx.agentsFeature.customAgents.updateExternal({
           id,
           userId: ctx.auth.userId,
@@ -282,6 +316,8 @@ export const agentsRouter = router({
             description: restUpdates.description,
             isFavorite: restUpdates.isFavorite,
             allowedSubagents: restUpdates.allowedSubagents,
+            allowedSkillIds: restUpdates.allowedSkillIds,
+            allowedTools: restUpdates.allowedTools,
           },
         });
 

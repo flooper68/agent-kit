@@ -11,6 +11,7 @@ import { AdvancedModelSection } from '../../components/agent-builder/sections/Ad
 import { SystemPromptSection } from '../../components/agent-builder/sections/SystemPromptSection';
 import { ToolsSection } from '../../components/agent-builder/sections/ToolsSection';
 import { AllowedSubAgentsSection } from '../../components/agent-builder/sections/AllowedSubAgentsSection';
+import { SkillsSection } from '../../components/agent-builder/sections/SkillsSection';
 import {
   type AgentFormData,
   DEFAULT_AGENT_FORM_DATA,
@@ -147,6 +148,7 @@ export function CreateServerAgentPage() {
       thinkingConfig: formData.thinkingConfig,
       isFavorite: formData.isFavorite,
       allowedSubagents: formData.allowedSubagents,
+      allowedSkillIds: formData.allowedSkillIds,
     });
   };
 
@@ -209,6 +211,8 @@ export function CreateServerAgentPage() {
                 formData={formData}
                 onChange={updateFormData}
               />
+
+              <SkillsSection formData={formData} onChange={updateFormData} />
             </Tabs.Content>
 
             <Tabs.Content value="advanced" className="mt-0 space-y-8">

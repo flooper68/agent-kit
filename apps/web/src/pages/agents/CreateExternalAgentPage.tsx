@@ -5,6 +5,8 @@ import { Input, Text, Textarea, useToast } from '@agent-kit/ui';
 import { trpc } from '../../lib/trpc';
 import { AgentFormPageLayout } from '../../components/agents/AgentFormPageLayout';
 import { AllowedSubAgentsSection } from '../../components/agent-builder/sections/AllowedSubAgentsSection';
+import { SkillsSection } from '../../components/agent-builder/sections/SkillsSection';
+import { ToolsSection } from '../../components/agent-builder/sections/ToolsSection';
 import {
   type AgentFormData,
   type AllowedSubagents,
@@ -23,10 +25,13 @@ export function CreateExternalAgentPage() {
   const [allowedSubagents, setAllowedSubagents] = useState<AllowedSubagents>(
     {}
   );
+  const [allowedSkillIds, setAllowedSkillIds] = useState<string[]>([]);
+  const [allowedTools, setAllowedTools] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const utils = trpc.useUtils();
+  const toolsQuery = trpc.agents.listTools.useQuery();
 
   // Set page title
   useEffect(() => {
@@ -88,13 +93,17 @@ export function CreateExternalAgentPage() {
       name: name.trim(),
       description: description.trim() || undefined,
       allowedSubagents,
+      allowedSkillIds,
+      allowedTools,
     });
   };
 
-  // Create a partial formData object for the AllowedSubAgentsSection
+  // Create a partial formData object for the sections
   const formDataForSection: AgentFormData = {
     ...DEFAULT_AGENT_FORM_DATA,
     allowedSubagents,
+    allowedSkillIds,
+    tools: allowedTools,
   };
 
   return (
@@ -155,6 +164,25 @@ export function CreateExternalAgentPage() {
               setAllowedSubagents(updates.allowedSubagents);
             }
           }}
+        />
+
+        <SkillsSection
+          formData={formDataForSection}
+          onChange={(updates) => {
+            if (updates.allowedSkillIds) {
+              setAllowedSkillIds(updates.allowedSkillIds);
+            }
+          }}
+        />
+
+        <ToolsSection
+          formData={formDataForSection}
+          onChange={(updates) => {
+            if (updates.tools) {
+              setAllowedTools(updates.tools);
+            }
+          }}
+          tools={toolsQuery.data ?? []}
         />
       </form>
     </AgentFormPageLayout>

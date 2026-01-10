@@ -233,43 +233,6 @@ export const AllStatesWithDialog: Story = {
 // Skill tool stories - tests special display handling
 // These tools show friendly names instead of generic tool names
 
-export const ExecuteSkillDirect: Story = {
-  args: {
-    toolName: 'executeSkill',
-    state: 'completed',
-    args: {
-      command: 'webSearch --query "typescript best practices"',
-    },
-    result: createResult({ results: ['result1', 'result2'] }),
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Direct executeSkill call shows "Web Search: query"',
-      },
-    },
-  },
-};
-
-export const ExecuteSkillMCP: Story = {
-  args: {
-    toolName: 'mcp__agent-kit-server__executeSkill',
-    state: 'completed',
-    args: {
-      command: 'webSearch --query "react hooks tutorial"',
-    },
-    result: createResult({ results: ['hook info'] }),
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'MCP-prefixed executeSkill shows same "Web Search: query" display',
-      },
-    },
-  },
-};
-
 export const ReadSkillFileDirect: Story = {
   args: {
     toolName: 'readSkillFile',
@@ -304,37 +267,38 @@ export const ReadSkillFileMCP: Story = {
   },
 };
 
-export const GrepSkillsDirect: Story = {
+export const ListSkillFilesDirect: Story = {
   args: {
-    toolName: 'grepSkills',
+    toolName: 'listSkillFiles',
     state: 'completed',
     args: {
-      pattern: 'create task',
+      skillKey: 'web-research',
     },
-    result: createResult({ matches: ['line 1', 'line 2'] }),
+    result: createResult({ files: ['SKILL.md', 'references/tips.md'] }),
   },
   parameters: {
     docs: {
       description: {
-        story: 'Direct grepSkills call shows "Search: pattern"',
+        story: 'Direct listSkillFiles call shows "Files: skillKey"',
       },
     },
   },
 };
 
-export const GrepSkillsMCP: Story = {
+export const ListSkillFilesMCP: Story = {
   args: {
-    toolName: 'mcp__agent-kit-server__grepSkills',
+    toolName: 'mcp__agent-kit-server__listSkillFiles',
     state: 'completed',
     args: {
-      pattern: 'web search',
+      skillKey: 'project-management',
     },
-    result: createResult({ matches: ['skill doc'] }),
+    result: createResult({ files: ['SKILL.md'] }),
   },
   parameters: {
     docs: {
       description: {
-        story: 'MCP-prefixed grepSkills shows same "Search: pattern" display',
+        story:
+          'MCP-prefixed listSkillFiles shows same "Files: skillKey" display',
       },
     },
   },
@@ -346,37 +310,27 @@ export const AllSkillTools: Story = {
       <div className="text-sm font-medium">Direct tool names:</div>
       <div className="flex flex-wrap gap-2">
         <ToolBadge
-          toolName="executeSkill"
-          state="completed"
-          args={{ command: 'webSearch --query "test"' }}
-        />
-        <ToolBadge
           toolName="readSkillFile"
           state="running"
           args={{ path: 'skills/SKILL.md' }}
         />
         <ToolBadge
-          toolName="grepSkills"
+          toolName="listSkillFiles"
           state="completed"
-          args={{ pattern: 'search term' }}
+          args={{ skillKey: 'web-research' }}
         />
       </div>
       <div className="text-sm font-medium">MCP-prefixed tool names:</div>
       <div className="flex flex-wrap gap-2">
-        <ToolBadge
-          toolName="mcp__agent-kit-server__executeSkill"
-          state="completed"
-          args={{ command: 'webSearch --query "test"' }}
-        />
         <ToolBadge
           toolName="mcp__agent-kit-server__readSkillFile"
           state="running"
           args={{ path: 'skills/SKILL.md' }}
         />
         <ToolBadge
-          toolName="mcp__agent-kit-server__grepSkills"
+          toolName="mcp__agent-kit-server__listSkillFiles"
           state="completed"
-          args={{ pattern: 'search term' }}
+          args={{ skillKey: 'web-research' }}
         />
       </div>
     </div>
@@ -386,6 +340,104 @@ export const AllSkillTools: Story = {
       description: {
         story:
           'Comparison of direct vs MCP-prefixed tool names. Both should display identically.',
+      },
+    },
+  },
+};
+
+// executeCommand stories - tests special display for CLI-style commands
+
+export const ExecuteCommandDirect: Story = {
+  args: {
+    toolName: 'executeCommand',
+    state: 'running',
+    args: {
+      command: 'webSearch --query "react tutorials"',
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Direct executeCommand shows inner tool name and first arg (e.g., "Web Search: react tutorials")',
+      },
+    },
+  },
+};
+
+export const ExecuteCommandMCP: Story = {
+  args: {
+    toolName: 'mcp__agent-kit-server__executeCommand',
+    state: 'running',
+    args: {
+      command: 'createTask --projectId abc123 --title "New feature"',
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'MCP-prefixed executeCommand shows same formatted display as direct call',
+      },
+    },
+  },
+};
+
+export const ExecuteCommandNoArgs: Story = {
+  args: {
+    toolName: 'executeCommand',
+    state: 'completed',
+    args: {
+      command: 'getTime --timezone "America/New_York"',
+    },
+    result: createResult({ time: '2024-01-10T12:00:00-05:00' }),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'executeCommand with only flags (no positional args) shows just the tool name',
+      },
+    },
+  },
+};
+
+export const AllExecuteCommandVariants: Story = {
+  render: () => (
+    <div className="space-y-4">
+      <div className="text-sm font-medium">Direct executeCommand:</div>
+      <div className="flex flex-wrap gap-2">
+        <ToolBadge
+          toolName="executeCommand"
+          state="running"
+          args={{ command: 'webSearch --query "react hooks"' }}
+        />
+        <ToolBadge
+          toolName="executeCommand"
+          state="completed"
+          args={{ command: 'createTask --title "Fix bug" --priority high' }}
+        />
+      </div>
+      <div className="text-sm font-medium">MCP-prefixed executeCommand:</div>
+      <div className="flex flex-wrap gap-2">
+        <ToolBadge
+          toolName="mcp__agent-kit-server__executeCommand"
+          state="running"
+          args={{ command: 'webSearch --query "typescript best practices"' }}
+        />
+        <ToolBadge
+          toolName="mcp__agent-kit-server__executeCommand"
+          state="completed"
+          args={{ command: 'getTime --timezone "UTC"' }}
+        />
+      </div>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Comparison of direct vs MCP-prefixed executeCommand. Both should display identically.',
       },
     },
   },

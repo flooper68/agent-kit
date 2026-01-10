@@ -1,6 +1,7 @@
 import {
   serverAgents,
   serverAgentAllowedSubagents,
+  serverAgentAllowedSkills,
   type ServerAgent,
   type ThinkingConfig,
 } from '../../../db/schema';
@@ -44,6 +45,8 @@ export interface CreateServerAgentInput {
   isFavorite?: boolean;
   // Sub-agent permissions
   allowedSubagents?: AllowedSubagentsInput;
+  // Skill permissions
+  allowedSkillIds?: string[];
 }
 
 export type CreateServerAgentResult = ServerAgent;
@@ -139,6 +142,15 @@ export class CreateServerAgentCommand {
         if (junctionRows.length > 0) {
           await tx.insert(serverAgentAllowedSubagents).values(junctionRows);
         }
+      }
+
+      // Insert allowed skills into junction table
+      if (input.allowedSkillIds && input.allowedSkillIds.length > 0) {
+        const skillRows = input.allowedSkillIds.map((skillId) => ({
+          serverAgentId: agent.id,
+          skillId,
+        }));
+        await tx.insert(serverAgentAllowedSkills).values(skillRows);
       }
 
       // Publish cache invalidation event

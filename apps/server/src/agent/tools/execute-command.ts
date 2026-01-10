@@ -1,5 +1,5 @@
 /**
- * executeSkill tool
+ * executeCommand tool
  *
  * Executes tools using CLI-style command strings.
  * This provides a natural interface for running tools.
@@ -16,10 +16,11 @@ import type { Tool } from '../types';
 import type { ExecuteSkillResult, ParsedCommand } from '../skills/types';
 import { getToolsById, type ToolContext } from './index';
 import { logger } from '../logger';
+import { SERVER_TOOL_DEFINITIONS } from '@agent-kit/shared';
 
-const log = logger.child({ module: 'execute-skill-tool' });
+const log = logger.child({ module: 'execute-command-tool' });
 
-export interface ExecuteSkillToolContext {
+export interface ExecuteCommandToolContext {
   /** Tool context for creating actual tools */
   toolContext: ToolContext;
 }
@@ -192,27 +193,15 @@ function parseValue(value: string): unknown {
 }
 
 /**
- * Create the executeSkill tool
+ * Create the executeCommand tool
  */
-export function createExecuteSkillTool(context: ExecuteSkillToolContext): Tool {
+export function createExecuteCommandTool(
+  context: ExecuteCommandToolContext
+): Tool {
   return tool({
-    description: `Execute a tool using CLI-style syntax.
-
-Command format:
-  toolName --arg1 value1 --arg2 "value with spaces"
-
-Examples:
-  webSearch --query "typescript best practices"
-  createTask --projectId abc123 --title "Implement feature" --priority high
-  readArtifact --artifactId def456
-  getTime --timezone "America/New_York"
-
-Notes:
-- Use quotes for values with spaces
-- Boolean flags: --verbose (sets to true)
-- Numbers are parsed automatically
-- JSON objects/arrays supported in quotes`,
-
+    // Use shared description from @agent-kit/shared (single source of truth)
+    description: SERVER_TOOL_DEFINITIONS.executeCommand.description,
+    // Schema inlined to avoid TypeScript recursion issues with AI SDK type inference
     inputSchema: z.object({
       command: z
         .string()
@@ -227,7 +216,7 @@ Notes:
     }: {
       command: string;
     }): Promise<ExecuteSkillResult> => {
-      log.info('Executing skill command', { command });
+      log.info('Executing command', { command });
 
       // Parse the command
       let parsed: ParsedCommand;

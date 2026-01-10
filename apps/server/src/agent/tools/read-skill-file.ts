@@ -20,6 +20,7 @@ import type { Tool } from '../types';
 import type { SkillsFeature } from '../../features/skills';
 import type { SkillFileContent } from '../skills/types';
 import { logger } from '../logger';
+import { SERVER_TOOL_DEFINITIONS } from '@agent-kit/shared';
 
 const log = logger.child({ module: 'read-skill-file-tool' });
 
@@ -30,6 +31,8 @@ export interface ReadSkillFileToolContext {
   userId: string;
   orgId: string;
   skillsFeature: SkillsFeature;
+  /** Allowed skill IDs for this agent (empty = no skills) */
+  allowedSkillIds: string[];
 }
 
 /**
@@ -94,24 +97,14 @@ export function createReadSkillFileTool(
   context: ReadSkillFileToolContext
 ): Tool {
   return tool({
-    description: `Read a skill file by path.
-
-Like \`cat\` or \`head\` in bash. Supports partial reading with lines/offset.
-
-Skills are documentation bundles that teach you how to use related tools.
-Read a skill's SKILL.md to learn about its tools and workflows.
-
-Path format: "skillKey/filePath" (e.g., "web-research/SKILL.md")
-
-Use grepSkills to search for relevant files first.`,
-
+    // Use shared description from @agent-kit/shared (single source of truth)
+    description: SERVER_TOOL_DEFINITIONS.readSkillFile.description,
+    // Schema inlined to avoid TypeScript recursion issues with AI SDK type inference
     inputSchema: z.object({
       path: z
         .string()
         .min(1)
-        .describe(
-          'File path in format "skillKey/filePath" (e.g., "web-research/SKILL.md")'
-        ),
+        .describe('File path in format "skillKey/filePath"'),
       lines: z
         .number()
         .int()
@@ -150,6 +143,16 @@ Use grepSkills to search for relevant files first.`,
       const { skillKey, relativePath } = parsed;
 
       try {
+        // Check if any skills are allowed
+        if (context.allowedSkillIds.length === 0) {
+          log.info('No skills allowed for this agent');
+          return {
+            success: false,
+            error:
+              'No skills are available. This agent has no skills configured.',
+          };
+        }
+
         // Find the skill from database
         const skill = await context.skillsFeature.getByKey({
           key: skillKey,
@@ -159,15 +162,36 @@ Use grepSkills to search for relevant files first.`,
 
         if (!skill) {
           // Get all available skills to show in error
-          const allSkills = await context.skillsFeature.getAll({
+          let allSkills = await context.skillsFeature.getAll({
             userId: context.userId,
             orgId: context.orgId,
           });
+          // Filter to only allowed skills
+          allSkills = allSkills.filter((s) =>
+            context.allowedSkillIds.includes(s.id)
+          );
           const availableKeys = allSkills.map((s) => s.key).join(', ');
           log.warn('Skill not found', { skillKey, availableKeys });
           return {
             success: false,
             error: `Skill "${skillKey}" not found. Available skills: ${availableKeys}`,
+          };
+        }
+
+        // Check if this skill is allowed
+        if (!context.allowedSkillIds.includes(skill.id)) {
+          let allSkills = await context.skillsFeature.getAll({
+            userId: context.userId,
+            orgId: context.orgId,
+          });
+          allSkills = allSkills.filter((s) =>
+            context.allowedSkillIds.includes(s.id)
+          );
+          const availableKeys = allSkills.map((s) => s.key).join(', ');
+          log.warn('Skill not allowed', { skillKey, availableKeys });
+          return {
+            success: false,
+            error: `Skill "${skillKey}" is not available. Available skills: ${availableKeys}`,
           };
         }
 

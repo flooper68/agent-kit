@@ -5,6 +5,8 @@ import {
   externalAgents,
   serverAgentAllowedSubagents,
   externalAgentAllowedSubagents,
+  serverAgentAllowedSkills,
+  externalAgentAllowedSkills,
   type ServerAgent,
   type ExternalAgent,
 } from '../../../db/schema';
@@ -22,6 +24,7 @@ export interface AllowedSubagentsResult {
 export type GetAgentByIdResult =
   | ((ServerAgent | ExternalAgent) & {
       allowedSubagents: AllowedSubagentsResult;
+      allowedSkillIds: string[];
     })
   | null;
 
@@ -50,8 +53,11 @@ export class GetAgentByIdQuery {
       );
 
     if (serverAgent) {
-      const allowedSubagents = await this.getServerAgentAllowedSubagents(id);
-      return { ...serverAgent, allowedSubagents };
+      const [allowedSubagents, allowedSkillIds] = await Promise.all([
+        this.getServerAgentAllowedSubagents(id),
+        this.getServerAgentAllowedSkillIds(id),
+      ]);
+      return { ...serverAgent, allowedSubagents, allowedSkillIds };
     }
 
     // Try to find as external agent
@@ -67,8 +73,11 @@ export class GetAgentByIdQuery {
       );
 
     if (externalAgent) {
-      const allowedSubagents = await this.getExternalAgentAllowedSubagents(id);
-      return { ...externalAgent, allowedSubagents };
+      const [allowedSubagents, allowedSkillIds] = await Promise.all([
+        this.getExternalAgentAllowedSubagents(id),
+        this.getExternalAgentAllowedSkillIds(id),
+      ]);
+      return { ...externalAgent, allowedSubagents, allowedSkillIds };
     }
 
     return null;
@@ -129,5 +138,31 @@ export class GetAgentByIdQuery {
     }
 
     return { serverAgentIds, externalAgentIds };
+  }
+
+  private async getServerAgentAllowedSkillIds(
+    serverAgentId: string
+  ): Promise<string[]> {
+    const entries = await this.db
+      .select({
+        skillId: serverAgentAllowedSkills.skillId,
+      })
+      .from(serverAgentAllowedSkills)
+      .where(eq(serverAgentAllowedSkills.serverAgentId, serverAgentId));
+
+    return entries.map((e) => e.skillId);
+  }
+
+  private async getExternalAgentAllowedSkillIds(
+    externalAgentId: string
+  ): Promise<string[]> {
+    const entries = await this.db
+      .select({
+        skillId: externalAgentAllowedSkills.skillId,
+      })
+      .from(externalAgentAllowedSkills)
+      .where(eq(externalAgentAllowedSkills.externalAgentId, externalAgentId));
+
+    return entries.map((e) => e.skillId);
   }
 }

@@ -11,6 +11,7 @@ import { AdvancedModelSection } from '../../components/agent-builder/sections/Ad
 import { SystemPromptSection } from '../../components/agent-builder/sections/SystemPromptSection';
 import { ToolsSection } from '../../components/agent-builder/sections/ToolsSection';
 import { AllowedSubAgentsSection } from '../../components/agent-builder/sections/AllowedSubAgentsSection';
+import { SkillsSection } from '../../components/agent-builder/sections/SkillsSection';
 import {
   type AgentFormData,
   type AllowedSubagents,
@@ -40,6 +41,8 @@ type ExternalFormData = {
   name: string;
   description: string;
   allowedSubagents: AllowedSubagents;
+  allowedSkillIds: string[];
+  allowedTools: string[];
 };
 
 export function EditAgentPage() {
@@ -61,6 +64,12 @@ export function EditAgentPage() {
   const [externalDescription, setExternalDescription] = useState('');
   const [externalAllowedSubagents, setExternalAllowedSubagents] =
     useState<AllowedSubagents>({});
+  const [externalAllowedSkillIds, setExternalAllowedSkillIds] = useState<
+    string[]
+  >([]);
+  const [externalAllowedTools, setExternalAllowedTools] = useState<string[]>(
+    []
+  );
 
   const utils = trpc.useUtils();
 
@@ -88,9 +97,9 @@ export function EditAgentPage() {
     }
   }, [agentQuery.data]);
 
-  // Fetch tools and models for server agent form
+  // Fetch tools for agent form (both server and external agents)
   const toolsQuery = trpc.agents.listTools.useQuery(undefined, {
-    enabled: isServerAgent === true,
+    enabled: isServerAgent !== null,
   });
   const modelsQuery = trpc.agents.listModels.useQuery(undefined, {
     enabled: isServerAgent === true,
@@ -168,18 +177,29 @@ export function EditAgentPage() {
       name: externalName,
       description: externalDescription,
       allowedSubagents: externalAllowedSubagents,
+      allowedSkillIds: externalAllowedSkillIds,
+      allowedTools: externalAllowedTools,
     }),
-    [externalKey, externalName, externalDescription, externalAllowedSubagents]
+    [
+      externalKey,
+      externalName,
+      externalDescription,
+      externalAllowedSubagents,
+      externalAllowedSkillIds,
+      externalAllowedTools,
+    ]
   );
 
   // Autosave for server agents
   const serverAutosave = useAutosave({
     data: serverFormData,
     enabled: isServerAgent === true && !!id && isThinkingValid,
-    isPending: autosaveMutation.isPending,
     onSave: useCallback(
-      (data: AgentFormData) => {
-        if (!id) return;
+      (data: AgentFormData, done: () => void) => {
+        if (!id) {
+          done();
+          return;
+        }
         const dataToSave = { ...data };
         autosaveMutation.mutate(
           {
@@ -197,11 +217,13 @@ export function EditAgentPage() {
             thinkingConfig: data.thinkingConfig,
             isFavorite: data.isFavorite,
             allowedSubagents: data.allowedSubagents,
+            allowedSkillIds: data.allowedSkillIds,
           },
           {
             onSuccess: () => {
               serverAutosave.lastSavedDataRef.current = dataToSave;
             },
+            onSettled: done,
           }
         );
       },
@@ -214,10 +236,12 @@ export function EditAgentPage() {
   const externalAutosave = useAutosave({
     data: externalFormData,
     enabled: isServerAgent === false && !!id,
-    isPending: autosaveMutation.isPending,
     onSave: useCallback(
-      (data: ExternalFormData) => {
-        if (!id) return;
+      (data: ExternalFormData, done: () => void) => {
+        if (!id) {
+          done();
+          return;
+        }
         const dataToSave = { ...data };
         autosaveMutation.mutate(
           {
@@ -226,11 +250,14 @@ export function EditAgentPage() {
             name: data.name.trim(),
             description: data.description.trim() || undefined,
             allowedSubagents: data.allowedSubagents,
+            allowedSkillIds: data.allowedSkillIds,
+            allowedTools: data.allowedTools,
           },
           {
             onSuccess: () => {
               externalAutosave.lastSavedDataRef.current = dataToSave;
             },
+            onSettled: done,
           }
         );
       },
@@ -245,6 +272,8 @@ export function EditAgentPage() {
       // API returns allowedSubagents as { serverAgentIds, externalAgentIds }
       const allowedSubagents: AllowedSubagents =
         agentQuery.data.allowedSubagents ?? {};
+      // API returns allowedSkillIds as string[]
+      const allowedSkillIds: string[] = agentQuery.data.allowedSkillIds ?? [];
 
       // Check if it's a server agent using 'provider' in data for proper type narrowing
       if ('provider' in agentQuery.data) {
@@ -266,20 +295,27 @@ export function EditAgentPage() {
             data.thinkingConfig as AgentFormData['thinkingConfig'],
           isFavorite: data.isFavorite ?? false,
           allowedSubagents,
+          allowedSkillIds,
         };
         setServerFormData(formData);
         serverAutosave.lastSavedDataRef.current = formData;
       } else {
+        // External agent - includes allowedTools
+        const allowedTools: string[] = agentQuery.data.allowedTools ?? [];
         const externalData: ExternalFormData = {
           key: agentQuery.data.key,
           name: agentQuery.data.name,
           description: agentQuery.data.description ?? '',
           allowedSubagents,
+          allowedSkillIds,
+          allowedTools,
         };
         setExternalKey(externalData.key);
         setExternalName(externalData.name);
         setExternalDescription(externalData.description);
         setExternalAllowedSubagents(externalData.allowedSubagents);
+        setExternalAllowedSkillIds(externalData.allowedSkillIds);
+        setExternalAllowedTools(externalData.allowedTools);
         externalAutosave.lastSavedDataRef.current = externalData;
       }
     }
@@ -370,6 +406,12 @@ export function EditAgentPage() {
                   currentAgentId={id}
                   onBlur={serverAutosave.trigger}
                 />
+
+                <SkillsSection
+                  formData={serverFormData}
+                  onChange={updateServerFormData}
+                  onBlur={serverAutosave.trigger}
+                />
               </Tabs.Content>
 
               <Tabs.Content value="advanced" className="mt-0 space-y-8">
@@ -447,6 +489,33 @@ export function EditAgentPage() {
             }
           }}
           currentAgentId={id}
+          onBlur={externalAutosave.trigger}
+        />
+
+        <SkillsSection
+          formData={{
+            ...DEFAULT_AGENT_FORM_DATA,
+            allowedSkillIds: externalAllowedSkillIds,
+          }}
+          onChange={(updates) => {
+            if (updates.allowedSkillIds) {
+              setExternalAllowedSkillIds(updates.allowedSkillIds);
+            }
+          }}
+          onBlur={externalAutosave.trigger}
+        />
+
+        <ToolsSection
+          formData={{
+            ...DEFAULT_AGENT_FORM_DATA,
+            tools: externalAllowedTools,
+          }}
+          onChange={(updates) => {
+            if (updates.tools) {
+              setExternalAllowedTools(updates.tools);
+            }
+          }}
+          tools={toolsQuery.data ?? []}
           onBlur={externalAutosave.trigger}
         />
       </div>

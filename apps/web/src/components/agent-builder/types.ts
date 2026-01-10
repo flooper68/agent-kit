@@ -36,6 +36,8 @@ export interface AgentFormData {
   isFavorite: boolean;
   // Sub-agent permissions
   allowedSubagents: AllowedSubagents;
+  // Skill permissions
+  allowedSkillIds: string[];
 }
 
 export const DEFAULT_AGENT_FORM_DATA: AgentFormData = {
@@ -52,6 +54,7 @@ export const DEFAULT_AGENT_FORM_DATA: AgentFormData = {
   thinkingConfig: null,
   isFavorite: false,
   allowedSubagents: {},
+  allowedSkillIds: [],
 };
 
 export interface ToolMetadata {

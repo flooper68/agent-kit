@@ -239,6 +239,34 @@
       "when": 1767900000017,
       "tag": "0033_refactor_skill_management_skill",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1767900000018,
+      "tag": "0034_add_agent_allowed_skills",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1767900000019,
+      "tag": "0035_add_external_agent_allowed_tools",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1767900000020,
+      "tag": "0036_update_skill_management_index_linking",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1767900000021,
+      "tag": "0037_rename_skill_tools_in_agents",
+      "breakpoints": true
     }
   ]
 }

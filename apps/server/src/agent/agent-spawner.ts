@@ -7,6 +7,7 @@ import type { JobRegistryManager } from './job-registry-manager';
 import type { CacheInvalidationService } from '../real-time';
 import { SPAWN_CONFIG } from './spawn-config';
 import { logger } from './logger';
+import { buildSystemPrompt } from './system-prompt-builder';
 
 /**
  * Input for both spawn() and spawnAndWait() methods.
@@ -514,19 +515,29 @@ export class AgentSpawner {
     // Publish cache invalidation
     await this.cacheInvalidation.publishSessionMessageAdded(userId, sessionId);
 
-    // Fetch session history and allowed subagents in parallel
-    const [sessionHistory, allowedSubagents] = await Promise.all([
+    // Fetch session history and allowed skills in parallel
+    const [sessionHistory, allowedSkills] = await Promise.all([
       this.agentsFeature.sessions.getMessagesAndEvents(sessionId),
-      this.agentsFeature.permissions.getAllowedSubagents(agentKey, userId),
+      this.agentsFeature.permissions.getAllowedSkills(agentKey, userId),
     ]);
 
     if (!sessionHistory) {
       throw new Error('Failed to fetch session history');
     }
 
+    // Build the dynamic system prompt sections (skills + spawnable agents)
+    const agentKitSystemPrompt = await buildSystemPrompt(
+      '', // empty base - we only want the injected sections
+      this.agentsFeature,
+      userId,
+      true, // include spawnable agents
+      allowedSkills,
+      agentKey
+    );
+
     // Build metadata for external agent
     const metadata: Record<string, unknown> = {
-      allowedSubagents,
+      agentKitSystemPrompt,
     };
 
     // Send to external agent via WebSocket (using UUID for registry lookup)

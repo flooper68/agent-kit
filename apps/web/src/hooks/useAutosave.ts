@@ -7,10 +7,8 @@ export interface UseAutosaveOptions<TData> {
   enabled?: boolean;
   /** Debounce delay in milliseconds (default: 500) */
   debounceMs?: number;
-  /** Callback to perform the save operation */
-  onSave: (data: TData) => void;
-  /** Whether a save operation is currently in progress */
-  isPending?: boolean;
+  /** Callback to perform the save operation. Call done() when save completes. */
+  onSave: (data: TData, done: () => void) => void;
 }
 
 export interface UseAutosaveReturn<TData> {
@@ -26,7 +24,7 @@ export interface UseAutosaveReturn<TData> {
  * Features:
  * - Debounces save calls (default 500ms)
  * - Tracks last saved state to detect actual changes
- * - Queues saves when mutation is pending
+ * - Queues saves when a save is in-flight
  * - Cleans up timers on unmount
  *
  * @example
@@ -34,8 +32,17 @@ export interface UseAutosaveReturn<TData> {
  * const autosave = useAutosave({
  *   data: formData,
  *   enabled: isEditing && !!id,
- *   onSave: (data) => mutation.mutate({ id, ...data }),
- *   isPending: mutation.isPending,
+ *   onSave: (data, done) => {
+ *     mutation.mutate(
+ *       { id, ...data },
+ *       {
+ *         onSuccess: () => {
+ *           autosave.lastSavedDataRef.current = data;
+ *         },
+ *         onSettled: done,
+ *       }
+ *     );
+ *   },
  * });
  *
  * // Initialize last saved data when data loads
@@ -54,13 +61,15 @@ export function useAutosave<TData>({
   enabled = true,
   debounceMs = 500,
   onSave,
-  isPending = false,
 }: UseAutosaveOptions<TData>): UseAutosaveReturn<TData> {
   // Track last saved state
   const lastSavedDataRef = useRef<TData | null>(null);
 
-  // Track if a save is pending while mutation is in-flight
-  const pendingSaveRef = useRef(false);
+  // Track if a save is in-flight (controlled locally, not via React state)
+  const isSavingRef = useRef(false);
+
+  // Track if changes were made during a save
+  const hasPendingChangesRef = useRef(false);
 
   // Store debounce timeout
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -68,14 +77,27 @@ export function useAutosave<TData>({
   // Keep refs to latest values to avoid stale closures
   const dataRef = useRef(data);
   const enabledRef = useRef(enabled);
-  const isPendingRef = useRef(isPending);
   const onSaveRef = useRef(onSave);
+
+  // Ref to hold save function to avoid circular dependency
+  const saveRef = useRef<() => void>(() => {});
 
   // Update refs on each render
   dataRef.current = data;
   enabledRef.current = enabled;
-  isPendingRef.current = isPending;
   onSaveRef.current = onSave;
+
+  // Done callback - called by consumer when save completes
+  const handleSaveComplete = useCallback(() => {
+    isSavingRef.current = false;
+
+    // If changes were queued during save, save again
+    if (hasPendingChangesRef.current) {
+      hasPendingChangesRef.current = false;
+      // Use setTimeout to avoid potential call stack issues
+      setTimeout(() => saveRef.current(), 0);
+    }
+  }, []);
 
   // Core save function
   const save = useCallback(() => {
@@ -92,25 +114,19 @@ export function useAutosave<TData>({
       return; // No changes
     }
 
-    // If a mutation is in progress, queue another save
-    if (isPendingRef.current) {
-      pendingSaveRef.current = true;
+    // If a save is in-flight, queue for later
+    if (isSavingRef.current) {
+      hasPendingChangesRef.current = true;
       return;
     }
 
-    // Call onSave with current data
-    // Note: The caller should update lastSavedDataRef in their mutation's onSuccess
-    onSaveRef.current(currentData);
-  }, []);
+    // Mark as saving BEFORE calling onSave to prevent race conditions
+    isSavingRef.current = true;
+    onSaveRef.current(currentData, handleSaveComplete);
+  }, [handleSaveComplete]);
 
-  // Handle pending saves when mutation completes
-  useEffect(() => {
-    if (!isPending && pendingSaveRef.current) {
-      pendingSaveRef.current = false;
-      // Schedule another save to capture changes made during the save
-      setTimeout(() => save(), 0);
-    }
-  }, [isPending, save]);
+  // Keep saveRef updated
+  saveRef.current = save;
 
   // Debounced trigger function
   const trigger = useCallback(() => {
@@ -125,9 +141,9 @@ export function useAutosave<TData>({
 
     // Schedule save after debounce delay
     timeoutRef.current = setTimeout(() => {
-      save();
+      saveRef.current();
     }, debounceMs);
-  }, [save, debounceMs]);
+  }, [debounceMs]);
 
   // Cleanup on unmount
   useEffect(() => {

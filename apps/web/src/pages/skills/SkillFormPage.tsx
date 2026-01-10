@@ -91,10 +91,12 @@ export function SkillFormPage() {
   const autosave = useAutosave({
     data: formData,
     enabled: isEditing && !!id && !skillQuery.data?.isSystem,
-    isPending: autosaveMutation.isPending,
     onSave: useCallback(
-      (data: SkillFormData) => {
-        if (!id) return;
+      (data: SkillFormData, done: () => void) => {
+        if (!id) {
+          done();
+          return;
+        }
         const dataToSave = { ...data };
         autosaveMutation.mutate(
           {
@@ -108,6 +110,7 @@ export function SkillFormPage() {
             onSuccess: () => {
               autosave.lastSavedDataRef.current = dataToSave;
             },
+            onSettled: done,
           }
         );
       },

@@ -137,7 +137,6 @@ export class AgentJobHandler {
       const customAgent = customAgentResult.agent;
       if (!customAgent.disabled) {
         // Build agent definition from server agent config
-        // Always include spawnAgent tool for server agents
         agent = {
           id: customAgent.key,
           name: customAgent.name,
@@ -145,7 +144,7 @@ export class AgentJobHandler {
           systemPrompt: customAgent.systemPrompt,
           provider: customAgent.provider,
           model: customAgent.model,
-          tools: [...customAgent.tools, 'spawnAgent'],
+          tools: customAgent.tools,
         };
         // Capture model settings from agent config
         modelSettings = {
@@ -177,19 +176,29 @@ export class AgentJobHandler {
       return;
     }
 
+    // Fetch allowed skills for this agent
+    const allowedSkills = await this.agentsFeature.permissions.getAllowedSkills(
+      agentId,
+      userId
+    );
+    const allowedSkillIds = allowedSkills.map((s) => s.id);
+
     this.log.info('Starting job', {
       sessionId,
       model: agent.model,
       provider: agent.provider,
       isLocalAgent,
+      allowedSkillsCount: allowedSkills.length,
     });
 
-    // Build system prompt with available agents (spawnAgent is always enabled for server agents)
+    // Build system prompt with available agents and skills
     const systemPrompt = await buildSystemPrompt(
       agent.systemPrompt,
       this.agentsFeature,
       userId,
-      true
+      true,
+      allowedSkills,
+      agentId
     );
 
     // Get provider
@@ -272,6 +281,7 @@ export class AgentJobHandler {
         agentSpawner: this.agentSpawner,
         currentSpawnDepth,
         parentAgentKey: agentId, // Agent key for spawn validation
+        allowedSkillIds, // Skill filtering
       });
 
       // Publish message start event

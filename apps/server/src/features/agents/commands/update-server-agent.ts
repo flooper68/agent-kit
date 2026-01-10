@@ -2,6 +2,7 @@ import { eq, and } from 'drizzle-orm';
 import {
   serverAgents,
   serverAgentAllowedSubagents,
+  serverAgentAllowedSkills,
   type ServerAgent,
   type ThinkingConfig,
 } from '../../../db/schema';
@@ -37,6 +38,8 @@ export interface UpdateServerAgentInput {
     isFavorite?: boolean;
     // Sub-agent permissions
     allowedSubagents?: AllowedSubagentsInput;
+    // Skill permissions
+    allowedSkillIds?: string[];
   };
 }
 
@@ -56,8 +59,8 @@ export class UpdateServerAgentCommand {
       const { tx, cacheInvalidation } = ctx;
       const { id, userId, updates } = input;
 
-      // Extract allowedSubagents - we handle it separately via junction table
-      const { allowedSubagents, ...dbUpdates } = updates;
+      // Extract allowedSubagents and allowedSkillIds - we handle them separately via junction tables
+      const { allowedSubagents, allowedSkillIds, ...dbUpdates } = updates;
 
       // Validate agent configuration
       const validationResult = validateAgentConfiguration({
@@ -119,6 +122,23 @@ export class UpdateServerAgentCommand {
 
         if (junctionRows.length > 0) {
           await tx.insert(serverAgentAllowedSubagents).values(junctionRows);
+        }
+      }
+
+      // Update allowed skills if provided
+      if (allowedSkillIds !== undefined) {
+        // Delete existing skill junction records
+        await tx
+          .delete(serverAgentAllowedSkills)
+          .where(eq(serverAgentAllowedSkills.serverAgentId, id));
+
+        // Insert new skill junction records
+        if (allowedSkillIds.length > 0) {
+          const skillRows = allowedSkillIds.map((skillId) => ({
+            serverAgentId: id,
+            skillId,
+          }));
+          await tx.insert(serverAgentAllowedSkills).values(skillRows);
         }
       }
 

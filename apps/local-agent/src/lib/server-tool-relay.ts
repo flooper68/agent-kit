@@ -11,8 +11,8 @@ const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds
  * Tools not listed here use DEFAULT_TIMEOUT_MS.
  */
 const TOOL_TIMEOUTS: Partial<Record<ServerToolName, number>> = {
-  // executeSkill can run slow tools like webSearch
-  executeSkill: 60000, // 60 seconds
+  // executeCommand can run slow tools like webSearch
+  executeCommand: 60000, // 60 seconds
   // spawnAgent can take a while for sub-agent completion
   spawnAgent: 300000, // 5 minutes
 };
@@ -36,10 +36,10 @@ interface PendingRequest {
  * Handles sending requests to the server via WebSocket and tracking pending responses.
  *
  * Remote agents only have access to:
- * - Skill tools: grepSkills, readSkillFile, executeSkill
+ * - Skill tools: listSkillFiles, readSkillFile, executeCommand
  * - Agent spawning: spawnAgent
  *
- * All other functionality should be accessed via skills using executeSkill.
+ * All other functionality should be accessed via skills using executeCommand.
  */
 export class ServerToolRelay {
   private pendingRequests = new Map<string, PendingRequest>();
@@ -193,7 +193,12 @@ export class ServerToolRelay {
     });
 
     if (isError) {
-      pending.reject(new Error(String(result)));
+      // Extract error message from result object if present (server sends { error: message })
+      const errorMessage =
+        result && typeof result === 'object' && 'error' in result
+          ? String((result as { error: unknown }).error)
+          : String(result);
+      pending.reject(new Error(errorMessage));
     } else {
       pending.resolve(result);
     }
