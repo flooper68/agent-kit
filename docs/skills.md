@@ -127,12 +127,12 @@ When skill tools are used, the UI shows enhanced information instead of generic 
 
 ### Display Examples
 
-| Tool Call                                              | Badge Display                          |
-| ------------------------------------------------------ | -------------------------------------- |
-| `executeSkill --command "webSearch --query 'react'"` | Web Search: react                      |
-| `executeSkill --command "createTask --title 'Fix'"` | Create Task: Fix                       |
-| `readSkillFile --path "web-research/SKILL.md"`         | Learn: web-research/SKILL.md           |
-| `grepSkills --pattern "create task"`                   | Search: "create task"                  |
+| Tool Call                                            | Badge Display                |
+| ---------------------------------------------------- | ---------------------------- |
+| `executeSkill --command "webSearch --query 'react'"` | Web Search: react            |
+| `executeSkill --command "createTask --title 'Fix'"`  | Create Task: Fix             |
+| `readSkillFile --path "web-research/SKILL.md"`       | Learn: web-research/SKILL.md |
+| `grepSkills --pattern "create task"`                 | Search: "create task"        |
 
 ### Display Logic
 

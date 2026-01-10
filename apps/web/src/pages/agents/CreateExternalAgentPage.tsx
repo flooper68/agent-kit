@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Input, Text, Textarea, useToast } from '@agent-kit/ui';
+import { Plus, X } from 'lucide-react';
+import { Input, Text, Textarea, useToast } from '@agent-kit/ui';
 import { trpc } from '../../lib/trpc';
 import { AgentFormPageLayout } from '../../components/agents/AgentFormPageLayout';
 import { AllowedSubAgentsSection } from '../../components/agent-builder/sections/AllowedSubAgentsSection';
@@ -14,7 +15,8 @@ import { useHeaderActions } from '../../contexts/HeaderActionsContext';
 export function CreateExternalAgentPage() {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const { clearActions } = useHeaderActions();
+  const { setActions, clearActions } = useHeaderActions();
+  const formRef = useRef<HTMLFormElement>(null);
   const [key, setKey] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -22,18 +24,35 @@ export function CreateExternalAgentPage() {
     {}
   );
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const utils = trpc.useUtils();
-
-  // Clear header actions on mount
-  useEffect(() => {
-    clearActions();
-  }, [clearActions]);
 
   // Set page title
   useEffect(() => {
     document.title = 'Create External Agent | Agent Kit';
   }, []);
+
+  // Set header actions
+  useEffect(() => {
+    setActions([
+      {
+        id: 'cancel',
+        label: 'Cancel',
+        icon: <X className="h-4 w-4" />,
+        onClick: () => navigate('/app/agents'),
+        variant: 'outline',
+      },
+      {
+        id: 'create',
+        label: isSubmitting ? 'Creating...' : 'Create',
+        icon: <Plus className="h-4 w-4" />,
+        onClick: () => formRef.current?.requestSubmit(),
+        variant: 'primary',
+      },
+    ]);
+    return () => clearActions();
+  }, [setActions, clearActions, navigate, isSubmitting]);
 
   const createMutation = trpc.agents.createExternal.useMutation({
     onSuccess: (data) => {
@@ -56,12 +75,14 @@ export function CreateExternalAgentPage() {
     },
     onError: (err) => {
       setError(err.message);
+      setIsSubmitting(false);
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsSubmitting(true);
     createMutation.mutate({
       key: key.trim().toLowerCase().replace(/\s+/g, '-'),
       name: name.trim(),
@@ -81,7 +102,7 @@ export function CreateExternalAgentPage() {
       title="Create External Agent"
       description="Create a new external agent that connects via WebSocket."
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
         {error && (
           <div className="rounded-md bg-destructive/10 border border-destructive/50 p-3">
             <Text className="text-sm text-destructive">{error}</Text>
@@ -135,19 +156,6 @@ export function CreateExternalAgentPage() {
             }
           }}
         />
-
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate('/app/agents')}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" isLoading={createMutation.isPending}>
-            Create Agent
-          </Button>
-        </div>
       </form>
     </AgentFormPageLayout>
   );

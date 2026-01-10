@@ -4,43 +4,17 @@ import { z } from 'zod';
  * All server tool names available via the server tool relay.
  * This is the single source of truth for tool names used by both
  * the server-side WebSocket service and the local-agent MCP server.
+ *
+ * Remote agents only have access to skill tools and spawnAgent.
+ * All other functionality should be accessed via skills.
  */
 export const SERVER_TOOL_NAMES = [
-  // Static tools
-  'webSearch',
-  'fetch',
-  // Artifact tools
-  'writeArtifact',
-  'readArtifact',
-  'searchArtifacts',
-  // Project tools
-  'listProjects',
-  'searchProjects',
-  'getProject',
-  'createProject',
-  'updateProject',
-  'deleteProject',
-  // Task tools
-  'listTasks',
-  'searchTasks',
-  'getTask',
-  'createTask',
-  'updateTask',
-  'deleteTask',
-  'moveTask',
-  'reorderTask',
-  'attachArtifactToTask',
-  'detachArtifactFromTask',
-  // Client tools (relayed through server)
-  'navigateTo',
-  'getCurrentUIState',
-  // Agent tools
+  // Agent spawning
   'spawnAgent',
-  'listAgents',
-  'getAgent',
-  'updateAgent',
-  'setAgentEnabled',
-  'toggleAgentFavorite',
+  // Skill tools
+  'grepSkills',
+  'readSkillFile',
+  'executeSkill',
 ] as const;
 
 /**

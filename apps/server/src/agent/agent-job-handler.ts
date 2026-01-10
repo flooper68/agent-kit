@@ -9,6 +9,7 @@ import type { AgentsFeature } from '../features/agents';
 import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
+import type { SkillsFeature } from '../features/skills';
 import type { AgentSpawner } from './agent-spawner';
 import { getProvider } from './providers';
 import { getToolsById } from './tools';
@@ -47,6 +48,7 @@ export class AgentJobHandler {
   private artifactsFeature: ArtifactsFeature;
   private projectsFeature?: ProjectsFeature;
   private tasksFeature?: TasksFeature;
+  private skillsFeature?: SkillsFeature;
   private agentSpawner?: AgentSpawner;
   private pubsub: PubSubManager;
   private cacheInvalidation: CacheInvalidationService;
@@ -66,6 +68,7 @@ export class AgentJobHandler {
     workerId: string,
     projectsFeature?: ProjectsFeature,
     tasksFeature?: TasksFeature,
+    skillsFeature?: SkillsFeature,
     agentSpawner?: AgentSpawner
   ) {
     this.eventStreamManager = eventStreamManager;
@@ -78,6 +81,7 @@ export class AgentJobHandler {
     this.workerId = workerId;
     this.projectsFeature = projectsFeature;
     this.tasksFeature = tasksFeature;
+    this.skillsFeature = skillsFeature;
     this.agentSpawner = agentSpawner;
     this.log = logger.child({ workerId });
   }
@@ -262,6 +266,7 @@ export class AgentJobHandler {
         projectsFeature: this.projectsFeature,
         tasksFeature: this.tasksFeature,
         agentsFeature: this.agentsFeature,
+        skillsFeature: this.skillsFeature,
         eventStreamManager: this.eventStreamManager,
         pubsub: this.pubsub,
         agentSpawner: this.agentSpawner,

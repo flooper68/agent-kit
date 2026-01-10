@@ -17,11 +17,20 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../types';
-import { SKILLS, getSkillByKey } from '../skills';
+import type { SkillsFeature } from '../../features/skills';
 import type { SkillFileContent } from '../skills/types';
 import { logger } from '../logger';
 
 const log = logger.child({ module: 'read-skill-file-tool' });
+
+/**
+ * Context for read skill file tool
+ */
+export interface ReadSkillFileToolContext {
+  userId: string;
+  orgId: string;
+  skillsFeature: SkillsFeature;
+}
 
 /**
  * Parse a file path into skill key and relative path
@@ -76,27 +85,14 @@ function readLines(
 }
 
 /**
- * Get all available file paths across all skills
- */
-function getAllFilePaths(): string[] {
-  const paths: string[] = [];
-  for (const skill of SKILLS) {
-    for (const file of skill.files) {
-      paths.push(`${skill.key}/${file.path}`);
-    }
-  }
-  return paths;
-}
-
-/**
  * Create the readSkillFile tool
  *
  * This tool reads skill file content with optional partial reading.
  * Skills are documentation - no tracking or access control.
  */
-export function createReadSkillFileTool(): Tool {
-  const allPaths = getAllFilePaths();
-
+export function createReadSkillFileTool(
+  context: ReadSkillFileToolContext
+): Tool {
   return tool({
     description: `Read a skill file by path.
 
@@ -105,12 +101,7 @@ Like \`cat\` or \`head\` in bash. Supports partial reading with lines/offset.
 Skills are documentation bundles that teach you how to use related tools.
 Read a skill's SKILL.md to learn about its tools and workflows.
 
-Example paths:
-${allPaths
-  .slice(0, 10)
-  .map((p) => `- ${p}`)
-  .join('\n')}
-${allPaths.length > 10 ? `... and ${allPaths.length - 10} more` : ''}
+Path format: "skillKey/filePath" (e.g., "web-research/SKILL.md")
 
 Use grepSkills to search for relevant files first.`,
 
@@ -158,52 +149,71 @@ Use grepSkills to search for relevant files first.`,
 
       const { skillKey, relativePath } = parsed;
 
-      // Find the skill
-      const skill = getSkillByKey(skillKey);
-      if (!skill) {
-        const availableKeys = SKILLS.map((s) => s.key).join(', ');
-        log.warn('Skill not found', { skillKey, availableKeys });
-        return {
-          success: false,
-          error: `Skill "${skillKey}" not found. Available skills: ${availableKeys}`,
-        };
-      }
-
-      // Find the file
-      const file = skill.files.find((f) => f.path === relativePath);
-      if (!file) {
-        const availableFiles = skill.files.map((f) => f.path).join(', ');
-        log.warn('File not found in skill', {
-          skillKey,
-          relativePath,
-          availableFiles,
+      try {
+        // Find the skill from database
+        const skill = await context.skillsFeature.getByKey({
+          key: skillKey,
+          userId: context.userId,
+          orgId: context.orgId,
         });
+
+        if (!skill) {
+          // Get all available skills to show in error
+          const allSkills = await context.skillsFeature.getAll({
+            userId: context.userId,
+            orgId: context.orgId,
+          });
+          const availableKeys = allSkills.map((s) => s.key).join(', ');
+          log.warn('Skill not found', { skillKey, availableKeys });
+          return {
+            success: false,
+            error: `Skill "${skillKey}" not found. Available skills: ${availableKeys}`,
+          };
+        }
+
+        // Find the file
+        const files = skill.files as Array<{ path: string; content: string }>;
+        const file = files.find((f) => f.path === relativePath);
+        if (!file) {
+          const availableFiles = files.map((f) => f.path).join(', ');
+          log.warn('File not found in skill', {
+            skillKey,
+            relativePath,
+            availableFiles,
+          });
+          return {
+            success: false,
+            error: `File "${relativePath}" not found in skill "${skillKey}". Available files: ${availableFiles}`,
+          };
+        }
+
+        // Read the file content
+        const totalLines = getLineCount(file.content);
+        const partial = readLines(file.content, offset, lines);
+
+        log.info('File read completed', {
+          path,
+          totalLines,
+          startLine: partial.startLine,
+          endLine: partial.endLine,
+          hasMore: partial.hasMore,
+        });
+
+        return {
+          path,
+          content: partial.content,
+          totalLines,
+          startLine: partial.startLine,
+          endLine: partial.endLine,
+          hasMore: partial.hasMore,
+        };
+      } catch (error) {
+        log.error('Error reading skill file', { error });
         return {
           success: false,
-          error: `File "${relativePath}" not found in skill "${skillKey}". Available files: ${availableFiles}`,
+          error: 'Failed to read skill file',
         };
       }
-
-      // Read the file content
-      const totalLines = getLineCount(file.content);
-      const partial = readLines(file.content, offset, lines);
-
-      log.info('File read completed', {
-        path,
-        totalLines,
-        startLine: partial.startLine,
-        endLine: partial.endLine,
-        hasMore: partial.hasMore,
-      });
-
-      return {
-        path,
-        content: partial.content,
-        totalLines,
-        startLine: partial.startLine,
-        endLine: partial.endLine,
-        hasMore: partial.hasMore,
-      };
     },
   });
 }

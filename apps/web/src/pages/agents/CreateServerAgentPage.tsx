@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TRPCClientError } from '@trpc/client';
-import { Button, Text, Tabs, useToast } from '@agent-kit/ui';
+import { Plus, X } from 'lucide-react';
+import { Text, Tabs, useToast } from '@agent-kit/ui';
 import { trpc } from '../../lib/trpc';
 import { AgentFormPageLayout } from '../../components/agents/AgentFormPageLayout';
 import { IdentitySection } from '../../components/agent-builder/sections/IdentitySection';
@@ -38,25 +39,43 @@ function parseValidationError(error: unknown): ValidationFieldError[] {
 export function CreateServerAgentPage() {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const { clearActions } = useHeaderActions();
+  const { setActions, clearActions } = useHeaderActions();
+  const formRef = useRef<HTMLFormElement>(null);
   const [formData, setFormData] = useState<AgentFormData>(
     DEFAULT_AGENT_FORM_DATA
   );
   const [activeTab, setActiveTab] = useState('basic');
   const [error, setError] = useState<string | null>(null);
   const [isThinkingValid, setIsThinkingValid] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const utils = trpc.useUtils();
-
-  // Clear header actions on mount
-  useEffect(() => {
-    clearActions();
-  }, [clearActions]);
 
   // Set page title
   useEffect(() => {
     document.title = 'Create Agent | Agent Kit';
   }, []);
+
+  // Set header actions
+  useEffect(() => {
+    setActions([
+      {
+        id: 'cancel',
+        label: 'Cancel',
+        icon: <X className="h-4 w-4" />,
+        onClick: () => navigate('/app/agents'),
+        variant: 'outline',
+      },
+      {
+        id: 'create',
+        label: isSubmitting ? 'Creating...' : 'Create',
+        icon: <Plus className="h-4 w-4" />,
+        onClick: () => formRef.current?.requestSubmit(),
+        variant: 'primary',
+      },
+    ]);
+    return () => clearActions();
+  }, [setActions, clearActions, navigate, isSubmitting]);
 
   // Fetch tools and models
   const toolsQuery = trpc.agents.listTools.useQuery();
@@ -95,6 +114,7 @@ export function CreateServerAgentPage() {
         setActiveTab('advanced');
       }
       setError(err.message);
+      setIsSubmitting(false);
     },
   });
 
@@ -113,6 +133,7 @@ export function CreateServerAgentPage() {
       return;
     }
 
+    setIsSubmitting(true);
     createMutation.mutate({
       key: formData.key.trim().toLowerCase().replace(/\s+/g, '-'),
       name: formData.name.trim(),
@@ -140,7 +161,7 @@ export function CreateServerAgentPage() {
       title="Create Agent"
       description="Configure your custom AI agent with specific capabilities."
     >
-      <form onSubmit={handleSubmit}>
+      <form ref={formRef} onSubmit={handleSubmit}>
         {error && (
           <div className="rounded-md bg-destructive/10 border border-destructive/50 p-3 mb-4">
             <Text className="text-sm text-destructive">{error}</Text>
@@ -200,19 +221,6 @@ export function CreateServerAgentPage() {
             </Tabs.Content>
           </div>
         </Tabs>
-
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate('/app/agents')}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" isLoading={createMutation.isPending}>
-            Create Agent
-          </Button>
-        </div>
       </form>
     </AgentFormPageLayout>
   );

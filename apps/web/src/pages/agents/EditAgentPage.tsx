@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { TRPCClientError } from '@trpc/client';
 import { Button, Input, Text, Textarea, Tabs, useToast } from '@agent-kit/ui';
@@ -18,6 +18,7 @@ import {
 } from '../../components/agent-builder/types';
 import type { FieldError } from '../../components/agent-builder/providers';
 import { useHeaderActions } from '../../contexts/HeaderActionsContext';
+import { useAutosave } from '../../hooks/useAutosave';
 
 /**
  * Parse TRPC validation error into field errors
@@ -33,6 +34,13 @@ function parseValidationError(error: unknown): FieldError[] {
   }
   return [];
 }
+
+type ExternalFormData = {
+  key: string;
+  name: string;
+  description: string;
+  allowedSubagents: AllowedSubagents;
+};
 
 export function EditAgentPage() {
   const { id } = useParams<{ id: string }>();
@@ -53,15 +61,6 @@ export function EditAgentPage() {
   const [externalDescription, setExternalDescription] = useState('');
   const [externalAllowedSubagents, setExternalAllowedSubagents] =
     useState<AllowedSubagents>({});
-
-  // Refs to track last saved state for autosave
-  const lastSavedServerDataRef = useRef<AgentFormData | null>(null);
-  const lastSavedExternalDataRef = useRef<{
-    key: string;
-    name: string;
-    description: string;
-    allowedSubagents: AllowedSubagents;
-  } | null>(null);
 
   const utils = trpc.useUtils();
 
@@ -86,52 +85,6 @@ export function EditAgentPage() {
   useEffect(() => {
     if (agentQuery.data) {
       document.title = `Edit ${agentQuery.data.name} | Agent Kit`;
-    }
-  }, [agentQuery.data]);
-
-  // Initialize form data when agent loads
-  useEffect(() => {
-    if (agentQuery.data) {
-      // API returns allowedSubagents as { serverAgentIds, externalAgentIds }
-      const allowedSubagents: AllowedSubagents =
-        agentQuery.data.allowedSubagents ?? {};
-
-      // Check if it's a server agent using 'provider' in data for proper type narrowing
-      if ('provider' in agentQuery.data) {
-        const data = agentQuery.data;
-        const formData: AgentFormData = {
-          key: data.key,
-          name: data.name,
-          description: data.description ?? '',
-          provider:
-            (data.provider as 'anthropic' | 'openai' | 'gemini') ?? 'anthropic',
-          model: data.model ?? DEFAULT_AGENT_FORM_DATA.model,
-          systemPrompt:
-            data.systemPrompt ?? DEFAULT_AGENT_FORM_DATA.systemPrompt,
-          tools: data.tools ?? [],
-          temperature: data.temperature,
-          maxOutputTokens: data.maxOutputTokens,
-          maxContextTokens: data.maxContextTokens ?? null,
-          thinkingConfig:
-            data.thinkingConfig as AgentFormData['thinkingConfig'],
-          isFavorite: data.isFavorite ?? false,
-          allowedSubagents,
-        };
-        setServerFormData(formData);
-        lastSavedServerDataRef.current = formData;
-      } else {
-        const externalData = {
-          key: agentQuery.data.key,
-          name: agentQuery.data.name,
-          description: agentQuery.data.description ?? '',
-          allowedSubagents,
-        };
-        setExternalKey(externalData.key);
-        setExternalName(externalData.name);
-        setExternalDescription(externalData.description);
-        setExternalAllowedSubagents(externalData.allowedSubagents);
-        lastSavedExternalDataRef.current = externalData;
-      }
     }
   }, [agentQuery.data]);
 
@@ -208,185 +161,133 @@ export function EditAgentPage() {
     setServerFormData((prev) => ({ ...prev, ...updates }));
   };
 
-  // Ref to track pending save request
-  const pendingServerSaveRef = useRef(false);
-
-  // Core save function for server agent
-  const saveServerForm = useCallback(() => {
-    if (!id || !lastSavedServerDataRef.current) return;
-
-    // Don't save if there are validation errors
-    if (!isThinkingValid) {
-      return;
-    }
-
-    // Compare current form data with last saved data
-    if (
-      JSON.stringify(serverFormData) ===
-      JSON.stringify(lastSavedServerDataRef.current)
-    ) {
-      return; // No changes
-    }
-
-    // If a save is already pending, mark that we need another save
-    if (autosaveMutation.isPending) {
-      pendingServerSaveRef.current = true;
-      return;
-    }
-
-    // Capture data to save for the onSuccess callback
-    const dataToSave = { ...serverFormData };
-
-    autosaveMutation.mutate(
-      {
-        id,
-        agentType: 'server' as const,
-        key: serverFormData.key.trim().toLowerCase().replace(/\s+/g, '-'),
-        name: serverFormData.name.trim(),
-        description: serverFormData.description.trim() || undefined,
-        provider: serverFormData.provider,
-        model: serverFormData.model,
-        systemPrompt: serverFormData.systemPrompt.trim(),
-        tools: serverFormData.tools,
-        temperature: serverFormData.temperature,
-        maxOutputTokens: serverFormData.maxOutputTokens,
-        thinkingConfig: serverFormData.thinkingConfig,
-        isFavorite: serverFormData.isFavorite,
-        allowedSubagents: serverFormData.allowedSubagents,
-      },
-      {
-        // Only update the ref on success to allow retry on failure
-        onSuccess: () => {
-          lastSavedServerDataRef.current = dataToSave;
-          // Check if there were changes during the save
-          if (pendingServerSaveRef.current) {
-            pendingServerSaveRef.current = false;
-            // Schedule another save to capture changes made during this save
-            setTimeout(() => saveServerForm(), 0);
-          }
-        },
-        onError: () => {
-          // Clear pending flag on error to avoid infinite retry loops
-          pendingServerSaveRef.current = false;
-        },
-      }
-    );
-  }, [id, serverFormData, autosaveMutation, isThinkingValid]);
-
-  // Debounced autosave handler - delays save by 500ms after last change
-  const serverAutosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
-
-  const handleServerAutosave = useCallback(() => {
-    // Clear any pending debounced save
-    if (serverAutosaveTimeoutRef.current) {
-      clearTimeout(serverAutosaveTimeoutRef.current);
-    }
-    // Schedule save after 500ms debounce
-    serverAutosaveTimeoutRef.current = setTimeout(() => {
-      saveServerForm();
-    }, 500);
-  }, [saveServerForm]);
-
-  // Cleanup debounce timer on unmount
-  useEffect(() => {
-    return () => {
-      if (serverAutosaveTimeoutRef.current) {
-        clearTimeout(serverAutosaveTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Ref to track pending external save request
-  const pendingExternalSaveRef = useRef(false);
-
-  // Core save function for external agent
-  const saveExternalForm = useCallback(() => {
-    if (!id || !lastSavedExternalDataRef.current) return;
-
-    const currentData = {
+  // External agent data object for autosave
+  const externalFormData = useMemo(
+    (): ExternalFormData => ({
       key: externalKey,
       name: externalName,
       description: externalDescription,
       allowedSubagents: externalAllowedSubagents,
-    };
+    }),
+    [externalKey, externalName, externalDescription, externalAllowedSubagents]
+  );
 
-    // Compare current form data with last saved data
-    if (
-      JSON.stringify(currentData) ===
-      JSON.stringify(lastSavedExternalDataRef.current)
-    ) {
-      return; // No changes
-    }
-
-    // If a save is already pending, mark that we need another save
-    if (autosaveMutation.isPending) {
-      pendingExternalSaveRef.current = true;
-      return;
-    }
-
-    // Capture data to save for the onSuccess callback
-    const dataToSave = { ...currentData };
-
-    autosaveMutation.mutate(
-      {
-        id,
-        agentType: 'external' as const,
-        name: externalName.trim(),
-        description: externalDescription.trim() || undefined,
-        allowedSubagents: externalAllowedSubagents,
-      },
-      {
-        // Only update the ref on success to allow retry on failure
-        onSuccess: () => {
-          lastSavedExternalDataRef.current = dataToSave;
-          // Check if there were changes during the save
-          if (pendingExternalSaveRef.current) {
-            pendingExternalSaveRef.current = false;
-            // Schedule another save to capture changes made during this save
-            setTimeout(() => saveExternalForm(), 0);
+  // Autosave for server agents
+  const serverAutosave = useAutosave({
+    data: serverFormData,
+    enabled: isServerAgent === true && !!id && isThinkingValid,
+    isPending: autosaveMutation.isPending,
+    onSave: useCallback(
+      (data: AgentFormData) => {
+        if (!id) return;
+        const dataToSave = { ...data };
+        autosaveMutation.mutate(
+          {
+            id,
+            agentType: 'server' as const,
+            key: data.key.trim().toLowerCase().replace(/\s+/g, '-'),
+            name: data.name.trim(),
+            description: data.description.trim() || undefined,
+            provider: data.provider,
+            model: data.model,
+            systemPrompt: data.systemPrompt.trim(),
+            tools: data.tools,
+            temperature: data.temperature,
+            maxOutputTokens: data.maxOutputTokens,
+            thinkingConfig: data.thinkingConfig,
+            isFavorite: data.isFavorite,
+            allowedSubagents: data.allowedSubagents,
+          },
+          {
+            onSuccess: () => {
+              serverAutosave.lastSavedDataRef.current = dataToSave;
+            },
           }
-        },
-        onError: () => {
-          // Clear pending flag on error to avoid infinite retry loops
-          pendingExternalSaveRef.current = false;
-        },
-      }
-    );
-  }, [
-    id,
-    externalKey,
-    externalName,
-    externalDescription,
-    externalAllowedSubagents,
-    autosaveMutation,
-  ]);
+        );
+      },
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [id, autosaveMutation]
+    ),
+  });
 
-  // Debounced autosave handler for external agent - delays save by 500ms after last change
-  const externalAutosaveTimeoutRef = useRef<ReturnType<
-    typeof setTimeout
-  > | null>(null);
+  // Autosave for external agents
+  const externalAutosave = useAutosave({
+    data: externalFormData,
+    enabled: isServerAgent === false && !!id,
+    isPending: autosaveMutation.isPending,
+    onSave: useCallback(
+      (data: ExternalFormData) => {
+        if (!id) return;
+        const dataToSave = { ...data };
+        autosaveMutation.mutate(
+          {
+            id,
+            agentType: 'external' as const,
+            name: data.name.trim(),
+            description: data.description.trim() || undefined,
+            allowedSubagents: data.allowedSubagents,
+          },
+          {
+            onSuccess: () => {
+              externalAutosave.lastSavedDataRef.current = dataToSave;
+            },
+          }
+        );
+      },
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [id, autosaveMutation]
+    ),
+  });
 
-  const handleExternalAutosave = useCallback(() => {
-    // Clear any pending debounced save
-    if (externalAutosaveTimeoutRef.current) {
-      clearTimeout(externalAutosaveTimeoutRef.current);
-    }
-    // Schedule save after 500ms debounce
-    externalAutosaveTimeoutRef.current = setTimeout(() => {
-      saveExternalForm();
-    }, 500);
-  }, [saveExternalForm]);
-
-  // Cleanup external debounce timer on unmount
+  // Initialize form data when agent loads
   useEffect(() => {
-    return () => {
-      if (externalAutosaveTimeoutRef.current) {
-        clearTimeout(externalAutosaveTimeoutRef.current);
+    if (agentQuery.data) {
+      // API returns allowedSubagents as { serverAgentIds, externalAgentIds }
+      const allowedSubagents: AllowedSubagents =
+        agentQuery.data.allowedSubagents ?? {};
+
+      // Check if it's a server agent using 'provider' in data for proper type narrowing
+      if ('provider' in agentQuery.data) {
+        const data = agentQuery.data;
+        const formData: AgentFormData = {
+          key: data.key,
+          name: data.name,
+          description: data.description ?? '',
+          provider:
+            (data.provider as 'anthropic' | 'openai' | 'gemini') ?? 'anthropic',
+          model: data.model ?? DEFAULT_AGENT_FORM_DATA.model,
+          systemPrompt:
+            data.systemPrompt ?? DEFAULT_AGENT_FORM_DATA.systemPrompt,
+          tools: data.tools ?? [],
+          temperature: data.temperature,
+          maxOutputTokens: data.maxOutputTokens,
+          maxContextTokens: data.maxContextTokens ?? null,
+          thinkingConfig:
+            data.thinkingConfig as AgentFormData['thinkingConfig'],
+          isFavorite: data.isFavorite ?? false,
+          allowedSubagents,
+        };
+        setServerFormData(formData);
+        serverAutosave.lastSavedDataRef.current = formData;
+      } else {
+        const externalData: ExternalFormData = {
+          key: agentQuery.data.key,
+          name: agentQuery.data.name,
+          description: agentQuery.data.description ?? '',
+          allowedSubagents,
+        };
+        setExternalKey(externalData.key);
+        setExternalName(externalData.name);
+        setExternalDescription(externalData.description);
+        setExternalAllowedSubagents(externalData.allowedSubagents);
+        externalAutosave.lastSavedDataRef.current = externalData;
       }
-    };
-  }, []);
+    }
+  }, [
+    agentQuery.data,
+    serverAutosave.lastSavedDataRef,
+    externalAutosave.lastSavedDataRef,
+  ]);
 
   const currentModel = modelsQuery.data?.find(
     (m) => m.id === serverFormData.model
@@ -438,7 +339,7 @@ export function EditAgentPage() {
                   formData={serverFormData}
                   onChange={updateServerFormData}
                   mode="edit"
-                  onBlur={handleServerAutosave}
+                  onBlur={serverAutosave.trigger}
                 />
 
                 <BasicModelSection
@@ -447,27 +348,27 @@ export function EditAgentPage() {
                   providers={providersQuery.data ?? []}
                   models={modelsQuery.data ?? []}
                   currentModel={currentModel}
-                  onBlur={handleServerAutosave}
+                  onBlur={serverAutosave.trigger}
                 />
 
                 <SystemPromptSection
                   formData={serverFormData}
                   onChange={updateServerFormData}
-                  onBlur={handleServerAutosave}
+                  onBlur={serverAutosave.trigger}
                 />
 
                 <ToolsSection
                   formData={serverFormData}
                   onChange={updateServerFormData}
                   tools={toolsQuery.data ?? []}
-                  onBlur={handleServerAutosave}
+                  onBlur={serverAutosave.trigger}
                 />
 
                 <AllowedSubAgentsSection
                   formData={serverFormData}
                   onChange={updateServerFormData}
                   currentAgentId={id}
-                  onBlur={handleServerAutosave}
+                  onBlur={serverAutosave.trigger}
                 />
               </Tabs.Content>
 
@@ -476,7 +377,7 @@ export function EditAgentPage() {
                   formData={serverFormData}
                   onChange={updateServerFormData}
                   currentModel={currentModel}
-                  onBlur={handleServerAutosave}
+                  onBlur={serverAutosave.trigger}
                   onValidationChange={handleThinkingValidationChange}
                 />
               </Tabs.Content>
@@ -515,7 +416,7 @@ export function EditAgentPage() {
           <Input
             value={externalName}
             onChange={(e) => setExternalName(e.target.value)}
-            onBlur={handleExternalAutosave}
+            onBlur={externalAutosave.trigger}
             placeholder="My Custom Agent"
             required
           />
@@ -529,7 +430,7 @@ export function EditAgentPage() {
           <Textarea
             value={externalDescription}
             onChange={(e) => setExternalDescription(e.target.value)}
-            onBlur={handleExternalAutosave}
+            onBlur={externalAutosave.trigger}
             placeholder="A helpful assistant for..."
             rows={3}
           />
@@ -546,7 +447,7 @@ export function EditAgentPage() {
             }
           }}
           currentAgentId={id}
-          onBlur={handleExternalAutosave}
+          onBlur={externalAutosave.trigger}
         />
       </div>
     </AgentFormPageLayout>

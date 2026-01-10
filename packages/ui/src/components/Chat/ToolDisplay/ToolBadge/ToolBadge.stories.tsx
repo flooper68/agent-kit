@@ -229,3 +229,164 @@ export const AllStatesWithDialog: Story = {
     },
   },
 };
+
+// Skill tool stories - tests special display handling
+// These tools show friendly names instead of generic tool names
+
+export const ExecuteSkillDirect: Story = {
+  args: {
+    toolName: 'executeSkill',
+    state: 'completed',
+    args: {
+      command: 'webSearch --query "typescript best practices"',
+    },
+    result: createResult({ results: ['result1', 'result2'] }),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Direct executeSkill call shows "Web Search: query"',
+      },
+    },
+  },
+};
+
+export const ExecuteSkillMCP: Story = {
+  args: {
+    toolName: 'mcp__agent-kit-server__executeSkill',
+    state: 'completed',
+    args: {
+      command: 'webSearch --query "react hooks tutorial"',
+    },
+    result: createResult({ results: ['hook info'] }),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'MCP-prefixed executeSkill shows same "Web Search: query" display',
+      },
+    },
+  },
+};
+
+export const ReadSkillFileDirect: Story = {
+  args: {
+    toolName: 'readSkillFile',
+    state: 'running',
+    args: {
+      path: 'web-research/SKILL.md',
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Direct readSkillFile call shows "Learn: path"',
+      },
+    },
+  },
+};
+
+export const ReadSkillFileMCP: Story = {
+  args: {
+    toolName: 'mcp__agent-kit-server__readSkillFile',
+    state: 'running',
+    args: {
+      path: 'project-tools/SKILL.md',
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'MCP-prefixed readSkillFile shows same "Learn: path" display',
+      },
+    },
+  },
+};
+
+export const GrepSkillsDirect: Story = {
+  args: {
+    toolName: 'grepSkills',
+    state: 'completed',
+    args: {
+      pattern: 'create task',
+    },
+    result: createResult({ matches: ['line 1', 'line 2'] }),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Direct grepSkills call shows "Search: pattern"',
+      },
+    },
+  },
+};
+
+export const GrepSkillsMCP: Story = {
+  args: {
+    toolName: 'mcp__agent-kit-server__grepSkills',
+    state: 'completed',
+    args: {
+      pattern: 'web search',
+    },
+    result: createResult({ matches: ['skill doc'] }),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'MCP-prefixed grepSkills shows same "Search: pattern" display',
+      },
+    },
+  },
+};
+
+export const AllSkillTools: Story = {
+  render: () => (
+    <div className="space-y-4">
+      <div className="text-sm font-medium">Direct tool names:</div>
+      <div className="flex flex-wrap gap-2">
+        <ToolBadge
+          toolName="executeSkill"
+          state="completed"
+          args={{ command: 'webSearch --query "test"' }}
+        />
+        <ToolBadge
+          toolName="readSkillFile"
+          state="running"
+          args={{ path: 'skills/SKILL.md' }}
+        />
+        <ToolBadge
+          toolName="grepSkills"
+          state="completed"
+          args={{ pattern: 'search term' }}
+        />
+      </div>
+      <div className="text-sm font-medium">MCP-prefixed tool names:</div>
+      <div className="flex flex-wrap gap-2">
+        <ToolBadge
+          toolName="mcp__agent-kit-server__executeSkill"
+          state="completed"
+          args={{ command: 'webSearch --query "test"' }}
+        />
+        <ToolBadge
+          toolName="mcp__agent-kit-server__readSkillFile"
+          state="running"
+          args={{ path: 'skills/SKILL.md' }}
+        />
+        <ToolBadge
+          toolName="mcp__agent-kit-server__grepSkills"
+          state="completed"
+          args={{ pattern: 'search term' }}
+        />
+      </div>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Comparison of direct vs MCP-prefixed tool names. Both should display identically.',
+      },
+    },
+  },
+};

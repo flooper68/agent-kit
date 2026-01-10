@@ -25,6 +25,7 @@ import type { AgentsFeature } from '../features/agents';
 import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
+import type { SkillsFeature } from '../features/skills';
 import type { PubSubManager } from '../real-time';
 import { getToolsById } from './tools';
 import type { AgentSpawner } from './agent-spawner';
@@ -83,16 +84,6 @@ const EventMessageSchema = z.object({
   event: AgentEventSchema,
 });
 
-// Schema for artifact tool requests from external agents
-const ArtifactToolRequestSchema = z.object({
-  type: z.literal('artifact_tool_request'),
-  requestId: z.string().uuid(),
-  sessionId: z.string().uuid(),
-  tool: z.enum(['writeArtifact', 'readArtifact', 'searchArtifacts']),
-  params: z.record(z.string(), z.unknown()),
-  timestamp: z.string(),
-});
-
 // Schema for server tool requests from external agents (uses shared tool names)
 const ServerToolRequestSchema = z.object({
   type: z.literal('server_tool_request'),
@@ -105,26 +96,8 @@ const ServerToolRequestSchema = z.object({
   timestamp: z.string(),
 });
 
-// Schemas for validating artifact tool parameters
-const WriteArtifactParamsSchema = z.object({
-  title: z.string().min(1).max(255),
-  content: z.string().min(1).max(1_000_000),
-  summary: z.string().max(500).optional(),
-});
-
-const ReadArtifactParamsSchema = z.object({
-  artifactId: z.string().uuid(),
-});
-
-const SearchArtifactsParamsSchema = z.object({
-  query: z.string().optional().default(''),
-  limit: z.number().int().min(1).max(100).optional().default(10),
-  offset: z.number().int().min(0).optional().default(0),
-});
-
 const AgentMessageSchema = z.discriminatedUnion('type', [
   EventMessageSchema,
-  ArtifactToolRequestSchema,
   ServerToolRequestSchema,
 ]);
 
@@ -176,6 +149,7 @@ export class ExternalAgentWebSocketService {
     private artifactsFeature: ArtifactsFeature,
     private projectsFeature?: ProjectsFeature,
     private tasksFeature?: TasksFeature,
+    private skillsFeature?: SkillsFeature,
     private pubsub?: PubSubManager
   ) {
     this.wss = new WebSocketServer({ noServer: true });
@@ -544,10 +518,6 @@ export class ExternalAgentWebSocketService {
           );
           break;
         }
-        case 'artifact_tool_request': {
-          await this.handleArtifactToolRequest(agent, message);
-          break;
-        }
         case 'server_tool_request': {
           await this.handleServerToolRequest(agent, message);
           break;
@@ -844,188 +814,6 @@ export class ExternalAgentWebSocketService {
   }
 
   /**
-   * Handle an artifact tool request from an external agent
-   */
-  private async handleArtifactToolRequest(
-    agent: { id: string; key: string; userId: string; name: string },
-    message: {
-      requestId: string;
-      sessionId: string;
-      tool: 'writeArtifact' | 'readArtifact' | 'searchArtifacts';
-      params: Record<string, unknown>;
-    }
-  ): Promise<void> {
-    const { requestId, sessionId, tool, params } = message;
-
-    this.log.debug('Handling artifact tool request', {
-      agentId: agent.id,
-      requestId: requestId.slice(0, 8) + '...',
-      tool,
-    });
-
-    // Get session to retrieve orgId
-    const session = await this.agentsFeature.sessions.getById(sessionId);
-    if (!session) {
-      this.log.warn('Session not found for artifact tool request', {
-        sessionId: sessionId.slice(0, 8) + '...',
-      });
-      this.sendArtifactToolResponse(
-        agent.id,
-        sessionId,
-        requestId,
-        {
-          error: 'Session not found',
-        },
-        true
-      );
-      return;
-    }
-
-    try {
-      let result: unknown;
-
-      switch (tool) {
-        case 'writeArtifact': {
-          const validatedParams = WriteArtifactParamsSchema.parse(params);
-          const artifact = await this.artifactsFeature.create({
-            userId: agent.userId,
-            orgId: session.orgId,
-            sessionId,
-            agentId: agent.id,
-            title: validatedParams.title,
-            content: validatedParams.content,
-            summary: validatedParams.summary,
-          });
-          result = {
-            success: true,
-            artifactId: artifact.id,
-            title: artifact.title,
-            message: `Document "${artifact.title}" saved successfully.`,
-          };
-          this.log.info('Artifact created by external agent', {
-            agentId: agent.id,
-            artifactId: artifact.id,
-            title: artifact.title,
-          });
-          break;
-        }
-
-        case 'readArtifact': {
-          const validatedParams = ReadArtifactParamsSchema.parse(params);
-          const artifact = await this.artifactsFeature.getById({
-            id: validatedParams.artifactId,
-            userId: agent.userId,
-            orgId: session.orgId,
-          });
-          if (artifact) {
-            result = {
-              found: true,
-              id: artifact.id,
-              title: artifact.title,
-              content: artifact.content,
-              summary: artifact.summary,
-              createdAt: artifact.createdAt,
-              updatedAt: artifact.updatedAt,
-            };
-          } else {
-            result = {
-              found: false,
-              message: 'Document not found or access denied.',
-            };
-          }
-          break;
-        }
-
-        case 'searchArtifacts': {
-          const validatedParams = SearchArtifactsParamsSchema.parse(params);
-          const searchResult = await this.artifactsFeature.search({
-            userId: agent.userId,
-            orgId: session.orgId,
-            query: validatedParams.query,
-            limit: validatedParams.limit,
-            offset: validatedParams.offset,
-          });
-          result = {
-            found: searchResult.results.length > 0,
-            count: searchResult.results.length,
-            totalCount: searchResult.totalCount,
-            results: searchResult.results.map((r) => ({
-              id: r.id,
-              title: r.title,
-              summary: r.summary,
-              createdAt: r.createdAt,
-            })),
-            message:
-              searchResult.results.length > 0
-                ? `Found ${searchResult.results.length} document(s).`
-                : 'No documents found.',
-          };
-          break;
-        }
-
-        default:
-          throw new Error(`Unknown artifact tool: ${tool}`);
-      }
-
-      this.sendArtifactToolResponse(
-        agent.id,
-        sessionId,
-        requestId,
-        result,
-        false
-      );
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.log.error('Artifact tool execution failed', {
-        agentId: agent.id,
-        tool,
-        error: errorMessage,
-      });
-      this.sendArtifactToolResponse(
-        agent.id,
-        sessionId,
-        requestId,
-        {
-          error: errorMessage,
-        },
-        true
-      );
-    }
-  }
-
-  /**
-   * Send an artifact tool response back to an external agent
-   */
-  private sendArtifactToolResponse(
-    agentId: string,
-    sessionId: string,
-    requestId: string,
-    result: unknown,
-    isError: boolean
-  ): void {
-    const payload = {
-      type: 'artifact_tool_response',
-      requestId,
-      sessionId,
-      result,
-      isError,
-      timestamp: new Date().toISOString(),
-    };
-
-    const sent = this.wsRegistry.sendMessage(agentId, payload);
-    if (!sent) {
-      this.log.warn(
-        'Failed to send artifact tool response - agent not connected',
-        {
-          agentId,
-          requestId: requestId.slice(0, 8) + '...',
-        }
-      );
-    }
-  }
-
-  /**
    * Handle a server tool request from an external agent.
    * Uses getToolsById to execute any server-side tool.
    */
@@ -1112,6 +900,7 @@ export class ExternalAgentWebSocketService {
         artifactsFeature: this.artifactsFeature,
         projectsFeature: this.projectsFeature,
         tasksFeature: this.tasksFeature,
+        skillsFeature: this.skillsFeature,
         agentsFeature: this.agentsFeature,
         eventStreamManager: this.eventStreamManager,
         pubsub: this.pubsub,

@@ -436,8 +436,17 @@ export function AgentsPage() {
           {/* Agents Tab - Server agents + Built-in agents */}
           <Tabs.Content value="agents">
             {/* Filter Bar */}
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
+            <div className="mb-4 flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search agents..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <div className="flex items-center gap-2">
                 <Select
                   value={agentsStatusFilter}
                   onValueChange={(value) =>
@@ -477,15 +486,6 @@ export function AgentsPage() {
                     className="w-44"
                   />
                 )}
-              </div>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search agents..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
               </div>
             </div>
 

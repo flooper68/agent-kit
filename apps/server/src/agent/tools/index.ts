@@ -3,6 +3,7 @@ import type { ArtifactsFeature } from '../../features/artifacts';
 import type { ProjectsFeature } from '../../features/projects';
 import type { TasksFeature } from '../../features/tasks';
 import type { AgentsFeature } from '../../features/agents';
+import type { SkillsFeature } from '../../features/skills';
 import type { EventStreamManager } from '../event-stream-manager';
 import type { PubSubManager } from '../../real-time';
 import type { AgentSpawner } from '../agent-spawner';
@@ -112,6 +113,8 @@ export interface ToolContext {
   tasksFeature?: TasksFeature;
   /** Agents feature for agent management tools */
   agentsFeature?: AgentsFeature;
+  /** Skills feature for skill tools */
+  skillsFeature?: SkillsFeature;
   /** Event stream manager for client-side tools */
   eventStreamManager?: EventStreamManager;
   /** Pub/Sub manager for stateful client-side tools */
@@ -496,10 +499,30 @@ export function getToolsById(
           break;
         // Skill tools
         case 'grepSkills':
-          result[id] = createGrepSkillsTool();
+          if (context.skillsFeature) {
+            result[id] = createGrepSkillsTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              skillsFeature: context.skillsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing skillsFeature', {
+              tool: id,
+            });
+          }
           break;
         case 'readSkillFile':
-          result[id] = createReadSkillFileTool();
+          if (context.skillsFeature) {
+            result[id] = createReadSkillFileTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              skillsFeature: context.skillsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing skillsFeature', {
+              tool: id,
+            });
+          }
           break;
         case 'executeSkill':
           // executeSkill needs toolContext to call other tools

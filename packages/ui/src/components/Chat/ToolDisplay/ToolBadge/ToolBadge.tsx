@@ -77,7 +77,9 @@ function getExecuteSkillDisplayInfo(args: Record<string, unknown>): {
  * Displayed as "Learn: {path}" to indicate the agent is learning
  * from skill documentation (e.g., "Learn: web-research/SKILL.md")
  */
-function getReadSkillFileDisplayInfo(args: Record<string, unknown>): string | null {
+function getReadSkillFileDisplayInfo(
+  args: Record<string, unknown>
+): string | null {
   const path = args.path;
   if (typeof path !== 'string' || !path.trim()) {
     return null;
@@ -91,7 +93,9 @@ function getReadSkillFileDisplayInfo(args: Record<string, unknown>): string | nu
  * Displayed as "Search: "{pattern}"" to show what the agent is
  * searching for in skill documentation.
  */
-function getGrepSkillsDisplayInfo(args: Record<string, unknown>): string | null {
+function getGrepSkillsDisplayInfo(
+  args: Record<string, unknown>
+): string | null {
   const pattern = args.pattern;
   if (typeof pattern !== 'string' || !pattern.trim()) {
     return null;
@@ -100,17 +104,25 @@ function getGrepSkillsDisplayInfo(args: Record<string, unknown>): string | null 
 }
 
 /**
+ * Extracts the base tool name from an MCP pattern.
+ * MCP tools have the format: mcp__server__toolName
+ * Returns the original name if not an MCP tool.
+ */
+function getBaseToolName(toolName: string): string {
+  if (toolName.startsWith('mcp__')) {
+    const parts = toolName.split('__');
+    return parts[parts.length - 1] ?? toolName;
+  }
+  return toolName;
+}
+
+/**
  * Formats a tool name to be human-readable.
  * Handles MCP pattern (mcp__server__toolName), camelCase, PascalCase, and snake_case.
  */
 function formatToolName(toolName: string): string {
   // Extract tool name from MCP pattern: mcp__server__toolName
-  let name = toolName;
-  if (name.startsWith('mcp__')) {
-    const parts = name.split('__');
-    // Get the last part (the actual tool name)
-    name = parts[parts.length - 1] ?? name;
-  }
+  let name = getBaseToolName(toolName);
 
   // Handle snake_case: replace underscores with spaces
   name = name.replace(/_/g, ' ');
@@ -321,11 +333,16 @@ export const ToolBadge = memo(
       let tooltipContent = toolName;
       let useWideDisplay = false;
 
+      // Extract base tool name for skill detection
+      // MCP tools have prefix like "mcp__agent-kit-server__executeSkill"
+      const baseToolName = getBaseToolName(toolName);
+
       // Enhanced display for skill-related tools
       // Shows the actual operation instead of generic tool names
+      // Works for both direct tool names and MCP-prefixed names
       // See: docs/skills.md#ui-display
       if (args) {
-        if (toolName === 'executeSkill') {
+        if (baseToolName === 'executeSkill') {
           // Show inner tool + first arg: "Web Search: query value"
           const skillInfo = getExecuteSkillDisplayInfo(args);
           if (skillInfo) {
@@ -336,7 +353,7 @@ export const ToolBadge = memo(
             }
             tooltipContent = `executeSkill: ${skillInfo.toolName}`;
           }
-        } else if (toolName === 'readSkillFile') {
+        } else if (baseToolName === 'readSkillFile') {
           // Show "Learn: path" to indicate learning from docs
           const path = getReadSkillFileDisplayInfo(args);
           if (path) {
@@ -344,7 +361,7 @@ export const ToolBadge = memo(
             displayName = `Learn: ${path}`;
             tooltipContent = `readSkillFile: ${path}`;
           }
-        } else if (toolName === 'grepSkills') {
+        } else if (baseToolName === 'grepSkills') {
           // Show "Search: pattern" for skill discovery
           const pattern = getGrepSkillsDisplayInfo(args);
           if (pattern) {

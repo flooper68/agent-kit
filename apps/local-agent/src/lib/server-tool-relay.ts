@@ -11,9 +11,10 @@ const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds
  * Tools not listed here use DEFAULT_TIMEOUT_MS.
  */
 const TOOL_TIMEOUTS: Partial<Record<ServerToolName, number>> = {
-  // Web operations may take longer
-  webSearch: 60000, // 60 seconds
-  fetch: 60000, // 60 seconds
+  // executeSkill can run slow tools like webSearch
+  executeSkill: 60000, // 60 seconds
+  // spawnAgent can take a while for sub-agent completion
+  spawnAgent: 300000, // 5 minutes
 };
 
 /**
@@ -34,13 +35,11 @@ interface PendingRequest {
  * Manages server tool request-response correlation.
  * Handles sending requests to the server via WebSocket and tracking pending responses.
  *
- * This is a generalized version of ArtifactToolRelay that supports all server tools:
- * - Static tools: webSearch, fetch
- * - Artifact tools: writeArtifact, readArtifact, searchArtifacts
- * - Project tools: listProjects, searchProjects, getProject, createProject, updateProject
- * - Task tools: listTasks, searchTasks, getTask, createTask, updateTask, moveTask, reorderTask,
- *               attachArtifactToTask, detachArtifactFromTask
- * - Client tools: navigateTo, getCurrentUIState
+ * Remote agents only have access to:
+ * - Skill tools: grepSkills, readSkillFile, executeSkill
+ * - Agent spawning: spawnAgent
+ *
+ * All other functionality should be accessed via skills using executeSkill.
  */
 export class ServerToolRelay {
   private pendingRequests = new Map<string, PendingRequest>();
