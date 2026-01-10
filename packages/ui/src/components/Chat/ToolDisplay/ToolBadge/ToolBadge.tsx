@@ -8,6 +8,66 @@ import { Tooltip } from '../../../Tooltip';
 import type { ToolResultPart } from '../../../../types/chat';
 
 /**
+ * Extract display info from executeSkill command string.
+ * Returns the inner tool name and a summary for display.
+ */
+function getExecuteSkillDisplayInfo(args: Record<string, unknown>): {
+  toolName: string;
+  summary: string;
+} | null {
+  const command = args.command;
+  if (typeof command !== 'string' || !command.trim()) {
+    return null;
+  }
+
+  // Simple tokenization - split on spaces, respecting quotes
+  const parts = command.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+  const firstPart = parts[0];
+  if (parts.length === 0 || !firstPart) {
+    return null;
+  }
+
+  const toolName = firstPart;
+
+  // Extract first value argument for summary (skip flags)
+  let summary = '';
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i];
+    if (part && !part.startsWith('-')) {
+      // Remove surrounding quotes
+      summary = part.replace(/^["']|["']$/g, '');
+      break;
+    }
+  }
+
+  return { toolName, summary };
+}
+
+/**
+ * Extract display info from readSkillFile args.
+ * Shows the file path being read.
+ */
+function getReadSkillFileDisplayInfo(args: Record<string, unknown>): string | null {
+  const path = args.path;
+  if (typeof path !== 'string' || !path.trim()) {
+    return null;
+  }
+  return path;
+}
+
+/**
+ * Extract display info from grepSkills args.
+ * Shows the search pattern.
+ */
+function getGrepSkillsDisplayInfo(args: Record<string, unknown>): string | null {
+  const pattern = args.pattern;
+  if (typeof pattern !== 'string' || !pattern.trim()) {
+    return null;
+  }
+  return pattern;
+}
+
+/**
  * Formats a tool name to be human-readable.
  * Handles MCP pattern (mcp__server__toolName), camelCase, PascalCase, and snake_case.
  */
@@ -224,12 +284,51 @@ export const ToolBadge = memo(
       const hasDialogData = args !== undefined;
       const isError = state === 'error' || result?.isError;
 
-      const displayName = formatToolName(toolName);
+      // Default display name and tooltip
+      let displayName = formatToolName(toolName);
+      let tooltipContent = toolName;
+      let useWideDisplay = false;
+
+      // Special handling for skill-related tools - show more context
+      if (args) {
+        if (toolName === 'executeSkill') {
+          const skillInfo = getExecuteSkillDisplayInfo(args);
+          if (skillInfo) {
+            useWideDisplay = true;
+            displayName = formatToolName(skillInfo.toolName);
+            if (skillInfo.summary) {
+              displayName = `${displayName}: ${skillInfo.summary}`;
+            }
+            tooltipContent = `executeSkill: ${skillInfo.toolName}`;
+          }
+        } else if (toolName === 'readSkillFile') {
+          const path = getReadSkillFileDisplayInfo(args);
+          if (path) {
+            useWideDisplay = true;
+            displayName = `Learn: ${path}`;
+            tooltipContent = `readSkillFile: ${path}`;
+          }
+        } else if (toolName === 'grepSkills') {
+          const pattern = getGrepSkillsDisplayInfo(args);
+          if (pattern) {
+            useWideDisplay = true;
+            displayName = `Search: "${pattern}"`;
+            tooltipContent = `grepSkills: ${pattern}`;
+          }
+        }
+      }
 
       const content = (
         <>
           <ToolIcon />
-          <span className="truncate max-w-[120px]">{displayName}</span>
+          <span
+            className={cn(
+              'truncate',
+              useWideDisplay ? 'max-w-[200px]' : 'max-w-[120px]'
+            )}
+          >
+            {displayName}
+          </span>
           <StateIcon state={state} />
         </>
       );
@@ -250,7 +349,7 @@ export const ToolBadge = memo(
       );
 
       const badge = (
-        <Tooltip content={toolName} side="bottom">
+        <Tooltip content={tooltipContent} side="bottom">
           {badgeElement}
         </Tooltip>
       );
