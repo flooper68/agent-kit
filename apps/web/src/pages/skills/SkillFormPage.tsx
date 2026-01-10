@@ -151,8 +151,16 @@ export function SkillFormPage() {
   // Set header actions for create mode (edit mode uses autosave)
   useEffect(() => {
     if (isEditing) {
-      clearActions();
-      return;
+      setActions([
+        {
+          id: 'cancel',
+          label: 'Cancel',
+          icon: <X className="h-4 w-4" />,
+          onClick: () => navigate(`/app/skills/${id}`),
+          variant: 'outline',
+        },
+      ]);
+      return () => clearActions();
     }
 
     setActions([
@@ -172,7 +180,14 @@ export function SkillFormPage() {
       },
     ]);
     return () => clearActions();
-  }, [setActions, clearActions, navigate, createMutation.isPending, isEditing]);
+  }, [
+    setActions,
+    clearActions,
+    navigate,
+    createMutation.isPending,
+    isEditing,
+    id,
+  ]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};

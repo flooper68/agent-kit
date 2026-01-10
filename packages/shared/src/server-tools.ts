@@ -11,10 +11,17 @@ import { z } from 'zod';
 export const SERVER_TOOL_NAMES = [
   // Agent spawning
   'spawnAgent',
+  // Skill discovery tools
+  'listSkills',
+  'getSkill',
   // Skill tools
   'grepSkills',
   'readSkillFile',
   'executeSkill',
+  // Skill management tools
+  'createSkill',
+  'updateSkill',
+  'deleteSkill',
 ] as const;
 
 /**

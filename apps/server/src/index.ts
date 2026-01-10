@@ -125,6 +125,7 @@ fastify.addHook('onReady', async () => {
   tasksFeature.setCacheInvalidation(cacheInvalidation);
   agentsFeature.setAgentCacheInvalidation(cacheInvalidation);
   artifactsFeature.setCacheInvalidation(cacheInvalidation);
+  skillsFeature.setSkillsCacheInvalidation(cacheInvalidation);
 
   // Create infrastructure managers (split from AgentSessionManager)
   jobQueueManager = new JobQueueManager(redisPublisher, redisWorker);

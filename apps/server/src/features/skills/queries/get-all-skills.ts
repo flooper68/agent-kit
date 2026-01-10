@@ -1,4 +1,4 @@
-import { eq, and, or, desc } from 'drizzle-orm';
+import { eq, and, or, desc, asc } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { skills, type Skill } from '../../../db/schema';
 
@@ -33,7 +33,7 @@ export class GetAllSkillsQuery {
           )
         )
       )
-      .orderBy(desc(skills.isSystem), desc(skills.createdAt));
+      .orderBy(asc(skills.isSystem), desc(skills.updatedAt));
 
     return result;
   }

@@ -34,6 +34,13 @@ export class DeleteSkillCommand {
         )
         .returning();
 
+      if (deleted) {
+        await ctx.cacheInvalidation?.publishSkillDeleted(
+          input.userId,
+          deleted.id
+        );
+      }
+
       return deleted;
     });
   };

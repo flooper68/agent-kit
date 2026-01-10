@@ -45,6 +45,11 @@ import { createToggleAgentFavoriteTool } from './toggle-agent-favorite';
 import { createGrepSkillsTool } from './grep-skills';
 import { createReadSkillFileTool } from './read-skill-file';
 import { createExecuteSkillTool } from './execute-skill';
+import { createCreateSkillTool } from './create-skill';
+import { createUpdateSkillTool } from './update-skill';
+import { createDeleteSkillTool } from './delete-skill';
+import { createListSkillsTool } from './list-skills';
+import { createGetSkillTool } from './get-skill';
 
 // Static tools (no context needed)
 const STATIC_TOOLS: Record<string, Tool> = {
@@ -90,9 +95,14 @@ const CONTEXT_TOOL_IDS = [
   'setAgentEnabled',
   'toggleAgentFavorite',
   // Skill tools
+  'listSkills',
+  'getSkill',
   'grepSkills',
   'readSkillFile',
   'executeSkill',
+  'createSkill',
+  'updateSkill',
+  'deleteSkill',
 ] as const;
 
 export type StaticToolId = keyof typeof STATIC_TOOLS;
@@ -498,6 +508,32 @@ export function getToolsById(
           }
           break;
         // Skill tools
+        case 'listSkills':
+          if (context.skillsFeature) {
+            result[id] = createListSkillsTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              skillsFeature: context.skillsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing skillsFeature', {
+              tool: id,
+            });
+          }
+          break;
+        case 'getSkill':
+          if (context.skillsFeature) {
+            result[id] = createGetSkillTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              skillsFeature: context.skillsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing skillsFeature', {
+              tool: id,
+            });
+          }
+          break;
         case 'grepSkills':
           if (context.skillsFeature) {
             result[id] = createGrepSkillsTool({
@@ -529,6 +565,45 @@ export function getToolsById(
           result[id] = createExecuteSkillTool({
             toolContext: context,
           });
+          break;
+        case 'createSkill':
+          if (context.skillsFeature) {
+            result[id] = createCreateSkillTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              skillsFeature: context.skillsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing skillsFeature', {
+              tool: id,
+            });
+          }
+          break;
+        case 'updateSkill':
+          if (context.skillsFeature) {
+            result[id] = createUpdateSkillTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              skillsFeature: context.skillsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing skillsFeature', {
+              tool: id,
+            });
+          }
+          break;
+        case 'deleteSkill':
+          if (context.skillsFeature) {
+            result[id] = createDeleteSkillTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              skillsFeature: context.skillsFeature,
+            });
+          } else {
+            logger.debug('Skipping tool due to missing skillsFeature', {
+              tool: id,
+            });
+          }
           break;
       }
     }
@@ -775,6 +850,18 @@ const TOOL_METADATA: Record<string, ToolMetadata> = {
   },
 
   // Skill tools
+  listSkills: {
+    id: 'listSkills',
+    name: 'List Skills',
+    description: 'List all available skills',
+    category: 'skill',
+  },
+  getSkill: {
+    id: 'getSkill',
+    name: 'Get Skill',
+    description: 'Get detailed information about a specific skill',
+    category: 'skill',
+  },
   grepSkills: {
     id: 'grepSkills',
     name: 'Grep Skills',
@@ -791,6 +878,24 @@ const TOOL_METADATA: Record<string, ToolMetadata> = {
     id: 'executeSkill',
     name: 'Execute Skill',
     description: 'Execute a tool using CLI-style syntax',
+    category: 'skill',
+  },
+  createSkill: {
+    id: 'createSkill',
+    name: 'Create Skill',
+    description: 'Create a new user skill with documentation',
+    category: 'skill',
+  },
+  updateSkill: {
+    id: 'updateSkill',
+    name: 'Update Skill',
+    description: 'Update an existing user skill',
+    category: 'skill',
+  },
+  deleteSkill: {
+    id: 'deleteSkill',
+    name: 'Delete Skill',
+    description: 'Delete a user skill',
     category: 'skill',
   },
 };

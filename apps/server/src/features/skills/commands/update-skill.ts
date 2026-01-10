@@ -62,6 +62,13 @@ export class UpdateSkillCommand {
         )
         .returning();
 
+      if (updated) {
+        await ctx.cacheInvalidation?.publishSkillUpdated(
+          input.userId,
+          updated.id
+        );
+      }
+
       return updated;
     });
   };

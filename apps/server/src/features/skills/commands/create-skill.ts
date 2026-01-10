@@ -40,6 +40,8 @@ export class CreateSkillCommand {
         throw new Error('Failed to create skill');
       }
 
+      await ctx.cacheInvalidation?.publishSkillCreated(input.userId, skill.id);
+
       return skill;
     });
   };

@@ -1,4 +1,4 @@
-import { eq, desc, and, or, ilike, lt } from 'drizzle-orm';
+import { eq, desc, asc, and, or, ilike, lt } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { skills, type Skill } from '../../../db/schema';
 
@@ -71,13 +71,13 @@ export class ListSkillsQuery {
     // Cursor pagination
     if (cursor) {
       const cursorSkill = await this.db
-        .select({ createdAt: skills.createdAt })
+        .select({ updatedAt: skills.updatedAt })
         .from(skills)
         .where(eq(skills.id, cursor))
         .limit(1);
 
       if (cursorSkill[0]) {
-        conditions.push(lt(skills.createdAt, cursorSkill[0].createdAt));
+        conditions.push(lt(skills.updatedAt, cursorSkill[0].updatedAt));
       }
     }
 
@@ -86,7 +86,7 @@ export class ListSkillsQuery {
       .select()
       .from(skills)
       .where(and(...conditions))
-      .orderBy(desc(skills.isSystem), desc(skills.createdAt))
+      .orderBy(asc(skills.isSystem), desc(skills.updatedAt))
       .limit(limit + 1);
 
     // Check if there's a next page
