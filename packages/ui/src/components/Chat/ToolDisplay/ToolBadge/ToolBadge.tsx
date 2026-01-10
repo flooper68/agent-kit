@@ -8,8 +8,36 @@ import { Tooltip } from '../../../Tooltip';
 import type { ToolResultPart } from '../../../../types/chat';
 
 /**
+ * =============================================================================
+ * SKILL TOOL DISPLAY HELPERS
+ * =============================================================================
+ *
+ * These functions extract meaningful display information from skill-related tools
+ * to show users what the agent is actually doing, rather than generic tool names.
+ *
+ * The skill tools (executeSkill, readSkillFile, grepSkills) wrap other operations,
+ * so we parse their arguments to show the underlying action:
+ *
+ * | Tool           | Generic Display   | Enhanced Display                    |
+ * |----------------|-------------------|-------------------------------------|
+ * | executeSkill   | "Execute Skill"   | "Web Search: typescript tutorials"  |
+ * | readSkillFile  | "Read Skill File" | "Learn: web-research/SKILL.md"      |
+ * | grepSkills     | "Grep Skills"     | "Search: "create task""             |
+ *
+ * Full details remain available in the dialog when clicking the badge.
+ * See docs/skills.md for more information about the skills system.
+ */
+
+/**
  * Extract display info from executeSkill command string.
- * Returns the inner tool name and a summary for display.
+ *
+ * The executeSkill tool takes a CLI-style command like:
+ *   "webSearch --query 'typescript tutorials'"
+ *
+ * We extract the tool name (webSearch) and first argument value (typescript tutorials)
+ * to display as "Web Search: typescript tutorials"
+ *
+ * @returns The inner tool name and summary, or null if parsing fails
  */
 function getExecuteSkillDisplayInfo(args: Record<string, unknown>): {
   toolName: string;
@@ -29,7 +57,7 @@ function getExecuteSkillDisplayInfo(args: Record<string, unknown>): {
 
   const toolName = firstPart;
 
-  // Extract first value argument for summary (skip flags)
+  // Extract first value argument for summary (skip flags like --query)
   let summary = '';
   for (let i = 1; i < parts.length; i++) {
     const part = parts[i];
@@ -44,8 +72,10 @@ function getExecuteSkillDisplayInfo(args: Record<string, unknown>): {
 }
 
 /**
- * Extract display info from readSkillFile args.
- * Shows the file path being read.
+ * Extract the file path from readSkillFile args.
+ *
+ * Displayed as "Learn: {path}" to indicate the agent is learning
+ * from skill documentation (e.g., "Learn: web-research/SKILL.md")
  */
 function getReadSkillFileDisplayInfo(args: Record<string, unknown>): string | null {
   const path = args.path;
@@ -56,8 +86,10 @@ function getReadSkillFileDisplayInfo(args: Record<string, unknown>): string | nu
 }
 
 /**
- * Extract display info from grepSkills args.
- * Shows the search pattern.
+ * Extract the search pattern from grepSkills args.
+ *
+ * Displayed as "Search: "{pattern}"" to show what the agent is
+ * searching for in skill documentation.
  */
 function getGrepSkillsDisplayInfo(args: Record<string, unknown>): string | null {
   const pattern = args.pattern;
@@ -289,9 +321,12 @@ export const ToolBadge = memo(
       let tooltipContent = toolName;
       let useWideDisplay = false;
 
-      // Special handling for skill-related tools - show more context
+      // Enhanced display for skill-related tools
+      // Shows the actual operation instead of generic tool names
+      // See: docs/skills.md#ui-display
       if (args) {
         if (toolName === 'executeSkill') {
+          // Show inner tool + first arg: "Web Search: query value"
           const skillInfo = getExecuteSkillDisplayInfo(args);
           if (skillInfo) {
             useWideDisplay = true;
@@ -302,6 +337,7 @@ export const ToolBadge = memo(
             tooltipContent = `executeSkill: ${skillInfo.toolName}`;
           }
         } else if (toolName === 'readSkillFile') {
+          // Show "Learn: path" to indicate learning from docs
           const path = getReadSkillFileDisplayInfo(args);
           if (path) {
             useWideDisplay = true;
@@ -309,6 +345,7 @@ export const ToolBadge = memo(
             tooltipContent = `readSkillFile: ${path}`;
           }
         } else if (toolName === 'grepSkills') {
+          // Show "Search: pattern" for skill discovery
           const pattern = getGrepSkillsDisplayInfo(args);
           if (pattern) {
             useWideDisplay = true;

@@ -121,6 +121,35 @@ A typical agent interaction with skills:
    readSkillFile --path "web-research/references/search-tips.md"
    ```
 
+## UI Display
+
+When skill tools are used, the UI shows enhanced information instead of generic tool names. This helps users understand what the agent is actually doing.
+
+### Display Examples
+
+| Tool Call                                              | Badge Display                          |
+| ------------------------------------------------------ | -------------------------------------- |
+| `executeSkill --command "webSearch --query 'react'"` | Web Search: react                      |
+| `executeSkill --command "createTask --title 'Fix'"` | Create Task: Fix                       |
+| `readSkillFile --path "web-research/SKILL.md"`         | Learn: web-research/SKILL.md           |
+| `grepSkills --pattern "create task"`                   | Search: "create task"                  |
+
+### Display Logic
+
+- **executeSkill**: Shows the inner tool name and first argument value (e.g., query, title)
+- **readSkillFile**: Shows "Learn:" prefix to indicate the agent is learning from documentation
+- **grepSkills**: Shows "Search:" prefix with the search pattern in quotes
+
+The tooltip shows the original tool name for reference, and clicking the badge opens a dialog with full details (all arguments and results).
+
+### Implementation
+
+The display logic is in `packages/ui/src/components/Chat/ToolDisplay/ToolBadge/ToolBadge.tsx`. Helper functions parse tool arguments to extract meaningful display information:
+
+- `getExecuteSkillDisplayInfo()` - Parses CLI command to extract tool name and summary
+- `getReadSkillFileDisplayInfo()` - Extracts file path
+- `getGrepSkillsDisplayInfo()` - Extracts search pattern
+
 ## Adding Skills to Agents
 
 In the Agent Builder UI, select the skill tools under the "Skills" category:
