@@ -41,6 +41,9 @@ import { createGetAgentTool } from './get-agent';
 import { createUpdateAgentTool } from './update-agent';
 import { createSetAgentEnabledTool } from './set-agent-enabled';
 import { createToggleAgentFavoriteTool } from './toggle-agent-favorite';
+import { createGrepSkillsTool } from './grep-skills';
+import { createReadSkillFileTool } from './read-skill-file';
+import { createExecuteSkillTool } from './execute-skill';
 
 // Static tools (no context needed)
 const STATIC_TOOLS: Record<string, Tool> = {
@@ -85,6 +88,10 @@ const CONTEXT_TOOL_IDS = [
   'updateAgent',
   'setAgentEnabled',
   'toggleAgentFavorite',
+  // Skill tools
+  'grepSkills',
+  'readSkillFile',
+  'executeSkill',
 ] as const;
 
 export type StaticToolId = keyof typeof STATIC_TOOLS;
@@ -487,6 +494,19 @@ export function getToolsById(
             });
           }
           break;
+        // Skill tools
+        case 'grepSkills':
+          result[id] = createGrepSkillsTool();
+          break;
+        case 'readSkillFile':
+          result[id] = createReadSkillFileTool();
+          break;
+        case 'executeSkill':
+          // executeSkill needs toolContext to call other tools
+          result[id] = createExecuteSkillTool({
+            toolContext: context,
+          });
+          break;
       }
     }
   }
@@ -510,7 +530,8 @@ export type ToolCategory =
   | 'project'
   | 'task'
   | 'navigation'
-  | 'agent';
+  | 'agent'
+  | 'skill';
 
 /**
  * Tool metadata for UI display
@@ -728,6 +749,26 @@ const TOOL_METADATA: Record<string, ToolMetadata> = {
     name: 'Toggle Favorite',
     description: 'Toggle agent favorite status',
     category: 'agent',
+  },
+
+  // Skill tools
+  grepSkills: {
+    id: 'grepSkills',
+    name: 'Grep Skills',
+    description: 'Search across skill files for content matching a pattern',
+    category: 'skill',
+  },
+  readSkillFile: {
+    id: 'readSkillFile',
+    name: 'Read Skill File',
+    description: 'Read a skill file with optional partial reading',
+    category: 'skill',
+  },
+  executeSkill: {
+    id: 'executeSkill',
+    name: 'Execute Skill',
+    description: 'Execute a tool using CLI-style syntax',
+    category: 'skill',
   },
 };
 
