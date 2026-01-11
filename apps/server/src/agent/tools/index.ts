@@ -459,6 +459,7 @@ export function getToolsById(
             userId: context.userId,
             orgId: context.orgId,
             skillsFeature: context.skillsFeature,
+            allowedSkillIds: context.allowedSkillIds,
           });
           break;
         case 'getSkill':
@@ -466,6 +467,7 @@ export function getToolsById(
             userId: context.userId,
             orgId: context.orgId,
             skillsFeature: context.skillsFeature,
+            allowedSkillIds: context.allowedSkillIds,
           });
           break;
         case 'listSkillFiles':

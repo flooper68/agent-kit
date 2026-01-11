@@ -7,6 +7,7 @@ export interface ListSkillsContext {
   userId: string;
   orgId: string;
   skillsFeature: SkillsFeature;
+  allowedSkillIds: string[];
 }
 
 export function createListSkillsTool(context: ListSkillsContext): Tool {
@@ -52,8 +53,13 @@ export function createListSkillsTool(context: ListSkillsContext): Tool {
         limit: skillLimit,
       });
 
+      // Filter to only allowed skills for this agent
+      const allowedSkills = result.items.filter((skill) =>
+        context.allowedSkillIds.includes(skill.id)
+      );
+
       return {
-        skills: result.items.map((skill) => ({
+        skills: allowedSkills.map((skill) => ({
           id: skill.id,
           key: skill.key,
           name: skill.name,
@@ -63,8 +69,8 @@ export function createListSkillsTool(context: ListSkillsContext): Tool {
           createdAt: skill.createdAt.toISOString(),
           updatedAt: skill.updatedAt.toISOString(),
         })),
-        total: result.items.length,
-        hasMore: !!result.nextCursor,
+        total: allowedSkills.length,
+        hasMore: false, // Filtering may affect pagination, so we can't reliably report hasMore
       };
     },
   });

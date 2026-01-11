@@ -7,6 +7,7 @@ export interface GetSkillContext {
   userId: string;
   orgId: string;
   skillsFeature: SkillsFeature;
+  allowedSkillIds: string[];
 }
 
 export function createGetSkillTool(context: GetSkillContext): Tool {
@@ -59,6 +60,23 @@ export function createGetSkillTool(context: GetSkillContext): Tool {
           error: skillId
             ? `Skill with ID ${skillId} not found`
             : `Skill with key "${skillKey}" not found`,
+        };
+      }
+
+      // Validate skill access
+      if (!context.allowedSkillIds.includes(skill.id)) {
+        // Get available skills for helpful error message
+        const allSkills = await context.skillsFeature.getAll({
+          userId: context.userId,
+          orgId: context.orgId,
+        });
+        const allowedSkills = allSkills.filter((s) =>
+          context.allowedSkillIds.includes(s.id)
+        );
+        const availableKeys = allowedSkills.map((s) => s.key).join(', ');
+        return {
+          success: false,
+          error: `Skill "${skill.key}" is not available to this agent. Available skills: ${availableKeys || 'none'}`,
         };
       }
 

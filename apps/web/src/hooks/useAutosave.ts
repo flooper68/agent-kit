@@ -71,6 +71,9 @@ export function useAutosave<TData>({
   // Track if changes were made during a save
   const hasPendingChangesRef = useRef(false);
 
+  // Track if component is unmounted to prevent memory leaks
+  const unmountedRef = useRef(false);
+
   // Store debounce timeout
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -91,11 +94,20 @@ export function useAutosave<TData>({
   const handleSaveComplete = useCallback(() => {
     isSavingRef.current = false;
 
+    // Skip if component has unmounted to prevent memory leak
+    if (unmountedRef.current) {
+      return;
+    }
+
     // If changes were queued during save, save again
     if (hasPendingChangesRef.current) {
       hasPendingChangesRef.current = false;
       // Use setTimeout to avoid potential call stack issues
-      setTimeout(() => saveRef.current(), 0);
+      setTimeout(() => {
+        if (!unmountedRef.current) {
+          saveRef.current();
+        }
+      }, 0);
     }
   }, []);
 
@@ -148,6 +160,7 @@ export function useAutosave<TData>({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      unmountedRef.current = true;
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
