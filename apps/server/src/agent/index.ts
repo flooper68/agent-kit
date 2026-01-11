@@ -2,7 +2,7 @@
 export * from './types';
 export { getProvider, registerProvider, listProviders } from './providers';
 export { getToolsById, listToolIds } from './tools';
-export type { ToolContext } from './tools';
+export type { ToolContext, ToolsContext, ActionsContext } from './tools';
 export { AgentWorker } from './worker';
 export { AgentJobHandler, convertToAIMessages } from './agent-job-handler';
 export type { DbMessage } from './agent-job-handler';

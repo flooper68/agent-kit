@@ -478,6 +478,20 @@ export function EditAgentPage() {
           />
         </div>
 
+        <ToolsSection
+          formData={{
+            ...DEFAULT_AGENT_FORM_DATA,
+            tools: externalAllowedTools,
+          }}
+          onChange={(updates) => {
+            if (updates.tools) {
+              setExternalAllowedTools(updates.tools);
+            }
+          }}
+          tools={toolsQuery.data ?? []}
+          onBlur={externalAutosave.trigger}
+        />
+
         <AllowedSubAgentsSection
           formData={{
             ...DEFAULT_AGENT_FORM_DATA,
@@ -502,20 +516,6 @@ export function EditAgentPage() {
               setExternalAllowedSkillIds(updates.allowedSkillIds);
             }
           }}
-          onBlur={externalAutosave.trigger}
-        />
-
-        <ToolsSection
-          formData={{
-            ...DEFAULT_AGENT_FORM_DATA,
-            tools: externalAllowedTools,
-          }}
-          onChange={(updates) => {
-            if (updates.tools) {
-              setExternalAllowedTools(updates.tools);
-            }
-          }}
-          tools={toolsQuery.data ?? []}
           onBlur={externalAutosave.trigger}
         />
       </div>

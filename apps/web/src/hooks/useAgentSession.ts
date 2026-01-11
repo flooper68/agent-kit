@@ -1003,7 +1003,11 @@ export function useAgentSession(
         setStreamingStartTime(new Date(streamingMessage.createdAt).getTime());
       }
     }
-  }, [sessionQuery.data?.isStreaming, sessionQuery.data?.messages, streamingStartTime]);
+  }, [
+    sessionQuery.data?.isStreaming,
+    sessionQuery.data?.messages,
+    streamingStartTime,
+  ]);
 
   // Watch streaming state from server - enabled when we're in streaming state
   // This query gets invalidated by useCacheInvalidation when streaming_state_changed is received
