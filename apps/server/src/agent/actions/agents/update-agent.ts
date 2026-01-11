@@ -1,8 +1,15 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import type { AgentsFeature } from '../../../features/agents';
 import type { ThinkingConfig } from '../../../db/schema/agents';
+
+export const updateAgentMetadata: ActionMetadata = {
+  id: 'updateAgent',
+  requiredScopes: [AgentScope.AGENTS_MANAGE],
+};
 
 export interface UpdateAgentContext {
   userId: string;

@@ -1,7 +1,14 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import { getTavilyClient, TavilyTopicSchema } from '../../../lib/tavily';
+
+export const webSearchMetadata: ActionMetadata = {
+  id: 'webSearch',
+  requiredScopes: [AgentScope.UTILITIES_WEB_SEARCH],
+};
 
 export const webSearchTool: Tool = tool({
   description:

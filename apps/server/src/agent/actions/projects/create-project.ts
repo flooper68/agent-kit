@@ -1,7 +1,14 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import type { ProjectsFeature } from '../../../features/projects';
+
+export const createProjectMetadata: ActionMetadata = {
+  id: 'createProject',
+  requiredScopes: [AgentScope.PROJECTS_WRITE],
+};
 
 export interface CreateProjectContext {
   userId: string;

@@ -1,7 +1,14 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import type { AgentsFeature } from '../../../features/agents';
+
+export const listAgentsMetadata: ActionMetadata = {
+  id: 'listAgents',
+  requiredScopes: [AgentScope.AGENTS_READ],
+};
 
 export interface ListAgentsContext {
   userId: string;

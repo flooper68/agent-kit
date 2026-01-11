@@ -1,7 +1,14 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import type { TasksFeature } from '../../../features/tasks';
+
+export const getTaskMetadata: ActionMetadata = {
+  id: 'getTask',
+  requiredScopes: [AgentScope.TASKS_READ],
+};
 
 export interface GetTaskContext {
   userId: string;
