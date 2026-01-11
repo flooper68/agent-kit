@@ -1,8 +1,8 @@
-import type { SessionSummarizer } from '../../../agent/session-summarizer';
+import type { SessionSummarizer } from '../../../agent/shared/session-summarizer';
 import type { GetSessionWithMessagesQuery } from '../queries/get-session-with-messages';
 import type { UpdateSessionSummaryCommand } from './update-session-summary';
 import type { CacheInvalidationService } from '../../../real-time';
-import { logger } from '../../../agent/logger';
+import { logger } from '../../../agent/shared/logger';
 
 export interface TriggerSummarizationInput {
   sessionId: string;

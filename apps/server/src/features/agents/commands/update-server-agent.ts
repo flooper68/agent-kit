@@ -6,11 +6,11 @@ import {
   type ServerAgent,
   type ThinkingConfig,
 } from '../../../db/schema';
-import { type Provider } from '../../../agent/model-config';
+import { type Provider } from '../../../agent/server/model-config';
 import {
   validateAgentConfiguration,
   AgentValidationError,
-} from '../../../agent/validation';
+} from '../../../agent/shared/validation';
 import {
   type AgentsCommandContextManager,
   type AllowedSubagentsInput,

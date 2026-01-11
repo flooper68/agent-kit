@@ -12,10 +12,11 @@
 
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { Tool } from '../types';
+import type { Tool } from '../shared/types';
 import type { ExecuteSkillResult, ParsedCommand } from '../skills/types';
-import { getToolsById, type ToolContext } from './index';
-import { logger } from '../logger';
+import type { ToolContext } from './index';
+import { getActionsById } from '../actions';
+import { logger } from '../shared/logger';
 import { SERVER_TOOL_DEFINITIONS } from '@agent-kit/shared';
 
 const log = logger.child({ module: 'execute-command-tool' });
@@ -234,62 +235,51 @@ export function createExecuteCommandTool(
         };
       }
 
-      const { tool: toolName, args } = parsed;
+      const { tool: actionName, args } = parsed;
 
-      // Validate tool is in agent's allowed list
-      const allowedTools = context.toolContext.allowedToolIds;
-      if (!allowedTools.includes(toolName)) {
-        log.warn('Tool not allowed for agent', { toolName, allowedTools });
+      // Get the action implementation
+      // Note: Tool validation removed - will be replaced with scoped permission system
+      const actions = getActionsById([actionName], context.toolContext);
+      const actionImpl = actions[actionName];
+
+      if (!actionImpl) {
+        log.warn('Action not found', { actionName });
         return {
           success: false,
-          tool: toolName,
+          tool: actionName,
           args,
-          error: `Tool "${toolName}" is not available to this agent. Available tools: ${allowedTools.join(', ') || 'none'}`,
+          error: `Action "${actionName}" not found or not available.`,
         };
       }
 
-      // Get the tool implementation directly (no skill validation)
-      const tools = getToolsById([toolName], context.toolContext);
-      const toolImpl = tools[toolName];
-
-      if (!toolImpl) {
-        log.warn('Tool not found', { toolName });
-        return {
-          success: false,
-          tool: toolName,
-          args,
-          error: `Tool "${toolName}" not found or not available.`,
-        };
-      }
-
-      // Execute the tool
+      // Execute the action
       try {
-        log.info('Executing tool', { toolName, args });
+        log.info('Executing action', { actionName, args });
 
         // The AI SDK tool has an execute function we need to call
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const result = await (toolImpl as any).execute(args);
+        const result = await (actionImpl as any).execute(args);
 
-        log.info('Tool execution completed', { toolName, success: true });
+        log.info('Action execution completed', { actionName, success: true });
 
         return {
           success: true,
-          tool: toolName,
+          tool: actionName,
           args,
           result,
         };
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : 'Unknown error during execution';
-        log.error('Tool execution failed', {
-          toolName,
+        log.error('Action execution failed', {
+          actionName,
           args,
           error: errorMessage,
         });
 
         return {
           success: false,
-          tool: toolName,
+          tool: actionName,
           args,
           error: errorMessage,
         };

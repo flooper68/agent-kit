@@ -7,7 +7,7 @@
 import type { SkillsFeature } from '../../../features/skills';
 import type { Skill } from '../../../db/schema/skills';
 import { parseSkillFiles } from '../../skills/types';
-import { logger } from '../../logger';
+import { logger } from '../../shared/logger';
 
 const log = logger.child({ module: 'skill-access' });
 

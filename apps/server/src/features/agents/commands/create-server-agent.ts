@@ -8,11 +8,11 @@ import {
 import {
   type Provider,
   getDefaultModelForProvider,
-} from '../../../agent/model-config';
+} from '../../../agent/server/model-config';
 import {
   validateAgentConfiguration,
   AgentValidationError,
-} from '../../../agent/validation';
+} from '../../../agent/shared/validation';
 import {
   type AgentsCommandContextManager,
   type AllowedSubagentsInput,

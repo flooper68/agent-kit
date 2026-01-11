@@ -12,8 +12,8 @@ import {
 } from '../../../db/schema';
 import type { AgentSessionEvent } from '../../../db/schema/agent-session-events';
 import { reconstructPartsFromEvents } from '../utils';
-import { logger } from '../../../agent/logger';
-import { getModelInfo } from '../../../agent/model-config';
+import { logger } from '../../../agent/shared/logger';
+import { getModelInfo } from '../../../agent/server/model-config';
 
 export interface GetSessionWithMessagesInput {
   sessionId: string;

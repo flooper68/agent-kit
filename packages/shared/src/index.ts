@@ -1,19 +1,28 @@
-// Server tool definitions - single source of truth for all tool metadata
+// =============================================================================
+// Server Actions - executable via executeCommand
+// =============================================================================
+
 export {
-  // Tool definitions and metadata
-  SERVER_TOOL_DEFINITIONS,
-  ALL_TOOL_NAMES,
-  SERVER_TOOL_NAMES,
-  getToolDefinition,
-  getToolsByCategory,
-  // Schemas
-  ServerToolNameSchema,
-  ServerToolRequestSchema,
-  ServerToolResponseSchema,
+  // Action definitions and metadata
+  ACTION_DEFINITIONS,
+  ALL_ACTION_NAMES,
+  getActionDefinition,
+  getActionsByCategory,
+  listActionNames,
+  // Types
+  type ActionCategory,
+  type ActionDefinition,
+  type ActionName,
+  // Common schemas
   TaskStatusSchema,
   TaskPrioritySchema,
   WebSearchTopicSchema,
-  // Individual tool schemas
+  TavilyExtractFormatSchema,
+  SkillFilePathSchema,
+  SkillFileSchema,
+  type TaskStatus,
+  type TaskPriority,
+  // Action schemas
   getTimeSchema,
   webSearchSchema,
   extractContentSchema,
@@ -40,7 +49,6 @@ export {
   detachArtifactFromTaskSchema,
   navigateToSchema,
   getCurrentUIStateSchema,
-  spawnAgentSchema,
   listAgentsSchema,
   getAgentSchema,
   updateAgentSchema,
@@ -48,21 +56,49 @@ export {
   toggleAgentFavoriteSchema,
   listSkillsSchema,
   getSkillSchema,
-  listSkillFilesSchema,
-  readSkillFileSchema,
-  executeCommandSchema,
   createSkillSchema,
   updateSkillSchema,
   deleteSkillSchema,
+} from './server-actions';
+
+// =============================================================================
+// Server Tools - directly exposed to agents as MCP tools
+// =============================================================================
+
+export {
+  // Tool definitions and metadata
+  TOOL_DEFINITIONS,
+  ALL_TOOL_NAMES,
+  getToolDefinition,
+  listToolNames,
+  // Types
+  type ToolCategory,
+  type ToolDefinition,
+  type ToolName,
+  // Tool schemas
+  spawnAgentSchema,
+  listSkillFilesSchema,
+  readSkillFileSchema,
+  executeCommandSchema,
+  // Request/Response schemas
+  ServerToolNameSchema,
+  ServerToolRequestSchema,
+  ServerToolResponseSchema,
+  type ServerToolRequest,
+  type ServerToolResponse,
 } from './server-tools';
 
-export type {
-  ServerToolName,
-  ServerToolRequest,
-  ServerToolResponse,
-  ServerToolDefinition,
-  ToolName,
-  ToolCategory,
-  TaskStatus,
-  TaskPriority,
+// =============================================================================
+// Legacy/Backward Compatibility Exports
+// =============================================================================
+
+export {
+  // @deprecated - Use TOOL_DEFINITIONS + ACTION_DEFINITIONS
+  SERVER_TOOL_DEFINITIONS,
+  SERVER_TOOL_NAMES,
+  // @deprecated - Use getToolDefinition or getActionDefinition
+  getToolsByCategory,
+  // @deprecated types
+  type ServerToolDefinition,
+  type ServerToolName,
 } from './server-tools';

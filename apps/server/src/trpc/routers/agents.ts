@@ -6,8 +6,8 @@ import {
   protectedProcedureWithErrors,
 } from '../trpc';
 import { getToolsMetadata } from '../../agent/tools';
-import { getProviders, type Provider } from '../../agent/model-config';
-import { AgentValidationError } from '../../agent/validation';
+import { getProviders, type Provider } from '../../agent/server/model-config';
+import { AgentValidationError } from '../../agent/shared/validation';
 
 // Schema for thinking configuration
 const thinkingConfigSchema = z

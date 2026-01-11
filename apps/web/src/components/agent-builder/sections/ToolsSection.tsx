@@ -134,13 +134,6 @@ export function ToolsSection({
         })}
       </div>
 
-      <div className="p-3 border rounded-lg bg-muted/30">
-        <Text className="text-xs text-muted-foreground">
-          <strong>Note:</strong> The &quot;Spawn Agent&quot; tool is
-          automatically added if subagent spawning is enabled in the Subagents
-          tab.
-        </Text>
-      </div>
     </div>
   );
 }

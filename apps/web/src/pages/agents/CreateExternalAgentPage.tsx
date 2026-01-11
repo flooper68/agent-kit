@@ -157,6 +157,16 @@ export function CreateExternalAgentPage() {
           />
         </div>
 
+        <ToolsSection
+          formData={formDataForSection}
+          onChange={(updates) => {
+            if (updates.tools) {
+              setAllowedTools(updates.tools);
+            }
+          }}
+          tools={toolsQuery.data ?? []}
+        />
+
         <AllowedSubAgentsSection
           formData={formDataForSection}
           onChange={(updates) => {
@@ -173,16 +183,6 @@ export function CreateExternalAgentPage() {
               setAllowedSkillIds(updates.allowedSkillIds);
             }
           }}
-        />
-
-        <ToolsSection
-          formData={formDataForSection}
-          onChange={(updates) => {
-            if (updates.tools) {
-              setAllowedTools(updates.tools);
-            }
-          }}
-          tools={toolsQuery.data ?? []}
         />
       </form>
     </AgentFormPageLayout>

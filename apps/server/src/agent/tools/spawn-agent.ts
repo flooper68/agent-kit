@@ -1,9 +1,9 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { Tool } from '../types';
-import type { AgentSpawner } from '../agent-spawner';
-import { SPAWN_CONFIG } from '../spawn-config';
-import { logger } from '../logger';
+import type { Tool } from '../shared/types';
+import type { AgentSpawner } from '../shared/spawner';
+import { SPAWN_CONFIG } from '../shared/spawn-config';
+import { logger } from '../shared/logger';
 import { SERVER_TOOL_DEFINITIONS } from '@agent-kit/shared';
 
 const log = logger.child({ module: 'spawn-agent-tool' });

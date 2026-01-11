@@ -1,0 +1,95 @@
+import { tool } from 'ai';
+import type { Tool } from '../shared/types';
+import type { SkillsFeature } from '../../features/skills';
+import { parseSkillFiles } from '../skills/types';
+import { getSkillSchema } from '@agent-kit/shared';
+
+export interface GetSkillContext {
+  userId: string;
+  orgId: string;
+  skillsFeature: SkillsFeature;
+  allowedSkillIds: string[];
+}
+
+export function createGetSkillAction(context: GetSkillContext): Tool {
+  return tool({
+    description:
+      'Get detailed information about a specific skill by ID or key. Returns full skill content including all files. Use to read skill documentation before using it.',
+    inputSchema: getSkillSchema,
+    execute: async ({
+      skillId,
+      skillKey,
+    }: {
+      skillId?: string;
+      skillKey?: string;
+    }) => {
+      let skill;
+
+      if (skillId) {
+        skill = await context.skillsFeature.getById({
+          userId: context.userId,
+          orgId: context.orgId,
+          id: skillId,
+        });
+      } else if (skillKey) {
+        skill = await context.skillsFeature.getByKey({
+          userId: context.userId,
+          orgId: context.orgId,
+          key: skillKey,
+        });
+      }
+
+      if (!skill) {
+        return {
+          success: false,
+          error: skillId
+            ? `Skill with ID ${skillId} not found`
+            : `Skill with key "${skillKey}" not found`,
+        };
+      }
+
+      // Validate skill access
+      if (!context.allowedSkillIds.includes(skill.id)) {
+        // Get available skills for helpful error message
+        const allSkills = await context.skillsFeature.getAll({
+          userId: context.userId,
+          orgId: context.orgId,
+        });
+        const allowedSkills = allSkills.filter((s) =>
+          context.allowedSkillIds.includes(s.id)
+        );
+        const availableKeys = allowedSkills.map((s) => s.key).join(', ');
+        return {
+          success: false,
+          error: `Skill "${skill.key}" is not available to this agent. Available skills: ${availableKeys || 'none'}`,
+        };
+      }
+
+      // Validate files from JSONB
+      const validatedFiles = parseSkillFiles(skill.files);
+      if (!validatedFiles) {
+        return {
+          success: false,
+          error: `Skill "${skill.key}" has invalid file format`,
+        };
+      }
+
+      return {
+        success: true,
+        skill: {
+          id: skill.id,
+          key: skill.key,
+          name: skill.name,
+          description: skill.description,
+          isSystem: skill.isSystem,
+          files: validatedFiles.map((f) => ({
+            path: f.path,
+            content: f.content,
+          })),
+          createdAt: skill.createdAt.toISOString(),
+          updatedAt: skill.updatedAt.toISOString(),
+        },
+      };
+    },
+  });
+}
