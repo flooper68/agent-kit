@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "check": "bun run lint && bun run format:check && bun run typecheck && bun run build",
-    "dev": "bun run --filter '*' dev",
+    "dev": "bun run --filter '@agent-kit/server' --filter '@agent-kit/web' dev",
     "dev:server": "bun run --cwd apps/server dev",
     "dev:web": "bun run --cwd apps/web dev",
     "dev:storybook": "bun run --cwd apps/storybook dev",
