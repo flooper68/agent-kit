@@ -30,14 +30,12 @@ const ThinkingConfigSchema = z
 export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
   return tool({
     description:
-      "Update an agent's configuration. For server agents, you can update name, description, model settings, tools, and system prompt. External agents can only have their status changed via setAgentEnabled tool.",
+      "Update an agent's configuration. For server agents, you can update name, description, model settings, tools, and system prompt. For external agents, you can update name, description, and isFavorite.",
     inputSchema: z.object({
       agentId: z.string().uuid().describe('The unique ID of the agent'),
       agentType: z
-        .enum(['server'])
-        .describe(
-          'The type of agent. Only server agents support full updates.'
-        ),
+        .enum(['server', 'external'])
+        .describe('The type of agent being updated'),
       updates: z.object({
         key: z
           .string()
@@ -90,7 +88,7 @@ export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
       updates,
     }: {
       agentId: string;
-      agentType: 'server';
+      agentType: 'server' | 'external';
       updates: {
         key?: string;
         name?: string;
@@ -105,14 +103,6 @@ export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
         isFavorite?: boolean;
       };
     }) => {
-      if (agentType !== 'server') {
-        return {
-          success: false,
-          error:
-            'Only server agents support full configuration updates. Use setAgentEnabled or toggleAgentFavorite for external agents.',
-        };
-      }
-
       // Filter out undefined values
       const cleanedUpdates: typeof updates = {};
       for (const [key, value] of Object.entries(updates)) {
@@ -128,6 +118,73 @@ export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
         };
       }
 
+      // Handle external agents
+      if (agentType === 'external') {
+        // Validate no LLM config fields are provided for external agents
+        const llmConfigFields = [
+          'key',
+          'provider',
+          'model',
+          'systemPrompt',
+          'tools',
+          'temperature',
+          'maxOutputTokens',
+          'thinkingConfig',
+        ] as const;
+        const invalidFields = llmConfigFields.filter(
+          (field) => cleanedUpdates[field] !== undefined
+        );
+
+        if (invalidFields.length > 0) {
+          return {
+            success: false,
+            error: `External agents do not support updating: ${invalidFields.join(', ')}. Only name, description, and isFavorite can be updated.`,
+          };
+        }
+
+        try {
+          const agent = await context.agentsFeature.customAgents.updateExternal(
+            {
+              id: agentId,
+              userId: context.userId,
+              orgId: context.orgId,
+              updates: {
+                name: cleanedUpdates.name,
+                description: cleanedUpdates.description,
+                isFavorite: cleanedUpdates.isFavorite,
+              },
+            }
+          );
+
+          if (!agent) {
+            return {
+              success: false,
+              error: `External agent with ID ${agentId} not found`,
+            };
+          }
+
+          return {
+            success: true,
+            message: 'Agent updated successfully',
+            agent: {
+              id: agent.id,
+              key: agent.key,
+              name: agent.name,
+              description: agent.description,
+              updatedAt: agent.updatedAt.toISOString(),
+            },
+          };
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : 'Unknown error';
+          return {
+            success: false,
+            error: `Failed to update external agent: ${message}`,
+          };
+        }
+      }
+
+      // Handle server agents
       try {
         const agent = await context.agentsFeature.customAgents.update({
           id: agentId,
