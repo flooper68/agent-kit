@@ -167,7 +167,12 @@ export function useSubAgentStreaming(
       case 'message_start':
         setIsStreaming(true);
         setStatus('active');
-        setStreamingStartTime(Date.now());
+        // Use event timestamp for accurate timing (especially during replay)
+        if (event.timestamp) {
+          setStreamingStartTime(new Date(event.timestamp).getTime());
+        } else {
+          setStreamingStartTime(Date.now());
+        }
         // Initialize accumulators for this message
         accumulatedTextRef.current[event.messageId] = '';
         accumulatedReasoningRef.current[event.messageId] = '';
