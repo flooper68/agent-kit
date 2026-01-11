@@ -274,10 +274,10 @@ export function ArtifactDetailPage() {
   }
 
   return (
-    <div className="h-full overflow-auto p-6">
-      <div className="mx-auto max-w-4xl">
+    <div className="flex h-full flex-col overflow-hidden p-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col overflow-hidden">
         {/* Breadcrumb */}
-        <nav className="mb-3 flex items-center gap-1.5">
+        <nav className="mb-3 flex shrink-0 items-center gap-1.5">
           <Link
             to="/app/artifacts"
             className="text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -291,19 +291,16 @@ export function ArtifactDetailPage() {
         </nav>
 
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-6 shrink-0">
           {isEditing ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <FileText className="h-6 w-6 text-muted-foreground" />
-                <Input
-                  value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
-                  onBlur={autosave.trigger}
-                  className="text-xl font-semibold"
-                  placeholder="Artifact title"
-                />
-              </div>
+              <Input
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                onBlur={autosave.trigger}
+                className="w-full text-xl font-semibold"
+                placeholder="Artifact title"
+              />
               <Textarea
                 value={editedSummary}
                 onChange={(e) => setEditedSummary(e.target.value)}
@@ -331,7 +328,7 @@ export function ArtifactDetailPage() {
         </div>
 
         {/* Metadata */}
-        <div className="mb-6 flex flex-wrap gap-4 text-sm text-muted-foreground">
+        <div className="mb-6 flex shrink-0 flex-wrap gap-4 text-sm text-muted-foreground">
           <span>Created: {formatDate(artifactQuery.data.createdAt)}</span>
           {new Date(artifactQuery.data.updatedAt).getTime() !==
             new Date(artifactQuery.data.createdAt).getTime() && (
@@ -340,19 +337,21 @@ export function ArtifactDetailPage() {
         </div>
 
         {/* Content */}
-        {isEditing ? (
-          <textarea
-            value={editedContent}
-            onChange={(e) => setEditedContent(e.target.value)}
-            onBlur={autosave.trigger}
-            className="min-h-[400px] w-full resize-none rounded-lg border bg-background p-4 font-mono text-sm outline-none focus:ring-2 focus:ring-ring"
-            placeholder="Enter markdown content..."
-          />
-        ) : (
-          <div className="rounded-lg border bg-muted/30 p-6">
-            <MarkdownRenderer content={artifactQuery.data.content} />
-          </div>
-        )}
+        <div className="min-h-0 flex-1">
+          {isEditing ? (
+            <textarea
+              value={editedContent}
+              onChange={(e) => setEditedContent(e.target.value)}
+              onBlur={autosave.trigger}
+              className="h-full w-full resize-none rounded-lg border bg-background p-4 font-mono text-sm outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Enter markdown content..."
+            />
+          ) : (
+            <div className="h-full overflow-auto rounded-lg border bg-muted/30 p-6">
+              <MarkdownRenderer content={artifactQuery.data.content} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
