@@ -288,6 +288,13 @@
       "when": 1767900000024,
       "tag": "0040_update_agent_management_skill",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1767900000025,
+      "tag": "0041_update_skill_management_skill",
+      "breakpoints": true
     }
   ]
 }
