@@ -41,7 +41,7 @@ export class AttachArtifactToProjectCommand {
         .limit(1);
 
       if (!project) {
-        throw new Error('Project not found');
+        throw new Error('Project not found or access denied');
       }
 
       // Verify artifact ownership
@@ -58,7 +58,7 @@ export class AttachArtifactToProjectCommand {
         .limit(1);
 
       if (!artifact) {
-        throw new Error('Artifact not found');
+        throw new Error('Artifact not found or access denied');
       }
 
       // Use INSERT ... ON CONFLICT DO NOTHING for atomic upsert

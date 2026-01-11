@@ -28,6 +28,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { getStatusLabel, getPriorityLabel } from '../../constants/task';
 
 export interface TaskEvent {
   type:
@@ -121,27 +122,6 @@ function formatDate(date: Date | string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-function getStatusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    backlog: 'Backlog',
-    todo: 'Todo',
-    in_progress: 'In Progress',
-    review: 'Review',
-    done: 'Done',
-  };
-  return labels[status] ?? status;
-}
-
-function getPriorityLabel(priority: string): string {
-  const labels: Record<string, string> = {
-    low: 'Low',
-    medium: 'Medium',
-    high: 'High',
-    urgent: 'Urgent',
-  };
-  return labels[priority] ?? priority;
 }
 
 export function TaskDetailDialog({

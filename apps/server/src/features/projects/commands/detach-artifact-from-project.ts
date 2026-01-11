@@ -41,7 +41,7 @@ export class DetachArtifactFromProjectCommand {
         .limit(1);
 
       if (!project) {
-        throw new Error('Project not found');
+        throw new Error('Project not found or access denied');
       }
 
       // Verify artifact ownership
@@ -58,7 +58,7 @@ export class DetachArtifactFromProjectCommand {
         .limit(1);
 
       if (!artifact) {
-        throw new Error('Artifact not found');
+        throw new Error('Artifact not found or access denied');
       }
 
       // Delete the attachment

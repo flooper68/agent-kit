@@ -1,7 +1,7 @@
-import { eq, desc, lt, and, or, ilike, type SQL } from 'drizzle-orm';
+import { eq, desc, lt, and, or, ilike, notExists, type SQL } from 'drizzle-orm';
 import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
-import { artifacts } from '../../../db/schema';
+import { artifacts, projectArtifacts } from '../../../db/schema';
 
 export interface ListArtifactsInput {
   userId: string;
@@ -9,6 +9,7 @@ export interface ListArtifactsInput {
   limit: number;
   cursor?: string;
   search?: string;
+  excludeProjectId?: string;
 }
 
 export interface ArtifactListItem {
@@ -34,7 +35,7 @@ export class ListArtifactsQuery {
   }
 
   async execute(input: ListArtifactsInput): Promise<ListArtifactsResult> {
-    const { userId, orgId, limit, cursor, search } = input;
+    const { userId, orgId, limit, cursor, search, excludeProjectId } = input;
 
     // If cursor is provided, get the cursor artifact's createdAt for filtering
     let cursorDate: Date | undefined;
@@ -71,6 +72,23 @@ export class ListArtifactsQuery {
           ilike(artifacts.title, searchPattern),
           ilike(artifacts.summary, searchPattern)
         )!
+      );
+    }
+
+    // Exclude artifacts already attached to a specific project
+    if (excludeProjectId) {
+      conditions.push(
+        notExists(
+          this.db
+            .select()
+            .from(projectArtifacts)
+            .where(
+              and(
+                eq(projectArtifacts.artifactId, artifacts.id),
+                eq(projectArtifacts.projectId, excludeProjectId)
+              )
+            )
+        )
       );
     }
 

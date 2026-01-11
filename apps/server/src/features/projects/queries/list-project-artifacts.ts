@@ -54,7 +54,7 @@ export class ListProjectArtifactsQuery {
       .limit(1);
 
     if (!project) {
-      throw new Error('Project not found');
+      throw new Error('Project not found or access denied');
     }
 
     // Build conditions
@@ -137,7 +137,15 @@ export class ListProjectArtifactsQuery {
     }
 
     return {
-      items: results as ProjectArtifactListItem[],
+      items: results.map((r) => ({
+        id: r.id,
+        title: r.title,
+        summary: r.summary,
+        format: r.format,
+        sizeBytes: r.sizeBytes,
+        createdAt: r.createdAt,
+        attachedAt: r.attachedAt,
+      })),
       nextCursor,
       total: countResult?.count ?? 0,
     };

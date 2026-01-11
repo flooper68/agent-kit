@@ -20,6 +20,8 @@ import {
   Plus,
   Link2,
   MoreHorizontal,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { useDebounce } from '../hooks/useDebounce';
@@ -94,23 +96,15 @@ export function ProjectDocumentsTab({
     search: debouncedSearch || undefined,
   });
 
-  // Available artifacts for attaching (not already attached)
+  // Available artifacts for attaching (excludes already attached via server-side filtering)
   const availableArtifactsQuery = trpc.artifacts.list.useQuery(
     {
       limit: 50,
       search: debouncedAttachSearch || undefined,
+      excludeProjectId: projectId,
     },
     {
       enabled: isAttachDialogOpen,
-    }
-  );
-
-  // Query to get all attached artifact IDs for filtering in attach dialog
-  const attachedArtifactIdsQuery = trpc.projects.listArtifacts.useQuery(
-    { projectId, limit: 1000 },
-    {
-      enabled: isAttachDialogOpen,
-      select: (data) => new Set(data.items.map((a) => a.id)),
     }
   );
 
@@ -215,9 +209,6 @@ export function ProjectDocumentsTab({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  // Get IDs of already attached artifacts to filter them out in the picker
-  const attachedIds = attachedArtifactIdsQuery.data ?? new Set<string>();
-
   return (
     <div className="space-y-4">
       {/* Toolbar: Search + Actions (actions hidden when externally controlled) */}
@@ -254,6 +245,25 @@ export function ProjectDocumentsTab({
           {[...Array(5)].map((_, i) => (
             <div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />
           ))}
+        </div>
+      )}
+
+      {/* Error State */}
+      {artifactsQuery.isError && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <AlertCircle className="mb-4 h-12 w-12 text-destructive" />
+          <Text className="font-medium">Failed to load documents</Text>
+          <Text className="mb-4 text-sm text-muted-foreground">
+            {artifactsQuery.error?.message || 'An error occurred'}
+          </Text>
+          <Button
+            variant="outline"
+            onClick={() => artifactsQuery.refetch()}
+            disabled={artifactsQuery.isFetching}
+          >
+            <RefreshCw className={cn('mr-2 h-4 w-4', artifactsQuery.isFetching && 'animate-spin')} />
+            Try Again
+          </Button>
         </div>
       )}
 
@@ -388,7 +398,11 @@ export function ProjectDocumentsTab({
               value={attachSearch}
               onChange={(e) => setAttachSearch(e.target.value)}
             />
-            <div className="max-h-64 overflow-auto rounded-lg border border-border">
+            <div
+              role="listbox"
+              aria-label="Available documents"
+              className="max-h-64 overflow-auto rounded-lg border border-border"
+            >
               {availableArtifactsQuery.isLoading && (
                 <div className="p-4 text-center text-muted-foreground">
                   Loading...
@@ -399,31 +413,38 @@ export function ProjectDocumentsTab({
                   No documents found
                 </div>
               )}
-              {availableArtifactsQuery.data?.items
-                .filter((a) => !attachedIds.has(a.id))
-                .map((artifact) => (
-                  <div
-                    key={artifact.id}
-                    className={cn(
-                      'flex cursor-pointer items-center gap-3 border-b border-border p-3 last:border-b-0 hover:bg-muted',
-                      selectedArtifactId === artifact.id &&
-                        'bg-muted ring-2 ring-primary ring-inset'
-                    )}
-                    onClick={() => setSelectedArtifactId(artifact.id)}
-                  >
-                    <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <Text className="truncate font-medium">
-                        {artifact.title}
+              {availableArtifactsQuery.data?.items.map((artifact) => (
+                <div
+                  key={artifact.id}
+                  role="option"
+                  aria-selected={selectedArtifactId === artifact.id}
+                  tabIndex={0}
+                  className={cn(
+                    'flex cursor-pointer items-center gap-3 border-b border-border p-3 last:border-b-0 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset',
+                    selectedArtifactId === artifact.id &&
+                      'bg-muted ring-2 ring-primary ring-inset'
+                  )}
+                  onClick={() => setSelectedArtifactId(artifact.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedArtifactId(artifact.id);
+                    }
+                  }}
+                >
+                  <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <Text className="truncate font-medium">
+                      {artifact.title}
+                    </Text>
+                    {artifact.summary && (
+                      <Text className="truncate text-sm text-muted-foreground">
+                        {artifact.summary}
                       </Text>
-                      {artifact.summary && (
-                        <Text className="truncate text-sm text-muted-foreground">
-                          {artifact.summary}
-                        </Text>
-                      )}
-                    </div>
+                    )}
                   </div>
-                ))}
+                </div>
+              ))}
             </div>
           </div>
           <Dialog.Footer>
@@ -477,13 +498,30 @@ export function ProjectDocumentsTab({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Content</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Content</label>
+                <span
+                  className={cn(
+                    'text-xs',
+                    newContent.length > 1_000_000
+                      ? 'text-destructive'
+                      : 'text-muted-foreground'
+                  )}
+                >
+                  {newContent.length.toLocaleString()} / 1,000,000
+                </span>
+              </div>
               <Textarea
                 placeholder="Document content (Markdown supported)..."
                 value={newContent}
                 onChange={(e) => setNewContent(e.target.value)}
                 className="min-h-[300px]"
               />
+              {newContent.length > 1_000_000 && (
+                <p className="text-xs text-destructive">
+                  Content exceeds maximum length
+                </p>
+              )}
             </div>
           </div>
           <Dialog.Footer className="mt-auto pt-4 border-t border-border">
@@ -501,6 +539,7 @@ export function ProjectDocumentsTab({
               disabled={
                 !newTitle.trim() ||
                 !newContent.trim() ||
+                newContent.length > 1_000_000 ||
                 createMutation.isPending
               }
             >

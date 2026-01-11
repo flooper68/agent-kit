@@ -21,6 +21,8 @@ import {
   Tooltip,
   TooltipProvider,
   useToast,
+  STATUS_LABELS,
+  PRIORITY_LABELS,
   type TaskFiltersState,
   type TaskData,
   type PlanningTaskStatus,
@@ -60,21 +62,6 @@ const tabLabels: Record<TabValue, string> = {
 };
 
 const validTabs: TabValue[] = ['kanban', 'backlog', 'list', 'documents'];
-
-const statusLabels: Record<string, string> = {
-  backlog: 'Backlog',
-  todo: 'Todo',
-  in_progress: 'In Progress',
-  review: 'Review',
-  done: 'Done',
-};
-
-const priorityLabels: Record<string, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
-};
 
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -658,9 +645,9 @@ export function ProjectDetailPage() {
               emptyMessage="No tasks match your filters"
             />
           )}
-          {activeTab === 'documents' && (
+          {activeTab === 'documents' && projectId && (
             <ProjectDocumentsTab
-              projectId={projectId!}
+              projectId={projectId}
               isAttachDialogOpen={isDocumentAttachOpen}
               onAttachDialogOpenChange={setIsDocumentAttachOpen}
               isCreateDialogOpen={isDocumentCreateOpen}
@@ -709,7 +696,7 @@ export function ProjectDetailPage() {
                         Status
                       </label>
                       <span className="text-sm text-muted-foreground">
-                        {statusLabels[newTaskStatus]}
+                        {STATUS_LABELS[newTaskStatus]}
                       </span>
                     </div>
                     <ToggleGroup
@@ -753,7 +740,7 @@ export function ProjectDetailPage() {
                         Priority
                       </label>
                       <span className="text-sm text-muted-foreground">
-                        {priorityLabels[newTaskPriority]}
+                        {PRIORITY_LABELS[newTaskPriority]}
                       </span>
                     </div>
                     <ToggleGroup
