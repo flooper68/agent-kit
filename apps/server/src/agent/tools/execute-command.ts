@@ -18,6 +18,7 @@ import { getActionsById } from '../actions';
 import type { ToolsContext } from './types';
 import { logger } from '../logger';
 import { SERVER_TOOL_DEFINITIONS } from '@agent-kit/shared';
+import { checkActionPermission, createPermissionError } from '../permissions';
 
 const log = logger.child({ module: 'execute-command-tool' });
 
@@ -237,7 +238,25 @@ export function createExecuteCommandTool(
 
       const { tool: toolName, args } = parsed;
 
-      // Get the action implementation directly (no skill validation)
+      // Check permissions before instantiating the action
+      const permCheck = checkActionPermission(
+        toolName,
+        context.toolContext.agentScopes
+      );
+      if (!permCheck.allowed) {
+        log.warn('Permission denied', {
+          actionName: toolName,
+          missingScopes: permCheck.missingScopes,
+        });
+        return {
+          success: false,
+          tool: toolName,
+          args,
+          error: createPermissionError(toolName, permCheck.missingScopes),
+        };
+      }
+
+      // Get the action implementation (only after permission check passes)
       const actions = getActionsById([toolName], context.toolContext);
       const actionImpl = actions[toolName];
 

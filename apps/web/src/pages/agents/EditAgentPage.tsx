@@ -12,6 +12,7 @@ import { SystemPromptSection } from '../../components/agent-builder/sections/Sys
 import { ToolsSection } from '../../components/agent-builder/sections/ToolsSection';
 import { AllowedSubAgentsSection } from '../../components/agent-builder/sections/AllowedSubAgentsSection';
 import { SkillsSection } from '../../components/agent-builder/sections/SkillsSection';
+import { PermissionsSection } from '../../components/agent-builder/sections/PermissionsSection';
 import {
   type AgentFormData,
   type AllowedSubagents,
@@ -43,6 +44,7 @@ type ExternalFormData = {
   allowedSubagents: AllowedSubagents;
   allowedSkillIds: string[];
   allowedTools: string[];
+  scopes: string[];
 };
 
 export function EditAgentPage() {
@@ -70,6 +72,7 @@ export function EditAgentPage() {
   const [externalAllowedTools, setExternalAllowedTools] = useState<string[]>(
     []
   );
+  const [externalScopes, setExternalScopes] = useState<string[]>([]);
 
   const utils = trpc.useUtils();
 
@@ -179,6 +182,7 @@ export function EditAgentPage() {
       allowedSubagents: externalAllowedSubagents,
       allowedSkillIds: externalAllowedSkillIds,
       allowedTools: externalAllowedTools,
+      scopes: externalScopes,
     }),
     [
       externalKey,
@@ -187,6 +191,7 @@ export function EditAgentPage() {
       externalAllowedSubagents,
       externalAllowedSkillIds,
       externalAllowedTools,
+      externalScopes,
     ]
   );
 
@@ -218,6 +223,7 @@ export function EditAgentPage() {
             isFavorite: data.isFavorite,
             allowedSubagents: data.allowedSubagents,
             allowedSkillIds: data.allowedSkillIds,
+            scopes: data.scopes,
           },
           {
             onSuccess: () => {
@@ -252,6 +258,7 @@ export function EditAgentPage() {
             allowedSubagents: data.allowedSubagents,
             allowedSkillIds: data.allowedSkillIds,
             allowedTools: data.allowedTools,
+            scopes: data.scopes,
           },
           {
             onSuccess: () => {
@@ -296,12 +303,14 @@ export function EditAgentPage() {
           isFavorite: data.isFavorite ?? false,
           allowedSubagents,
           allowedSkillIds,
+          scopes: data.scopes ?? [],
         };
         setServerFormData(formData);
         serverAutosave.lastSavedDataRef.current = formData;
       } else {
-        // External agent - includes allowedTools
+        // External agent - includes allowedTools and scopes
         const allowedTools: string[] = agentQuery.data.allowedTools ?? [];
+        const scopes: string[] = agentQuery.data.scopes ?? [];
         const externalData: ExternalFormData = {
           key: agentQuery.data.key,
           name: agentQuery.data.name,
@@ -309,6 +318,7 @@ export function EditAgentPage() {
           allowedSubagents,
           allowedSkillIds,
           allowedTools,
+          scopes,
         };
         setExternalKey(externalData.key);
         setExternalName(externalData.name);
@@ -316,6 +326,7 @@ export function EditAgentPage() {
         setExternalAllowedSubagents(externalData.allowedSubagents);
         setExternalAllowedSkillIds(externalData.allowedSkillIds);
         setExternalAllowedTools(externalData.allowedTools);
+        setExternalScopes(externalData.scopes);
         externalAutosave.lastSavedDataRef.current = externalData;
       }
     }
@@ -400,6 +411,12 @@ export function EditAgentPage() {
                   onBlur={serverAutosave.trigger}
                 />
 
+                <SkillsSection
+                  formData={serverFormData}
+                  onChange={updateServerFormData}
+                  onBlur={serverAutosave.trigger}
+                />
+
                 <AllowedSubAgentsSection
                   formData={serverFormData}
                   onChange={updateServerFormData}
@@ -407,7 +424,7 @@ export function EditAgentPage() {
                   onBlur={serverAutosave.trigger}
                 />
 
-                <SkillsSection
+                <PermissionsSection
                   formData={serverFormData}
                   onChange={updateServerFormData}
                   onBlur={serverAutosave.trigger}
@@ -492,6 +509,19 @@ export function EditAgentPage() {
           onBlur={externalAutosave.trigger}
         />
 
+        <SkillsSection
+          formData={{
+            ...DEFAULT_AGENT_FORM_DATA,
+            allowedSkillIds: externalAllowedSkillIds,
+          }}
+          onChange={(updates) => {
+            if (updates.allowedSkillIds) {
+              setExternalAllowedSkillIds(updates.allowedSkillIds);
+            }
+          }}
+          onBlur={externalAutosave.trigger}
+        />
+
         <AllowedSubAgentsSection
           formData={{
             ...DEFAULT_AGENT_FORM_DATA,
@@ -506,14 +536,14 @@ export function EditAgentPage() {
           onBlur={externalAutosave.trigger}
         />
 
-        <SkillsSection
+        <PermissionsSection
           formData={{
             ...DEFAULT_AGENT_FORM_DATA,
-            allowedSkillIds: externalAllowedSkillIds,
+            scopes: externalScopes,
           }}
           onChange={(updates) => {
-            if (updates.allowedSkillIds) {
-              setExternalAllowedSkillIds(updates.allowedSkillIds);
+            if (updates.scopes) {
+              setExternalScopes(updates.scopes);
             }
           }}
           onBlur={externalAutosave.trigger}

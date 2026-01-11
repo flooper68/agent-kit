@@ -8,8 +8,15 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import type { SkillsFeature } from '../../../features/skills';
 import { logger } from '../../logger';
+
+export const deleteSkillMetadata: ActionMetadata = {
+  id: 'deleteSkill',
+  requiredScopes: [AgentScope.SKILLS_DELETE],
+};
 
 const log = logger.child({ module: 'delete-skill-action' });
 

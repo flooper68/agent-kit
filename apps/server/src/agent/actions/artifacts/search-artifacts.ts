@@ -2,6 +2,13 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
 import type { ArtifactsFeature } from '../../../features/artifacts';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
+
+export const searchArtifactsMetadata: ActionMetadata = {
+  id: 'searchArtifacts',
+  requiredScopes: [AgentScope.ARTIFACTS_READ],
+};
 
 export interface SearchArtifactsContext {
   userId: string;

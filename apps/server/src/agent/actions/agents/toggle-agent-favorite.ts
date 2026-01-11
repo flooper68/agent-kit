@@ -1,7 +1,14 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import type { AgentsFeature } from '../../../features/agents';
+
+export const toggleAgentFavoriteMetadata: ActionMetadata = {
+  id: 'toggleAgentFavorite',
+  requiredScopes: [AgentScope.AGENTS_MANAGE],
+};
 
 export interface ToggleAgentFavoriteContext {
   userId: string;

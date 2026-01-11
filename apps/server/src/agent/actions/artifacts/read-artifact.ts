@@ -2,6 +2,13 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
 import type { ArtifactsFeature } from '../../../features/artifacts';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
+
+export const readArtifactMetadata: ActionMetadata = {
+  id: 'readArtifact',
+  requiredScopes: [AgentScope.ARTIFACTS_READ],
+};
 
 export interface ReadArtifactContext {
   userId: string;

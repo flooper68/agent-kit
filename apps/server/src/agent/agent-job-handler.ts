@@ -265,6 +265,9 @@ export class AgentJobHandler {
         }
       }
 
+      // Get agent scopes for permission checks
+      const agentScopes = customAgentResult?.agent?.scopes ?? [];
+
       // Get tools for this agent (with context for artifact, planning, client-side, spawn, and agent management tools)
       const toolContext = {
         userId,
@@ -284,6 +287,7 @@ export class AgentJobHandler {
         parentAgentKey: agentId, // Agent key for spawn validation
         allowedSkillIds, // Skill filtering
         allowedToolIds: agent.tools, // Tool access control for executeCommand
+        agentScopes, // Permission scopes for action access control
       };
       const tools = getToolsById(agent.tools, toolContext);
 

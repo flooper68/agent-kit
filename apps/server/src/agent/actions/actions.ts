@@ -14,56 +14,189 @@
 import type { Tool } from '../types';
 import type { ActionsContext } from './types';
 import { logger } from '../logger';
+import { AgentScope } from '../permissions/scopes';
 
 // Static actions (no context needed)
-import { getTimeTool } from './static/get-time';
-import { webSearchTool } from './static/web-search';
-import { extractContentTool } from './static/extract-content';
-import { fetchTool } from './static/fetch';
+import { getTimeTool, getTimeMetadata } from './static/get-time';
+import { webSearchTool, webSearchMetadata } from './static/web-search';
+import {
+  extractContentTool,
+  extractContentMetadata,
+} from './static/extract-content';
+import { fetchTool, fetchMetadata } from './static/fetch';
 
 // Artifact actions
-import { createWriteArtifactTool } from './artifacts/write-artifact';
-import { createSearchArtifactsTool } from './artifacts/search-artifacts';
-import { createReadArtifactTool } from './artifacts/read-artifact';
-import { createUpdateArtifactTool } from './artifacts/update-artifact';
+import {
+  createWriteArtifactTool,
+  writeArtifactMetadata,
+} from './artifacts/write-artifact';
+import {
+  createSearchArtifactsTool,
+  searchArtifactsMetadata,
+} from './artifacts/search-artifacts';
+import {
+  createReadArtifactTool,
+  readArtifactMetadata,
+} from './artifacts/read-artifact';
+import {
+  createUpdateArtifactTool,
+  updateArtifactMetadata,
+} from './artifacts/update-artifact';
+import type { ActionMetadata } from './types';
 
 // Project actions
-import { createListProjectsTool } from './projects/list-projects';
-import { createSearchProjectsTool } from './projects/search-projects';
-import { createGetProjectTool } from './projects/get-project';
-import { createCreateProjectTool } from './projects/create-project';
-import { createUpdateProjectTool } from './projects/update-project';
-import { createDeleteProjectTool } from './projects/delete-project';
+import {
+  createListProjectsTool,
+  listProjectsMetadata,
+} from './projects/list-projects';
+import {
+  createSearchProjectsTool,
+  searchProjectsMetadata,
+} from './projects/search-projects';
+import {
+  createGetProjectTool,
+  getProjectMetadata,
+} from './projects/get-project';
+import {
+  createCreateProjectTool,
+  createProjectMetadata,
+} from './projects/create-project';
+import {
+  createUpdateProjectTool,
+  updateProjectMetadata,
+} from './projects/update-project';
+import {
+  createDeleteProjectTool,
+  deleteProjectMetadata,
+} from './projects/delete-project';
 
 // Task actions
-import { createListTasksTool } from './tasks/list-tasks';
-import { createSearchTasksTool } from './tasks/search-tasks';
-import { createGetTaskTool } from './tasks/get-task';
-import { createCreateTaskTool } from './tasks/create-task';
-import { createUpdateTaskTool } from './tasks/update-task';
-import { createMoveTaskTool } from './tasks/move-task';
-import { createReorderTaskTool } from './tasks/reorder-task';
-import { createAttachArtifactToTaskTool } from './tasks/attach-artifact-to-task';
-import { createDetachArtifactFromTaskTool } from './tasks/detach-artifact-from-task';
-import { createDeleteTaskTool } from './tasks/delete-task';
+import { createListTasksTool, listTasksMetadata } from './tasks/list-tasks';
+import {
+  createSearchTasksTool,
+  searchTasksMetadata,
+} from './tasks/search-tasks';
+import { createGetTaskTool, getTaskMetadata } from './tasks/get-task';
+import { createCreateTaskTool, createTaskMetadata } from './tasks/create-task';
+import { createUpdateTaskTool, updateTaskMetadata } from './tasks/update-task';
+import { createMoveTaskTool, moveTaskMetadata } from './tasks/move-task';
+import {
+  createReorderTaskTool,
+  reorderTaskMetadata,
+} from './tasks/reorder-task';
+import {
+  createAttachArtifactToTaskTool,
+  attachArtifactToTaskMetadata,
+} from './tasks/attach-artifact-to-task';
+import {
+  createDetachArtifactFromTaskTool,
+  detachArtifactFromTaskMetadata,
+} from './tasks/detach-artifact-from-task';
+import { createDeleteTaskTool, deleteTaskMetadata } from './tasks/delete-task';
 
 // Client-side actions
-import { createNavigateToTool } from './client/navigate-to';
-import { createGetCurrentUIStateTool } from './client/get-current-ui-state';
+import { createNavigateToTool, navigateToMetadata } from './client/navigate-to';
+import {
+  createGetCurrentUIStateTool,
+  getCurrentUIStateMetadata,
+} from './client/get-current-ui-state';
 
 // Agent actions
-import { createListAgentsTool } from './agents/list-agents';
-import { createGetAgentTool } from './agents/get-agent';
-import { createUpdateAgentTool } from './agents/update-agent';
-import { createSetAgentEnabledTool } from './agents/set-agent-enabled';
-import { createToggleAgentFavoriteTool } from './agents/toggle-agent-favorite';
+import { createListAgentsTool, listAgentsMetadata } from './agents/list-agents';
+import { createGetAgentTool, getAgentMetadata } from './agents/get-agent';
+import {
+  createUpdateAgentTool,
+  updateAgentMetadata,
+} from './agents/update-agent';
+import {
+  createSetAgentEnabledTool,
+  setAgentEnabledMetadata,
+} from './agents/set-agent-enabled';
+import {
+  createToggleAgentFavoriteTool,
+  toggleAgentFavoriteMetadata,
+} from './agents/toggle-agent-favorite';
 
 // Skill management actions
-import { createCreateSkillTool } from './skills/create-skill';
-import { createUpdateSkillTool } from './skills/update-skill';
-import { createDeleteSkillTool } from './skills/delete-skill';
-import { createListSkillsTool } from './skills/list-skills';
-import { createGetSkillTool } from './skills/get-skill';
+import {
+  createCreateSkillTool,
+  createSkillMetadata,
+} from './skills/create-skill';
+import {
+  createUpdateSkillTool,
+  updateSkillMetadata,
+} from './skills/update-skill';
+import {
+  createDeleteSkillTool,
+  deleteSkillMetadata,
+} from './skills/delete-skill';
+import { createListSkillsTool, listSkillsMetadata } from './skills/list-skills';
+import { createGetSkillTool, getSkillMetadata } from './skills/get-skill';
+
+/**
+ * Collected metadata from all actions with scope requirements.
+ * Used by permission system to check required scopes for actions.
+ */
+export const ACTION_METADATA: Record<string, ActionMetadata> = {
+  // Static actions
+  [getTimeMetadata.id]: getTimeMetadata,
+  [webSearchMetadata.id]: webSearchMetadata,
+  [extractContentMetadata.id]: extractContentMetadata,
+  [fetchMetadata.id]: fetchMetadata,
+
+  // Artifact actions
+  [writeArtifactMetadata.id]: writeArtifactMetadata,
+  [readArtifactMetadata.id]: readArtifactMetadata,
+  [searchArtifactsMetadata.id]: searchArtifactsMetadata,
+  [updateArtifactMetadata.id]: updateArtifactMetadata,
+
+  // Project actions
+  [listProjectsMetadata.id]: listProjectsMetadata,
+  [searchProjectsMetadata.id]: searchProjectsMetadata,
+  [getProjectMetadata.id]: getProjectMetadata,
+  [createProjectMetadata.id]: createProjectMetadata,
+  [updateProjectMetadata.id]: updateProjectMetadata,
+  [deleteProjectMetadata.id]: deleteProjectMetadata,
+
+  // Task actions
+  [listTasksMetadata.id]: listTasksMetadata,
+  [searchTasksMetadata.id]: searchTasksMetadata,
+  [getTaskMetadata.id]: getTaskMetadata,
+  [createTaskMetadata.id]: createTaskMetadata,
+  [updateTaskMetadata.id]: updateTaskMetadata,
+  [moveTaskMetadata.id]: moveTaskMetadata,
+  [reorderTaskMetadata.id]: reorderTaskMetadata,
+  [attachArtifactToTaskMetadata.id]: attachArtifactToTaskMetadata,
+  [detachArtifactFromTaskMetadata.id]: detachArtifactFromTaskMetadata,
+  [deleteTaskMetadata.id]: deleteTaskMetadata,
+
+  // Client actions
+  [navigateToMetadata.id]: navigateToMetadata,
+  [getCurrentUIStateMetadata.id]: getCurrentUIStateMetadata,
+
+  // Agent actions
+  [listAgentsMetadata.id]: listAgentsMetadata,
+  [getAgentMetadata.id]: getAgentMetadata,
+  [updateAgentMetadata.id]: updateAgentMetadata,
+  [setAgentEnabledMetadata.id]: setAgentEnabledMetadata,
+  [toggleAgentFavoriteMetadata.id]: toggleAgentFavoriteMetadata,
+
+  // Skill actions
+  [listSkillsMetadata.id]: listSkillsMetadata,
+  [getSkillMetadata.id]: getSkillMetadata,
+  [createSkillMetadata.id]: createSkillMetadata,
+  [updateSkillMetadata.id]: updateSkillMetadata,
+  [deleteSkillMetadata.id]: deleteSkillMetadata,
+};
+
+/**
+ * Get the required scopes for an action from its metadata.
+ * Returns empty array if action has no scope requirements.
+ */
+export function getActionRequiredScopes(actionId: string): AgentScope[] {
+  const metadata = ACTION_METADATA[actionId];
+  return metadata?.requiredScopes ?? [];
+}
 
 /**
  * Static actions (no context needed)

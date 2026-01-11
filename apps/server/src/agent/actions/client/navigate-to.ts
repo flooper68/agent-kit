@@ -2,8 +2,15 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import type { StreamEvent } from '../../event-stream-manager';
 import type { ClientActionContext } from './types';
+
+export const navigateToMetadata: ActionMetadata = {
+  id: 'navigateTo',
+  requiredScopes: [AgentScope.UI_NAVIGATE],
+};
 
 /**
  * Creates the navigateTo action for navigating the user's browser.

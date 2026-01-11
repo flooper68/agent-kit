@@ -12,6 +12,7 @@ import { SystemPromptSection } from '../../components/agent-builder/sections/Sys
 import { ToolsSection } from '../../components/agent-builder/sections/ToolsSection';
 import { AllowedSubAgentsSection } from '../../components/agent-builder/sections/AllowedSubAgentsSection';
 import { SkillsSection } from '../../components/agent-builder/sections/SkillsSection';
+import { PermissionsSection } from '../../components/agent-builder/sections/PermissionsSection';
 import {
   type AgentFormData,
   DEFAULT_AGENT_FORM_DATA,
@@ -78,10 +79,30 @@ export function CreateServerAgentPage() {
     return () => clearActions();
   }, [setActions, clearActions, navigate, isSubmitting]);
 
-  // Fetch tools and models
+  // Fetch tools, models, and skills
   const toolsQuery = trpc.agents.listTools.useQuery();
   const modelsQuery = trpc.agents.listModels.useQuery();
   const providersQuery = trpc.agents.listProviders.useQuery();
+  const skillsQuery = trpc.agents.listSkillsForAgent.useQuery();
+
+  // Auto-select core system skills on initial load
+  const hasInitializedSkills = useRef(false);
+  useEffect(() => {
+    if (
+      skillsQuery.data &&
+      !hasInitializedSkills.current &&
+      formData.allowedSkillIds.length === 0
+    ) {
+      hasInitializedSkills.current = true;
+      // Select system skills except agent-management
+      const coreSystemSkills = skillsQuery.data
+        .filter((s) => s.isSystem && s.key !== 'agent-management')
+        .map((s) => s.id);
+      if (coreSystemSkills.length > 0) {
+        setFormData((prev) => ({ ...prev, allowedSkillIds: coreSystemSkills }));
+      }
+    }
+  }, [skillsQuery.data, formData.allowedSkillIds.length]);
 
   // Update model when provider changes
   useEffect(() => {
@@ -149,6 +170,7 @@ export function CreateServerAgentPage() {
       isFavorite: formData.isFavorite,
       allowedSubagents: formData.allowedSubagents,
       allowedSkillIds: formData.allowedSkillIds,
+      scopes: formData.scopes,
     });
   };
 
@@ -207,12 +229,17 @@ export function CreateServerAgentPage() {
                 tools={toolsQuery.data ?? []}
               />
 
+              <SkillsSection formData={formData} onChange={updateFormData} />
+
               <AllowedSubAgentsSection
                 formData={formData}
                 onChange={updateFormData}
               />
 
-              <SkillsSection formData={formData} onChange={updateFormData} />
+              <PermissionsSection
+                formData={formData}
+                onChange={updateFormData}
+              />
             </Tabs.Content>
 
             <Tabs.Content value="advanced" className="mt-0 space-y-8">

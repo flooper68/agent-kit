@@ -1030,6 +1030,7 @@ export class ExternalAgentWebSocketService {
         agentId: agent.id,
         allowedSkillIds,
         allowedToolIds: allowedTools, // Tool access control for executeCommand
+        agentScopes: agent.scopes ?? [], // Permission scopes for action access control
         artifactsFeature: this.artifactsFeature,
         projectsFeature: this.projectsFeature,
         tasksFeature: this.tasksFeature,

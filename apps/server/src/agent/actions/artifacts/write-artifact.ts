@@ -2,8 +2,15 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
 import type { ArtifactsFeature } from '../../../features/artifacts';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 
 const MAX_CONTENT_SIZE = 1_000_000; // 1MB
+
+export const writeArtifactMetadata: ActionMetadata = {
+  id: 'writeArtifact',
+  requiredScopes: [AgentScope.ARTIFACTS_WRITE],
+};
 
 export interface WriteArtifactContext {
   userId: string;

@@ -49,6 +49,8 @@ export interface CreateServerAgentInput {
   allowedSubagents?: AllowedSubagentsInput;
   // Skill permissions
   allowedSkillIds?: string[];
+  // Agent scopes (permissions for actions)
+  scopes?: string[];
 }
 
 export type CreateServerAgentResult = ServerAgent;
@@ -118,6 +120,8 @@ export class CreateServerAgentCommand {
           thinkingConfig: input.thinkingConfig,
           // User preferences
           isFavorite: input.isFavorite ?? false,
+          // Agent scopes (permissions)
+          scopes: input.scopes ?? [],
         })
         .returning();
 
