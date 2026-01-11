@@ -395,184 +395,94 @@ export function getToolsById(
         // Client-side tools
         case 'navigateTo':
           // Fire-and-forget tool - doesn't need pubsub
-          if (
-            context.eventStreamManager &&
-            context.sessionId &&
-            context.messageId
-          ) {
-            result[id] = createNavigateToTool({
-              sessionId: context.sessionId,
-              messageId: context.messageId,
-              eventStreamManager: context.eventStreamManager,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing context', {
-              tool: id,
-              hasEventStreamManager: !!context.eventStreamManager,
-              hasSessionId: !!context.sessionId,
-              hasMessageId: !!context.messageId,
-            });
-          }
+          result[id] = createNavigateToTool({
+            sessionId: context.sessionId,
+            messageId: context.messageId,
+            eventStreamManager: context.eventStreamManager,
+          });
           break;
         case 'getCurrentUIState':
-          if (
-            context.eventStreamManager &&
-            context.sessionId &&
-            context.messageId &&
-            context.pubsub
-          ) {
-            result[id] = createGetCurrentUIStateTool({
-              sessionId: context.sessionId,
-              messageId: context.messageId,
-              eventStreamManager: context.eventStreamManager,
-              pubsub: context.pubsub,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing context', {
-              tool: id,
-              hasEventStreamManager: !!context.eventStreamManager,
-              hasSessionId: !!context.sessionId,
-              hasMessageId: !!context.messageId,
-              hasPubsub: !!context.pubsub,
-            });
-          }
+          result[id] = createGetCurrentUIStateTool({
+            sessionId: context.sessionId,
+            messageId: context.messageId,
+            eventStreamManager: context.eventStreamManager,
+            pubsub: context.pubsub,
+          });
           break;
         // Agent spawning tool
         case 'spawnAgent':
-          if (context.agentSpawner && context.sessionId && context.messageId) {
-            result[id] = createSpawnAgentTool({
-              userId: context.userId,
-              orgId: context.orgId,
-              sessionId: context.sessionId,
-              currentSpawnDepth: context.currentSpawnDepth ?? 0,
-              agentSpawner: context.agentSpawner,
-              messageId: context.messageId,
-              parentAgentKey: context.parentAgentKey,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing context', {
-              tool: id,
-              hasAgentSpawner: !!context.agentSpawner,
-              hasSessionId: !!context.sessionId,
-              hasMessageId: !!context.messageId,
-            });
-          }
+          result[id] = createSpawnAgentTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            sessionId: context.sessionId,
+            currentSpawnDepth: context.currentSpawnDepth,
+            agentSpawner: context.agentSpawner,
+            messageId: context.messageId,
+            parentAgentKey: context.parentAgentKey,
+          });
           break;
         // Agent management tools
         case 'listAgents':
-          if (context.agentsFeature) {
-            result[id] = createListAgentsTool({
-              userId: context.userId,
-              agentsFeature: context.agentsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing agentsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createListAgentsTool({
+            userId: context.userId,
+            agentsFeature: context.agentsFeature,
+          });
           break;
         case 'getAgent':
-          if (context.agentsFeature) {
-            result[id] = createGetAgentTool({
-              userId: context.userId,
-              agentsFeature: context.agentsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing agentsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createGetAgentTool({
+            userId: context.userId,
+            agentsFeature: context.agentsFeature,
+          });
           break;
         case 'updateAgent':
-          if (context.agentsFeature) {
-            result[id] = createUpdateAgentTool({
-              userId: context.userId,
-              agentsFeature: context.agentsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing agentsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createUpdateAgentTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            agentsFeature: context.agentsFeature,
+          });
           break;
         case 'setAgentEnabled':
-          if (context.agentsFeature) {
-            result[id] = createSetAgentEnabledTool({
-              userId: context.userId,
-              agentsFeature: context.agentsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing agentsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createSetAgentEnabledTool({
+            userId: context.userId,
+            agentsFeature: context.agentsFeature,
+          });
           break;
         case 'toggleAgentFavorite':
-          if (context.agentsFeature) {
-            result[id] = createToggleAgentFavoriteTool({
-              userId: context.userId,
-              agentsFeature: context.agentsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing agentsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createToggleAgentFavoriteTool({
+            userId: context.userId,
+            agentsFeature: context.agentsFeature,
+          });
           break;
         // Skill tools
         case 'listSkills':
-          if (context.skillsFeature) {
-            result[id] = createListSkillsTool({
-              userId: context.userId,
-              orgId: context.orgId,
-              skillsFeature: context.skillsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing skillsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createListSkillsTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+          });
           break;
         case 'getSkill':
-          if (context.skillsFeature) {
-            result[id] = createGetSkillTool({
-              userId: context.userId,
-              orgId: context.orgId,
-              skillsFeature: context.skillsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing skillsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createGetSkillTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+          });
           break;
         case 'listSkillFiles':
-          if (context.skillsFeature) {
-            result[id] = createListSkillFilesTool({
-              userId: context.userId,
-              orgId: context.orgId,
-              skillsFeature: context.skillsFeature,
-              allowedSkillIds: context.allowedSkillIds,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing skillsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createListSkillFilesTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+            allowedSkillIds: context.allowedSkillIds,
+          });
           break;
         case 'readSkillFile':
-          if (context.skillsFeature) {
-            result[id] = createReadSkillFileTool({
-              userId: context.userId,
-              orgId: context.orgId,
-              skillsFeature: context.skillsFeature,
-              allowedSkillIds: context.allowedSkillIds,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing skillsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createReadSkillFileTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+            allowedSkillIds: context.allowedSkillIds,
+          });
           break;
         case 'executeCommand':
           // executeCommand needs toolContext to call other tools
@@ -581,43 +491,25 @@ export function getToolsById(
           });
           break;
         case 'createSkill':
-          if (context.skillsFeature) {
-            result[id] = createCreateSkillTool({
-              userId: context.userId,
-              orgId: context.orgId,
-              skillsFeature: context.skillsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing skillsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createCreateSkillTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+          });
           break;
         case 'updateSkill':
-          if (context.skillsFeature) {
-            result[id] = createUpdateSkillTool({
-              userId: context.userId,
-              orgId: context.orgId,
-              skillsFeature: context.skillsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing skillsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createUpdateSkillTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+          });
           break;
         case 'deleteSkill':
-          if (context.skillsFeature) {
-            result[id] = createDeleteSkillTool({
-              userId: context.userId,
-              orgId: context.orgId,
-              skillsFeature: context.skillsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing skillsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createDeleteSkillTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+          });
           break;
       }
     }

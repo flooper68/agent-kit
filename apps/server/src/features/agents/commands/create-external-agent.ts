@@ -9,6 +9,7 @@ import {
   type AgentsCommandContextManager,
   type AllowedSubagentsInput,
   validateAllowedSubagentsOwnership,
+  validateAllowedSkillsAccess,
 } from '../context';
 
 /**
@@ -17,6 +18,7 @@ import {
  */
 export interface CreateExternalAgentInput {
   userId: string;
+  orgId: string;
   key: string;
   name: string;
   description?: string;
@@ -57,6 +59,14 @@ export class CreateExternalAgentCommand {
         tx,
         input.userId,
         allowedSubagents
+      );
+
+      // Validate skill IDs exist and are accessible
+      await validateAllowedSkillsAccess(
+        tx,
+        input.allowedSkillIds ?? [],
+        input.userId,
+        input.orgId
       );
 
       const [createdAgent] = await tx

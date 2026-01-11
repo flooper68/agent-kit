@@ -82,6 +82,21 @@ Note: Only user skills can be created. System skills are read-only.`,
       log.info('Creating skill', { key, name, fileCount: files.length });
 
       try {
+        // Check if skill with this key already exists before attempting insert
+        const existingSkill = await context.skillsFeature.getByKey({
+          key,
+          userId: context.userId,
+          orgId: context.orgId,
+        });
+
+        if (existingSkill) {
+          log.warn('Skill with key already exists', { key });
+          return {
+            success: false,
+            error: `A skill with key "${key}" already exists. Choose a different key.`,
+          };
+        }
+
         const skill = await context.skillsFeature.create({
           userId: context.userId,
           orgId: context.orgId,
@@ -106,19 +121,6 @@ Note: Only user skills can be created. System skills are read-only.`,
         };
       } catch (error) {
         log.error('Error creating skill', { error, key });
-
-        // Check for unique constraint violation
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
-        if (
-          errorMessage.includes('unique') ||
-          errorMessage.includes('duplicate')
-        ) {
-          return {
-            success: false,
-            error: `A skill with key "${key}" already exists. Choose a different key.`,
-          };
-        }
 
         return {
           success: false,

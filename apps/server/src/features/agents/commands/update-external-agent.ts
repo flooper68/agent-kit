@@ -9,11 +9,13 @@ import {
   type AgentsCommandContextManager,
   type AllowedSubagentsInput,
   validateAllowedSubagentsOwnership,
+  validateAllowedSkillsAccess,
 } from '../context';
 
 export interface UpdateExternalAgentInput {
   id: string;
   userId: string;
+  orgId: string;
   updates: {
     name?: string;
     description?: string;
@@ -48,6 +50,16 @@ export class UpdateExternalAgentCommand {
 
       // Validate ownership of referenced agents before updating
       await validateAllowedSubagentsOwnership(tx, userId, allowedSubagents);
+
+      // Validate skill IDs exist and are accessible (only if skills are being updated)
+      if (allowedSkillIds !== undefined) {
+        await validateAllowedSkillsAccess(
+          tx,
+          allowedSkillIds,
+          userId,
+          input.orgId
+        );
+      }
 
       // Only update if there are DB fields to update
       let agent: ExternalAgent | undefined;

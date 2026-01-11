@@ -198,6 +198,25 @@ export class ExternalAgentWebSocketService {
   }
 
   /**
+   * Invalidate session cache for a specific session.
+   * Call this when session permissions or related data changes.
+   */
+  invalidateSessionCache(sessionId: string): void {
+    this.sessionCache.delete(sessionId);
+    this.log.debug('Session cache invalidated', { sessionId });
+  }
+
+  /**
+   * Invalidate all session caches.
+   * Call this when agent permissions change (e.g., skills or tools updated).
+   */
+  invalidateAllSessionCaches(): void {
+    const count = this.sessionCache.size;
+    this.sessionCache.clear();
+    this.log.debug('All session caches invalidated', { count });
+  }
+
+  /**
    * Clean up stale cache entries to prevent memory leaks.
    */
   private cleanupStaleCaches(): void {
@@ -993,10 +1012,11 @@ export class ExternalAgentWebSocketService {
       }
 
       // Fetch allowed skills for this external agent
-      const allowedSkills = await this.agentsFeature.permissions.getAllowedSkills(
-        agent.key,
-        agent.userId
-      );
+      const allowedSkills =
+        await this.agentsFeature.permissions.getAllowedSkills(
+          agent.key,
+          agent.userId
+        );
       const allowedSkillIds = allowedSkills.map((s) => s.id);
 
       // Build tool context with all available features

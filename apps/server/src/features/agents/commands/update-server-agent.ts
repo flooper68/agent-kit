@@ -15,11 +15,13 @@ import {
   type AgentsCommandContextManager,
   type AllowedSubagentsInput,
   validateAllowedSubagentsOwnership,
+  validateAllowedSkillsAccess,
 } from '../context';
 
 export interface UpdateServerAgentInput {
   id: string;
   userId: string;
+  orgId: string;
   updates: {
     key?: string;
     name?: string;
@@ -78,6 +80,16 @@ export class UpdateServerAgentCommand {
 
       // Validate ownership of referenced agents before updating
       await validateAllowedSubagentsOwnership(tx, userId, allowedSubagents);
+
+      // Validate skill IDs exist and are accessible (only if skills are being updated)
+      if (allowedSkillIds !== undefined) {
+        await validateAllowedSkillsAccess(
+          tx,
+          allowedSkillIds,
+          userId,
+          input.orgId
+        );
+      }
 
       const [agent] = await tx
         .update(serverAgents)

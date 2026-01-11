@@ -95,6 +95,12 @@ export const agentsRouter = router({
    * Returns both system skills and user's custom skills
    */
   listSkillsForAgent: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.auth.orgId) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Organization ID is required',
+      });
+    }
     const skills = await ctx.skillsFeature.getAll({
       userId: ctx.auth.userId,
       orgId: ctx.auth.orgId,
@@ -194,8 +200,15 @@ export const agentsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (!ctx.auth.orgId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Organization ID is required',
+        });
+      }
       const result = await ctx.agentsFeature.customAgents.createExternal({
         userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
         key: normalizeAgentKey(input.key),
         name: input.name,
         description: input.description,
@@ -239,9 +252,16 @@ export const agentsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (!ctx.auth.orgId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Organization ID is required',
+        });
+      }
       try {
         const agent = await ctx.agentsFeature.customAgents.createServer({
           userId: ctx.auth.userId,
+          orgId: ctx.auth.orgId,
           key: normalizeAgentKey(input.key),
           name: input.name,
           description: input.description,
@@ -304,6 +324,12 @@ export const agentsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (!ctx.auth.orgId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Organization ID is required',
+        });
+      }
       const { id, agentType, key, ...restUpdates } = input;
 
       if (agentType === 'external') {
@@ -311,6 +337,7 @@ export const agentsRouter = router({
         const agent = await ctx.agentsFeature.customAgents.updateExternal({
           id,
           userId: ctx.auth.userId,
+          orgId: ctx.auth.orgId,
           updates: {
             name: restUpdates.name,
             description: restUpdates.description,
@@ -341,6 +368,7 @@ export const agentsRouter = router({
         const agent = await ctx.agentsFeature.customAgents.update({
           id,
           userId: ctx.auth.userId,
+          orgId: ctx.auth.orgId,
           updates: updates as Parameters<
             typeof ctx.agentsFeature.customAgents.update
           >[0]['updates'],

@@ -4,7 +4,7 @@ import { skills, type Skill } from '../../../db/schema';
 
 export interface GetAllSkillsInput {
   userId: string;
-  orgId: string | null;
+  orgId: string;
 }
 
 export type GetAllSkillsResult = Skill[];
@@ -20,15 +20,12 @@ export class GetAllSkillsQuery {
   async execute(input: GetAllSkillsInput): Promise<GetAllSkillsResult> {
     const { userId, orgId } = input;
 
-    // Build user skills filter - only if orgId is provided
-    const userSkillsFilter =
-      orgId !== null
-        ? and(
-            eq(skills.isSystem, false),
-            eq(skills.userId, userId),
-            eq(skills.orgId, orgId)
-          )
-        : and(eq(skills.isSystem, false), eq(skills.userId, userId));
+    // User skills filter: non-system skills owned by this user in this org
+    const userSkillsFilter = and(
+      eq(skills.isSystem, false),
+      eq(skills.userId, userId),
+      eq(skills.orgId, orgId)
+    );
 
     const result = await this.db
       .select()

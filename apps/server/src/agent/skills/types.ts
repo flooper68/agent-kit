@@ -5,6 +5,7 @@
  * They mimic a file system structure for progressive disclosure.
  */
 
+import path from 'node:path';
 import { z } from 'zod';
 
 /**
@@ -19,14 +20,24 @@ export const ALLOWED_SKILL_FILE_PREFIXES = ['', 'assets/', 'references/'];
  * - Must not be an absolute path (start with /)
  * - Must be in an allowed directory (root, assets/, or references/)
  */
-export function isValidSkillFilePath(path: string): boolean {
-  // Reject path traversal and absolute paths
-  if (path.includes('..') || path.startsWith('/')) {
+export function isValidSkillFilePath(filePath: string): boolean {
+  // Reject absolute paths immediately
+  if (path.posix.isAbsolute(filePath) || filePath.startsWith('/')) {
     return false;
   }
 
-  // Normalize path (remove leading ./)
-  const normalized = path.replace(/^\.\//, '');
+  // Normalize the path to resolve . and .. segments
+  const normalized = path.posix.normalize(filePath);
+
+  // After normalization, reject if it tries to escape (starts with ..)
+  if (normalized.startsWith('..') || normalized.startsWith('/')) {
+    return false;
+  }
+
+  // Reject empty paths or paths that resolve to current directory
+  if (normalized === '' || normalized === '.') {
+    return false;
+  }
 
   // Get the directory part (empty string for root files)
   const dir = normalized.includes('/')

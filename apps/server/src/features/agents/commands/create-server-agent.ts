@@ -17,6 +17,7 @@ import {
   type AgentsCommandContextManager,
   type AllowedSubagentsInput,
   validateAllowedSubagentsOwnership,
+  validateAllowedSkillsAccess,
 } from '../context';
 
 // Re-export for backwards compatibility
@@ -28,6 +29,7 @@ export type { AllowedSubagentsInput } from '../context';
  */
 export interface CreateServerAgentInput {
   userId: string;
+  orgId: string;
   key: string;
   name: string;
   description?: string;
@@ -87,6 +89,14 @@ export class CreateServerAgentCommand {
         tx,
         input.userId,
         allowedSubagents
+      );
+
+      // Validate skill IDs exist and are accessible
+      await validateAllowedSkillsAccess(
+        tx,
+        input.allowedSkillIds ?? [],
+        input.userId,
+        input.orgId
       );
 
       const [agent] = await tx
