@@ -591,15 +591,17 @@ const TOOL_METADATA: Record<string, ToolMetadata> = Object.fromEntries(
  * Get metadata for all available tools
  */
 export function getToolsMetadata(): ToolMetadata[] {
-  return listToolIds().map(
-    (id) =>
-      TOOL_METADATA[id] ?? {
-        id,
-        name: id,
-        description: 'No description available',
-        category: 'utility' as ToolCategory,
-      }
-  );
+  return listToolIds()
+    .map(
+      (id) =>
+        TOOL_METADATA[id] ?? {
+          id,
+          name: id,
+          description: 'No description available',
+          category: 'utility' as ToolCategory,
+        }
+    )
+    .filter((tool) => tool.category === 'basic');
 }
 
 /**
