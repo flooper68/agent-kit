@@ -5,6 +5,72 @@
  * They mimic a file system structure for progressive disclosure.
  */
 
+import { z } from 'zod';
+
+/**
+ * Allowed directory prefixes for skill files.
+ * Files must be in root (''), 'assets/', or 'references/' directories.
+ */
+export const ALLOWED_SKILL_FILE_PREFIXES = ['', 'assets/', 'references/'];
+
+/**
+ * Validate a skill file path.
+ * - Must not contain path traversal sequences (..)
+ * - Must not be an absolute path (start with /)
+ * - Must be in an allowed directory (root, assets/, or references/)
+ */
+export function isValidSkillFilePath(path: string): boolean {
+  // Reject path traversal and absolute paths
+  if (path.includes('..') || path.startsWith('/')) {
+    return false;
+  }
+
+  // Normalize path (remove leading ./)
+  const normalized = path.replace(/^\.\//, '');
+
+  // Get the directory part (empty string for root files)
+  const dir = normalized.includes('/')
+    ? normalized.slice(0, normalized.lastIndexOf('/') + 1)
+    : '';
+
+  return ALLOWED_SKILL_FILE_PREFIXES.includes(dir);
+}
+
+/**
+ * Zod schema for validating skill file path
+ */
+export const SkillFilePathSchema = z
+  .string()
+  .min(1)
+  .max(255)
+  .refine(isValidSkillFilePath, {
+    message: 'Path must be in root, assets/, or references/ directory',
+  });
+
+/**
+ * Zod schema for validating a single skill file
+ */
+export const SkillFileSchema = z.object({
+  path: SkillFilePathSchema,
+  content: z.string().min(1).max(500_000),
+});
+
+/**
+ * Zod schema for validating an array of skill files
+ */
+export const SkillFilesSchema = z.array(SkillFileSchema);
+
+/**
+ * Parse and validate skill files from unknown data (e.g., from JSONB)
+ * Returns null if validation fails
+ */
+export function parseSkillFiles(
+  files: unknown
+): { path: string; content: string }[] | null {
+  const result = SkillFilesSchema.safeParse(files);
+  return result.success ? result.data : null;
+}
+
 /**
  * A file within a skill (e.g., SKILL.md, references/tips.md)
  */

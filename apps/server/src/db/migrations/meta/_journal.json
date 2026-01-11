@@ -267,6 +267,13 @@
       "when": 1767900000021,
       "tag": "0037_rename_skill_tools_in_agents",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1767900000022,
+      "tag": "0038_add_skill_key_unique_constraint",
+      "breakpoints": true
     }
   ]
 }

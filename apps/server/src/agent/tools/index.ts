@@ -114,30 +114,39 @@ export type ToolId = StaticToolId | ContextToolId;
  * Context required for context-aware tools
  */
 export interface ToolContext {
+  // Core identifiers - always required
   userId: string;
   orgId: string;
-  sessionId?: string;
-  messageId?: string;
+  sessionId: string;
+  messageId: string;
+
+  // Agent context - optional, not all contexts have an agent
   agentId?: string;
-  artifactsFeature: ArtifactsFeature;
-  projectsFeature?: ProjectsFeature;
-  tasksFeature?: TasksFeature;
-  /** Agents feature for agent management tools */
-  agentsFeature?: AgentsFeature;
-  /** Skills feature for skill tools */
-  skillsFeature?: SkillsFeature;
-  /** Event stream manager for client-side tools */
-  eventStreamManager?: EventStreamManager;
-  /** Pub/Sub manager for stateful client-side tools */
-  pubsub?: PubSubManager;
-  /** Agent spawner for spawnAgent tool */
-  agentSpawner?: AgentSpawner;
-  /** Current spawn depth for recursion tracking (0 for root sessions) */
-  currentSpawnDepth?: number;
   /** Key of the current agent (for spawn validation) */
   parentAgentKey?: string;
+
+  // Core features - always required
+  artifactsFeature: ArtifactsFeature;
+  /** Agents feature for agent management tools */
+  agentsFeature: AgentsFeature;
+  /** Skills feature for skill tools */
+  skillsFeature: SkillsFeature;
+  /** Event stream manager for client-side tools */
+  eventStreamManager: EventStreamManager;
+  /** Pub/Sub manager for stateful client-side tools */
+  pubsub: PubSubManager;
+  /** Agent spawner for spawnAgent tool */
+  agentSpawner: AgentSpawner;
+
+  // Feature-flagged - remain optional
+  projectsFeature?: ProjectsFeature;
+  tasksFeature?: TasksFeature;
+
+  // Spawn context - required (callers set defaults)
+  /** Current spawn depth for recursion tracking (0 for root sessions) */
+  currentSpawnDepth: number;
   /** Allowed skill IDs for this agent (empty array = no skills allowed) */
-  allowedSkillIds?: string[];
+  allowedSkillIds: string[];
 }
 
 /**
@@ -543,7 +552,7 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               skillsFeature: context.skillsFeature,
-              allowedSkillIds: context.allowedSkillIds ?? [],
+              allowedSkillIds: context.allowedSkillIds,
             });
           } else {
             logger.debug('Skipping tool due to missing skillsFeature', {
@@ -557,7 +566,7 @@ export function getToolsById(
               userId: context.userId,
               orgId: context.orgId,
               skillsFeature: context.skillsFeature,
-              allowedSkillIds: context.allowedSkillIds ?? [],
+              allowedSkillIds: context.allowedSkillIds,
             });
           } else {
             logger.debug('Skipping tool due to missing skillsFeature', {

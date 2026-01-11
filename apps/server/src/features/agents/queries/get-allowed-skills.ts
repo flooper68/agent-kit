@@ -1,4 +1,4 @@
-import { eq, and, isNull, inArray } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import {
   serverAgents,
@@ -23,7 +23,7 @@ export interface GetAllowedSkillsInput {
 
 /**
  * Get the list of allowed skills for a given agent.
- * Returns full details (id, key, name, description, isSystem) for each allowed skill.
+ * Uses JOINs to fetch skills in a single query per agent type.
  */
 export class GetAllowedSkillsQuery {
   constructor(private db: typeof DbType) {}
@@ -31,19 +31,8 @@ export class GetAllowedSkillsQuery {
   async execute(input: GetAllowedSkillsInput): Promise<AllowedSkillInfo[]> {
     const { agentKey, userId } = input;
 
-    // Find parent agent and get allowed skill IDs
-    const skillIds = await this.findParentAndGetAllowedSkillIds(
-      agentKey,
-      userId
-    );
-
-    if (!skillIds || skillIds.length === 0) {
-      // Agent not found or no skills configured
-      return [];
-    }
-
-    // Fetch skill details
-    const skillResults = await this.db
+    // Try server agent first with JOIN query
+    const serverAgentSkills = await this.db
       .select({
         id: skills.id,
         key: skills.key,
@@ -52,84 +41,52 @@ export class GetAllowedSkillsQuery {
         isSystem: skills.isSystem,
       })
       .from(skills)
-      .where(inArray(skills.id, skillIds));
-
-    return skillResults;
-  }
-
-  /**
-   * Find parent agent and return its allowed skill IDs
-   */
-  private async findParentAndGetAllowedSkillIds(
-    key: string,
-    userId: string
-  ): Promise<string[] | null> {
-    // Check server agents first
-    const [serverAgent] = await this.db
-      .select({ id: serverAgents.id })
-      .from(serverAgents)
+      .innerJoin(
+        serverAgentAllowedSkills,
+        eq(skills.id, serverAgentAllowedSkills.skillId)
+      )
+      .innerJoin(
+        serverAgents,
+        eq(serverAgentAllowedSkills.serverAgentId, serverAgents.id)
+      )
       .where(
         and(
-          eq(serverAgents.key, key),
+          eq(serverAgents.key, agentKey),
           eq(serverAgents.userId, userId),
           isNull(serverAgents.deletedAt)
         )
-      )
-      .limit(1);
+      );
 
-    if (serverAgent) {
-      return this.getServerAgentAllowedSkillIds(serverAgent.id);
+    if (serverAgentSkills.length > 0) {
+      return serverAgentSkills;
     }
 
-    // Check external agents
-    const [externalAgent] = await this.db
-      .select({ id: externalAgents.id })
-      .from(externalAgents)
+    // Fall back to external agent with JOIN query
+    const externalAgentSkills = await this.db
+      .select({
+        id: skills.id,
+        key: skills.key,
+        name: skills.name,
+        description: skills.description,
+        isSystem: skills.isSystem,
+      })
+      .from(skills)
+      .innerJoin(
+        externalAgentAllowedSkills,
+        eq(skills.id, externalAgentAllowedSkills.skillId)
+      )
+      .innerJoin(
+        externalAgents,
+        eq(externalAgentAllowedSkills.externalAgentId, externalAgents.id)
+      )
       .where(
         and(
-          eq(externalAgents.key, key),
+          eq(externalAgents.key, agentKey),
           eq(externalAgents.userId, userId),
           isNull(externalAgents.deletedAt)
         )
-      )
-      .limit(1);
+      );
 
-    if (externalAgent) {
-      return this.getExternalAgentAllowedSkillIds(externalAgent.id);
-    }
-
-    return null;
-  }
-
-  /**
-   * Get allowed skill IDs for a server agent
-   */
-  private async getServerAgentAllowedSkillIds(
-    serverAgentId: string
-  ): Promise<string[]> {
-    const entries = await this.db
-      .select({
-        skillId: serverAgentAllowedSkills.skillId,
-      })
-      .from(serverAgentAllowedSkills)
-      .where(eq(serverAgentAllowedSkills.serverAgentId, serverAgentId));
-
-    return entries.map((e) => e.skillId);
-  }
-
-  /**
-   * Get allowed skill IDs for an external agent
-   */
-  private async getExternalAgentAllowedSkillIds(
-    externalAgentId: string
-  ): Promise<string[]> {
-    const entries = await this.db
-      .select({
-        skillId: externalAgentAllowedSkills.skillId,
-      })
-      .from(externalAgentAllowedSkills)
-      .where(eq(externalAgentAllowedSkills.externalAgentId, externalAgentId));
-
-    return entries.map((e) => e.skillId);
+    return externalAgentSkills;
   }
 }

@@ -10,6 +10,7 @@ import { z } from 'zod';
 import type { Tool } from '../types';
 import type { SkillsFeature } from '../../features/skills';
 import { logger } from '../logger';
+import { SkillFilePathSchema } from '../skills/types';
 
 const log = logger.child({ module: 'update-skill-tool' });
 
@@ -23,10 +24,10 @@ export interface UpdateSkillToolContext {
 }
 
 /**
- * Schema for skill file input
+ * Schema for skill file input with path validation
  */
 const SkillFileSchema = z.object({
-  path: z.string().min(1).max(255).describe('File path within the skill'),
+  path: SkillFilePathSchema.describe('File path within the skill'),
   content: z.string().min(1).max(500_000).describe('File content (max 500KB)'),
 });
 

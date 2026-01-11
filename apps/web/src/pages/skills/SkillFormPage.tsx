@@ -374,7 +374,21 @@ export function SkillFormPage() {
                 <Input
                   id="key"
                   value={key}
-                  onChange={(e) => setKey(e.target.value.toLowerCase())}
+                  onChange={(e) => {
+                    // Auto-strip invalid characters (only allow lowercase, numbers, hyphens)
+                    const sanitized = e.target.value
+                      .toLowerCase()
+                      .replace(/[^a-z0-9-]/g, '');
+                    setKey(sanitized);
+                    // Clear key error when user types valid input
+                    if (errors.key && /^[a-z0-9-]*$/.test(sanitized)) {
+                      setErrors((prev) => {
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                        const { key: _, ...rest } = prev;
+                        return rest;
+                      });
+                    }
+                  }}
                   onBlur={autosave.trigger}
                   placeholder="my-skill"
                   disabled={isPending}
@@ -383,7 +397,7 @@ export function SkillFormPage() {
                   <Text className="text-sm text-destructive">{errors.key}</Text>
                 )}
                 <Text className="text-xs text-muted-foreground">
-                  Unique identifier (lowercase, hyphens allowed)
+                  Unique identifier (lowercase, numbers, hyphens only)
                 </Text>
               </div>
 

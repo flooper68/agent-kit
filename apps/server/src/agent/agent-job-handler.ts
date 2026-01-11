@@ -46,12 +46,12 @@ export class AgentJobHandler {
   private streamingStateManager: StreamingStateManager;
   private agentsFeature: AgentsFeature;
   private artifactsFeature: ArtifactsFeature;
-  private projectsFeature?: ProjectsFeature;
-  private tasksFeature?: TasksFeature;
-  private skillsFeature?: SkillsFeature;
-  private agentSpawner?: AgentSpawner;
+  private skillsFeature: SkillsFeature;
+  private agentSpawner: AgentSpawner;
   private pubsub: PubSubManager;
   private cacheInvalidation: CacheInvalidationService;
+  private projectsFeature?: ProjectsFeature;
+  private tasksFeature?: TasksFeature;
   private workerId: string;
   private eventSequence = 0;
   private eventBuffer = new EventBuffer();
@@ -63,26 +63,26 @@ export class AgentJobHandler {
     streamingStateManager: StreamingStateManager,
     agentsFeature: AgentsFeature,
     artifactsFeature: ArtifactsFeature,
+    skillsFeature: SkillsFeature,
+    agentSpawner: AgentSpawner,
     pubsub: PubSubManager,
     cacheInvalidation: CacheInvalidationService,
     workerId: string,
     projectsFeature?: ProjectsFeature,
-    tasksFeature?: TasksFeature,
-    skillsFeature?: SkillsFeature,
-    agentSpawner?: AgentSpawner
+    tasksFeature?: TasksFeature
   ) {
     this.eventStreamManager = eventStreamManager;
     this.jobRegistryManager = jobRegistryManager;
     this.streamingStateManager = streamingStateManager;
     this.agentsFeature = agentsFeature;
     this.artifactsFeature = artifactsFeature;
+    this.skillsFeature = skillsFeature;
+    this.agentSpawner = agentSpawner;
     this.pubsub = pubsub;
     this.cacheInvalidation = cacheInvalidation;
     this.workerId = workerId;
     this.projectsFeature = projectsFeature;
     this.tasksFeature = tasksFeature;
-    this.skillsFeature = skillsFeature;
-    this.agentSpawner = agentSpawner;
     this.log = logger.child({ workerId });
   }
 

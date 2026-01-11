@@ -161,10 +161,10 @@ fastify.addHook('onReady', async () => {
     streamingStateManager,
     agentsFeature,
     artifactsFeature,
-    projectsFeature,
-    tasksFeature,
     skillsFeature,
-    pubsub
+    pubsub,
+    projectsFeature,
+    tasksFeature
   );
 
   // Create the agent spawner for spawning sub-agents
@@ -189,12 +189,12 @@ fastify.addHook('onReady', async () => {
     streamingStateManager,
     agentsFeature,
     artifactsFeature,
+    skillsFeature,
+    agentSpawner,
     pubsub,
     cacheInvalidation,
     projectsFeature,
-    tasksFeature,
-    skillsFeature,
-    agentSpawner
+    tasksFeature
   );
 
   fastify.log.info('Starting agent worker...');

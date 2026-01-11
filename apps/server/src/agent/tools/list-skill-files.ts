@@ -15,6 +15,7 @@ import type { Tool } from '../types';
 import type { SkillsFeature } from '../../features/skills';
 import { logger } from '../logger';
 import { SERVER_TOOL_DEFINITIONS } from '@agent-kit/shared';
+import { getSkillWithAccess, getLineCount } from './shared/skill-access';
 
 const log = logger.child({ module: 'list-skill-files-tool' });
 
@@ -38,22 +39,28 @@ export interface SkillFileInfo {
 }
 
 /**
- * Result of listing skill files
+ * Result of listing skill files (success case wrapped in data)
  */
-export interface ListSkillFilesResult {
+export interface ListSkillFilesSuccessResult {
   success: true;
-  skillKey: string;
-  skillName: string;
-  files: SkillFileInfo[];
+  data: {
+    skillKey: string;
+    skillName: string;
+    files: SkillFileInfo[];
+  };
 }
 
 /**
- * Get line count for a string
+ * Result of listing skill files (error case)
  */
-function getLineCount(content: string): number {
-  if (!content) return 0;
-  return content.split('\n').length;
+export interface ListSkillFilesErrorResult {
+  success: false;
+  error: string;
 }
+
+export type ListSkillFilesResult =
+  | ListSkillFilesSuccessResult
+  | ListSkillFilesErrorResult;
 
 /**
  * Create the listSkillFiles tool
@@ -79,64 +86,20 @@ export function createListSkillFilesTool(
       skillKey,
     }: {
       skillKey: string;
-    }): Promise<ListSkillFilesResult | { success: false; error: string }> => {
+    }): Promise<ListSkillFilesResult> => {
       log.info('Listing skill files', { skillKey });
 
       try {
-        // Check if any skills are allowed
-        if (context.allowedSkillIds.length === 0) {
-          log.info('No skills allowed for this agent');
-          return {
-            success: false,
-            error:
-              'No skills are available. This agent has no skills configured.',
-          };
+        // Use shared helper for skill access validation
+        const result = await getSkillWithAccess(skillKey, context);
+
+        if (!result.success) {
+          return result;
         }
 
-        // Find the skill from database
-        const skill = await context.skillsFeature.getByKey({
-          key: skillKey,
-          userId: context.userId,
-          orgId: context.orgId,
-        });
-
-        if (!skill) {
-          // Get all available skills to show in error
-          let allSkills = await context.skillsFeature.getAll({
-            userId: context.userId,
-            orgId: context.orgId,
-          });
-          // Filter to only allowed skills
-          allSkills = allSkills.filter((s) =>
-            context.allowedSkillIds.includes(s.id)
-          );
-          const availableKeys = allSkills.map((s) => s.key).join(', ');
-          log.warn('Skill not found', { skillKey, availableKeys });
-          return {
-            success: false,
-            error: `Skill "${skillKey}" not found. Available skills: ${availableKeys}`,
-          };
-        }
-
-        // Check if this skill is allowed
-        if (!context.allowedSkillIds.includes(skill.id)) {
-          let allSkills = await context.skillsFeature.getAll({
-            userId: context.userId,
-            orgId: context.orgId,
-          });
-          allSkills = allSkills.filter((s) =>
-            context.allowedSkillIds.includes(s.id)
-          );
-          const availableKeys = allSkills.map((s) => s.key).join(', ');
-          log.warn('Skill not allowed', { skillKey, availableKeys });
-          return {
-            success: false,
-            error: `Skill "${skillKey}" is not available. Available skills: ${availableKeys}`,
-          };
-        }
+        const { skill, files } = result;
 
         // Get file list with line counts
-        const files = skill.files as Array<{ path: string; content: string }>;
         const fileInfos: SkillFileInfo[] = files.map((f) => ({
           path: f.path,
           lineCount: getLineCount(f.content),
@@ -149,9 +112,11 @@ export function createListSkillFilesTool(
 
         return {
           success: true,
-          skillKey: skill.key,
-          skillName: skill.name,
-          files: fileInfos,
+          data: {
+            skillKey: skill.key,
+            skillName: skill.name,
+            files: fileInfos,
+          },
         };
       } catch (error) {
         log.error('Error listing skill files', { error });

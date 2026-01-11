@@ -150,10 +150,10 @@ export class ExternalAgentWebSocketService {
     private streamingStateManager: StreamingStateManager,
     private agentsFeature: AgentsFeature,
     private artifactsFeature: ArtifactsFeature,
+    private skillsFeature: SkillsFeature,
+    private pubsub: PubSubManager,
     private projectsFeature?: ProjectsFeature,
-    private tasksFeature?: TasksFeature,
-    private skillsFeature?: SkillsFeature,
-    private pubsub?: PubSubManager
+    private tasksFeature?: TasksFeature
   ) {
     this.wss = new WebSocketServer({ noServer: true });
     this.setupConnectionHandler();
@@ -979,6 +979,26 @@ export class ExternalAgentWebSocketService {
     }
 
     try {
+      // Verify agentSpawner is set (set via setAgentSpawner after construction)
+      if (!this.agentSpawner) {
+        this.log.error('AgentSpawner not initialized');
+        this.sendServerToolResponse(
+          agent.id,
+          sessionId,
+          requestId,
+          { error: 'Server not fully initialized' },
+          true
+        );
+        return;
+      }
+
+      // Fetch allowed skills for this external agent
+      const allowedSkills = await this.agentsFeature.permissions.getAllowedSkills(
+        agent.key,
+        agent.userId
+      );
+      const allowedSkillIds = allowedSkills.map((s) => s.id);
+
       // Build tool context with all available features
       const toolContext = {
         userId: agent.userId,
@@ -987,6 +1007,7 @@ export class ExternalAgentWebSocketService {
         // Use provided messageId for spawn_session_created event association, fallback to requestId
         messageId: messageId || requestId,
         agentId: agent.id,
+        allowedSkillIds,
         artifactsFeature: this.artifactsFeature,
         projectsFeature: this.projectsFeature,
         tasksFeature: this.tasksFeature,

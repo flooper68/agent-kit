@@ -18,9 +18,9 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../types';
 import type { SkillsFeature } from '../../features/skills';
-import type { SkillFileContent } from '../skills/types';
 import { logger } from '../logger';
 import { SERVER_TOOL_DEFINITIONS } from '@agent-kit/shared';
+import { getSkillWithAccess, getLineCount } from './shared/skill-access';
 
 const log = logger.child({ module: 'read-skill-file-tool' });
 
@@ -54,14 +54,6 @@ function parsePath(
 }
 
 /**
- * Get line count for a string
- */
-function getLineCount(content: string): number {
-  if (!content) return 0;
-  return content.split('\n').length;
-}
-
-/**
  * Read partial content from a string
  */
 function readLines(
@@ -86,6 +78,33 @@ function readLines(
     hasMore,
   };
 }
+
+/**
+ * Success result for reading a skill file
+ */
+export interface ReadSkillFileSuccessResult {
+  success: true;
+  data: {
+    path: string;
+    content: string;
+    totalLines: number;
+    startLine: number;
+    endLine: number;
+    hasMore: boolean;
+  };
+}
+
+/**
+ * Error result for reading a skill file
+ */
+export interface ReadSkillFileErrorResult {
+  success: false;
+  error: string;
+}
+
+export type ReadSkillFileResult =
+  | ReadSkillFileSuccessResult
+  | ReadSkillFileErrorResult;
 
 /**
  * Create the readSkillFile tool
@@ -127,7 +146,7 @@ export function createReadSkillFileTool(
       path: string;
       lines?: number;
       offset?: number;
-    }): Promise<SkillFileContent | { success: false; error: string }> => {
+    }): Promise<ReadSkillFileResult> => {
       log.info('Reading skill file', { path, lines, offset });
 
       // Parse the path
@@ -143,60 +162,16 @@ export function createReadSkillFileTool(
       const { skillKey, relativePath } = parsed;
 
       try {
-        // Check if any skills are allowed
-        if (context.allowedSkillIds.length === 0) {
-          log.info('No skills allowed for this agent');
-          return {
-            success: false,
-            error:
-              'No skills are available. This agent has no skills configured.',
-          };
+        // Use shared helper for skill access validation
+        const result = await getSkillWithAccess(skillKey, context);
+
+        if (!result.success) {
+          return result;
         }
 
-        // Find the skill from database
-        const skill = await context.skillsFeature.getByKey({
-          key: skillKey,
-          userId: context.userId,
-          orgId: context.orgId,
-        });
-
-        if (!skill) {
-          // Get all available skills to show in error
-          let allSkills = await context.skillsFeature.getAll({
-            userId: context.userId,
-            orgId: context.orgId,
-          });
-          // Filter to only allowed skills
-          allSkills = allSkills.filter((s) =>
-            context.allowedSkillIds.includes(s.id)
-          );
-          const availableKeys = allSkills.map((s) => s.key).join(', ');
-          log.warn('Skill not found', { skillKey, availableKeys });
-          return {
-            success: false,
-            error: `Skill "${skillKey}" not found. Available skills: ${availableKeys}`,
-          };
-        }
-
-        // Check if this skill is allowed
-        if (!context.allowedSkillIds.includes(skill.id)) {
-          let allSkills = await context.skillsFeature.getAll({
-            userId: context.userId,
-            orgId: context.orgId,
-          });
-          allSkills = allSkills.filter((s) =>
-            context.allowedSkillIds.includes(s.id)
-          );
-          const availableKeys = allSkills.map((s) => s.key).join(', ');
-          log.warn('Skill not allowed', { skillKey, availableKeys });
-          return {
-            success: false,
-            error: `Skill "${skillKey}" is not available. Available skills: ${availableKeys}`,
-          };
-        }
+        const { files } = result;
 
         // Find the file
-        const files = skill.files as Array<{ path: string; content: string }>;
         const file = files.find((f) => f.path === relativePath);
         if (!file) {
           const availableFiles = files.map((f) => f.path).join(', ');
@@ -224,12 +199,15 @@ export function createReadSkillFileTool(
         });
 
         return {
-          path,
-          content: partial.content,
-          totalLines,
-          startLine: partial.startLine,
-          endLine: partial.endLine,
-          hasMore: partial.hasMore,
+          success: true,
+          data: {
+            path,
+            content: partial.content,
+            totalLines,
+            startLine: partial.startLine,
+            endLine: partial.endLine,
+            hasMore: partial.hasMore,
+          },
         };
       } catch (error) {
         log.error('Error reading skill file', { error });

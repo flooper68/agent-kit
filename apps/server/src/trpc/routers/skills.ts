@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, orgProcedure } from '../trpc';
+import { SkillFilePathSchema } from '../../agent/skills/types';
 
 const SkillFileSchema = z.object({
-  path: z.string().min(1).max(255),
+  path: SkillFilePathSchema,
   content: z.string().min(1).max(500_000), // 500KB per file
 });
 

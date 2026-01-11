@@ -29,12 +29,12 @@ export class AgentWorker {
   private streamingStateManager: StreamingStateManager;
   private agentsFeature: AgentsFeature;
   private artifactsFeature: ArtifactsFeature;
-  private projectsFeature?: ProjectsFeature;
-  private tasksFeature?: TasksFeature;
-  private skillsFeature?: SkillsFeature;
-  private agentSpawner?: AgentSpawner;
+  private skillsFeature: SkillsFeature;
+  private agentSpawner: AgentSpawner;
   private pubsub: PubSubManager;
   private cacheInvalidation: CacheInvalidationService;
+  private projectsFeature?: ProjectsFeature;
+  private tasksFeature?: TasksFeature;
   private workerId: string;
   private isRunning = false;
 
@@ -45,12 +45,12 @@ export class AgentWorker {
     streamingStateManager: StreamingStateManager,
     agentsFeature: AgentsFeature,
     artifactsFeature: ArtifactsFeature,
+    skillsFeature: SkillsFeature,
+    agentSpawner: AgentSpawner,
     pubsub: PubSubManager,
     cacheInvalidation: CacheInvalidationService,
     projectsFeature?: ProjectsFeature,
-    tasksFeature?: TasksFeature,
-    skillsFeature?: SkillsFeature,
-    agentSpawner?: AgentSpawner
+    tasksFeature?: TasksFeature
   ) {
     this.jobQueueManager = jobQueueManager;
     this.eventStreamManager = eventStreamManager;
@@ -58,12 +58,12 @@ export class AgentWorker {
     this.streamingStateManager = streamingStateManager;
     this.agentsFeature = agentsFeature;
     this.artifactsFeature = artifactsFeature;
+    this.skillsFeature = skillsFeature;
+    this.agentSpawner = agentSpawner;
     this.pubsub = pubsub;
     this.cacheInvalidation = cacheInvalidation;
     this.projectsFeature = projectsFeature;
     this.tasksFeature = tasksFeature;
-    this.skillsFeature = skillsFeature;
-    this.agentSpawner = agentSpawner;
     this.workerId = `worker-${randomUUID().slice(0, 8)}`;
   }
 
@@ -89,13 +89,13 @@ export class AgentWorker {
             this.streamingStateManager,
             this.agentsFeature,
             this.artifactsFeature,
+            this.skillsFeature,
+            this.agentSpawner,
             this.pubsub,
             this.cacheInvalidation,
             this.workerId,
             this.projectsFeature,
-            this.tasksFeature,
-            this.skillsFeature,
-            this.agentSpawner
+            this.tasksFeature
           );
           await handler.handle(job);
         },
