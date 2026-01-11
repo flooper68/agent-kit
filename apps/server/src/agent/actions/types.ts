@@ -14,7 +14,7 @@ import type { AgentScope } from '../permissions/scopes';
 export interface ActionMetadata {
   /** Unique identifier for the action */
   id: string;
-  /** Scopes required to execute this action (empty = no permission required) */
+  /** Scopes required to execute this action (empty = action denied) */
   requiredScopes: AgentScope[];
 }
 

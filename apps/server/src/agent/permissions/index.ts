@@ -6,5 +6,8 @@ export type { ScopeMetadata } from './scopes';
 export { ACTION_METADATA, getActionRequiredScopes } from '../actions/actions';
 
 // Permission checking
-export { checkActionPermission, createPermissionError } from './check-permission';
+export {
+  checkActionPermission,
+  createPermissionError,
+} from './check-permission';
 export type { PermissionCheckResult } from './check-permission';

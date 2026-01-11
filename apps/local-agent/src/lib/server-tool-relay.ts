@@ -1,5 +1,5 @@
 import type WebSocket from 'ws';
-import type { ServerToolName } from '@agent-kit/shared';
+import { SPAWN_DEFAULTS, type ServerToolName } from '@agent-kit/shared';
 import { createLogger } from './logger';
 
 const log = createLogger('ServerToolRelay');
@@ -13,8 +13,8 @@ const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds
 const TOOL_TIMEOUTS: Partial<Record<ServerToolName, number>> = {
   // executeCommand can run slow tools like webSearch
   executeCommand: 60000, // 60 seconds
-  // spawnAgent can take a while for sub-agent completion
-  spawnAgent: 300000, // 5 minutes
+  // spawnAgent timeout synced with server's SPAWN_CONFIG.DEFAULT_TIMEOUT_MS
+  spawnAgent: SPAWN_DEFAULTS.DEFAULT_TIMEOUT_MS,
 };
 
 /**

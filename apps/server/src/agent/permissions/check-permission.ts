@@ -19,9 +19,9 @@ export function checkActionPermission(
 ): PermissionCheckResult {
   const requiredScopes = getActionRequiredScopes(actionId) as AgentScope[];
 
-  // Actions without scope requirements are always allowed
+  // Actions without scope requirements are denied (deny-by-default)
   if (requiredScopes.length === 0) {
-    return { allowed: true, missingScopes: [] };
+    return { allowed: false, missingScopes: [] };
   }
 
   const scopeSet = new Set(agentScopes);
@@ -40,6 +40,9 @@ export function createPermissionError(
   actionId: string,
   missingScopes: AgentScope[]
 ): string {
+  if (missingScopes.length === 0) {
+    return `Permission denied: Action "${actionId}" has no permissions defined`;
+  }
   const scopeNames = missingScopes.join(', ');
   return `Permission denied: Action "${actionId}" requires scope(s): ${scopeNames}`;
 }
