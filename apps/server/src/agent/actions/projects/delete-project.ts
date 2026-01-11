@@ -1,7 +1,14 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import type { ProjectsFeature } from '../../../features/projects';
+
+export const deleteProjectMetadata: ActionMetadata = {
+  id: 'deleteProject',
+  requiredScopes: [AgentScope.PROJECTS_DELETE],
+};
 
 export interface DeleteProjectContext {
   userId: string;

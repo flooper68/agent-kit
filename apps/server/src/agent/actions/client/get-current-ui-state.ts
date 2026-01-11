@@ -2,10 +2,17 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import type { StreamEvent } from '../../event-stream-manager';
 import type { ClientActionContext } from './types';
 import type { PubSubMessage } from '../../../real-time';
 import { getClientToolResponseChannel } from '../../../trpc/routers/client-tools';
+
+export const getCurrentUIStateMetadata: ActionMetadata = {
+  id: 'getCurrentUIState',
+  requiredScopes: [AgentScope.UI_STATE],
+};
 
 /** Timeout for waiting for client response (5 seconds) */
 const UI_STATE_TIMEOUT_MS = 5000;

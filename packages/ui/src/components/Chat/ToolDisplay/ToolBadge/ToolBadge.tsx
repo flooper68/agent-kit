@@ -319,7 +319,18 @@ export const ToolBadge = memo(
 
       // Badge is interactive (clickable) when args are provided
       const hasDialogData = args !== undefined;
-      const isError = state === 'error' || result?.isError;
+
+      // Derive effective error state from multiple sources:
+      // 1. Tool state is explicitly 'error'
+      // 2. Server set isError flag on the result
+      // 3. Result content contains { success: false } (e.g., executeCommand permission errors)
+      const hasContentError =
+        typeof result?.result === 'object' &&
+        result?.result !== null &&
+        'success' in result.result &&
+        (result.result as Record<string, unknown>).success === false;
+      const isError = state === 'error' || result?.isError || hasContentError;
+      const effectiveState: ToolState = isError ? 'error' : state;
 
       // Default display name and tooltip
       let displayName = formatToolName(toolName);
@@ -376,7 +387,7 @@ export const ToolBadge = memo(
           >
             {displayName}
           </span>
-          <StateIcon state={state} />
+          <StateIcon state={effectiveState} />
         </>
       );
 
@@ -385,12 +396,18 @@ export const ToolBadge = memo(
           ref={ref}
           type="button"
           onClick={() => setDialogOpen(true)}
-          className={cn(toolBadgeVariants({ state, interactive: true }))}
+          className={cn(
+            toolBadgeVariants({ state: effectiveState, interactive: true })
+          )}
         >
           {content}
         </button>
       ) : (
-        <span className={cn(toolBadgeVariants({ state, interactive: false }))}>
+        <span
+          className={cn(
+            toolBadgeVariants({ state: effectiveState, interactive: false })
+          )}
+        >
           {content}
         </span>
       );
@@ -418,10 +435,13 @@ export const ToolBadge = memo(
                     <span>{displayName}</span>
                     <span
                       className={cn(
-                        toolBadgeVariants({ state, interactive: false })
+                        toolBadgeVariants({
+                          state: effectiveState,
+                          interactive: false,
+                        })
                       )}
                     >
-                      <StateIcon state={state} />
+                      <StateIcon state={effectiveState} />
                     </span>
                   </div>
                 </Dialog.Title>

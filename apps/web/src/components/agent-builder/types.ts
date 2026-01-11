@@ -1,4 +1,5 @@
 // Types for the Agent Builder
+import { DEFAULT_AGENT_SCOPES } from '@agent-kit/shared';
 
 export interface ThinkingConfig {
   enabled: boolean;
@@ -38,6 +39,8 @@ export interface AgentFormData {
   allowedSubagents: AllowedSubagents;
   // Skill permissions
   allowedSkillIds: string[];
+  // Agent scopes (permissions for actions)
+  scopes: string[];
 }
 
 export const DEFAULT_AGENT_FORM_DATA: AgentFormData = {
@@ -47,7 +50,56 @@ export const DEFAULT_AGENT_FORM_DATA: AgentFormData = {
   provider: 'anthropic',
   model: 'claude-sonnet-4-5-20250929',
   systemPrompt: 'You are a helpful AI assistant.',
-  tools: [],
+  tools: [
+    // Core tools
+    'spawnAgent',
+    'listSkillFiles',
+    'readSkillFile',
+    'executeCommand',
+    // Utility tools
+    'getTime',
+    'webSearch',
+    'extractContent',
+    'fetch',
+    // Artifact tools
+    'writeArtifact',
+    'readArtifact',
+    'searchArtifacts',
+    'updateArtifact',
+    // Project tools
+    'listProjects',
+    'searchProjects',
+    'getProject',
+    'createProject',
+    'updateProject',
+    'deleteProject',
+    // Task tools
+    'listTasks',
+    'searchTasks',
+    'getTask',
+    'createTask',
+    'updateTask',
+    'deleteTask',
+    'moveTask',
+    'reorderTask',
+    'attachArtifactToTask',
+    'detachArtifactFromTask',
+    // Navigation tools
+    'navigateTo',
+    'getCurrentUIState',
+    // Agent tools
+    'listAgents',
+    'getAgent',
+    'updateAgent',
+    'setAgentEnabled',
+    'toggleAgentFavorite',
+    // Skill management tools
+    'listSkills',
+    'getSkill',
+    'createSkill',
+    'updateSkill',
+    'deleteSkill',
+  ],
   temperature: null,
   maxOutputTokens: null,
   maxContextTokens: null,
@@ -55,6 +107,7 @@ export const DEFAULT_AGENT_FORM_DATA: AgentFormData = {
   isFavorite: false,
   allowedSubagents: {},
   allowedSkillIds: [],
+  scopes: [...DEFAULT_AGENT_SCOPES],
 };
 
 export interface ToolMetadata {

@@ -7,6 +7,7 @@ import { AgentFormPageLayout } from '../../components/agents/AgentFormPageLayout
 import { AllowedSubAgentsSection } from '../../components/agent-builder/sections/AllowedSubAgentsSection';
 import { SkillsSection } from '../../components/agent-builder/sections/SkillsSection';
 import { ToolsSection } from '../../components/agent-builder/sections/ToolsSection';
+import { PermissionsSection } from '../../components/agent-builder/sections/PermissionsSection';
 import {
   type AgentFormData,
   type AllowedSubagents,
@@ -27,6 +28,7 @@ export function CreateExternalAgentPage() {
   );
   const [allowedSkillIds, setAllowedSkillIds] = useState<string[]>([]);
   const [allowedTools, setAllowedTools] = useState<string[]>([]);
+  const [scopes, setScopes] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -95,6 +97,7 @@ export function CreateExternalAgentPage() {
       allowedSubagents,
       allowedSkillIds,
       allowedTools,
+      scopes,
     });
   };
 
@@ -104,6 +107,7 @@ export function CreateExternalAgentPage() {
     allowedSubagents,
     allowedSkillIds,
     tools: allowedTools,
+    scopes,
   };
 
   return (
@@ -167,6 +171,15 @@ export function CreateExternalAgentPage() {
           tools={toolsQuery.data ?? []}
         />
 
+        <SkillsSection
+          formData={formDataForSection}
+          onChange={(updates) => {
+            if (updates.allowedSkillIds) {
+              setAllowedSkillIds(updates.allowedSkillIds);
+            }
+          }}
+        />
+
         <AllowedSubAgentsSection
           formData={formDataForSection}
           onChange={(updates) => {
@@ -176,11 +189,11 @@ export function CreateExternalAgentPage() {
           }}
         />
 
-        <SkillsSection
+        <PermissionsSection
           formData={formDataForSection}
           onChange={(updates) => {
-            if (updates.allowedSkillIds) {
-              setAllowedSkillIds(updates.allowedSkillIds);
+            if (updates.scopes) {
+              setScopes(updates.scopes);
             }
           }}
         />

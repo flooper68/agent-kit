@@ -2,6 +2,13 @@ import { tool } from 'ai';
 import ipaddr from 'ipaddr.js';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
+
+export const fetchMetadata: ActionMetadata = {
+  id: 'fetch',
+  requiredScopes: [AgentScope.UTILITIES_FETCH],
+};
 
 const REQUEST_TIMEOUT_MS = 10000;
 const MAX_RESPONSE_SIZE = 1024 * 1024; // 1MB

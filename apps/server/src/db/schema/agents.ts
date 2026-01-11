@@ -65,6 +65,10 @@ export const externalAgents = pgTable(
       .notNull()
       .default([]),
 
+    // Agent scopes - permissions for this agent
+    // Empty array (default) means no permissions (opt-in model)
+    scopes: jsonb('scopes').$type<string[]>().notNull().default([]),
+
     // Timestamps
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -128,6 +132,10 @@ export const serverAgents = pgTable(
 
     // User preferences
     isFavorite: boolean('is_favorite').notNull().default(false),
+
+    // Agent scopes - permissions for this agent
+    // Empty array (default) means no permissions (opt-in model)
+    scopes: jsonb('scopes').$type<string[]>().notNull().default([]),
 
     // Timestamps
     createdAt: timestamp('created_at', { withTimezone: true })

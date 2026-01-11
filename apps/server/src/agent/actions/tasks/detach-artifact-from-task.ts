@@ -1,7 +1,14 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import type { TasksFeature } from '../../../features/tasks';
+
+export const detachArtifactFromTaskMetadata: ActionMetadata = {
+  id: 'detachArtifactFromTask',
+  requiredScopes: [AgentScope.TASKS_WRITE],
+};
 
 export interface DetachArtifactFromTaskContext {
   userId: string;

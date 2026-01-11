@@ -1,7 +1,14 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import { getTavilyClient, TavilyFormatSchema } from '../../../lib/tavily';
+
+export const extractContentMetadata: ActionMetadata = {
+  id: 'extractContent',
+  requiredScopes: [AgentScope.UTILITIES_EXTRACT],
+};
 
 export const extractContentTool: Tool = tool({
   description:

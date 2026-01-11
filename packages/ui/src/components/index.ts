@@ -70,6 +70,12 @@ export type {
   ToggleGroupItemColorScheme,
 } from './ToggleGroup';
 
+export { ScopesCheckboxList } from './ScopesCheckboxList';
+export type {
+  ScopesCheckboxListProps,
+  ScopeOption,
+} from './ScopesCheckboxList';
+
 export { Input } from './Input';
 export type { InputProps } from './Input';
 

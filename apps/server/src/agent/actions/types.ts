@@ -5,6 +5,18 @@ import type { AgentsFeature } from '../../features/agents';
 import type { SkillsFeature } from '../../features/skills';
 import type { EventStreamManager } from '../event-stream-manager';
 import type { PubSubManager } from '../../real-time';
+import type { AgentScope } from '../permissions/scopes';
+
+/**
+ * Metadata for an action, including its required scopes.
+ * Each action should export its metadata for permission checking.
+ */
+export interface ActionMetadata {
+  /** Unique identifier for the action */
+  id: string;
+  /** Scopes required to execute this action (empty = action denied) */
+  requiredScopes: AgentScope[];
+}
 
 /**
  * Context required for actions (no tool-specific dependencies)
@@ -15,9 +27,6 @@ export interface ActionsContext {
   orgId: string;
   sessionId: string;
   messageId: string;
-
-  // Agent context - optional, not all contexts have an agent
-  agentId?: string;
 
   // Core features - always required
   artifactsFeature: ArtifactsFeature;
@@ -36,6 +45,9 @@ export interface ActionsContext {
 
   /** Allowed skill IDs for this agent (empty array = no skills allowed) */
   allowedSkillIds: string[];
+
+  /** Agent scopes for permission checks (empty array = no permissions) */
+  agentScopes: string[];
 }
 
 /**

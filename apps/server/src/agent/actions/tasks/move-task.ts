@@ -1,8 +1,15 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import type { TasksFeature } from '../../../features/tasks';
 import { TaskStatusSchema } from '../../../features/tasks/schemas';
+
+export const moveTaskMetadata: ActionMetadata = {
+  id: 'moveTask',
+  requiredScopes: [AgentScope.TASKS_WRITE],
+};
 
 export interface MoveTaskContext {
   userId: string;

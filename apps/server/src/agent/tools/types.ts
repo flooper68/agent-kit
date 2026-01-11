@@ -17,9 +17,6 @@ export interface ToolsContext extends ActionsContext {
 
   /** Current spawn depth for recursion tracking (0 for root sessions) */
   currentSpawnDepth: number;
-
-  /** Allowed tool IDs for this agent (used by executeCommand for access control) */
-  allowedToolIds: string[];
 }
 
 /**

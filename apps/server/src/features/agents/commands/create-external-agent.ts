@@ -29,6 +29,8 @@ export interface CreateExternalAgentInput {
   allowedSkillIds?: string[];
   // Allowed tools - which server tools this agent can use
   allowedTools?: string[];
+  // Agent scopes (permissions for actions)
+  scopes?: string[];
 }
 
 export interface CreateExternalAgentResult {
@@ -80,6 +82,7 @@ export class CreateExternalAgentCommand {
           secretKeyPrefix,
           isFavorite: input.isFavorite ?? false,
           allowedTools: input.allowedTools ?? [],
+          scopes: input.scopes ?? [],
         })
         .returning();
 

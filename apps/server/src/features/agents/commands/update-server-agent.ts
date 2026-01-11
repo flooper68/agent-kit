@@ -42,6 +42,8 @@ export interface UpdateServerAgentInput {
     allowedSubagents?: AllowedSubagentsInput;
     // Skill permissions
     allowedSkillIds?: string[];
+    // Agent scopes (permissions for actions)
+    scopes?: string[];
   };
 }
 

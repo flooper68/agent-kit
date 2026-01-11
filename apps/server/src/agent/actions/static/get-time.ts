@@ -1,6 +1,13 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
+
+export const getTimeMetadata: ActionMetadata = {
+  id: 'getTime',
+  requiredScopes: [AgentScope.UTILITIES_TIME],
+};
 
 export const getTimeTool: Tool = tool({
   description: 'Get the current date and time. Optionally specify a timezone.',

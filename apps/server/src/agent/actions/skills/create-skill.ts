@@ -8,9 +8,16 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
+import type { ActionMetadata } from '../types';
+import { AgentScope } from '../../permissions/scopes';
 import type { SkillsFeature } from '../../../features/skills';
 import { logger } from '../../logger';
 import { SkillFilePathSchema } from '../../skills/types';
+
+export const createSkillMetadata: ActionMetadata = {
+  id: 'createSkill',
+  requiredScopes: [AgentScope.SKILLS_WRITE],
+};
 
 const log = logger.child({ module: 'create-skill-action' });
 
