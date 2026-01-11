@@ -26,6 +26,8 @@ export interface UpdateExternalAgentInput {
     allowedSkillIds?: string[];
     // Allowed tools - which server tools this agent can use
     allowedTools?: string[];
+    // Agent scopes (permissions for actions)
+    scopes?: string[];
   };
 }
 

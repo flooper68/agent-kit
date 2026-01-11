@@ -22,10 +22,23 @@ import { extractContentTool } from './static/extract-content';
 import { fetchTool } from './static/fetch';
 
 // Artifact actions
-import { createWriteArtifactTool } from './artifacts/write-artifact';
-import { createSearchArtifactsTool } from './artifacts/search-artifacts';
-import { createReadArtifactTool } from './artifacts/read-artifact';
-import { createUpdateArtifactTool } from './artifacts/update-artifact';
+import {
+  createWriteArtifactTool,
+  writeArtifactMetadata,
+} from './artifacts/write-artifact';
+import {
+  createSearchArtifactsTool,
+  searchArtifactsMetadata,
+} from './artifacts/search-artifacts';
+import {
+  createReadArtifactTool,
+  readArtifactMetadata,
+} from './artifacts/read-artifact';
+import {
+  createUpdateArtifactTool,
+  updateArtifactMetadata,
+} from './artifacts/update-artifact';
+import type { ActionMetadata } from './types';
 
 // Project actions
 import { createListProjectsTool } from './projects/list-projects';
@@ -64,6 +77,26 @@ import { createUpdateSkillTool } from './skills/update-skill';
 import { createDeleteSkillTool } from './skills/delete-skill';
 import { createListSkillsTool } from './skills/list-skills';
 import { createGetSkillTool } from './skills/get-skill';
+
+/**
+ * Collected metadata from all actions with scope requirements.
+ * Used by permission system to check required scopes for actions.
+ */
+export const ACTION_METADATA: Record<string, ActionMetadata> = {
+  [writeArtifactMetadata.id]: writeArtifactMetadata,
+  [readArtifactMetadata.id]: readArtifactMetadata,
+  [searchArtifactsMetadata.id]: searchArtifactsMetadata,
+  [updateArtifactMetadata.id]: updateArtifactMetadata,
+};
+
+/**
+ * Get the required scopes for an action from its metadata.
+ * Returns empty array if action has no scope requirements.
+ */
+export function getActionRequiredScopes(actionId: string): string[] {
+  const metadata = ACTION_METADATA[actionId];
+  return metadata?.requiredScopes ?? [];
+}
 
 /**
  * Static actions (no context needed)

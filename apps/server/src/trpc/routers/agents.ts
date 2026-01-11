@@ -8,6 +8,7 @@ import {
 import { getToolsMetadata } from '../../agent/tools';
 import { getProviders, type Provider } from '../../agent/model-config';
 import { AgentValidationError } from '../../agent/validation';
+import { ALL_SCOPES, SCOPE_METADATA } from '../../agent/permissions';
 
 // Schema for thinking configuration
 const thinkingConfigSchema = z
@@ -57,6 +58,10 @@ const allowedSubagentsSchema = z
 // Schema for allowed skills
 const allowedSkillIdsSchema = z.array(z.string().uuid()).optional();
 
+// Schema for agent scopes (permissions)
+// Uses string array for flexibility - valid values are defined in AgentScope enum
+const scopesSchema = z.array(z.string()).optional();
+
 export const agentsRouter = router({
   // ==========================================
   // Agent listing and querying
@@ -88,6 +93,16 @@ export const agentsRouter = router({
    */
   listTools: protectedProcedure.query(() => {
     return getToolsMetadata();
+  }),
+
+  /**
+   * List all available scopes (permissions) for agent configuration
+   */
+  listScopes: protectedProcedure.query(() => {
+    return ALL_SCOPES.map((scope) => ({
+      id: scope,
+      ...SCOPE_METADATA[scope],
+    }));
   }),
 
   /**
@@ -197,6 +212,8 @@ export const agentsRouter = router({
         allowedSkillIds: allowedSkillIdsSchema,
         // Allowed tools - which server tools this external agent can use
         allowedTools: toolsSchema,
+        // Agent scopes (permissions for actions)
+        scopes: scopesSchema,
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -216,6 +233,7 @@ export const agentsRouter = router({
         allowedSubagents: input.allowedSubagents,
         allowedSkillIds: input.allowedSkillIds,
         allowedTools: input.allowedTools,
+        scopes: input.scopes,
       });
 
       return {
@@ -249,6 +267,8 @@ export const agentsRouter = router({
         allowedSubagents: allowedSubagentsSchema,
         // Skill permissions
         allowedSkillIds: allowedSkillIdsSchema,
+        // Agent scopes (permissions for actions)
+        scopes: scopesSchema,
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -276,6 +296,7 @@ export const agentsRouter = router({
           isFavorite: input.isFavorite,
           allowedSubagents: input.allowedSubagents,
           allowedSkillIds: input.allowedSkillIds,
+          scopes: input.scopes,
         });
 
         return { agent };
@@ -321,6 +342,8 @@ export const agentsRouter = router({
         thinkingConfig: thinkingConfigSchema.optional(),
         // External agent only fields
         allowedTools: toolsSchema,
+        // Agent scopes (permissions for actions) - common to both types
+        scopes: scopesSchema,
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -333,7 +356,7 @@ export const agentsRouter = router({
       const { id, agentType, key, ...restUpdates } = input;
 
       if (agentType === 'external') {
-        // External agents support name, description, isFavorite, allowedSubagents, allowedSkillIds, allowedTools
+        // External agents support name, description, isFavorite, allowedSubagents, allowedSkillIds, allowedTools, scopes
         const agent = await ctx.agentsFeature.customAgents.updateExternal({
           id,
           userId: ctx.auth.userId,
@@ -345,6 +368,7 @@ export const agentsRouter = router({
             allowedSubagents: restUpdates.allowedSubagents,
             allowedSkillIds: restUpdates.allowedSkillIds,
             allowedTools: restUpdates.allowedTools,
+            scopes: restUpdates.scopes,
           },
         });
 

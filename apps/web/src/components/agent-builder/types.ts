@@ -38,6 +38,8 @@ export interface AgentFormData {
   allowedSubagents: AllowedSubagents;
   // Skill permissions
   allowedSkillIds: string[];
+  // Agent scopes (permissions for actions)
+  scopes: string[];
 }
 
 export const DEFAULT_AGENT_FORM_DATA: AgentFormData = {
@@ -55,6 +57,7 @@ export const DEFAULT_AGENT_FORM_DATA: AgentFormData = {
   isFavorite: false,
   allowedSubagents: {},
   allowedSkillIds: [],
+  scopes: [],
 };
 
 export interface ToolMetadata {

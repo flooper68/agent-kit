@@ -31,6 +31,7 @@ export async function seedSystemAgents() {
       provider: 'openai',
       model: 'gpt-5.2',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     {
       userId: '',
@@ -41,6 +42,7 @@ export async function seedSystemAgents() {
       provider: 'openai',
       model: 'gpt-5.2-codex',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     {
       userId: '',
@@ -51,6 +53,7 @@ export async function seedSystemAgents() {
       provider: 'anthropic',
       model: 'claude-opus-4-5-20251101',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     // October 2025
     {
@@ -62,6 +65,7 @@ export async function seedSystemAgents() {
       provider: 'gemini',
       model: 'gemini-3-pro-preview',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     {
       userId: '',
@@ -72,6 +76,7 @@ export async function seedSystemAgents() {
       provider: 'gemini',
       model: 'gemini-3-flash-preview',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     {
       userId: '',
@@ -82,6 +87,7 @@ export async function seedSystemAgents() {
       provider: 'anthropic',
       model: 'claude-haiku-4-5-20251001',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     // September 2025
     {
@@ -93,6 +99,7 @@ export async function seedSystemAgents() {
       provider: 'anthropic',
       model: 'claude-sonnet-4-5-20250929',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     {
       userId: '',
@@ -103,6 +110,7 @@ export async function seedSystemAgents() {
       provider: 'openai',
       model: 'gpt-5',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     {
       userId: '',
@@ -113,6 +121,7 @@ export async function seedSystemAgents() {
       provider: 'openai',
       model: 'gpt-5-mini',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     {
       userId: '',
@@ -123,6 +132,7 @@ export async function seedSystemAgents() {
       provider: 'openai',
       model: 'gpt-5-nano',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     // August 2025
     {
@@ -134,6 +144,7 @@ export async function seedSystemAgents() {
       provider: 'anthropic',
       model: 'claude-opus-4-1-20250805',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     // June 2025
     {
@@ -145,6 +156,7 @@ export async function seedSystemAgents() {
       provider: 'gemini',
       model: 'gemini-2.5-pro',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     {
       userId: '',
@@ -155,6 +167,7 @@ export async function seedSystemAgents() {
       provider: 'gemini',
       model: 'gemini-2.5-flash',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     {
       userId: '',
@@ -165,6 +178,7 @@ export async function seedSystemAgents() {
       provider: 'gemini',
       model: 'gemini-2.5-flash-lite',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     // May 2025
     {
@@ -176,6 +190,7 @@ export async function seedSystemAgents() {
       provider: 'anthropic',
       model: 'claude-sonnet-4-20250514',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     // April 2025
     {
@@ -187,6 +202,7 @@ export async function seedSystemAgents() {
       provider: 'openai',
       model: 'o3',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     {
       userId: '',
@@ -197,6 +213,7 @@ export async function seedSystemAgents() {
       provider: 'openai',
       model: 'o4-mini',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     // December 2024
     {
@@ -208,6 +225,7 @@ export async function seedSystemAgents() {
       provider: 'gemini',
       model: 'gemini-2.0-flash',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     // October 2024
     {
@@ -219,6 +237,7 @@ export async function seedSystemAgents() {
       provider: 'anthropic',
       model: 'claude-3-5-haiku-20241022',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     // July 2024
     {
@@ -230,6 +249,7 @@ export async function seedSystemAgents() {
       provider: 'openai',
       model: 'gpt-4o-mini',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
     // May 2024
     {
@@ -241,6 +261,7 @@ export async function seedSystemAgents() {
       provider: 'openai',
       model: 'gpt-4o',
       tools: ['getTime', 'webSearch', 'extractContent'],
+      scopes: ['artifacts:read', 'artifacts:write'],
     },
   ];
 

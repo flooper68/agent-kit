@@ -18,6 +18,7 @@ import { getActionsById } from '../actions';
 import type { ToolsContext } from './types';
 import { logger } from '../logger';
 import { SERVER_TOOL_DEFINITIONS } from '@agent-kit/shared';
+import { checkActionPermission, createPermissionError } from '../permissions';
 
 const log = logger.child({ module: 'execute-command-tool' });
 
@@ -248,6 +249,24 @@ export function createExecuteCommandTool(
           tool: toolName,
           args,
           error: `Action "${toolName}" not found or not available.`,
+        };
+      }
+
+      // Check permissions before execution
+      const permCheck = checkActionPermission(
+        toolName,
+        context.toolContext.agentScopes
+      );
+      if (!permCheck.allowed) {
+        log.warn('Permission denied', {
+          actionName: toolName,
+          missingScopes: permCheck.missingScopes,
+        });
+        return {
+          success: false,
+          tool: toolName,
+          args,
+          error: createPermissionError(toolName, permCheck.missingScopes),
         };
       }
 
