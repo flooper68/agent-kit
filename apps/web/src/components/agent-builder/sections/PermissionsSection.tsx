@@ -41,8 +41,8 @@ export function PermissionsSection({
       <div>
         <Text className="text-sm font-medium">Permissions</Text>
         <Text className="text-xs text-muted-foreground">
-          Grant this agent access to specific capabilities. Agents have no
-          permissions by default.
+          Control which capabilities this agent can access. Sensible defaults
+          are pre-selected for new agents.
         </Text>
       </div>
 

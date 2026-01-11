@@ -61,6 +61,31 @@ export function ScopesCheckboxList({
     }
   };
 
+  const isCategoryFullySelected = (category: string) => {
+    const categoryScopes = scopesByCategory[category];
+    if (!categoryScopes) return false;
+    return categoryScopes.every((scope) => selectedScopes.includes(scope.id));
+  };
+
+  const toggleCategory = (category: string) => {
+    if (disabled) return;
+
+    const categoryScopes = scopesByCategory[category];
+    if (!categoryScopes) return;
+
+    const categoryIds = categoryScopes.map((s) => s.id);
+    const allSelected = isCategoryFullySelected(category);
+
+    if (allSelected) {
+      // Clear all in category
+      onChange(selectedScopes.filter((id) => !categoryIds.includes(id)));
+    } else {
+      // Select all in category
+      const newScopes = new Set([...selectedScopes, ...categoryIds]);
+      onChange([...newScopes]);
+    }
+  };
+
   const categories = Object.keys(scopesByCategory);
 
   if (scopes.length === 0) {
@@ -73,58 +98,74 @@ export function ScopesCheckboxList({
 
   return (
     <div className={cn('space-y-4', className)} onBlur={onBlur}>
-      {categories.map((category) => (
-        <div key={category} className="space-y-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {category}
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {scopesByCategory[category]?.map((scope) => {
-              const isSelected = selectedScopes.includes(scope.id);
-              return (
-                <Tooltip key={scope.id} content={scope.description}>
-                  <label
-                    className={cn(
-                      'inline-flex items-center gap-1.5 px-2 py-1.5 border rounded-full cursor-pointer transition-colors text-xs w-fit',
-                      isSelected
-                        ? 'bg-primary/5 border-primary/50'
-                        : 'hover:bg-muted/50 border-border',
-                      disabled && 'opacity-50 cursor-not-allowed'
-                    )}
-                  >
-                    <div
+      {categories.map((category) => {
+        const allSelected = isCategoryFullySelected(category);
+        return (
+          <div key={category} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {category}
+              </span>
+              <button
+                type="button"
+                onClick={() => toggleCategory(category)}
+                disabled={disabled}
+                className={cn(
+                  'text-xs text-muted-foreground hover:text-foreground transition-colors',
+                  disabled && 'opacity-50 cursor-not-allowed'
+                )}
+              >
+                {allSelected ? 'Clear all' : 'Select all'}
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {scopesByCategory[category]?.map((scope) => {
+                const isSelected = selectedScopes.includes(scope.id);
+                return (
+                  <Tooltip key={scope.id} content={scope.description}>
+                    <label
                       className={cn(
-                        'flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors',
+                        'inline-flex items-center gap-1.5 px-2 py-1.5 border rounded-full cursor-pointer transition-colors text-xs w-fit',
                         isSelected
-                          ? 'bg-primary border-primary text-primary-foreground'
-                          : 'border-input bg-background'
+                          ? 'bg-primary/5 border-primary/50'
+                          : 'hover:bg-muted/50 border-border',
+                        disabled && 'opacity-50 cursor-not-allowed'
                       )}
-                      role="checkbox"
-                      aria-checked={isSelected}
-                      tabIndex={disabled ? -1 : 0}
-                      onClick={() => toggleScope(scope.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          toggleScope(scope.id);
-                        }
-                      }}
                     >
-                      {isSelected && <Check className="h-2.5 w-2.5" />}
-                    </div>
-                    <span
-                      className="font-medium truncate"
-                      onClick={() => toggleScope(scope.id)}
-                    >
-                      {scope.label}
-                    </span>
-                  </label>
-                </Tooltip>
-              );
-            })}
+                      <div
+                        className={cn(
+                          'flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors',
+                          isSelected
+                            ? 'bg-primary border-primary text-primary-foreground'
+                            : 'border-input bg-background'
+                        )}
+                        role="checkbox"
+                        aria-checked={isSelected}
+                        tabIndex={disabled ? -1 : 0}
+                        onClick={() => toggleScope(scope.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleScope(scope.id);
+                          }
+                        }}
+                      >
+                        {isSelected && <Check className="h-2.5 w-2.5" />}
+                      </div>
+                      <span
+                        className="font-medium truncate"
+                        onClick={() => toggleScope(scope.id)}
+                      >
+                        {scope.label}
+                      </span>
+                    </label>
+                  </Tooltip>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

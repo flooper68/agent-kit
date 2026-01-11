@@ -57,7 +57,24 @@ export const DEFAULT_AGENT_FORM_DATA: AgentFormData = {
   isFavorite: false,
   allowedSubagents: {},
   allowedSkillIds: [],
-  scopes: [],
+  scopes: [
+    // Utilities - basic functions
+    'utilities:time',
+    'utilities:webSearch',
+    'utilities:fetch',
+    'utilities:extract',
+    // Artifacts - document access
+    'artifacts:read',
+    'artifacts:write',
+    // Tasks - task management
+    'tasks:read',
+    'tasks:write',
+    // Projects - read-only
+    'projects:read',
+    // UI - interaction
+    'ui:navigate',
+    'ui:state',
+  ],
 };
 
 export interface ToolMetadata {
