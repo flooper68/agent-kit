@@ -9,6 +9,7 @@ import type { AgentsFeature } from '../features/agents';
 import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
+import type { SkillsFeature } from '../features/skills';
 import type { AgentSpawner } from './agent-spawner';
 import { getProvider } from './providers';
 import { getToolsById } from './tools';
@@ -45,11 +46,12 @@ export class AgentJobHandler {
   private streamingStateManager: StreamingStateManager;
   private agentsFeature: AgentsFeature;
   private artifactsFeature: ArtifactsFeature;
-  private projectsFeature?: ProjectsFeature;
-  private tasksFeature?: TasksFeature;
-  private agentSpawner?: AgentSpawner;
+  private skillsFeature: SkillsFeature;
+  private agentSpawner: AgentSpawner;
   private pubsub: PubSubManager;
   private cacheInvalidation: CacheInvalidationService;
+  private projectsFeature?: ProjectsFeature;
+  private tasksFeature?: TasksFeature;
   private workerId: string;
   private eventSequence = 0;
   private eventBuffer = new EventBuffer();
@@ -61,24 +63,26 @@ export class AgentJobHandler {
     streamingStateManager: StreamingStateManager,
     agentsFeature: AgentsFeature,
     artifactsFeature: ArtifactsFeature,
+    skillsFeature: SkillsFeature,
+    agentSpawner: AgentSpawner,
     pubsub: PubSubManager,
     cacheInvalidation: CacheInvalidationService,
     workerId: string,
     projectsFeature?: ProjectsFeature,
-    tasksFeature?: TasksFeature,
-    agentSpawner?: AgentSpawner
+    tasksFeature?: TasksFeature
   ) {
     this.eventStreamManager = eventStreamManager;
     this.jobRegistryManager = jobRegistryManager;
     this.streamingStateManager = streamingStateManager;
     this.agentsFeature = agentsFeature;
     this.artifactsFeature = artifactsFeature;
+    this.skillsFeature = skillsFeature;
+    this.agentSpawner = agentSpawner;
     this.pubsub = pubsub;
     this.cacheInvalidation = cacheInvalidation;
     this.workerId = workerId;
     this.projectsFeature = projectsFeature;
     this.tasksFeature = tasksFeature;
-    this.agentSpawner = agentSpawner;
     this.log = logger.child({ workerId });
   }
 
@@ -133,7 +137,6 @@ export class AgentJobHandler {
       const customAgent = customAgentResult.agent;
       if (!customAgent.disabled) {
         // Build agent definition from server agent config
-        // Always include spawnAgent tool for server agents
         agent = {
           id: customAgent.key,
           name: customAgent.name,
@@ -141,7 +144,7 @@ export class AgentJobHandler {
           systemPrompt: customAgent.systemPrompt,
           provider: customAgent.provider,
           model: customAgent.model,
-          tools: [...customAgent.tools, 'spawnAgent'],
+          tools: customAgent.tools,
         };
         // Capture model settings from agent config
         modelSettings = {
@@ -173,19 +176,30 @@ export class AgentJobHandler {
       return;
     }
 
+    // Fetch allowed skills for this agent
+    const allowedSkills = await this.agentsFeature.permissions.getAllowedSkills(
+      agentId,
+      userId,
+      orgId
+    );
+    const allowedSkillIds = allowedSkills.map((s) => s.id);
+
     this.log.info('Starting job', {
       sessionId,
       model: agent.model,
       provider: agent.provider,
       isLocalAgent,
+      allowedSkillsCount: allowedSkills.length,
     });
 
-    // Build system prompt with available agents (spawnAgent is always enabled for server agents)
+    // Build system prompt with available agents and skills
     const systemPrompt = await buildSystemPrompt(
       agent.systemPrompt,
       this.agentsFeature,
       userId,
-      true
+      true,
+      allowedSkills,
+      agentId
     );
 
     // Get provider
@@ -262,11 +276,14 @@ export class AgentJobHandler {
         projectsFeature: this.projectsFeature,
         tasksFeature: this.tasksFeature,
         agentsFeature: this.agentsFeature,
+        skillsFeature: this.skillsFeature,
         eventStreamManager: this.eventStreamManager,
         pubsub: this.pubsub,
         agentSpawner: this.agentSpawner,
         currentSpawnDepth,
         parentAgentKey: agentId, // Agent key for spawn validation
+        allowedSkillIds, // Skill filtering
+        allowedToolIds: agent.tools, // Tool access control for executeCommand
       });
 
       // Publish message start event

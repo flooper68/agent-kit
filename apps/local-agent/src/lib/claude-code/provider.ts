@@ -2,7 +2,6 @@ import { query } from '@anthropic-ai/claude-code';
 import { mkdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { z } from 'zod';
 import type {
   AgentRunParams,
   AgentRunResult,
@@ -17,16 +16,6 @@ import { createArtifactMcpServer } from '../artifact-mcp-server';
 import { createServerToolsMcpServer } from '../server-tools-mcp-server';
 import type { ArtifactToolRelay } from '../artifact-tool-relay';
 import type { ServerToolRelay } from '../server-tool-relay';
-
-// Schema for allowed subagents from server metadata
-const AllowedSubagentSchema = z.object({
-  key: z.string(),
-  name: z.string(),
-  description: z.string().nullable(),
-  type: z.enum(['server', 'external']),
-});
-
-const AllowedSubagentsSchema = z.array(AllowedSubagentSchema);
 
 export interface ClaudeCodeProviderConfig extends ClaudeCodeHandlerConfig {
   /** Logger name prefix */
@@ -152,38 +141,37 @@ export class ClaudeCodeProvider {
       queryOptions.includePartialMessages =
         this.config.includePartialMessages ?? true;
 
-      // Add custom system prompt if configured
-      if (this.config.customSystemPrompt) {
-        queryOptions.customSystemPrompt = this.config.customSystemPrompt;
+      // Build effective system prompt: local config + server-provided sections
+      let effectiveSystemPrompt = this.config.customSystemPrompt;
+      const serverSystemPrompt =
+        typeof metadata?.agentKitSystemPrompt === 'string'
+          ? metadata.agentKitSystemPrompt
+          : '';
+
+      if (serverSystemPrompt) {
+        effectiveSystemPrompt = effectiveSystemPrompt
+          ? `${effectiveSystemPrompt}\n\n${serverSystemPrompt}`
+          : serverSystemPrompt;
+        this.log.debug('Appending server system prompt', {
+          serverPromptLength: serverSystemPrompt.length,
+        });
+      }
+
+      if (effectiveSystemPrompt) {
+        queryOptions.customSystemPrompt = effectiveSystemPrompt;
       }
 
       // Configure MCP servers based on enabled tools
       const mcpServers: Record<string, unknown> = {};
-
-      // Determine allowed spawn agents: prefer metadata from server, fallback to config
-      // Metadata contains full agent info objects, we just need the keys
-      const parsedSubagents = AllowedSubagentsSchema.safeParse(
-        metadata?.allowedSubagents
-      );
-      const allowedSpawnAgents = parsedSubagents.success
-        ? parsedSubagents.data.map((a) => a.key)
-        : this.config.allowedSpawnAgents;
 
       // Add in-process MCP server for server tools if enabled (supersedes artifact tools)
       if (this.config.enableServerTools && this.config.serverRelay) {
         mcpServers['agent-kit-server'] = createServerToolsMcpServer(
           this.config.serverRelay,
           sessionId,
-          messageId,
-          allowedSpawnAgents
+          messageId
         );
-        this.log.debug(
-          'In-process MCP server configured for all server tools',
-          {
-            allowedSpawnAgents: allowedSpawnAgents?.length ?? 0,
-            source: parsedSubagents.success ? 'metadata' : 'config',
-          }
-        );
+        this.log.debug('In-process MCP server configured for all server tools');
       }
       // Add in-process MCP server for artifact tools if enabled (legacy)
       else if (this.config.enableArtifactTools && this.config.artifactRelay) {

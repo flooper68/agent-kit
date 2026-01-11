@@ -6,6 +6,7 @@ import type { ThinkingConfig } from '../../db/schema/agents';
 
 export interface UpdateAgentContext {
   userId: string;
+  orgId: string;
   agentsFeature: AgentsFeature;
 }
 
@@ -124,6 +125,7 @@ export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
         const agent = await context.agentsFeature.customAgents.update({
           id: agentId,
           userId: context.userId,
+          orgId: context.orgId,
           updates: cleanedUpdates,
         });
 

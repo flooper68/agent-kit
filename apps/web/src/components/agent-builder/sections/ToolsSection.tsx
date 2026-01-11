@@ -9,6 +9,8 @@ interface ToolsSectionProps {
 }
 
 const CATEGORY_ORDER = [
+  'basic',
+  'skillManagement',
   'utility',
   'artifact',
   'project',
@@ -17,6 +19,8 @@ const CATEGORY_ORDER = [
   'agent',
 ];
 const CATEGORY_LABELS: Record<string, string> = {
+  basic: 'Basic',
+  skillManagement: 'Skill Management',
   utility: 'Utility',
   artifact: 'Artifacts',
   project: 'Projects',

@@ -153,6 +153,7 @@ For detailed setup instructions, see [docs/clerk-setup.md](./docs/clerk-setup.md
 - [Local Agents](./docs/local-agents.md) - Run AI agents on your local machine with file system access
 - [Local Agent Authentication](./docs/local-agent-authentication.md) - HMAC mutual authentication protocol for secure agent connections
 - [Session Management](./docs/session-management.md) - Session lifecycle, streaming, and real-time event processing
+- [Skills](./docs/skills.md) - Documentation bundles that teach agents how to use tools
 
 ## Local Agents
 

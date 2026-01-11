@@ -3,10 +3,12 @@ import type { ArtifactsFeature } from '../../features/artifacts';
 import type { ProjectsFeature } from '../../features/projects';
 import type { TasksFeature } from '../../features/tasks';
 import type { AgentsFeature } from '../../features/agents';
+import type { SkillsFeature } from '../../features/skills';
 import type { EventStreamManager } from '../event-stream-manager';
 import type { PubSubManager } from '../../real-time';
 import type { AgentSpawner } from '../agent-spawner';
 import { logger } from '../logger';
+import { SERVER_TOOL_DEFINITIONS, type ToolCategory } from '@agent-kit/shared';
 import { getTimeTool } from './get-time';
 import { webSearchTool } from './web-search';
 import { extractContentTool } from './extract-content';
@@ -41,6 +43,14 @@ import { createGetAgentTool } from './get-agent';
 import { createUpdateAgentTool } from './update-agent';
 import { createSetAgentEnabledTool } from './set-agent-enabled';
 import { createToggleAgentFavoriteTool } from './toggle-agent-favorite';
+import { createListSkillFilesTool } from './list-skill-files';
+import { createReadSkillFileTool } from './read-skill-file';
+import { createExecuteCommandTool } from './execute-command';
+import { createCreateSkillTool } from './create-skill';
+import { createUpdateSkillTool } from './update-skill';
+import { createDeleteSkillTool } from './delete-skill';
+import { createListSkillsTool } from './list-skills';
+import { createGetSkillTool } from './get-skill';
 
 // Static tools (no context needed)
 const STATIC_TOOLS: Record<string, Tool> = {
@@ -85,6 +95,15 @@ const CONTEXT_TOOL_IDS = [
   'updateAgent',
   'setAgentEnabled',
   'toggleAgentFavorite',
+  // Skill tools
+  'listSkills',
+  'getSkill',
+  'listSkillFiles',
+  'readSkillFile',
+  'executeCommand',
+  'createSkill',
+  'updateSkill',
+  'deleteSkill',
 ] as const;
 
 export type StaticToolId = keyof typeof STATIC_TOOLS;
@@ -95,26 +114,41 @@ export type ToolId = StaticToolId | ContextToolId;
  * Context required for context-aware tools
  */
 export interface ToolContext {
+  // Core identifiers - always required
   userId: string;
   orgId: string;
-  sessionId?: string;
-  messageId?: string;
+  sessionId: string;
+  messageId: string;
+
+  // Agent context - optional, not all contexts have an agent
   agentId?: string;
-  artifactsFeature: ArtifactsFeature;
-  projectsFeature?: ProjectsFeature;
-  tasksFeature?: TasksFeature;
-  /** Agents feature for agent management tools */
-  agentsFeature?: AgentsFeature;
-  /** Event stream manager for client-side tools */
-  eventStreamManager?: EventStreamManager;
-  /** Pub/Sub manager for stateful client-side tools */
-  pubsub?: PubSubManager;
-  /** Agent spawner for spawnAgent tool */
-  agentSpawner?: AgentSpawner;
-  /** Current spawn depth for recursion tracking (0 for root sessions) */
-  currentSpawnDepth?: number;
   /** Key of the current agent (for spawn validation) */
   parentAgentKey?: string;
+
+  // Core features - always required
+  artifactsFeature: ArtifactsFeature;
+  /** Agents feature for agent management tools */
+  agentsFeature: AgentsFeature;
+  /** Skills feature for skill tools */
+  skillsFeature: SkillsFeature;
+  /** Event stream manager for client-side tools */
+  eventStreamManager: EventStreamManager;
+  /** Pub/Sub manager for stateful client-side tools */
+  pubsub: PubSubManager;
+  /** Agent spawner for spawnAgent tool */
+  agentSpawner: AgentSpawner;
+
+  // Feature-flagged - remain optional
+  projectsFeature?: ProjectsFeature;
+  tasksFeature?: TasksFeature;
+
+  // Spawn context - required (callers set defaults)
+  /** Current spawn depth for recursion tracking (0 for root sessions) */
+  currentSpawnDepth: number;
+  /** Allowed skill IDs for this agent (empty array = no skills allowed) */
+  allowedSkillIds: string[];
+  /** Allowed tool IDs for this agent (used by executeCommand for access control) */
+  allowedToolIds: string[];
 }
 
 /**
@@ -363,129 +397,123 @@ export function getToolsById(
         // Client-side tools
         case 'navigateTo':
           // Fire-and-forget tool - doesn't need pubsub
-          if (
-            context.eventStreamManager &&
-            context.sessionId &&
-            context.messageId
-          ) {
-            result[id] = createNavigateToTool({
-              sessionId: context.sessionId,
-              messageId: context.messageId,
-              eventStreamManager: context.eventStreamManager,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing context', {
-              tool: id,
-              hasEventStreamManager: !!context.eventStreamManager,
-              hasSessionId: !!context.sessionId,
-              hasMessageId: !!context.messageId,
-            });
-          }
+          result[id] = createNavigateToTool({
+            sessionId: context.sessionId,
+            messageId: context.messageId,
+            eventStreamManager: context.eventStreamManager,
+          });
           break;
         case 'getCurrentUIState':
-          if (
-            context.eventStreamManager &&
-            context.sessionId &&
-            context.messageId &&
-            context.pubsub
-          ) {
-            result[id] = createGetCurrentUIStateTool({
-              sessionId: context.sessionId,
-              messageId: context.messageId,
-              eventStreamManager: context.eventStreamManager,
-              pubsub: context.pubsub,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing context', {
-              tool: id,
-              hasEventStreamManager: !!context.eventStreamManager,
-              hasSessionId: !!context.sessionId,
-              hasMessageId: !!context.messageId,
-              hasPubsub: !!context.pubsub,
-            });
-          }
+          result[id] = createGetCurrentUIStateTool({
+            sessionId: context.sessionId,
+            messageId: context.messageId,
+            eventStreamManager: context.eventStreamManager,
+            pubsub: context.pubsub,
+          });
           break;
         // Agent spawning tool
         case 'spawnAgent':
-          if (context.agentSpawner && context.sessionId && context.messageId) {
-            result[id] = createSpawnAgentTool({
-              userId: context.userId,
-              orgId: context.orgId,
-              sessionId: context.sessionId,
-              currentSpawnDepth: context.currentSpawnDepth ?? 0,
-              agentSpawner: context.agentSpawner,
-              messageId: context.messageId,
-              parentAgentKey: context.parentAgentKey,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing context', {
-              tool: id,
-              hasAgentSpawner: !!context.agentSpawner,
-              hasSessionId: !!context.sessionId,
-              hasMessageId: !!context.messageId,
-            });
-          }
+          result[id] = createSpawnAgentTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            sessionId: context.sessionId,
+            currentSpawnDepth: context.currentSpawnDepth,
+            agentSpawner: context.agentSpawner,
+            messageId: context.messageId,
+            parentAgentKey: context.parentAgentKey,
+          });
           break;
         // Agent management tools
         case 'listAgents':
-          if (context.agentsFeature) {
-            result[id] = createListAgentsTool({
-              userId: context.userId,
-              agentsFeature: context.agentsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing agentsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createListAgentsTool({
+            userId: context.userId,
+            agentsFeature: context.agentsFeature,
+          });
           break;
         case 'getAgent':
-          if (context.agentsFeature) {
-            result[id] = createGetAgentTool({
-              userId: context.userId,
-              agentsFeature: context.agentsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing agentsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createGetAgentTool({
+            userId: context.userId,
+            agentsFeature: context.agentsFeature,
+          });
           break;
         case 'updateAgent':
-          if (context.agentsFeature) {
-            result[id] = createUpdateAgentTool({
-              userId: context.userId,
-              agentsFeature: context.agentsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing agentsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createUpdateAgentTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            agentsFeature: context.agentsFeature,
+          });
           break;
         case 'setAgentEnabled':
-          if (context.agentsFeature) {
-            result[id] = createSetAgentEnabledTool({
-              userId: context.userId,
-              agentsFeature: context.agentsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing agentsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createSetAgentEnabledTool({
+            userId: context.userId,
+            agentsFeature: context.agentsFeature,
+          });
           break;
         case 'toggleAgentFavorite':
-          if (context.agentsFeature) {
-            result[id] = createToggleAgentFavoriteTool({
-              userId: context.userId,
-              agentsFeature: context.agentsFeature,
-            });
-          } else {
-            logger.debug('Skipping tool due to missing agentsFeature', {
-              tool: id,
-            });
-          }
+          result[id] = createToggleAgentFavoriteTool({
+            userId: context.userId,
+            agentsFeature: context.agentsFeature,
+          });
+          break;
+        // Skill tools
+        case 'listSkills':
+          result[id] = createListSkillsTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+            allowedSkillIds: context.allowedSkillIds,
+          });
+          break;
+        case 'getSkill':
+          result[id] = createGetSkillTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+            allowedSkillIds: context.allowedSkillIds,
+          });
+          break;
+        case 'listSkillFiles':
+          result[id] = createListSkillFilesTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+            allowedSkillIds: context.allowedSkillIds,
+          });
+          break;
+        case 'readSkillFile':
+          result[id] = createReadSkillFileTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+            allowedSkillIds: context.allowedSkillIds,
+          });
+          break;
+        case 'executeCommand':
+          // executeCommand needs toolContext to call other tools
+          result[id] = createExecuteCommandTool({
+            toolContext: context,
+          });
+          break;
+        case 'createSkill':
+          result[id] = createCreateSkillTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+          });
+          break;
+        case 'updateSkill':
+          result[id] = createUpdateSkillTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+          });
+          break;
+        case 'deleteSkill':
+          result[id] = createDeleteSkillTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            skillsFeature: context.skillsFeature,
+          });
           break;
       }
     }
@@ -501,16 +529,8 @@ export function listToolIds(): string[] {
   return [...Object.keys(STATIC_TOOLS), ...CONTEXT_TOOL_IDS];
 }
 
-/**
- * Tool category for UI grouping
- */
-export type ToolCategory =
-  | 'utility'
-  | 'artifact'
-  | 'project'
-  | 'task'
-  | 'navigation'
-  | 'agent';
+// Re-export ToolCategory from shared
+export type { ToolCategory };
 
 /**
  * Tool metadata for UI display
@@ -523,213 +543,49 @@ export interface ToolMetadata {
 }
 
 /**
- * Tool metadata registry
+ * Convert camelCase tool ID to Title Case display name
  */
-const TOOL_METADATA: Record<string, ToolMetadata> = {
-  // Utility tools
-  getTime: {
-    id: 'getTime',
-    name: 'Get Time',
-    description: 'Get the current date and time',
-    category: 'utility',
-  },
-  webSearch: {
-    id: 'webSearch',
-    name: 'Web Search',
-    description: 'Search the web for information',
-    category: 'utility',
-  },
-  extractContent: {
-    id: 'extractContent',
-    name: 'Extract Content',
-    description: 'Extract text content from a URL',
-    category: 'utility',
-  },
-  fetch: {
-    id: 'fetch',
-    name: 'Fetch',
-    description: 'Fetch raw content from a URL',
-    category: 'utility',
-  },
+function formatToolName(id: string): string {
+  // Handle special cases
+  const specialCases: Record<string, string> = {
+    getCurrentUIState: 'Get UI State',
+    setAgentEnabled: 'Enable/Disable Agent',
+  };
 
-  // Artifact tools
-  writeArtifact: {
-    id: 'writeArtifact',
-    name: 'Write Artifact',
-    description: 'Save a document or note',
-    category: 'artifact',
-  },
-  searchArtifacts: {
-    id: 'searchArtifacts',
-    name: 'Search Artifacts',
-    description: 'Search for saved documents',
-    category: 'artifact',
-  },
-  readArtifact: {
-    id: 'readArtifact',
-    name: 'Read Artifact',
-    description: 'Read a saved document',
-    category: 'artifact',
-  },
-  updateArtifact: {
-    id: 'updateArtifact',
-    name: 'Update Artifact',
-    description: 'Update an existing document',
-    category: 'artifact',
-  },
+  if (specialCases[id]) {
+    return specialCases[id];
+  }
 
-  // Project tools
-  listProjects: {
-    id: 'listProjects',
-    name: 'List Projects',
-    description: 'List all projects',
-    category: 'project',
-  },
-  searchProjects: {
-    id: 'searchProjects',
-    name: 'Search Projects',
-    description: 'Search for projects',
-    category: 'project',
-  },
-  getProject: {
-    id: 'getProject',
-    name: 'Get Project',
-    description: 'Get project details',
-    category: 'project',
-  },
-  createProject: {
-    id: 'createProject',
-    name: 'Create Project',
-    description: 'Create a new project',
-    category: 'project',
-  },
-  updateProject: {
-    id: 'updateProject',
-    name: 'Update Project',
-    description: 'Update project details',
-    category: 'project',
-  },
-  deleteProject: {
-    id: 'deleteProject',
-    name: 'Delete Project',
-    description: 'Delete a project',
-    category: 'project',
-  },
+  // Convert camelCase to Title Case with spaces
+  return id
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, (str) => str.toUpperCase())
+    .trim();
+}
 
-  // Task tools
-  listTasks: {
-    id: 'listTasks',
-    name: 'List Tasks',
-    description: 'List tasks in a project',
-    category: 'task',
-  },
-  searchTasks: {
-    id: 'searchTasks',
-    name: 'Search Tasks',
-    description: 'Search for tasks',
-    category: 'task',
-  },
-  getTask: {
-    id: 'getTask',
-    name: 'Get Task',
-    description: 'Get task details',
-    category: 'task',
-  },
-  createTask: {
-    id: 'createTask',
-    name: 'Create Task',
-    description: 'Create a new task',
-    category: 'task',
-  },
-  updateTask: {
-    id: 'updateTask',
-    name: 'Update Task',
-    description: 'Update task details',
-    category: 'task',
-  },
-  deleteTask: {
-    id: 'deleteTask',
-    name: 'Delete Task',
-    description: 'Delete a task',
-    category: 'task',
-  },
-  moveTask: {
-    id: 'moveTask',
-    name: 'Move Task',
-    description: 'Move task to a different status',
-    category: 'task',
-  },
-  reorderTask: {
-    id: 'reorderTask',
-    name: 'Reorder Task',
-    description: 'Change task order in a column',
-    category: 'task',
-  },
-  attachArtifactToTask: {
-    id: 'attachArtifactToTask',
-    name: 'Attach Artifact',
-    description: 'Attach a document to a task',
-    category: 'task',
-  },
-  detachArtifactFromTask: {
-    id: 'detachArtifactFromTask',
-    name: 'Detach Artifact',
-    description: 'Detach a document from a task',
-    category: 'task',
-  },
+/**
+ * Get shortened description for UI display (first sentence only)
+ */
+function getShortDescription(description: string): string {
+  // Take first sentence or first line
+  const firstSentence = description.split(/[.\n]/)[0];
+  return firstSentence?.trim() ?? description;
+}
 
-  // Navigation tools
-  navigateTo: {
-    id: 'navigateTo',
-    name: 'Navigate To',
-    description: 'Navigate the user to a page',
-    category: 'navigation',
-  },
-  getCurrentUIState: {
-    id: 'getCurrentUIState',
-    name: 'Get UI State',
-    description: 'Get current page state',
-    category: 'navigation',
-  },
-
-  // Agent tools
-  spawnAgent: {
-    id: 'spawnAgent',
-    name: 'Spawn Agent',
-    description: 'Delegate a task to another agent',
-    category: 'agent',
-  },
-  listAgents: {
-    id: 'listAgents',
-    name: 'List Agents',
-    description: 'List all available agents',
-    category: 'agent',
-  },
-  getAgent: {
-    id: 'getAgent',
-    name: 'Get Agent',
-    description: 'Get agent details',
-    category: 'agent',
-  },
-  updateAgent: {
-    id: 'updateAgent',
-    name: 'Update Agent',
-    description: 'Update agent configuration',
-    category: 'agent',
-  },
-  setAgentEnabled: {
-    id: 'setAgentEnabled',
-    name: 'Enable/Disable Agent',
-    description: 'Enable or disable an agent',
-    category: 'agent',
-  },
-  toggleAgentFavorite: {
-    id: 'toggleAgentFavorite',
-    name: 'Toggle Favorite',
-    description: 'Toggle agent favorite status',
-    category: 'agent',
-  },
-};
+/**
+ * Tool metadata derived from shared definitions (single source of truth)
+ */
+const TOOL_METADATA: Record<string, ToolMetadata> = Object.fromEntries(
+  Object.entries(SERVER_TOOL_DEFINITIONS).map(([id, def]) => [
+    id,
+    {
+      id,
+      name: formatToolName(id),
+      description: getShortDescription(def.description),
+      category: def.category,
+    },
+  ])
+);
 
 /**
  * Get metadata for all available tools

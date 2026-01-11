@@ -2,23 +2,30 @@ import { eq, and } from 'drizzle-orm';
 import {
   externalAgents,
   externalAgentAllowedSubagents,
+  externalAgentAllowedSkills,
   type ExternalAgent,
 } from '../../../db/schema';
 import {
   type AgentsCommandContextManager,
   type AllowedSubagentsInput,
   validateAllowedSubagentsOwnership,
+  validateAllowedSkillsAccess,
 } from '../context';
 
 export interface UpdateExternalAgentInput {
   id: string;
   userId: string;
+  orgId: string;
   updates: {
     name?: string;
     description?: string;
     isFavorite?: boolean;
     // Sub-agent permissions
     allowedSubagents?: AllowedSubagentsInput;
+    // Skill permissions
+    allowedSkillIds?: string[];
+    // Allowed tools - which server tools this agent can use
+    allowedTools?: string[];
   };
 }
 
@@ -38,11 +45,21 @@ export class UpdateExternalAgentCommand {
       const { tx, cacheInvalidation } = ctx;
       const { id, userId, updates } = input;
 
-      // Extract allowedSubagents - we handle it separately via junction table
-      const { allowedSubagents, ...dbUpdates } = updates;
+      // Extract allowedSubagents and allowedSkillIds - we handle them separately via junction tables
+      const { allowedSubagents, allowedSkillIds, ...dbUpdates } = updates;
 
       // Validate ownership of referenced agents before updating
       await validateAllowedSubagentsOwnership(tx, userId, allowedSubagents);
+
+      // Validate skill IDs exist and are accessible (only if skills are being updated)
+      if (allowedSkillIds !== undefined) {
+        await validateAllowedSkillsAccess(
+          tx,
+          allowedSkillIds,
+          userId,
+          input.orgId
+        );
+      }
 
       // Only update if there are DB fields to update
       let agent: ExternalAgent | undefined;
@@ -107,6 +124,23 @@ export class UpdateExternalAgentCommand {
 
         if (junctionRows.length > 0) {
           await tx.insert(externalAgentAllowedSubagents).values(junctionRows);
+        }
+      }
+
+      // Update allowed skills if provided
+      if (allowedSkillIds !== undefined) {
+        // Delete existing skill junction records
+        await tx
+          .delete(externalAgentAllowedSkills)
+          .where(eq(externalAgentAllowedSkills.externalAgentId, id));
+
+        // Insert new skill junction records
+        if (allowedSkillIds.length > 0) {
+          const skillRows = allowedSkillIds.map((skillId) => ({
+            externalAgentId: id,
+            skillId,
+          }));
+          await tx.insert(externalAgentAllowedSkills).values(skillRows);
         }
       }
 

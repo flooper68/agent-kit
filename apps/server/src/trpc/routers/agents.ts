@@ -54,6 +54,9 @@ const allowedSubagentsSchema = z
   })
   .optional();
 
+// Schema for allowed skills
+const allowedSkillIdsSchema = z.array(z.string().uuid()).optional();
+
 export const agentsRouter = router({
   // ==========================================
   // Agent listing and querying
@@ -85,6 +88,30 @@ export const agentsRouter = router({
    */
   listTools: protectedProcedure.query(() => {
     return getToolsMetadata();
+  }),
+
+  /**
+   * List all available skills for agent configuration
+   * Returns both system skills and user's custom skills
+   */
+  listSkillsForAgent: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.auth.orgId) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Organization ID is required',
+      });
+    }
+    const skills = await ctx.skillsFeature.getAll({
+      userId: ctx.auth.userId,
+      orgId: ctx.auth.orgId,
+    });
+    return skills.map((s) => ({
+      id: s.id,
+      key: s.key,
+      name: s.name,
+      description: s.description ?? '',
+      isSystem: s.isSystem,
+    }));
   }),
 
   /**
@@ -166,16 +193,29 @@ export const agentsRouter = router({
         isFavorite: z.boolean().optional(),
         // Sub-agent permissions
         allowedSubagents: allowedSubagentsSchema,
+        // Skill permissions
+        allowedSkillIds: allowedSkillIdsSchema,
+        // Allowed tools - which server tools this external agent can use
+        allowedTools: toolsSchema,
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (!ctx.auth.orgId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Organization ID is required',
+        });
+      }
       const result = await ctx.agentsFeature.customAgents.createExternal({
         userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
         key: normalizeAgentKey(input.key),
         name: input.name,
         description: input.description,
         isFavorite: input.isFavorite,
         allowedSubagents: input.allowedSubagents,
+        allowedSkillIds: input.allowedSkillIds,
+        allowedTools: input.allowedTools,
       });
 
       return {
@@ -207,12 +247,21 @@ export const agentsRouter = router({
         isFavorite: z.boolean().optional(),
         // Sub-agent permissions
         allowedSubagents: allowedSubagentsSchema,
+        // Skill permissions
+        allowedSkillIds: allowedSkillIdsSchema,
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (!ctx.auth.orgId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Organization ID is required',
+        });
+      }
       try {
         const agent = await ctx.agentsFeature.customAgents.createServer({
           userId: ctx.auth.userId,
+          orgId: ctx.auth.orgId,
           key: normalizeAgentKey(input.key),
           name: input.name,
           description: input.description,
@@ -226,6 +275,7 @@ export const agentsRouter = router({
           thinkingConfig: input.thinkingConfig,
           isFavorite: input.isFavorite,
           allowedSubagents: input.allowedSubagents,
+          allowedSkillIds: input.allowedSkillIds,
         });
 
         return { agent };
@@ -257,6 +307,8 @@ export const agentsRouter = router({
         description: z.string().optional(),
         isFavorite: z.boolean().optional(),
         allowedSubagents: allowedSubagentsSchema,
+        // Skill permissions (common to both types)
+        allowedSkillIds: allowedSkillIdsSchema,
         // Server agent only fields
         key: agentKeySchema.optional(),
         provider: z.enum(['anthropic', 'openai', 'gemini']).optional(),
@@ -267,21 +319,32 @@ export const agentsRouter = router({
         maxOutputTokens: z.number().positive().nullable().optional(),
         maxContextTokens: z.number().positive().nullable().optional(),
         thinkingConfig: thinkingConfigSchema.optional(),
+        // External agent only fields
+        allowedTools: toolsSchema,
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (!ctx.auth.orgId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Organization ID is required',
+        });
+      }
       const { id, agentType, key, ...restUpdates } = input;
 
       if (agentType === 'external') {
-        // External agents only support name, description, isFavorite, allowedSubagents
+        // External agents support name, description, isFavorite, allowedSubagents, allowedSkillIds, allowedTools
         const agent = await ctx.agentsFeature.customAgents.updateExternal({
           id,
           userId: ctx.auth.userId,
+          orgId: ctx.auth.orgId,
           updates: {
             name: restUpdates.name,
             description: restUpdates.description,
             isFavorite: restUpdates.isFavorite,
             allowedSubagents: restUpdates.allowedSubagents,
+            allowedSkillIds: restUpdates.allowedSkillIds,
+            allowedTools: restUpdates.allowedTools,
           },
         });
 
@@ -305,6 +368,7 @@ export const agentsRouter = router({
         const agent = await ctx.agentsFeature.customAgents.update({
           id,
           userId: ctx.auth.userId,
+          orgId: ctx.auth.orgId,
           updates: updates as Parameters<
             typeof ctx.agentsFeature.customAgents.update
           >[0]['updates'],

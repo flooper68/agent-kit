@@ -8,6 +8,7 @@ import type { AgentsFeature } from '../features/agents';
 import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
+import type { SkillsFeature } from '../features/skills';
 import type { AgentSpawner } from './agent-spawner';
 import { AgentJobHandler } from './agent-job-handler';
 
@@ -28,11 +29,12 @@ export class AgentWorker {
   private streamingStateManager: StreamingStateManager;
   private agentsFeature: AgentsFeature;
   private artifactsFeature: ArtifactsFeature;
-  private projectsFeature?: ProjectsFeature;
-  private tasksFeature?: TasksFeature;
-  private agentSpawner?: AgentSpawner;
+  private skillsFeature: SkillsFeature;
+  private agentSpawner: AgentSpawner;
   private pubsub: PubSubManager;
   private cacheInvalidation: CacheInvalidationService;
+  private projectsFeature?: ProjectsFeature;
+  private tasksFeature?: TasksFeature;
   private workerId: string;
   private isRunning = false;
 
@@ -43,11 +45,12 @@ export class AgentWorker {
     streamingStateManager: StreamingStateManager,
     agentsFeature: AgentsFeature,
     artifactsFeature: ArtifactsFeature,
+    skillsFeature: SkillsFeature,
+    agentSpawner: AgentSpawner,
     pubsub: PubSubManager,
     cacheInvalidation: CacheInvalidationService,
     projectsFeature?: ProjectsFeature,
-    tasksFeature?: TasksFeature,
-    agentSpawner?: AgentSpawner
+    tasksFeature?: TasksFeature
   ) {
     this.jobQueueManager = jobQueueManager;
     this.eventStreamManager = eventStreamManager;
@@ -55,11 +58,12 @@ export class AgentWorker {
     this.streamingStateManager = streamingStateManager;
     this.agentsFeature = agentsFeature;
     this.artifactsFeature = artifactsFeature;
+    this.skillsFeature = skillsFeature;
+    this.agentSpawner = agentSpawner;
     this.pubsub = pubsub;
     this.cacheInvalidation = cacheInvalidation;
     this.projectsFeature = projectsFeature;
     this.tasksFeature = tasksFeature;
-    this.agentSpawner = agentSpawner;
     this.workerId = `worker-${randomUUID().slice(0, 8)}`;
   }
 
@@ -85,12 +89,13 @@ export class AgentWorker {
             this.streamingStateManager,
             this.agentsFeature,
             this.artifactsFeature,
+            this.skillsFeature,
+            this.agentSpawner,
             this.pubsub,
             this.cacheInvalidation,
             this.workerId,
             this.projectsFeature,
-            this.tasksFeature,
-            this.agentSpawner
+            this.tasksFeature
           );
           await handler.handle(job);
         },

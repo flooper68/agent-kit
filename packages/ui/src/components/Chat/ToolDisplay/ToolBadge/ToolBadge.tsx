@@ -8,17 +8,114 @@ import { Tooltip } from '../../../Tooltip';
 import type { ToolResultPart } from '../../../../types/chat';
 
 /**
+ * =============================================================================
+ * SKILL TOOL DISPLAY HELPERS
+ * =============================================================================
+ *
+ * These functions extract meaningful display information from skill-related tools
+ * to show users what the agent is actually doing, rather than generic tool names.
+ *
+ * | Tool           | Generic Display      | Enhanced Display                    |
+ * |----------------|----------------------|-------------------------------------|
+ * | readSkillFile  | "Read Skill File"    | "Learn: web-research/SKILL.md"      |
+ * | listSkillFiles | "List Skill Files"   | "Files: web-research"               |
+ * | executeCommand | "Execute Command"    | "Web Search: react tutorials"       |
+ *
+ * All tools support both direct names and MCP-prefixed names
+ * (e.g., "executeCommand" and "mcp__agent-kit-server__executeCommand").
+ *
+ * Full details remain available in the dialog when clicking the badge.
+ * See docs/skills.md for more information about the skills system.
+ */
+
+/**
+ * Extract the file path from readSkillFile args.
+ *
+ * Displayed as "Learn: {path}" to indicate the agent is learning
+ * from skill documentation (e.g., "Learn: web-research/SKILL.md")
+ */
+function getReadSkillFileDisplayInfo(
+  args: Record<string, unknown>
+): string | null {
+  const path = args.path;
+  if (typeof path !== 'string' || !path.trim()) {
+    return null;
+  }
+  return path;
+}
+
+/**
+ * Extract the skill key from listSkillFiles args.
+ *
+ * Displayed as "Files: {skillKey}" to show which skill's files
+ * are being listed.
+ */
+function getListSkillFilesDisplayInfo(
+  args: Record<string, unknown>
+): string | null {
+  const skillKey = args.skillKey;
+  if (typeof skillKey !== 'string' || !skillKey.trim()) {
+    return null;
+  }
+  return skillKey;
+}
+
+/**
+ * Extract display info from executeCommand command string.
+ *
+ * Parses CLI-style command to show the inner tool name and first value argument.
+ * Displayed as "{ToolName}: {summary}" (e.g., "Web Search: react tutorials")
+ */
+function getExecuteCommandDisplayInfo(args: Record<string, unknown>): {
+  toolName: string;
+  summary: string;
+} | null {
+  const command = args.command;
+  if (typeof command !== 'string' || !command.trim()) {
+    return null;
+  }
+
+  // Tokenize respecting quotes: split on spaces but keep quoted strings together
+  const parts = command.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+  const toolName = parts[0];
+  if (!toolName) {
+    return null;
+  }
+
+  // Find first non-flag argument for summary (skip --arg patterns)
+  let summary = '';
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i];
+    if (part && !part.startsWith('-')) {
+      // Remove surrounding quotes
+      summary = part.replace(/^["']|["']$/g, '');
+      break;
+    }
+  }
+
+  return { toolName, summary };
+}
+
+/**
+ * Extracts the base tool name from an MCP pattern.
+ * MCP tools have the format: mcp__server__toolName
+ * Returns the original name if not an MCP tool.
+ */
+function getBaseToolName(toolName: string): string {
+  if (toolName.startsWith('mcp__')) {
+    const parts = toolName.split('__');
+    return parts[parts.length - 1] ?? toolName;
+  }
+  return toolName;
+}
+
+/**
  * Formats a tool name to be human-readable.
  * Handles MCP pattern (mcp__server__toolName), camelCase, PascalCase, and snake_case.
  */
 function formatToolName(toolName: string): string {
   // Extract tool name from MCP pattern: mcp__server__toolName
-  let name = toolName;
-  if (name.startsWith('mcp__')) {
-    const parts = name.split('__');
-    // Get the last part (the actual tool name)
-    name = parts[parts.length - 1] ?? name;
-  }
+  let name = getBaseToolName(toolName);
 
   // Handle snake_case: replace underscores with spaces
   name = name.replace(/_/g, ' ');
@@ -224,12 +321,61 @@ export const ToolBadge = memo(
       const hasDialogData = args !== undefined;
       const isError = state === 'error' || result?.isError;
 
-      const displayName = formatToolName(toolName);
+      // Default display name and tooltip
+      let displayName = formatToolName(toolName);
+      let tooltipContent = toolName;
+      let useWideDisplay = false;
+
+      // Extract base tool name for skill detection
+      // MCP tools have prefix like "mcp__agent-kit-server__readSkillFile"
+      const baseToolName = getBaseToolName(toolName);
+
+      // Enhanced display for skill-related tools
+      // Shows the actual operation instead of generic tool names
+      // Works for both direct tool names and MCP-prefixed names
+      // See: docs/skills.md#ui-display
+      if (args) {
+        if (baseToolName === 'readSkillFile') {
+          // Show "Learn: path" to indicate learning from docs
+          const path = getReadSkillFileDisplayInfo(args);
+          if (path) {
+            useWideDisplay = true;
+            displayName = `Learn: ${path}`;
+            tooltipContent = `readSkillFile: ${path}`;
+          }
+        } else if (baseToolName === 'listSkillFiles') {
+          // Show "Files: skillKey" for skill file listing
+          const skillKey = getListSkillFilesDisplayInfo(args);
+          if (skillKey) {
+            useWideDisplay = true;
+            displayName = `Files: ${skillKey}`;
+            tooltipContent = `listSkillFiles: ${skillKey}`;
+          }
+        } else if (baseToolName === 'executeCommand') {
+          // Show inner tool name and first argument (e.g., "Web Search: react")
+          const cmdInfo = getExecuteCommandDisplayInfo(args);
+          if (cmdInfo) {
+            useWideDisplay = true;
+            displayName = formatToolName(cmdInfo.toolName);
+            if (cmdInfo.summary) {
+              displayName = `${displayName}: ${cmdInfo.summary}`;
+            }
+            tooltipContent = `executeCommand: ${cmdInfo.toolName}`;
+          }
+        }
+      }
 
       const content = (
         <>
           <ToolIcon />
-          <span className="truncate max-w-[120px]">{displayName}</span>
+          <span
+            className={cn(
+              'truncate',
+              useWideDisplay ? 'max-w-[200px]' : 'max-w-[120px]'
+            )}
+          >
+            {displayName}
+          </span>
           <StateIcon state={state} />
         </>
       );
@@ -250,7 +396,7 @@ export const ToolBadge = memo(
       );
 
       const badge = (
-        <Tooltip content={toolName} side="bottom">
+        <Tooltip content={tooltipContent} side="bottom">
           {badgeElement}
         </Tooltip>
       );

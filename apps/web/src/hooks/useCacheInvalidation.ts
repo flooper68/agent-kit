@@ -119,6 +119,15 @@ export function useCacheInvalidation() {
           utils.artifacts.getOverTime.invalidate();
           utils.artifacts.getByAgent.invalidate();
           break;
+
+        case 'skills':
+          // Invalidate skill list queries
+          utils.skills.list.invalidate();
+          // Invalidate specific skill if we have the ID
+          if (event.entityId) {
+            utils.skills.get.invalidate({ id: event.entityId });
+          }
+          break;
       }
     },
     onError: (error) => {

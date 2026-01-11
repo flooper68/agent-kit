@@ -229,3 +229,216 @@ export const AllStatesWithDialog: Story = {
     },
   },
 };
+
+// Skill tool stories - tests special display handling
+// These tools show friendly names instead of generic tool names
+
+export const ReadSkillFileDirect: Story = {
+  args: {
+    toolName: 'readSkillFile',
+    state: 'running',
+    args: {
+      path: 'web-research/SKILL.md',
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Direct readSkillFile call shows "Learn: path"',
+      },
+    },
+  },
+};
+
+export const ReadSkillFileMCP: Story = {
+  args: {
+    toolName: 'mcp__agent-kit-server__readSkillFile',
+    state: 'running',
+    args: {
+      path: 'project-tools/SKILL.md',
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'MCP-prefixed readSkillFile shows same "Learn: path" display',
+      },
+    },
+  },
+};
+
+export const ListSkillFilesDirect: Story = {
+  args: {
+    toolName: 'listSkillFiles',
+    state: 'completed',
+    args: {
+      skillKey: 'web-research',
+    },
+    result: createResult({ files: ['SKILL.md', 'references/tips.md'] }),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Direct listSkillFiles call shows "Files: skillKey"',
+      },
+    },
+  },
+};
+
+export const ListSkillFilesMCP: Story = {
+  args: {
+    toolName: 'mcp__agent-kit-server__listSkillFiles',
+    state: 'completed',
+    args: {
+      skillKey: 'project-management',
+    },
+    result: createResult({ files: ['SKILL.md'] }),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'MCP-prefixed listSkillFiles shows same "Files: skillKey" display',
+      },
+    },
+  },
+};
+
+export const AllSkillTools: Story = {
+  render: () => (
+    <div className="space-y-4">
+      <div className="text-sm font-medium">Direct tool names:</div>
+      <div className="flex flex-wrap gap-2">
+        <ToolBadge
+          toolName="readSkillFile"
+          state="running"
+          args={{ path: 'skills/SKILL.md' }}
+        />
+        <ToolBadge
+          toolName="listSkillFiles"
+          state="completed"
+          args={{ skillKey: 'web-research' }}
+        />
+      </div>
+      <div className="text-sm font-medium">MCP-prefixed tool names:</div>
+      <div className="flex flex-wrap gap-2">
+        <ToolBadge
+          toolName="mcp__agent-kit-server__readSkillFile"
+          state="running"
+          args={{ path: 'skills/SKILL.md' }}
+        />
+        <ToolBadge
+          toolName="mcp__agent-kit-server__listSkillFiles"
+          state="completed"
+          args={{ skillKey: 'web-research' }}
+        />
+      </div>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Comparison of direct vs MCP-prefixed tool names. Both should display identically.',
+      },
+    },
+  },
+};
+
+// executeCommand stories - tests special display for CLI-style commands
+
+export const ExecuteCommandDirect: Story = {
+  args: {
+    toolName: 'executeCommand',
+    state: 'running',
+    args: {
+      command: 'webSearch --query "react tutorials"',
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Direct executeCommand shows inner tool name and first arg (e.g., "Web Search: react tutorials")',
+      },
+    },
+  },
+};
+
+export const ExecuteCommandMCP: Story = {
+  args: {
+    toolName: 'mcp__agent-kit-server__executeCommand',
+    state: 'running',
+    args: {
+      command: 'createTask --projectId abc123 --title "New feature"',
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'MCP-prefixed executeCommand shows same formatted display as direct call',
+      },
+    },
+  },
+};
+
+export const ExecuteCommandNoArgs: Story = {
+  args: {
+    toolName: 'executeCommand',
+    state: 'completed',
+    args: {
+      command: 'getTime --timezone "America/New_York"',
+    },
+    result: createResult({ time: '2024-01-10T12:00:00-05:00' }),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'executeCommand with only flags (no positional args) shows just the tool name',
+      },
+    },
+  },
+};
+
+export const AllExecuteCommandVariants: Story = {
+  render: () => (
+    <div className="space-y-4">
+      <div className="text-sm font-medium">Direct executeCommand:</div>
+      <div className="flex flex-wrap gap-2">
+        <ToolBadge
+          toolName="executeCommand"
+          state="running"
+          args={{ command: 'webSearch --query "react hooks"' }}
+        />
+        <ToolBadge
+          toolName="executeCommand"
+          state="completed"
+          args={{ command: 'createTask --title "Fix bug" --priority high' }}
+        />
+      </div>
+      <div className="text-sm font-medium">MCP-prefixed executeCommand:</div>
+      <div className="flex flex-wrap gap-2">
+        <ToolBadge
+          toolName="mcp__agent-kit-server__executeCommand"
+          state="running"
+          args={{ command: 'webSearch --query "typescript best practices"' }}
+        />
+        <ToolBadge
+          toolName="mcp__agent-kit-server__executeCommand"
+          state="completed"
+          args={{ command: 'getTime --timezone "UTC"' }}
+        />
+      </div>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Comparison of direct vs MCP-prefixed executeCommand. Both should display identically.',
+      },
+    },
+  },
+};

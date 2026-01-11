@@ -208,3 +208,20 @@ export type { ToastData, ToastVariant } from './Toast';
 
 export { CommandPalette, CommandPaletteItem } from './CommandPalette';
 export type { Command, CommandPaletteProps } from './CommandPalette';
+
+// File Tree
+export {
+  FileTree,
+  buildFileTree,
+  flattenTree,
+  getDirectoryPaths,
+} from './FileTree';
+export type { FileTreeProps, FileItem, FileTreeNode } from './FileTree';
+
+// Editable File Tree
+export { EditableFileTree } from './EditableFileTree';
+export type { EditableFileTreeProps } from './EditableFileTree';
+
+// File Editor
+export { FileEditor } from './FileEditor';
+export type { FileEditorProps } from './FileEditor';

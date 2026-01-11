@@ -1,7 +1,14 @@
 import { z } from 'zod';
 
 export const CacheInvalidationEventSchema = z.object({
-  type: z.enum(['projects', 'tasks', 'sessions', 'agents', 'artifacts']),
+  type: z.enum([
+    'projects',
+    'tasks',
+    'sessions',
+    'agents',
+    'artifacts',
+    'skills',
+  ]),
   action: z.enum([
     'created',
     'updated',

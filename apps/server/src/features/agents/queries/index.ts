@@ -111,6 +111,11 @@ export type {
   FindAgentByKeyPrefixInput,
   FindAgentByKeyPrefixResult,
 } from './find-agent-by-key-prefix';
+export { GetExternalAgentByIdQuery } from './get-external-agent-by-id';
+export type {
+  GetExternalAgentByIdInput,
+  GetExternalAgentByIdResult,
+} from './get-external-agent-by-id';
 
 // Agent selector queries (for UI dropdown)
 export { ListAgentsForSelectorQuery } from './list-agents-for-selector';
@@ -141,3 +146,8 @@ export type {
   GetAllowedSubagentsInput,
   AllowedSubagentInfo,
 } from './get-allowed-subagents';
+export { GetAllowedSkillsQuery } from './get-allowed-skills';
+export type {
+  GetAllowedSkillsInput,
+  AllowedSkillInfo,
+} from './get-allowed-skills';

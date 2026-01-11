@@ -70,13 +70,19 @@ import {
   GetAgentByKeyQuery,
   ValidateAgentKeyQuery,
   FindAgentByKeyPrefixQuery,
+  GetExternalAgentByIdQuery,
   ListAgentsForSelectorQuery,
   GetAgentForSelectorQuery,
   ListModelsQuery,
   CheckSpawnPermissionQuery,
   GetAllowedSubagentsQuery,
+  GetAllowedSkillsQuery,
 } from './queries';
-import type { CheckSpawnPermissionInput, AllowedSubagentInfo } from './queries';
+import type {
+  CheckSpawnPermissionInput,
+  AllowedSubagentInfo,
+  AllowedSkillInfo,
+} from './queries';
 
 /**
  * AgentsFeature - main class that composes all command and query handlers
@@ -147,6 +153,7 @@ export class AgentsFeature {
   private getAgentByKeyQuery: GetAgentByKeyQuery;
   private validateAgentKeyQuery: ValidateAgentKeyQuery;
   private findAgentByKeyPrefixQuery: FindAgentByKeyPrefixQuery;
+  private getExternalAgentByIdQuery: GetExternalAgentByIdQuery;
 
   // Agent selector queries (for UI dropdown)
   private listAgentsForSelectorQuery: ListAgentsForSelectorQuery;
@@ -158,6 +165,7 @@ export class AgentsFeature {
   // Permission queries
   private checkSpawnPermissionQuery: CheckSpawnPermissionQuery;
   private getAllowedSubagentsQuery: GetAllowedSubagentsQuery;
+  private getAllowedSkillsQuery: GetAllowedSkillsQuery;
 
   constructor(db: typeof DbType) {
     // Initialize context manager with getter for late-initialized cache invalidation
@@ -240,6 +248,7 @@ export class AgentsFeature {
     this.getAgentByKeyQuery = new GetAgentByKeyQuery(db);
     this.validateAgentKeyQuery = new ValidateAgentKeyQuery(db);
     this.findAgentByKeyPrefixQuery = new FindAgentByKeyPrefixQuery(db);
+    this.getExternalAgentByIdQuery = new GetExternalAgentByIdQuery(db);
 
     // Initialize agent selector queries (for UI dropdown)
     this.listAgentsForSelectorQuery = new ListAgentsForSelectorQuery(db);
@@ -251,6 +260,7 @@ export class AgentsFeature {
     // Initialize permission queries
     this.checkSpawnPermissionQuery = new CheckSpawnPermissionQuery(db);
     this.getAllowedSubagentsQuery = new GetAllowedSubagentsQuery(db);
+    this.getAllowedSkillsQuery = new GetAllowedSkillsQuery(db);
 
     // Initialize orchestration commands (compose existing commands)
     this.sendUserMessageCommand = new SendUserMessageCommand(
@@ -502,6 +512,8 @@ export class AgentsFeature {
         this.validateAgentKeyQuery.execute({ secretKey }),
       findByKeyPrefix: (prefix: string) =>
         this.findAgentByKeyPrefixQuery.execute({ prefix }),
+      getExternalById: (id: string) =>
+        this.getExternalAgentByIdQuery.execute({ id }),
       toggleFavorite: (
         id: string,
         userId: string,
@@ -560,6 +572,12 @@ export class AgentsFeature {
         userId: string
       ): Promise<AllowedSubagentInfo[]> =>
         this.getAllowedSubagentsQuery.execute({ agentKey, userId }),
+      getAllowedSkills: (
+        agentKey: string,
+        userId: string,
+        orgId: string
+      ): Promise<AllowedSkillInfo[]> =>
+        this.getAllowedSkillsQuery.execute({ agentKey, userId, orgId }),
     };
   }
 }

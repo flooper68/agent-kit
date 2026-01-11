@@ -33,6 +33,7 @@ import {
   FileText,
   FolderKanban,
   Home,
+  BookOpen,
 } from 'lucide-react';
 import { checkIsAdmin } from '../lib/auth';
 import { useChatHistory } from '../hooks/useChatHistory';
@@ -329,6 +330,13 @@ function DashboardLayoutInner() {
                   active: currentPath.startsWith('/app/agents'),
                 },
                 {
+                  id: 'skills',
+                  label: 'Skills',
+                  icon: <BookOpen className="h-4 w-4" />,
+                  onClick: () => navigate('/app/skills'),
+                  active: currentPath.startsWith('/app/skills'),
+                },
+                {
                   id: 'artifacts',
                   label: 'Artifacts',
                   icon: <FileText className="h-4 w-4" />,
@@ -428,6 +436,20 @@ function DashboardLayoutInner() {
                   size="sm"
                   className={
                     currentPath.startsWith('/app/agents')
+                      ? 'bg-accent text-accent-foreground'
+                      : undefined
+                  }
+                />
+              </Tooltip>
+              <Tooltip content="Skills">
+                <IconButton
+                  icon={<BookOpen className="h-4 w-4" />}
+                  label="Skills"
+                  onClick={() => navigate('/app/skills')}
+                  variant="ghost"
+                  size="sm"
+                  className={
+                    currentPath.startsWith('/app/skills')
                       ? 'bg-accent text-accent-foreground'
                       : undefined
                   }

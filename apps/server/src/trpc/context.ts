@@ -15,6 +15,7 @@ import type { AnalyticsFeature } from '../features/analytics';
 import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
+import type { SkillsFeature } from '../features/skills';
 import type { PubSubManager, CacheInvalidationService } from '../real-time';
 
 export type ClerkClient = ReturnType<typeof createClerkClient>;
@@ -26,6 +27,7 @@ export interface ContextDeps {
   artifactsFeature: ArtifactsFeature;
   projectsFeature: ProjectsFeature;
   tasksFeature: TasksFeature;
+  skillsFeature: SkillsFeature;
   jobQueueManager: JobQueueManager;
   eventStreamManager: EventStreamManager;
   jobRegistryManager: JobRegistryManager;
@@ -56,6 +58,7 @@ export function createContext(deps: ContextDeps) {
       artifactsFeature: deps.artifactsFeature,
       projectsFeature: deps.projectsFeature,
       tasksFeature: deps.tasksFeature,
+      skillsFeature: deps.skillsFeature,
       jobQueueManager: deps.jobQueueManager,
       eventStreamManager: deps.eventStreamManager,
       jobRegistryManager: deps.jobRegistryManager,

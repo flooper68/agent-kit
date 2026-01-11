@@ -11,6 +11,7 @@ import {
   real,
   integer,
 } from 'drizzle-orm/pg-core';
+import { skills } from './skills';
 
 // Thinking configuration - provider-specific settings
 export interface ThinkingConfig {
@@ -56,6 +57,13 @@ export const externalAgents = pgTable(
 
     // User preferences
     isFavorite: boolean('is_favorite').notNull().default(false),
+
+    // Allowed tools - which server tools this external agent can use
+    // Empty array (default) means no tools allowed
+    allowedTools: jsonb('allowed_tools')
+      .$type<string[]>()
+      .notNull()
+      .default([]),
 
     // Timestamps
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -230,3 +238,76 @@ export type ExternalAgentAllowedSubagent =
   typeof externalAgentAllowedSubagents.$inferSelect;
 export type NewExternalAgentAllowedSubagent =
   typeof externalAgentAllowedSubagents.$inferInsert;
+
+/**
+ * Junction table for server agents' allowed skills
+ * Defines which skills a server agent can access
+ */
+export const serverAgentAllowedSkills = pgTable(
+  'server_agent_allowed_skills',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    // The parent server agent
+    serverAgentId: uuid('server_agent_id')
+      .notNull()
+      .references(() => serverAgents.id, { onDelete: 'cascade' }),
+
+    // The skill this agent can access
+    skillId: uuid('skill_id')
+      .notNull()
+      .references(() => skills.id, { onDelete: 'cascade' }),
+
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('idx_server_allowed_skills_agent').on(table.serverAgentId),
+    index('idx_server_allowed_skills_skill').on(table.skillId),
+    uniqueIndex('server_skill_unique').on(table.serverAgentId, table.skillId),
+  ]
+);
+
+export type ServerAgentAllowedSkill =
+  typeof serverAgentAllowedSkills.$inferSelect;
+export type NewServerAgentAllowedSkill =
+  typeof serverAgentAllowedSkills.$inferInsert;
+
+/**
+ * Junction table for external agents' allowed skills
+ * Defines which skills an external agent can access
+ */
+export const externalAgentAllowedSkills = pgTable(
+  'external_agent_allowed_skills',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    // The parent external agent
+    externalAgentId: uuid('external_agent_id')
+      .notNull()
+      .references(() => externalAgents.id, { onDelete: 'cascade' }),
+
+    // The skill this agent can access
+    skillId: uuid('skill_id')
+      .notNull()
+      .references(() => skills.id, { onDelete: 'cascade' }),
+
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('idx_external_allowed_skills_agent').on(table.externalAgentId),
+    index('idx_external_allowed_skills_skill').on(table.skillId),
+    uniqueIndex('external_skill_unique').on(
+      table.externalAgentId,
+      table.skillId
+    ),
+  ]
+);
+
+export type ExternalAgentAllowedSkill =
+  typeof externalAgentAllowedSkills.$inferSelect;
+export type NewExternalAgentAllowedSkill =
+  typeof externalAgentAllowedSkills.$inferInsert;

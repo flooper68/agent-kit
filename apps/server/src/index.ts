@@ -30,6 +30,7 @@ import { AnalyticsFeature } from './features/analytics';
 import { ArtifactsFeature } from './features/artifacts';
 import { ProjectsFeature } from './features/projects';
 import { TasksFeature } from './features/tasks';
+import { SkillsFeature } from './features/skills';
 import { CacheInvalidationService, PubSubManager } from './real-time';
 import { createRedisClient, createPubSubClients } from './lib/redis/client';
 
@@ -94,6 +95,9 @@ const projectsFeature = new ProjectsFeature(db);
 // Create tasks feature
 const tasksFeature = new TasksFeature(db);
 
+// Create skills feature
+const skillsFeature = new SkillsFeature(db);
+
 // Will be initialized in onReady hook
 let jobQueueManager!: JobQueueManager;
 let eventStreamManager!: EventStreamManager;
@@ -121,6 +125,7 @@ fastify.addHook('onReady', async () => {
   tasksFeature.setCacheInvalidation(cacheInvalidation);
   agentsFeature.setAgentCacheInvalidation(cacheInvalidation);
   artifactsFeature.setCacheInvalidation(cacheInvalidation);
+  skillsFeature.setSkillsCacheInvalidation(cacheInvalidation);
 
   // Create infrastructure managers (split from AgentSessionManager)
   jobQueueManager = new JobQueueManager(redisPublisher, redisWorker);
@@ -156,9 +161,10 @@ fastify.addHook('onReady', async () => {
     streamingStateManager,
     agentsFeature,
     artifactsFeature,
+    skillsFeature,
+    pubsub,
     projectsFeature,
-    tasksFeature,
-    pubsub
+    tasksFeature
   );
 
   // Create the agent spawner for spawning sub-agents
@@ -183,11 +189,12 @@ fastify.addHook('onReady', async () => {
     streamingStateManager,
     agentsFeature,
     artifactsFeature,
+    skillsFeature,
+    agentSpawner,
     pubsub,
     cacheInvalidation,
     projectsFeature,
-    tasksFeature,
-    agentSpawner
+    tasksFeature
   );
 
   fastify.log.info('Starting agent worker...');
@@ -214,6 +221,7 @@ fastify.register(fastifyTRPCPlugin, {
         artifactsFeature,
         projectsFeature,
         tasksFeature,
+        skillsFeature,
         jobQueueManager,
         eventStreamManager,
         jobRegistryManager,
@@ -318,6 +326,7 @@ const start = async () => {
           artifactsFeature,
           projectsFeature,
           tasksFeature,
+          skillsFeature,
           jobQueueManager,
           eventStreamManager,
           jobRegistryManager,

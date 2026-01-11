@@ -285,6 +285,37 @@ export class CacheInvalidationService {
     });
   }
 
+  // Skill events (user-scoped)
+  async publishSkillCreated(userId: string, skillId: string): Promise<void> {
+    await this.publishToUser({
+      type: 'skills',
+      action: 'created',
+      entityId: skillId,
+      userId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  async publishSkillUpdated(userId: string, skillId: string): Promise<void> {
+    await this.publishToUser({
+      type: 'skills',
+      action: 'updated',
+      entityId: skillId,
+      userId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  async publishSkillDeleted(userId: string, skillId: string): Promise<void> {
+    await this.publishToUser({
+      type: 'skills',
+      action: 'deleted',
+      entityId: skillId,
+      userId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   private async publish(event: CacheInvalidationEvent): Promise<void> {
     try {
       const channel = getCacheInvalidationChannel(event.orgId!);

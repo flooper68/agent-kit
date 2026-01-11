@@ -1,5 +1,5 @@
-import { and, eq, inArray, isNull } from 'drizzle-orm';
-import { serverAgents, externalAgents } from '../../../db/schema';
+import { and, eq, inArray, isNull, or } from 'drizzle-orm';
+import { serverAgents, externalAgents, skills } from '../../../db/schema';
 import type { Transaction } from './types';
 
 /**
@@ -72,5 +72,50 @@ export async function validateAllowedSubagentsOwnership(
         `Invalid or inaccessible external agents: ${invalidIds.join(', ')}`
       );
     }
+  }
+}
+
+/**
+ * Validates that all referenced skill IDs exist and are accessible to the user.
+ * Skills are accessible if they are system skills OR owned by the user.
+ * Throws an error if any skill IDs are invalid or inaccessible.
+ *
+ * @param tx - The database transaction
+ * @param skillIds - The skill IDs to validate
+ * @param userId - The user ID to validate ownership against
+ * @param orgId - The organization ID to validate ownership against
+ * @throws Error if any skill IDs are invalid or not accessible to the user
+ */
+export async function validateAllowedSkillsAccess(
+  tx: Transaction,
+  skillIds: string[],
+  userId: string,
+  orgId: string
+): Promise<void> {
+  if (skillIds.length === 0) {
+    return;
+  }
+
+  // Fetch all valid skills (system skills OR user's skills)
+  const validSkills = await tx
+    .select({ id: skills.id })
+    .from(skills)
+    .where(
+      and(
+        inArray(skills.id, skillIds),
+        or(
+          eq(skills.isSystem, true),
+          and(eq(skills.userId, userId), eq(skills.orgId, orgId))
+        )
+      )
+    );
+
+  const validIds = new Set(validSkills.map((s) => s.id));
+  const invalidIds = skillIds.filter((id) => !validIds.has(id));
+
+  if (invalidIds.length > 0) {
+    throw new Error(
+      `Invalid or inaccessible skill IDs: ${invalidIds.join(', ')}`
+    );
   }
 }

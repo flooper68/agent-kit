@@ -4,6 +4,7 @@ import type { Tool } from '../types';
 import type { AgentSpawner } from '../agent-spawner';
 import { SPAWN_CONFIG } from '../spawn-config';
 import { logger } from '../logger';
+import { SERVER_TOOL_DEFINITIONS } from '@agent-kit/shared';
 
 const log = logger.child({ module: 'spawn-agent-tool' });
 
@@ -32,16 +33,9 @@ export type SpawnAgentToolResult = {
 
 export function createSpawnAgentTool(context: SpawnAgentContext): Tool {
   return tool({
-    description: `Spawn another agent to handle a specific task. The spawned agent runs in its own fresh session with only the message you provide - it does not have access to your conversation history.
-
-Use this tool to:
-- Delegate specialized tasks to other agents
-- Get a second opinion or alternative approach
-- Run subtasks that benefit from a clean context
-
-The tool will wait for the spawned agent to complete and return its full response.
-
-Available agents are listed in the system prompt under "Built-in Agents" and "Local Agents". Use the agent ID shown in bold (e.g., "assistant-opus-4.5" or "my-custom-agent").`,
+    // Use shared description from @agent-kit/shared (single source of truth)
+    description: SERVER_TOOL_DEFINITIONS.spawnAgent.description,
+    // Schema inlined to avoid TypeScript recursion issues with AI SDK type inference
     inputSchema: z.object({
       agentId: z
         .string()
@@ -51,9 +45,7 @@ Available agents are listed in the system prompt under "Built-in Agents" and "Lo
           /^[a-zA-Z0-9_-]+$/,
           'Agent ID can only contain letters, numbers, underscores, and hyphens'
         )
-        .describe(
-          'ID of the agent to spawn (from the available agents list in system prompt)'
-        ),
+        .describe('ID of the agent to spawn'),
       message: z
         .string()
         .min(1, 'Message is required')

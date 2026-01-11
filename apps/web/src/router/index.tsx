@@ -93,6 +93,21 @@ const EditAgentPage = lazy(() =>
     default: m.EditAgentPage,
   }))
 );
+const SkillsPage = lazy(() =>
+  import('../pages/SkillsPage').then((m) => ({
+    default: m.SkillsPage,
+  }))
+);
+const SkillDetailPage = lazy(() =>
+  import('../pages/skills/SkillDetailPage').then((m) => ({
+    default: m.SkillDetailPage,
+  }))
+);
+const SkillFormPage = lazy(() =>
+  import('../pages/skills/SkillFormPage').then((m) => ({
+    default: m.SkillFormPage,
+  }))
+);
 const NotFoundPage = lazy(() =>
   import('../pages/NotFoundPage').then((m) => ({
     default: m.NotFoundPage,
@@ -256,6 +271,38 @@ const router = createBrowserRouter([
                     element: (
                       <Suspense fallback={<ProjectDetailPageSkeleton />}>
                         <ProjectDetailPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'skills',
+                    element: (
+                      <Suspense fallback={<ArtifactsPageSkeleton />}>
+                        <SkillsPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'skills/new',
+                    element: (
+                      <Suspense fallback={<AgentFormPageSkeleton />}>
+                        <SkillFormPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'skills/:id',
+                    element: (
+                      <Suspense fallback={<ArtifactDetailPageSkeleton />}>
+                        <SkillDetailPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'skills/:id/edit',
+                    element: (
+                      <Suspense fallback={<AgentFormPageSkeleton />}>
+                        <SkillFormPage />
                       </Suspense>
                     ),
                   },

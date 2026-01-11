@@ -1,6 +1,7 @@
 import {
   externalAgents,
   externalAgentAllowedSubagents,
+  externalAgentAllowedSkills,
   type ExternalAgent,
 } from '../../../db/schema';
 import { generateSecretKey, hashSecretKey, generateKeyPrefix } from '../utils';
@@ -8,6 +9,7 @@ import {
   type AgentsCommandContextManager,
   type AllowedSubagentsInput,
   validateAllowedSubagentsOwnership,
+  validateAllowedSkillsAccess,
 } from '../context';
 
 /**
@@ -16,12 +18,17 @@ import {
  */
 export interface CreateExternalAgentInput {
   userId: string;
+  orgId: string;
   key: string;
   name: string;
   description?: string;
   isFavorite?: boolean;
   // Sub-agent permissions
   allowedSubagents?: AllowedSubagentsInput;
+  // Skill permissions
+  allowedSkillIds?: string[];
+  // Allowed tools - which server tools this agent can use
+  allowedTools?: string[];
 }
 
 export interface CreateExternalAgentResult {
@@ -54,6 +61,14 @@ export class CreateExternalAgentCommand {
         allowedSubagents
       );
 
+      // Validate skill IDs exist and are accessible
+      await validateAllowedSkillsAccess(
+        tx,
+        input.allowedSkillIds ?? [],
+        input.userId,
+        input.orgId
+      );
+
       const [createdAgent] = await tx
         .insert(externalAgents)
         .values({
@@ -64,6 +79,7 @@ export class CreateExternalAgentCommand {
           secretKey: secretKeyHash,
           secretKeyPrefix,
           isFavorite: input.isFavorite ?? false,
+          allowedTools: input.allowedTools ?? [],
         })
         .returning();
 
@@ -98,6 +114,15 @@ export class CreateExternalAgentCommand {
         if (junctionRows.length > 0) {
           await tx.insert(externalAgentAllowedSubagents).values(junctionRows);
         }
+      }
+
+      // Insert allowed skills into junction table
+      if (input.allowedSkillIds && input.allowedSkillIds.length > 0) {
+        const skillRows = input.allowedSkillIds.map((skillId) => ({
+          externalAgentId: createdAgent.id,
+          skillId,
+        }));
+        await tx.insert(externalAgentAllowedSkills).values(skillRows);
       }
 
       // Publish cache invalidation event

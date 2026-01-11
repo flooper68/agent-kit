@@ -22,9 +22,11 @@ import type { EventStreamManager } from './event-stream-manager';
 import type { StreamingStateManager } from './streaming-state-manager';
 import { STREAMING_HEARTBEAT_INTERVAL_MS } from './streaming-state-manager';
 import type { AgentsFeature } from '../features/agents';
+import type { ExternalAgent } from '../db/schema';
 import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
+import type { SkillsFeature } from '../features/skills';
 import type { PubSubManager } from '../real-time';
 import { getToolsById } from './tools';
 import type { AgentSpawner } from './agent-spawner';
@@ -83,16 +85,6 @@ const EventMessageSchema = z.object({
   event: AgentEventSchema,
 });
 
-// Schema for artifact tool requests from external agents
-const ArtifactToolRequestSchema = z.object({
-  type: z.literal('artifact_tool_request'),
-  requestId: z.string().uuid(),
-  sessionId: z.string().uuid(),
-  tool: z.enum(['writeArtifact', 'readArtifact', 'searchArtifacts']),
-  params: z.record(z.string(), z.unknown()),
-  timestamp: z.string(),
-});
-
 // Schema for server tool requests from external agents (uses shared tool names)
 const ServerToolRequestSchema = z.object({
   type: z.literal('server_tool_request'),
@@ -105,31 +97,15 @@ const ServerToolRequestSchema = z.object({
   timestamp: z.string(),
 });
 
-// Schemas for validating artifact tool parameters
-const WriteArtifactParamsSchema = z.object({
-  title: z.string().min(1).max(255),
-  content: z.string().min(1).max(1_000_000),
-  summary: z.string().max(500).optional(),
-});
-
-const ReadArtifactParamsSchema = z.object({
-  artifactId: z.string().uuid(),
-});
-
-const SearchArtifactsParamsSchema = z.object({
-  query: z.string().optional().default(''),
-  limit: z.number().int().min(1).max(100).optional().default(10),
-  offset: z.number().int().min(0).optional().default(0),
-});
-
 const AgentMessageSchema = z.discriminatedUnion('type', [
   EventMessageSchema,
-  ArtifactToolRequestSchema,
   ServerToolRequestSchema,
 ]);
 
-interface AgentInfo {
-  agent: { id: string; key: string; userId: string; name: string };
+interface AgentConnectionInfo {
+  agentId: string;
+  agentKey: string;
+  userId: string;
   connectionId: string;
 }
 
@@ -174,9 +150,10 @@ export class ExternalAgentWebSocketService {
     private streamingStateManager: StreamingStateManager,
     private agentsFeature: AgentsFeature,
     private artifactsFeature: ArtifactsFeature,
+    private skillsFeature: SkillsFeature,
+    private pubsub: PubSubManager,
     private projectsFeature?: ProjectsFeature,
-    private tasksFeature?: TasksFeature,
-    private pubsub?: PubSubManager
+    private tasksFeature?: TasksFeature
   ) {
     this.wss = new WebSocketServer({ noServer: true });
     this.setupConnectionHandler();
@@ -218,6 +195,25 @@ export class ExternalAgentWebSocketService {
    */
   setAgentSpawner(spawner: AgentSpawner): void {
     this.agentSpawner = spawner;
+  }
+
+  /**
+   * Invalidate session cache for a specific session.
+   * Call this when session permissions or related data changes.
+   */
+  invalidateSessionCache(sessionId: string): void {
+    this.sessionCache.delete(sessionId);
+    this.log.debug('Session cache invalidated', { sessionId });
+  }
+
+  /**
+   * Invalidate all session caches.
+   * Call this when agent permissions change (e.g., skills or tools updated).
+   */
+  invalidateAllSessionCaches(): void {
+    const count = this.sessionCache.size;
+    this.sessionCache.clear();
+    this.log.debug('All session caches invalidated', { count });
   }
 
   /**
@@ -422,7 +418,12 @@ export class ExternalAgentWebSocketService {
 
         // Set up authenticated connection
         const connectionId = crypto.randomUUID();
-        await this.handleAuthenticatedConnection(ws, { agent, connectionId });
+        await this.handleAuthenticatedConnection(ws, {
+          agentId: agent.id,
+          agentKey: agent.key,
+          userId: agent.userId,
+          connectionId,
+        });
       } catch (err) {
         this.log.error('Auth message error', { err });
         ws.send(
@@ -449,9 +450,9 @@ export class ExternalAgentWebSocketService {
    */
   private async handleAuthenticatedConnection(
     ws: WebSocket,
-    agentInfo: AgentInfo
+    connectionInfo: AgentConnectionInfo
   ): Promise<void> {
-    const { agent, connectionId } = agentInfo;
+    const { agentId, agentKey, userId, connectionId } = connectionInfo;
 
     // Track event sequence per message to avoid integer overflow
     // (Date.now() returns ~1.7 trillion which exceeds PostgreSQL integer max)
@@ -460,48 +461,52 @@ export class ExternalAgentWebSocketService {
     // Buffer consecutive text/reasoning deltas per message to reduce DB writes
     const messageBuffers = new Map<string, EventBuffer>();
 
+    // Cache agent per messageId to avoid repeated DB lookups during a request/response cycle
+    const messageAgents = new Map<string, ExternalAgent>();
+
     // Register WebSocket connection for message forwarding
-    this.wsRegistry.register(agent.id, ws);
+    this.wsRegistry.register(agentId, ws);
 
     // Register connection in Redis (use key for UI matching)
     await this.connectionManager.registerConnection(
-      agent.userId,
-      agent.key,
+      userId,
+      agentKey,
       connectionId
     );
 
-    this.log.info('External agent connected', {
-      agentId: agent.id,
-      agentName: agent.name,
-    });
+    this.log.info('External agent connected', { agentId });
 
     // Ping every 30s to detect stale connections
     const pingInterval = setInterval(() => {
       if (ws.readyState === ws.OPEN) {
         ws.ping();
-        void this.connectionManager.updatePing(agent.userId, agent.key);
+        void this.connectionManager.updatePing(userId, agentKey);
       }
     }, 30000);
 
     ws.on('pong', () => {
-      void this.connectionManager.updatePing(agent.userId, agent.key);
+      void this.connectionManager.updatePing(userId, agentKey);
     });
 
     ws.on('message', async (data: Buffer) => {
-      await this.handleMessage(agent, data, messageSequences, messageBuffers);
+      await this.handleMessage(
+        agentId,
+        data,
+        messageSequences,
+        messageBuffers,
+        messageAgents
+      );
     });
 
     ws.on('close', async () => {
       clearInterval(pingInterval);
-      this.wsRegistry.unregister(agent.id);
-      await this.connectionManager.unregisterConnection(
-        agent.userId,
-        agent.key
-      );
+      this.wsRegistry.unregister(agentId);
+      await this.connectionManager.unregisterConnection(userId, agentKey);
       // Clean up any remaining message tracking on disconnect
       messageSequences.clear();
       messageBuffers.clear();
-      this.log.info('External agent disconnected', { agentId: agent.id });
+      messageAgents.clear();
+      this.log.info('External agent disconnected', { agentId });
     });
 
     ws.on('error', (err: Error) => {
@@ -510,13 +515,16 @@ export class ExternalAgentWebSocketService {
   }
 
   /**
-   * Handle a message from an external agent
+   * Handle a message from an external agent.
+   * Caches agent per messageId for event messages to ensure consistent processing
+   * within a request/response cycle. Server tool requests fetch fresh agent details.
    */
   private async handleMessage(
-    agent: { id: string; key: string; userId: string; name: string },
+    agentId: string,
     data: Buffer,
     messageSequences: Map<string, number>,
-    messageBuffers: Map<string, EventBuffer>
+    messageBuffers: Map<string, EventBuffer>,
+    messageAgents: Map<string, ExternalAgent>
   ): Promise<void> {
     try {
       const rawMessage = JSON.parse(data.toString());
@@ -525,7 +533,7 @@ export class ExternalAgentWebSocketService {
       const parseResult = AgentMessageSchema.safeParse(rawMessage);
       if (!parseResult.success) {
         this.log.warn('Invalid message format from external agent', {
-          agentId: agent.id,
+          agentId,
           errors: parseResult.error.issues,
           messageType: rawMessage?.type,
         });
@@ -534,18 +542,66 @@ export class ExternalAgentWebSocketService {
 
       const message = parseResult.data;
 
+      // Get agent - cached for events, fresh for server_tool_request
+      let agent: ExternalAgent | null = null;
+
+      if (message.type === 'event') {
+        // Use cached agent for event messages to ensure consistent processing
+        const cachedAgent = messageAgents.get(message.messageId);
+        if (cachedAgent) {
+          agent = cachedAgent;
+        } else {
+          // First event for this messageId - fetch and cache
+          agent =
+            await this.agentsFeature.customAgents.getExternalById(agentId);
+          if (agent && !agent.disabled) {
+            messageAgents.set(message.messageId, agent);
+          }
+        }
+      } else {
+        // For server_tool_request, always fetch fresh for permission checking
+        agent = await this.agentsFeature.customAgents.getExternalById(agentId);
+      }
+
+      if (!agent) {
+        this.log.warn('Agent not found or deleted', { agentId });
+        // For server_tool_request, send error response
+        if (message.type === 'server_tool_request') {
+          this.sendServerToolResponse(
+            agentId,
+            message.sessionId,
+            message.requestId,
+            { error: 'Agent not found or has been deleted' },
+            true
+          );
+        }
+        return;
+      }
+
+      if (agent.disabled) {
+        this.log.warn('Agent is disabled', { agentId });
+        // For server_tool_request, send error response
+        if (message.type === 'server_tool_request') {
+          this.sendServerToolResponse(
+            agentId,
+            message.sessionId,
+            message.requestId,
+            { error: 'Agent is disabled' },
+            true
+          );
+        }
+        return;
+      }
+
       switch (message.type) {
         case 'event': {
           await this.handleEventMessage(
             agent,
             message,
             messageSequences,
-            messageBuffers
+            messageBuffers,
+            messageAgents
           );
-          break;
-        }
-        case 'artifact_tool_request': {
-          await this.handleArtifactToolRequest(agent, message);
           break;
         }
         case 'server_tool_request': {
@@ -555,7 +611,7 @@ export class ExternalAgentWebSocketService {
       }
     } catch (err) {
       this.log.error('Failed to handle message from external agent', {
-        agentId: agent.id,
+        agentId,
         err,
       });
     }
@@ -644,10 +700,11 @@ export class ExternalAgentWebSocketService {
    * Handle an event message from an external agent
    */
   private async handleEventMessage(
-    agent: { id: string; key: string; userId: string; name: string },
+    agent: ExternalAgent,
     message: { sessionId: string; messageId: string; event: AgentEvent },
     messageSequences: Map<string, number>,
-    messageBuffers: Map<string, EventBuffer>
+    messageBuffers: Map<string, EventBuffer>,
+    messageAgents: Map<string, ExternalAgent>
   ): Promise<void> {
     const { sessionId, messageId, event } = message;
 
@@ -747,6 +804,7 @@ export class ExternalAgentWebSocketService {
       // Clean up tracking for completed message
       messageSequences.delete(messageId);
       messageBuffers.delete(messageId);
+      messageAgents.delete(messageId);
       return;
     }
 
@@ -819,6 +877,7 @@ export class ExternalAgentWebSocketService {
       // Clean up tracking for errored message
       messageSequences.delete(messageId);
       messageBuffers.delete(messageId);
+      messageAgents.delete(messageId);
     } else if (event.type === 'interrupted') {
       // Flush buffer before interrupted
       await flushBuffer(messageId);
@@ -833,6 +892,7 @@ export class ExternalAgentWebSocketService {
       // Clean up tracking for interrupted message
       messageSequences.delete(messageId);
       messageBuffers.delete(messageId);
+      messageAgents.delete(messageId);
     }
 
     // Publish event to Redis stream for real-time delivery
@@ -844,193 +904,11 @@ export class ExternalAgentWebSocketService {
   }
 
   /**
-   * Handle an artifact tool request from an external agent
-   */
-  private async handleArtifactToolRequest(
-    agent: { id: string; key: string; userId: string; name: string },
-    message: {
-      requestId: string;
-      sessionId: string;
-      tool: 'writeArtifact' | 'readArtifact' | 'searchArtifacts';
-      params: Record<string, unknown>;
-    }
-  ): Promise<void> {
-    const { requestId, sessionId, tool, params } = message;
-
-    this.log.debug('Handling artifact tool request', {
-      agentId: agent.id,
-      requestId: requestId.slice(0, 8) + '...',
-      tool,
-    });
-
-    // Get session to retrieve orgId
-    const session = await this.agentsFeature.sessions.getById(sessionId);
-    if (!session) {
-      this.log.warn('Session not found for artifact tool request', {
-        sessionId: sessionId.slice(0, 8) + '...',
-      });
-      this.sendArtifactToolResponse(
-        agent.id,
-        sessionId,
-        requestId,
-        {
-          error: 'Session not found',
-        },
-        true
-      );
-      return;
-    }
-
-    try {
-      let result: unknown;
-
-      switch (tool) {
-        case 'writeArtifact': {
-          const validatedParams = WriteArtifactParamsSchema.parse(params);
-          const artifact = await this.artifactsFeature.create({
-            userId: agent.userId,
-            orgId: session.orgId,
-            sessionId,
-            agentId: agent.id,
-            title: validatedParams.title,
-            content: validatedParams.content,
-            summary: validatedParams.summary,
-          });
-          result = {
-            success: true,
-            artifactId: artifact.id,
-            title: artifact.title,
-            message: `Document "${artifact.title}" saved successfully.`,
-          };
-          this.log.info('Artifact created by external agent', {
-            agentId: agent.id,
-            artifactId: artifact.id,
-            title: artifact.title,
-          });
-          break;
-        }
-
-        case 'readArtifact': {
-          const validatedParams = ReadArtifactParamsSchema.parse(params);
-          const artifact = await this.artifactsFeature.getById({
-            id: validatedParams.artifactId,
-            userId: agent.userId,
-            orgId: session.orgId,
-          });
-          if (artifact) {
-            result = {
-              found: true,
-              id: artifact.id,
-              title: artifact.title,
-              content: artifact.content,
-              summary: artifact.summary,
-              createdAt: artifact.createdAt,
-              updatedAt: artifact.updatedAt,
-            };
-          } else {
-            result = {
-              found: false,
-              message: 'Document not found or access denied.',
-            };
-          }
-          break;
-        }
-
-        case 'searchArtifacts': {
-          const validatedParams = SearchArtifactsParamsSchema.parse(params);
-          const searchResult = await this.artifactsFeature.search({
-            userId: agent.userId,
-            orgId: session.orgId,
-            query: validatedParams.query,
-            limit: validatedParams.limit,
-            offset: validatedParams.offset,
-          });
-          result = {
-            found: searchResult.results.length > 0,
-            count: searchResult.results.length,
-            totalCount: searchResult.totalCount,
-            results: searchResult.results.map((r) => ({
-              id: r.id,
-              title: r.title,
-              summary: r.summary,
-              createdAt: r.createdAt,
-            })),
-            message:
-              searchResult.results.length > 0
-                ? `Found ${searchResult.results.length} document(s).`
-                : 'No documents found.',
-          };
-          break;
-        }
-
-        default:
-          throw new Error(`Unknown artifact tool: ${tool}`);
-      }
-
-      this.sendArtifactToolResponse(
-        agent.id,
-        sessionId,
-        requestId,
-        result,
-        false
-      );
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.log.error('Artifact tool execution failed', {
-        agentId: agent.id,
-        tool,
-        error: errorMessage,
-      });
-      this.sendArtifactToolResponse(
-        agent.id,
-        sessionId,
-        requestId,
-        {
-          error: errorMessage,
-        },
-        true
-      );
-    }
-  }
-
-  /**
-   * Send an artifact tool response back to an external agent
-   */
-  private sendArtifactToolResponse(
-    agentId: string,
-    sessionId: string,
-    requestId: string,
-    result: unknown,
-    isError: boolean
-  ): void {
-    const payload = {
-      type: 'artifact_tool_response',
-      requestId,
-      sessionId,
-      result,
-      isError,
-      timestamp: new Date().toISOString(),
-    };
-
-    const sent = this.wsRegistry.sendMessage(agentId, payload);
-    if (!sent) {
-      this.log.warn(
-        'Failed to send artifact tool response - agent not connected',
-        {
-          agentId,
-          requestId: requestId.slice(0, 8) + '...',
-        }
-      );
-    }
-  }
-
-  /**
    * Handle a server tool request from an external agent.
    * Uses getToolsById to execute any server-side tool.
    */
   private async handleServerToolRequest(
-    agent: { id: string; key: string; userId: string; name: string },
+    agent: ExternalAgent,
     message: {
       requestId: string;
       sessionId: string;
@@ -1063,6 +941,25 @@ export class ExternalAgentWebSocketService {
         {
           error: `Rate limit exceeded. Max ${RATE_LIMIT_MAX_REQUESTS} requests per minute.`,
         },
+        true
+      );
+      return;
+    }
+
+    // Check tool permission
+    const allowedTools = agent.allowedTools ?? [];
+    if (allowedTools.length === 0 || !allowedTools.includes(tool)) {
+      this.log.warn('Tool not allowed for external agent', {
+        agentId: agent.id,
+        tool,
+        allowedToolsCount: allowedTools.length,
+        allowedTools: allowedTools.slice(0, 10), // Show first 10 for debugging
+      });
+      this.sendServerToolResponse(
+        agent.id,
+        sessionId,
+        requestId,
+        { error: `Tool '${tool}' is not allowed for this agent` },
         true
       );
       return;
@@ -1101,6 +998,28 @@ export class ExternalAgentWebSocketService {
     }
 
     try {
+      // Verify agentSpawner is set (set via setAgentSpawner after construction)
+      if (!this.agentSpawner) {
+        this.log.error('AgentSpawner not initialized');
+        this.sendServerToolResponse(
+          agent.id,
+          sessionId,
+          requestId,
+          { error: 'Server not fully initialized' },
+          true
+        );
+        return;
+      }
+
+      // Fetch allowed skills for this external agent
+      const allowedSkills =
+        await this.agentsFeature.permissions.getAllowedSkills(
+          agent.key,
+          agent.userId,
+          session.orgId
+        );
+      const allowedSkillIds = allowedSkills.map((s) => s.id);
+
       // Build tool context with all available features
       const toolContext = {
         userId: agent.userId,
@@ -1109,9 +1028,12 @@ export class ExternalAgentWebSocketService {
         // Use provided messageId for spawn_session_created event association, fallback to requestId
         messageId: messageId || requestId,
         agentId: agent.id,
+        allowedSkillIds,
+        allowedToolIds: allowedTools, // Tool access control for executeCommand
         artifactsFeature: this.artifactsFeature,
         projectsFeature: this.projectsFeature,
         tasksFeature: this.tasksFeature,
+        skillsFeature: this.skillsFeature,
         agentsFeature: this.agentsFeature,
         eventStreamManager: this.eventStreamManager,
         pubsub: this.pubsub,
