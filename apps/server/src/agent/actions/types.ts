@@ -28,9 +28,6 @@ export interface ActionsContext {
   sessionId: string;
   messageId: string;
 
-  // Agent context - optional, not all contexts have an agent
-  agentId?: string;
-
   // Core features - always required
   artifactsFeature: ArtifactsFeature;
   /** Agents feature for agent management actions */
