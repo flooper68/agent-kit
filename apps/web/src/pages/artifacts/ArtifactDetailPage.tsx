@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ChevronRight,
@@ -8,21 +8,38 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
-import { Heading, Text, Button, MarkdownRenderer } from '@agent-kit/ui';
+import {
+  Heading,
+  Text,
+  Button,
+  MarkdownRenderer,
+  Input,
+  Textarea,
+  useToast,
+} from '@agent-kit/ui';
 import { trpc } from '../../lib/trpc';
 import { ArtifactDetailPageSkeleton } from '../../components/skeletons';
 import { useHeaderActions } from '../../contexts/HeaderActionsContext';
+import { useAutosave } from '../../hooks/useAutosave';
+
+type ArtifactFormData = {
+  title: string;
+  content: string;
+  summary: string;
+};
 
 export function ArtifactDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const utils = trpc.useUtils();
+  const { addToast } = useToast();
   const { setActions, clearActions } = useHeaderActions();
 
   const [isEditing, setIsEditing] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
   const [editedContent, setEditedContent] = useState('');
+  const [editedSummary, setEditedSummary] = useState('');
   const [copied, setCopied] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const artifactQuery = trpc.artifacts.get.useQuery(
@@ -30,16 +47,59 @@ export function ArtifactDetailPage() {
     { enabled: !!id }
   );
 
-  const updateMutation = trpc.artifacts.update.useMutation({
+  const autosaveMutation = trpc.artifacts.update.useMutation({
     onSuccess: () => {
+      addToast({ message: 'Changes saved', variant: 'success' });
       utils.artifacts.get.invalidate({ id: id! });
-      setIsEditing(false);
-      setEditedContent('');
-      setSaveError(null);
+      utils.artifacts.list.invalidate();
     },
     onError: (error) => {
-      setSaveError(error.message || 'Failed to save artifact');
+      addToast({
+        message: `Failed to save: ${error.message}`,
+        variant: 'error',
+      });
     },
+  });
+
+  // Memoized form data for autosave
+  const formData = useMemo(
+    (): ArtifactFormData => ({
+      title: editedTitle,
+      content: editedContent,
+      summary: editedSummary,
+    }),
+    [editedTitle, editedContent, editedSummary]
+  );
+
+  // Autosave hook
+  const autosave = useAutosave({
+    data: formData,
+    enabled: isEditing && !!id,
+    onSave: useCallback(
+      (data: ArtifactFormData, done: () => void) => {
+        if (!id) {
+          done();
+          return;
+        }
+        const dataToSave = { ...data };
+        autosaveMutation.mutate(
+          {
+            id,
+            title: data.title.trim() || undefined,
+            content: data.content.trim() || undefined,
+            summary: data.summary.trim() || undefined,
+          },
+          {
+            onSuccess: () => {
+              autosave.lastSavedDataRef.current = dataToSave;
+            },
+            onSettled: done,
+          }
+        );
+      },
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [id, autosaveMutation]
+    ),
   });
 
   const handleDownload = useCallback(() => {
@@ -71,28 +131,23 @@ export function ArtifactDetailPage() {
 
   const handleEdit = useCallback(() => {
     if (!artifactQuery.data) return;
+    setEditedTitle(artifactQuery.data.title);
     setEditedContent(artifactQuery.data.content);
+    setEditedSummary(artifactQuery.data.summary ?? '');
+    // Initialize autosave ref with current data
+    autosave.lastSavedDataRef.current = {
+      title: artifactQuery.data.title,
+      content: artifactQuery.data.content,
+      summary: artifactQuery.data.summary ?? '',
+    };
     setIsEditing(true);
-  }, [artifactQuery.data]);
+  }, [artifactQuery.data, autosave.lastSavedDataRef]);
 
-  const handleSave = useCallback(() => {
-    if (!id) return;
-    const trimmedContent = editedContent.trim();
-    if (!trimmedContent) {
-      setSaveError('Content cannot be empty');
-      return;
-    }
-    setSaveError(null);
-    updateMutation.mutate({
-      id,
-      content: editedContent,
-    });
-  }, [id, editedContent, updateMutation]);
-
-  const handleCancel = useCallback(() => {
+  const handleDone = useCallback(() => {
     setIsEditing(false);
+    setEditedTitle('');
     setEditedContent('');
-    setSaveError(null);
+    setEditedSummary('');
   }, []);
 
   // Cleanup timeout on unmount
@@ -115,34 +170,48 @@ export function ArtifactDetailPage() {
 
   // Set header actions
   useEffect(() => {
-    if (artifactQuery.data && !isEditing) {
-      setActions([
-        {
-          id: 'edit-artifact',
-          label: 'Edit',
-          icon: <Edit className="h-4 w-4" />,
-          onClick: handleEdit,
-          variant: 'primary',
-        },
-        {
-          id: 'copy-artifact',
-          label: copied ? 'Copied!' : 'Copy',
-          icon: copied ? (
-            <Check className="h-4 w-4" />
-          ) : (
-            <Copy className="h-4 w-4" />
-          ),
-          onClick: handleCopy,
-          variant: 'outline',
-        },
-        {
-          id: 'download-artifact',
-          label: 'Download',
-          icon: <Download className="h-4 w-4" />,
-          onClick: handleDownload,
-          variant: 'outline',
-        },
-      ]);
+    if (artifactQuery.data) {
+      if (isEditing) {
+        // Edit mode: show Done button
+        setActions([
+          {
+            id: 'done-editing',
+            label: 'Done',
+            icon: <Check className="h-4 w-4" />,
+            onClick: handleDone,
+            variant: 'primary',
+          },
+        ]);
+      } else {
+        // View mode: Copy, Download, Edit (Edit on right)
+        setActions([
+          {
+            id: 'copy-artifact',
+            label: copied ? 'Copied!' : 'Copy',
+            icon: copied ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            ),
+            onClick: handleCopy,
+            variant: 'outline',
+          },
+          {
+            id: 'download-artifact',
+            label: 'Download',
+            icon: <Download className="h-4 w-4" />,
+            onClick: handleDownload,
+            variant: 'outline',
+          },
+          {
+            id: 'edit-artifact',
+            label: 'Edit',
+            icon: <Edit className="h-4 w-4" />,
+            onClick: handleEdit,
+            variant: 'primary',
+          },
+        ]);
+      }
     } else {
       clearActions();
     }
@@ -156,6 +225,7 @@ export function ArtifactDetailPage() {
     handleEdit,
     handleCopy,
     handleDownload,
+    handleDone,
   ]);
 
   const formatDate = (date: Date | string) => {
@@ -216,22 +286,47 @@ export function ArtifactDetailPage() {
           </Link>
           <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
           <span className="max-w-xs truncate text-sm font-medium">
-            {artifactQuery.data.title}
+            {isEditing ? editedTitle : artifactQuery.data.title}
           </span>
         </nav>
 
         {/* Header */}
         <div className="mb-6">
-          <div className="mb-2 flex items-center gap-2">
-            <FileText className="h-6 w-6 text-muted-foreground" />
-            <Heading as="h1" size="24">
-              {artifactQuery.data.title}
-            </Heading>
-          </div>
-          {artifactQuery.data.summary && (
-            <Text className="text-muted-foreground">
-              {artifactQuery.data.summary}
-            </Text>
+          {isEditing ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-6 w-6 text-muted-foreground" />
+                <Input
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onBlur={autosave.trigger}
+                  className="text-xl font-semibold"
+                  placeholder="Artifact title"
+                />
+              </div>
+              <Textarea
+                value={editedSummary}
+                onChange={(e) => setEditedSummary(e.target.value)}
+                onBlur={autosave.trigger}
+                placeholder="Add a summary (optional)..."
+                rows={2}
+                className="text-muted-foreground"
+              />
+            </div>
+          ) : (
+            <>
+              <div className="mb-2 flex items-center gap-2">
+                <FileText className="h-6 w-6 text-muted-foreground" />
+                <Heading as="h1" size="24">
+                  {artifactQuery.data.title}
+                </Heading>
+              </div>
+              {artifactQuery.data.summary && (
+                <Text className="text-muted-foreground">
+                  {artifactQuery.data.summary}
+                </Text>
+              )}
+            </>
           )}
         </div>
 
@@ -246,27 +341,13 @@ export function ArtifactDetailPage() {
 
         {/* Content */}
         {isEditing ? (
-          <div className="flex flex-col">
-            <div className="mb-4 flex items-center justify-between gap-2">
-              {saveError && (
-                <Text className="text-sm text-destructive">{saveError}</Text>
-              )}
-              <div className="ml-auto flex gap-2">
-                <Button variant="outline" onClick={handleCancel}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSave} disabled={updateMutation.isPending}>
-                  {updateMutation.isPending ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
-            </div>
-            <textarea
-              value={editedContent}
-              onChange={(e) => setEditedContent(e.target.value)}
-              className="min-h-[400px] w-full resize-none rounded-lg border bg-background p-4 font-mono text-sm outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Enter markdown content..."
-            />
-          </div>
+          <textarea
+            value={editedContent}
+            onChange={(e) => setEditedContent(e.target.value)}
+            onBlur={autosave.trigger}
+            className="min-h-[400px] w-full resize-none rounded-lg border bg-background p-4 font-mono text-sm outline-none focus:ring-2 focus:ring-ring"
+            placeholder="Enter markdown content..."
+          />
         ) : (
           <div className="rounded-lg border bg-muted/30 p-6">
             <MarkdownRenderer content={artifactQuery.data.content} />
