@@ -132,6 +132,7 @@ export function getActionsById(
   context?: ActionsContext
 ): Record<string, Tool> {
   const result: Record<string, Tool> = {};
+  const unknownIds: string[] = [];
 
   for (const id of ids) {
     // Check static actions first (no context needed)
@@ -453,8 +454,17 @@ export function getActionsById(
             skillsFeature: context.skillsFeature,
           });
           break;
+        default:
+          unknownIds.push(id);
       }
+    } else {
+      // No context provided for non-static action
+      unknownIds.push(id);
     }
+  }
+
+  if (unknownIds.length > 0) {
+    throw new Error(`Unknown action ID(s): ${unknownIds.join(', ')}`);
   }
 
   return result;

@@ -37,6 +37,7 @@ export function getToolsById(
   context: ToolsContext
 ): Record<string, Tool> {
   const result: Record<string, Tool> = {};
+  const unknownIds: string[] = [];
 
   for (const id of ids) {
     switch (id) {
@@ -72,7 +73,13 @@ export function getToolsById(
           toolContext: context,
         });
         break;
+      default:
+        unknownIds.push(id);
     }
+  }
+
+  if (unknownIds.length > 0) {
+    throw new Error(`Unknown tool ID(s): ${unknownIds.join(', ')}`);
   }
 
   return result;
