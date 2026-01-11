@@ -411,7 +411,7 @@ export function EditAgentPage() {
                   onBlur={serverAutosave.trigger}
                 />
 
-                <PermissionsSection
+                <SkillsSection
                   formData={serverFormData}
                   onChange={updateServerFormData}
                   onBlur={serverAutosave.trigger}
@@ -424,7 +424,7 @@ export function EditAgentPage() {
                   onBlur={serverAutosave.trigger}
                 />
 
-                <SkillsSection
+                <PermissionsSection
                   formData={serverFormData}
                   onChange={updateServerFormData}
                   onBlur={serverAutosave.trigger}
@@ -509,14 +509,14 @@ export function EditAgentPage() {
           onBlur={externalAutosave.trigger}
         />
 
-        <PermissionsSection
+        <SkillsSection
           formData={{
             ...DEFAULT_AGENT_FORM_DATA,
-            scopes: externalScopes,
+            allowedSkillIds: externalAllowedSkillIds,
           }}
           onChange={(updates) => {
-            if (updates.scopes) {
-              setExternalScopes(updates.scopes);
+            if (updates.allowedSkillIds) {
+              setExternalAllowedSkillIds(updates.allowedSkillIds);
             }
           }}
           onBlur={externalAutosave.trigger}
@@ -536,14 +536,14 @@ export function EditAgentPage() {
           onBlur={externalAutosave.trigger}
         />
 
-        <SkillsSection
+        <PermissionsSection
           formData={{
             ...DEFAULT_AGENT_FORM_DATA,
-            allowedSkillIds: externalAllowedSkillIds,
+            scopes: externalScopes,
           }}
           onChange={(updates) => {
-            if (updates.allowedSkillIds) {
-              setExternalAllowedSkillIds(updates.allowedSkillIds);
+            if (updates.scopes) {
+              setExternalScopes(updates.scopes);
             }
           }}
           onBlur={externalAutosave.trigger}
