@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ChevronRight,
@@ -22,6 +22,8 @@ export function ArtifactDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState('');
   const [copied, setCopied] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const artifactQuery = trpc.artifacts.get.useQuery(
     { id: id! },
@@ -33,6 +35,10 @@ export function ArtifactDetailPage() {
       utils.artifacts.get.invalidate({ id: id! });
       setIsEditing(false);
       setEditedContent('');
+      setSaveError(null);
+    },
+    onError: (error) => {
+      setSaveError(error.message || 'Failed to save artifact');
     },
   });
 
@@ -51,9 +57,16 @@ export function ArtifactDetailPage() {
 
   const handleCopy = useCallback(async () => {
     if (!artifactQuery.data) return;
-    await navigator.clipboard.writeText(artifactQuery.data.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(artifactQuery.data.content);
+      setCopied(true);
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+    }
   }, [artifactQuery.data]);
 
   const handleEdit = useCallback(() => {
@@ -64,6 +77,12 @@ export function ArtifactDetailPage() {
 
   const handleSave = useCallback(() => {
     if (!id) return;
+    const trimmedContent = editedContent.trim();
+    if (!trimmedContent) {
+      setSaveError('Content cannot be empty');
+      return;
+    }
+    setSaveError(null);
     updateMutation.mutate({
       id,
       content: editedContent,
@@ -73,6 +92,16 @@ export function ArtifactDetailPage() {
   const handleCancel = useCallback(() => {
     setIsEditing(false);
     setEditedContent('');
+    setSaveError(null);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -218,13 +247,18 @@ export function ArtifactDetailPage() {
         {/* Content */}
         {isEditing ? (
           <div className="flex flex-col">
-            <div className="mb-4 flex justify-end gap-2">
-              <Button variant="outline" onClick={handleCancel}>
-                Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? 'Saving...' : 'Save'}
-              </Button>
+            <div className="mb-4 flex items-center justify-between gap-2">
+              {saveError && (
+                <Text className="text-sm text-destructive">{saveError}</Text>
+              )}
+              <div className="ml-auto flex gap-2">
+                <Button variant="outline" onClick={handleCancel}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSave} disabled={updateMutation.isPending}>
+                  {updateMutation.isPending ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
             </div>
             <textarea
               value={editedContent}
