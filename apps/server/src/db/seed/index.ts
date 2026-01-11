@@ -23,7 +23,6 @@ export async function seedSystemAgents() {
   const defaultAgents = [
     // November 2025
     {
-      id: 'assistant-gpt-5.2',
       userId: '',
       key: 'assistant-gpt-5.2',
       name: 'Assistant - GPT-5.2',
@@ -34,7 +33,6 @@ export async function seedSystemAgents() {
       tools: ['getTime', 'webSearch', 'extractContent'],
     },
     {
-      id: 'assistant-gpt-5.2-codex',
       userId: '',
       key: 'assistant-gpt-5.2-codex',
       name: 'Assistant - GPT-5.2 Codex',
@@ -45,7 +43,6 @@ export async function seedSystemAgents() {
       tools: ['getTime', 'webSearch', 'extractContent'],
     },
     {
-      id: 'assistant-opus-4.5',
       userId: '',
       key: 'assistant-opus-4.5',
       name: 'Assistant - Opus 4.5',
@@ -57,7 +54,6 @@ export async function seedSystemAgents() {
     },
     // October 2025
     {
-      id: 'assistant-gemini-3-pro',
       userId: '',
       key: 'assistant-gemini-3-pro',
       name: 'Assistant - Gemini 3 Pro',
@@ -68,7 +64,6 @@ export async function seedSystemAgents() {
       tools: ['getTime', 'webSearch', 'extractContent'],
     },
     {
-      id: 'assistant-gemini-3-flash',
       userId: '',
       key: 'assistant-gemini-3-flash',
       name: 'Assistant - Gemini 3 Flash',
@@ -79,7 +74,6 @@ export async function seedSystemAgents() {
       tools: ['getTime', 'webSearch', 'extractContent'],
     },
     {
-      id: 'assistant-haiku-4.5',
       userId: '',
       key: 'assistant-haiku-4.5',
       name: 'Assistant - Haiku 4.5',
@@ -91,7 +85,6 @@ export async function seedSystemAgents() {
     },
     // September 2025
     {
-      id: 'assistant-sonnet-4.5',
       userId: '',
       key: 'assistant-sonnet-4.5',
       name: 'Assistant - Sonnet 4.5',
@@ -102,7 +95,6 @@ export async function seedSystemAgents() {
       tools: ['getTime', 'webSearch', 'extractContent'],
     },
     {
-      id: 'assistant-gpt-5',
       userId: '',
       key: 'assistant-gpt-5',
       name: 'Assistant - GPT-5',
@@ -113,7 +105,6 @@ export async function seedSystemAgents() {
       tools: ['getTime', 'webSearch', 'extractContent'],
     },
     {
-      id: 'assistant-gpt-5-mini',
       userId: '',
       key: 'assistant-gpt-5-mini',
       name: 'Assistant - GPT-5 Mini',
@@ -124,7 +115,6 @@ export async function seedSystemAgents() {
       tools: ['getTime', 'webSearch', 'extractContent'],
     },
     {
-      id: 'assistant-gpt-5-nano',
       userId: '',
       key: 'assistant-gpt-5-nano',
       name: 'Assistant - GPT-5 Nano',
@@ -136,7 +126,6 @@ export async function seedSystemAgents() {
     },
     // August 2025
     {
-      id: 'assistant-opus-4.1',
       userId: '',
       key: 'assistant-opus-4.1',
       name: 'Assistant - Opus 4.1',
@@ -148,7 +137,6 @@ export async function seedSystemAgents() {
     },
     // June 2025
     {
-      id: 'assistant-gemini-2.5-pro',
       userId: '',
       key: 'assistant-gemini-2.5-pro',
       name: 'Assistant - Gemini 2.5 Pro',
@@ -159,7 +147,6 @@ export async function seedSystemAgents() {
       tools: ['getTime', 'webSearch', 'extractContent'],
     },
     {
-      id: 'assistant-gemini-2.5-flash',
       userId: '',
       key: 'assistant-gemini-2.5-flash',
       name: 'Assistant - Gemini 2.5 Flash',
@@ -170,7 +157,6 @@ export async function seedSystemAgents() {
       tools: ['getTime', 'webSearch', 'extractContent'],
     },
     {
-      id: 'assistant-gemini-2.5-flash-lite',
       userId: '',
       key: 'assistant-gemini-2.5-flash-lite',
       name: 'Assistant - Gemini 2.5 Flash-Lite',
@@ -182,7 +168,6 @@ export async function seedSystemAgents() {
     },
     // May 2025
     {
-      id: 'assistant-sonnet-4',
       userId: '',
       key: 'assistant-sonnet-4',
       name: 'Assistant - Sonnet 4',
@@ -194,7 +179,6 @@ export async function seedSystemAgents() {
     },
     // April 2025
     {
-      id: 'assistant-o3',
       userId: '',
       key: 'assistant-o3',
       name: 'Assistant - o3',
@@ -205,7 +189,6 @@ export async function seedSystemAgents() {
       tools: ['getTime', 'webSearch', 'extractContent'],
     },
     {
-      id: 'assistant-o4-mini',
       userId: '',
       key: 'assistant-o4-mini',
       name: 'Assistant - o4-mini',
@@ -217,7 +200,6 @@ export async function seedSystemAgents() {
     },
     // December 2024
     {
-      id: 'assistant-gemini-2.0-flash',
       userId: '',
       key: 'assistant-gemini-2.0-flash',
       name: 'Assistant - Gemini 2.0 Flash',
@@ -229,7 +211,6 @@ export async function seedSystemAgents() {
     },
     // October 2024
     {
-      id: 'assistant-haiku-3.5',
       userId: '',
       key: 'assistant-haiku-3.5',
       name: 'Assistant - Haiku 3.5',
@@ -241,7 +222,6 @@ export async function seedSystemAgents() {
     },
     // July 2024
     {
-      id: 'assistant-gpt-4o-mini',
       userId: '',
       key: 'assistant-gpt-4o-mini',
       name: 'Assistant - GPT-4o Mini',
@@ -253,7 +233,6 @@ export async function seedSystemAgents() {
     },
     // May 2024
     {
-      id: 'assistant-gpt-4o',
       userId: '',
       key: 'assistant-gpt-4o',
       name: 'Assistant - GPT-4o',
