@@ -326,7 +326,7 @@ export const AgentPanel = memo(
                           status={status}
                           elapsedLabel={elapsedLabel}
                         />
-                        {contextUsage && (
+                        {selectedAgent?.isLocal && contextUsage && (
                           <ContextIndicator usage={contextUsage} />
                         )}
                       </div>
