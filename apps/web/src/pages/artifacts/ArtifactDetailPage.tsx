@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   ChevronRight,
   FileText,
@@ -28,12 +28,32 @@ type ArtifactFormData = {
   summary: string;
 };
 
+interface FromProjectState {
+  fromProject?: {
+    id: string;
+    returnTab: string;
+  };
+}
+
 export function ArtifactDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, projectId, artifactId } = useParams<{
+    id?: string;
+    projectId?: string;
+    artifactId?: string;
+  }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const utils = trpc.useUtils();
   const { addToast } = useToast();
   const { setActions, clearActions } = useHeaderActions();
+
+  // Determine effective artifact ID (from /artifacts/:id or /projects/:projectId/artifacts/:artifactId)
+  const effectiveArtifactId = artifactId || id;
+
+  // Check if in project context - URL param takes precedence over location state
+  const fromProjectState = (location.state as FromProjectState | null)
+    ?.fromProject;
+  const fromProjectId = projectId || fromProjectState?.id;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
@@ -43,14 +63,20 @@ export function ArtifactDetailPage() {
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const artifactQuery = trpc.artifacts.get.useQuery(
-    { id: id! },
-    { enabled: !!id }
+    { id: effectiveArtifactId! },
+    { enabled: !!effectiveArtifactId }
+  );
+
+  // Fetch project name if in project context
+  const projectQuery = trpc.projects.get.useQuery(
+    { id: fromProjectId ?? '' },
+    { enabled: !!fromProjectId }
   );
 
   const autosaveMutation = trpc.artifacts.update.useMutation({
     onSuccess: () => {
       addToast({ message: 'Changes saved', variant: 'success' });
-      utils.artifacts.get.invalidate({ id: id! });
+      utils.artifacts.get.invalidate({ id: effectiveArtifactId! });
       utils.artifacts.list.invalidate();
     },
     onError: (error) => {
@@ -74,17 +100,17 @@ export function ArtifactDetailPage() {
   // Autosave hook
   const autosave = useAutosave({
     data: formData,
-    enabled: isEditing && !!id,
+    enabled: isEditing && !!effectiveArtifactId,
     onSave: useCallback(
       (data: ArtifactFormData, done: () => void) => {
-        if (!id) {
+        if (!effectiveArtifactId) {
           done();
           return;
         }
         const dataToSave = { ...data };
         autosaveMutation.mutate(
           {
-            id,
+            id: effectiveArtifactId,
             title: data.title.trim() || undefined,
             content: data.content.trim() || undefined,
             summary: data.summary.trim() || undefined,
@@ -98,7 +124,7 @@ export function ArtifactDetailPage() {
         );
       },
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      [id, autosaveMutation]
+      [effectiveArtifactId, autosaveMutation]
     ),
   });
 
@@ -245,17 +271,42 @@ export function ArtifactDetailPage() {
 
   // Error/not found state
   if (artifactQuery.error || !artifactQuery.data) {
+    const backPath = fromProjectId
+      ? `/app/projects/${fromProjectId}?tab=documents`
+      : '/app/artifacts';
+    const backLabel = fromProjectId ? 'Back to Project' : 'Back to Artifacts';
+
     return (
       <div className="h-full overflow-auto p-6">
         <div className="mx-auto max-w-4xl">
           {/* Breadcrumb */}
           <nav className="mb-3 flex items-center gap-1.5">
-            <Link
-              to="/app/artifacts"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Artifacts
-            </Link>
+            {fromProjectId ? (
+              <>
+                <Link
+                  to="/app/projects"
+                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Projects
+                </Link>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+                <Link
+                  to={`/app/projects/${fromProjectId}?tab=documents`}
+                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {projectQuery.data?.title ?? 'Project'}
+                </Link>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+                <span className="text-sm text-muted-foreground">Documents</span>
+              </>
+            ) : (
+              <Link
+                to="/app/artifacts"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Artifacts
+              </Link>
+            )}
             <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
             <span className="text-sm font-medium">Not Found</span>
           </nav>
@@ -264,9 +315,7 @@ export function ArtifactDetailPage() {
               The artifact you&apos;re looking for doesn&apos;t exist or you
               don&apos;t have access to it.
             </Text>
-            <Button onClick={() => navigate('/app/artifacts')}>
-              Back to Artifacts
-            </Button>
+            <Button onClick={() => navigate(backPath)}>{backLabel}</Button>
           </div>
         </div>
       </div>
@@ -278,12 +327,37 @@ export function ArtifactDetailPage() {
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col overflow-hidden">
         {/* Breadcrumb */}
         <nav className="mb-3 flex shrink-0 items-center gap-1.5">
-          <Link
-            to="/app/artifacts"
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Artifacts
-          </Link>
+          {fromProjectId ? (
+            <>
+              <Link
+                to="/app/projects"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Projects
+              </Link>
+              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+              <Link
+                to={`/app/projects/${fromProjectId}?tab=documents`}
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {projectQuery.data?.title ?? 'Project'}
+              </Link>
+              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+              <Link
+                to={`/app/projects/${fromProjectId}?tab=documents`}
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Documents
+              </Link>
+            </>
+          ) : (
+            <Link
+              to="/app/artifacts"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Artifacts
+            </Link>
+          )}
           <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
           <span className="max-w-xs truncate text-sm font-medium">
             {isEditing ? editedTitle : artifactQuery.data.title}

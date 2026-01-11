@@ -4,7 +4,7 @@
  * Organized by category:
  * - Static (utility): getTime, webSearch, extractContent, fetch
  * - Artifact: writeArtifact, searchArtifacts, readArtifact, updateArtifact
- * - Project: listProjects, searchProjects, getProject, createProject, updateProject, deleteProject
+ * - Project: listProjects, searchProjects, getProject, createProject, updateProject, deleteProject, attachArtifactToProject, detachArtifactFromProject, listProjectArtifacts
  * - Task: listTasks, searchTasks, getTask, createTask, updateTask, deleteTask, moveTask, reorderTask, attachArtifactToTask, detachArtifactFromTask
  * - Client: navigateTo, getCurrentUIState
  * - Agent: listAgents, getAgent, updateAgent, setAgentEnabled, toggleAgentFavorite
@@ -69,6 +69,18 @@ import {
   createDeleteProjectTool,
   deleteProjectMetadata,
 } from './projects/delete-project';
+import {
+  createAttachArtifactToProjectTool,
+  attachArtifactToProjectMetadata,
+} from './projects/attach-artifact-to-project';
+import {
+  createDetachArtifactFromProjectTool,
+  detachArtifactFromProjectMetadata,
+} from './projects/detach-artifact-from-project';
+import {
+  createListProjectArtifactsTool,
+  listProjectArtifactsMetadata,
+} from './projects/list-project-artifacts';
 
 // Task actions
 import { createListTasksTool, listTasksMetadata } from './tasks/list-tasks';
@@ -157,6 +169,9 @@ export const ACTION_METADATA: Record<string, ActionMetadata> = {
   [createProjectMetadata.id]: createProjectMetadata,
   [updateProjectMetadata.id]: updateProjectMetadata,
   [deleteProjectMetadata.id]: deleteProjectMetadata,
+  [attachArtifactToProjectMetadata.id]: attachArtifactToProjectMetadata,
+  [detachArtifactFromProjectMetadata.id]: detachArtifactFromProjectMetadata,
+  [listProjectArtifactsMetadata.id]: listProjectArtifactsMetadata,
 
   // Task actions
   [listTasksMetadata.id]: listTasksMetadata,
@@ -224,6 +239,9 @@ export const ACTION_IDS = [
   'createProject',
   'updateProject',
   'deleteProject',
+  'attachArtifactToProject',
+  'detachArtifactFromProject',
+  'listProjectArtifacts',
   // Task actions
   'listTasks',
   'searchTasks',
@@ -360,6 +378,45 @@ export function getActionsById(
         case 'deleteProject':
           if (context.projectsFeature) {
             result[id] = createDeleteProjectTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              projectsFeature: context.projectsFeature,
+            });
+          } else {
+            logger.debug('Skipping action due to missing projectsFeature', {
+              action: id,
+            });
+          }
+          break;
+        case 'attachArtifactToProject':
+          if (context.projectsFeature) {
+            result[id] = createAttachArtifactToProjectTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              projectsFeature: context.projectsFeature,
+            });
+          } else {
+            logger.debug('Skipping action due to missing projectsFeature', {
+              action: id,
+            });
+          }
+          break;
+        case 'detachArtifactFromProject':
+          if (context.projectsFeature) {
+            result[id] = createDetachArtifactFromProjectTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              projectsFeature: context.projectsFeature,
+            });
+          } else {
+            logger.debug('Skipping action due to missing projectsFeature', {
+              action: id,
+            });
+          }
+          break;
+        case 'listProjectArtifacts':
+          if (context.projectsFeature) {
+            result[id] = createListProjectArtifactsTool({
               userId: context.userId,
               orgId: context.orgId,
               projectsFeature: context.projectsFeature,

@@ -25,3 +25,10 @@ export type {
   GetProjectStatsInput,
   GetProjectStatsResult,
 } from './get-project-stats';
+
+export { ListProjectArtifactsQuery } from './list-project-artifacts';
+export type {
+  ListProjectArtifactsInput,
+  ListProjectArtifactsResult,
+  ProjectArtifactListItem,
+} from './list-project-artifacts';

@@ -19,12 +19,18 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '../../lib/utils';
 import { PriorityBadge, type Priority } from '../PriorityBadge';
 import { StatusBadge, type TaskStatus } from '../StatusBadge';
+import { DropdownMenu } from '../DropdownMenu';
 import {
   Paperclip,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
   GripVertical,
+  MoreHorizontal,
+  Pencil,
+  Circle,
+  Check,
+  Trash2,
 } from 'lucide-react';
 
 export interface TaskListItem {
@@ -48,6 +54,9 @@ export interface TaskListViewProps {
   tasks: TaskListItem[];
   onTaskClick?: (taskId: string) => void;
   onStatusChange?: (taskId: string, status: TaskStatus) => void;
+  onPriorityChange?: (taskId: string, priority: Priority) => void;
+  onEdit?: (taskId: string) => void;
+  onDelete?: (taskId: string) => void;
   emptyMessage?: string;
   className?: string;
   defaultSort?: SortField;
@@ -73,12 +82,135 @@ const statusOrder: Record<TaskStatus, number> = {
   done: 5,
 };
 
+const allStatuses: TaskStatus[] = [
+  'backlog',
+  'todo',
+  'in_progress',
+  'review',
+  'done',
+];
+const allPriorities: Priority[] = ['low', 'medium', 'high', 'urgent'];
+
+interface TaskRowContextMenuProps {
+  task: TaskListItem;
+  onEdit?: (taskId: string) => void;
+  onStatusChange?: (taskId: string, status: TaskStatus) => void;
+  onPriorityChange?: (taskId: string, priority: Priority) => void;
+  onDelete?: (taskId: string) => void;
+}
+
+function TaskRowContextMenu({
+  task,
+  onEdit,
+  onStatusChange,
+  onPriorityChange,
+  onDelete,
+}: TaskRowContextMenuProps) {
+  const hasAnyAction = onEdit || onStatusChange || onPriorityChange || onDelete;
+  if (!hasAnyAction) return null;
+
+  return (
+    <div onClick={(e) => e.stopPropagation()}>
+      <DropdownMenu>
+        <DropdownMenu.Trigger asChild>
+          <button
+            className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            aria-label="Task actions"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content align="end">
+          {onEdit && (
+            <DropdownMenu.Item onClick={() => onEdit(task.id)}>
+              <Pencil className="h-4 w-4" />
+              Edit
+            </DropdownMenu.Item>
+          )}
+
+          {onStatusChange && (
+            <DropdownMenu.Sub>
+              <DropdownMenu.SubTrigger>
+                <Circle className="h-4 w-4" />
+                Change Status
+              </DropdownMenu.SubTrigger>
+              <DropdownMenu.SubContent>
+                {allStatuses.map((status) => (
+                  <DropdownMenu.Item
+                    key={status}
+                    onClick={() => onStatusChange(task.id, status)}
+                    disabled={task.status === status}
+                  >
+                    <StatusBadge status={status} showIcon={false} />
+                    {task.status === status && (
+                      <Check className="ml-auto h-4 w-4" />
+                    )}
+                  </DropdownMenu.Item>
+                ))}
+              </DropdownMenu.SubContent>
+            </DropdownMenu.Sub>
+          )}
+
+          {onPriorityChange && (
+            <DropdownMenu.Sub>
+              <DropdownMenu.SubTrigger>
+                <ArrowUpDown className="h-4 w-4" />
+                Change Priority
+              </DropdownMenu.SubTrigger>
+              <DropdownMenu.SubContent>
+                {allPriorities.map((priority) => (
+                  <DropdownMenu.Item
+                    key={priority}
+                    onClick={() => onPriorityChange(task.id, priority)}
+                    disabled={task.priority === priority}
+                  >
+                    <PriorityBadge priority={priority} />
+                    {task.priority === priority && (
+                      <Check className="ml-auto h-4 w-4" />
+                    )}
+                  </DropdownMenu.Item>
+                ))}
+              </DropdownMenu.SubContent>
+            </DropdownMenu.Sub>
+          )}
+
+          {onDelete && (
+            <>
+              <DropdownMenu.Separator />
+              <DropdownMenu.Item
+                variant="destructive"
+                onClick={() => onDelete(task.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </DropdownMenu.Item>
+            </>
+          )}
+        </DropdownMenu.Content>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 interface SortableTaskRowProps {
   task: TaskListItem;
   onTaskClick?: (taskId: string) => void;
+  onEdit?: (taskId: string) => void;
+  onStatusChange?: (taskId: string, status: TaskStatus) => void;
+  onPriorityChange?: (taskId: string, priority: Priority) => void;
+  onDelete?: (taskId: string) => void;
+  showContextMenu?: boolean;
 }
 
-function SortableTaskRow({ task, onTaskClick }: SortableTaskRowProps) {
+function SortableTaskRow({
+  task,
+  onTaskClick,
+  onEdit,
+  onStatusChange,
+  onPriorityChange,
+  onDelete,
+  showContextMenu,
+}: SortableTaskRowProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useSortable({
       id: task.id,
@@ -89,12 +221,17 @@ function SortableTaskRow({ task, onTaskClick }: SortableTaskRowProps) {
     transition: transform ? 'transform 200ms ease' : undefined,
   };
 
+  const gridCols = showContextMenu
+    ? 'grid-cols-[32px_1fr_100px_100px_80px_40px]'
+    : 'grid-cols-[32px_1fr_100px_100px_80px]';
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        'grid grid-cols-[32px_1fr_100px_100px_80px] gap-4 px-4 py-3 items-center bg-background',
+        'grid gap-4 px-4 py-3 items-center bg-background',
+        gridCols,
         isDragging && 'opacity-50',
         onTaskClick && 'cursor-pointer hover:bg-muted/30 transition-colors'
       )}
@@ -131,9 +268,9 @@ function SortableTaskRow({ task, onTaskClick }: SortableTaskRowProps) {
       <div onClick={() => onTaskClick?.(task.id)}>
         <PriorityBadge priority={task.priority} />
       </div>
-      <div className="text-right" onClick={() => onTaskClick?.(task.id)}>
+      <div className="text-center" onClick={() => onTaskClick?.(task.id)}>
         {task.artifactCount && task.artifactCount > 0 ? (
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+          <span className="inline-flex items-center justify-center gap-1 text-xs text-muted-foreground">
             <Paperclip className="h-3 w-3" />
             {task.artifactCount}
           </span>
@@ -141,6 +278,17 @@ function SortableTaskRow({ task, onTaskClick }: SortableTaskRowProps) {
           <span className="text-xs text-muted-foreground">-</span>
         )}
       </div>
+      {showContextMenu && (
+        <div className="flex justify-end">
+          <TaskRowContextMenu
+            task={task}
+            onEdit={onEdit}
+            onStatusChange={onStatusChange}
+            onPriorityChange={onPriorityChange}
+            onDelete={onDelete}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -162,9 +310,9 @@ function TaskRowContent({ task }: { task: TaskListItem }) {
       <div>
         <PriorityBadge priority={task.priority} />
       </div>
-      <div className="text-right">
+      <div className="text-center">
         {task.artifactCount && task.artifactCount > 0 ? (
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+          <span className="inline-flex items-center justify-center gap-1 text-xs text-muted-foreground">
             <Paperclip className="h-3 w-3" />
             {task.artifactCount}
           </span>
@@ -179,7 +327,10 @@ function TaskRowContent({ task }: { task: TaskListItem }) {
 export function TaskListView({
   tasks,
   onTaskClick,
-  onStatusChange: _onStatusChange,
+  onStatusChange,
+  onPriorityChange,
+  onEdit,
+  onDelete,
   emptyMessage = 'No tasks found',
   className,
   defaultSort = 'createdAt',
@@ -187,6 +338,7 @@ export function TaskListView({
   sortable = false,
   onTaskMove,
 }: TaskListViewProps) {
+  const showContextMenu = !!(onEdit || onStatusChange || onPriorityChange || onDelete);
   const [sortField, setSortField] = useState<SortField>(defaultSort);
   const [sortDirection, setSortDirection] =
     useState<SortDirection>(defaultSortDirection);
@@ -291,8 +443,12 @@ export function TaskListView({
   }
 
   const gridCols = sortable
-    ? 'grid-cols-[32px_1fr_100px_100px_80px]'
-    : 'grid-cols-[1fr_100px_100px_80px]';
+    ? showContextMenu
+      ? 'grid-cols-[32px_1fr_100px_100px_80px_40px]'
+      : 'grid-cols-[32px_1fr_100px_100px_80px]'
+    : showContextMenu
+      ? 'grid-cols-[1fr_100px_100px_80px_40px]'
+      : 'grid-cols-[1fr_100px_100px_80px]';
 
   const content = (
     <div
@@ -314,7 +470,8 @@ export function TaskListView({
             <div>Title</div>
             <div>Status</div>
             <div>Priority</div>
-            <div className="text-right">Attachments</div>
+            <div className="text-center">Attachments</div>
+            {showContextMenu && <div />}
           </>
         ) : (
           <>
@@ -336,7 +493,8 @@ export function TaskListView({
             >
               Priority <SortIcon field="priority" />
             </button>
-            <div className="text-right">Attachments</div>
+            <div className="text-center">Attachments</div>
+            {showContextMenu && <div />}
           </>
         )}
       </div>
@@ -353,6 +511,11 @@ export function TaskListView({
                 key={task.id}
                 task={task}
                 onTaskClick={onTaskClick}
+                onEdit={onEdit}
+                onStatusChange={onStatusChange}
+                onPriorityChange={onPriorityChange}
+                onDelete={onDelete}
+                showContextMenu={showContextMenu}
               />
             ))}
           </SortableContext>
@@ -376,6 +539,17 @@ export function TaskListView({
               }
             >
               <TaskRowContent task={task} />
+              {showContextMenu && (
+                <div className="flex justify-end">
+                  <TaskRowContextMenu
+                    task={task}
+                    onEdit={onEdit}
+                    onStatusChange={onStatusChange}
+                    onPriorityChange={onPriorityChange}
+                    onDelete={onDelete}
+                  />
+                </div>
+              )}
             </div>
           ))
         )}
@@ -404,6 +578,7 @@ export function TaskListView({
                 <GripVertical className="h-4 w-4" />
               </div>
               <TaskRowContent task={activeTask} />
+              {showContextMenu && <div />}
             </div>
           )}
         </DragOverlay>

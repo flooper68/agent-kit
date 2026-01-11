@@ -19,3 +19,15 @@ export {
   createDeleteProjectTool,
   type DeleteProjectContext,
 } from './delete-project';
+export {
+  createAttachArtifactToProjectTool,
+  type AttachArtifactToProjectContext,
+} from './attach-artifact-to-project';
+export {
+  createDetachArtifactFromProjectTool,
+  type DetachArtifactFromProjectContext,
+} from './detach-artifact-from-project';
+export {
+  createListProjectArtifactsTool,
+  type ListProjectArtifactsContext,
+} from './list-project-artifacts';

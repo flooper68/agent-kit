@@ -5,6 +5,7 @@ import { agentSessionEvents } from './agent-session-events';
 import { projects } from './projects';
 import { tasks } from './tasks';
 import { taskArtifacts } from './task-artifacts';
+import { projectArtifacts } from './project-artifacts';
 import { artifacts } from './artifacts';
 import {
   serverAgents,
@@ -53,6 +54,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
 
 export const projectsRelations = relations(projects, ({ many }) => ({
   tasks: many(tasks),
+  projectArtifacts: many(projectArtifacts),
 }));
 
 export const taskArtifactsRelations = relations(taskArtifacts, ({ one }) => ({
@@ -66,8 +68,23 @@ export const taskArtifactsRelations = relations(taskArtifacts, ({ one }) => ({
   }),
 }));
 
+export const projectArtifactsRelations = relations(
+  projectArtifacts,
+  ({ one }) => ({
+    project: one(projects, {
+      fields: [projectArtifacts.projectId],
+      references: [projects.id],
+    }),
+    artifact: one(artifacts, {
+      fields: [projectArtifacts.artifactId],
+      references: [artifacts.id],
+    }),
+  })
+);
+
 export const artifactsRelations = relations(artifacts, ({ many }) => ({
   taskArtifacts: many(taskArtifacts),
+  projectArtifacts: many(projectArtifacts),
 }));
 
 // Server agent relations

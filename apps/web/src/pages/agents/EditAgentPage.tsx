@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { TRPCClientError } from '@trpc/client';
 import { Button, Input, Text, Textarea, Tabs, useToast } from '@agent-kit/ui';
 import { trpc } from '../../lib/trpc';
@@ -47,17 +47,29 @@ type ExternalFormData = {
   scopes: string[];
 };
 
+type TabValue = 'basic' | 'advanced';
+const validTabs: TabValue[] = ['basic', 'advanced'];
+
 export function EditAgentPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { addToast } = useToast();
   const { clearActions } = useHeaderActions();
+
+  // Get tab from URL, default to 'basic'
+  const tabParam = searchParams.get('tab') as TabValue | null;
+  const activeTab =
+    tabParam && validTabs.includes(tabParam) ? tabParam : 'basic';
+
+  const handleTabChange = (tab: string) => {
+    setSearchParams({ tab }, { replace: true });
+  };
 
   // Server agent form state
   const [serverFormData, setServerFormData] = useState<AgentFormData>(
     DEFAULT_AGENT_FORM_DATA
   );
-  const [activeTab, setActiveTab] = useState('basic');
   const [isThinkingValid, setIsThinkingValid] = useState(true);
 
   // External agent form state
@@ -154,7 +166,7 @@ export function EditAgentPage() {
         });
         // Switch to advanced tab if thinking-related errors
         if (errors.some((e) => e.field.startsWith('thinkingConfig'))) {
-          setActiveTab('advanced');
+          setSearchParams({ tab: 'advanced' }, { replace: true });
         }
       } else {
         addToast({
@@ -372,7 +384,7 @@ export function EditAgentPage() {
         <div>
           <Tabs
             value={activeTab}
-            onValueChange={setActiveTab}
+            onValueChange={handleTabChange}
             className="flex flex-col"
           >
             <Tabs.List className="grid grid-cols-2 w-full">

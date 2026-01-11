@@ -123,6 +123,27 @@ function formatDate(date: Date | string): string {
   });
 }
 
+function getStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    backlog: 'Backlog',
+    todo: 'Todo',
+    in_progress: 'In Progress',
+    review: 'Review',
+    done: 'Done',
+  };
+  return labels[status] ?? status;
+}
+
+function getPriorityLabel(priority: string): string {
+  const labels: Record<string, string> = {
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High',
+    urgent: 'Urgent',
+  };
+  return labels[priority] ?? priority;
+}
+
 export function TaskDetailDialog({
   open,
   onOpenChange,
@@ -463,50 +484,173 @@ export function TaskDetailDialog({
   );
 
   const renderEditMode = () => (
-    <div className="space-y-4">
-      {/* Title */}
-      <Input
-        id="title"
-        label="Title"
-        value={formData.title}
-        onChange={(e) => handleInputChange('title', e.target.value)}
-        placeholder="Enter task title"
-        error={errors.title}
-      />
-
-      {/* Description */}
-      <div className="space-y-1.5">
-        <label
-          htmlFor="description"
-          className="text-sm font-medium text-foreground"
-        >
-          Description
-        </label>
-        <Textarea
-          id="description"
-          value={formData.description ?? ''}
-          onChange={(e) => handleInputChange('description', e.target.value)}
-          placeholder="Enter task description"
-          autoResize
-          rows={6}
-          className="min-h-[120px]"
+    <div className="grid grid-cols-[1fr,auto] gap-6 h-full">
+      {/* Left column - Title, Description, Artifacts, History */}
+      <div className="space-y-4 overflow-y-auto">
+        {/* Title */}
+        <Input
+          id="title"
+          label="Title"
+          value={formData.title}
+          onChange={(e) => handleInputChange('title', e.target.value)}
+          placeholder="Enter task title"
+          error={errors.title}
         />
-        {errors.description && (
-          <p className="text-sm text-destructive">{errors.description}</p>
+
+        {/* Description */}
+        <div className="space-y-1.5">
+          <label
+            htmlFor="description"
+            className="text-sm font-medium text-foreground"
+          >
+            Description
+          </label>
+          <Textarea
+            id="description"
+            value={formData.description ?? ''}
+            onChange={(e) => handleInputChange('description', e.target.value)}
+            placeholder="Enter task description"
+            autoResize
+            rows={8}
+            className="min-h-[200px]"
+          />
+          {errors.description && (
+            <p className="text-sm text-destructive">{errors.description}</p>
+          )}
+        </div>
+
+        {/* Artifacts */}
+        {!isNewTask && (
+          <div className="space-y-2 pt-4 border-t border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Paperclip className="h-4 w-4" />
+                Attachments{' '}
+                {task?.artifacts &&
+                  task.artifacts.length > 0 &&
+                  `(${task.artifacts.length})`}
+              </div>
+              {onAttachArtifact && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onAttachArtifact}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Attach
+                </Button>
+              )}
+            </div>
+            {task?.artifacts && task.artifacts.length > 0 ? (
+              <div className="border border-border rounded-md divide-y divide-border">
+                {task.artifacts.map((artifact) => (
+                  <div
+                    key={artifact.id}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 text-sm group transition-colors',
+                      onArtifactClick && 'hover:bg-muted/50 cursor-pointer'
+                    )}
+                    onClick={() => onArtifactClick?.(artifact.id)}
+                    role={onArtifactClick ? 'button' : undefined}
+                    tabIndex={onArtifactClick ? 0 : undefined}
+                  >
+                    <span className="flex-1 min-w-0 text-left truncate">
+                      {artifact.title}
+                    </span>
+                    {artifact.type && (
+                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                        {artifact.type}
+                      </span>
+                    )}
+                    {onDetachArtifact && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDetachArtifact(artifact.id);
+                        }}
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No attachments</p>
+            )}
+          </div>
+        )}
+
+        {/* History - Collapsible */}
+        {!isNewTask && task?.events && task.events.length > 0 && (
+          <div className="pt-4 border-t border-border">
+            <button
+              type="button"
+              onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
+              className="flex items-center justify-between w-full text-sm font-medium hover:text-foreground transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <History className="h-4 w-4" />
+                History ({task.events.length})
+              </div>
+              <ChevronDown
+                className={cn(
+                  'h-4 w-4 text-muted-foreground transition-transform',
+                  isHistoryExpanded && 'rotate-180'
+                )}
+              />
+            </button>
+            {isHistoryExpanded && (
+              <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
+                {task.events.map((event, index) => (
+                  <div
+                    key={`${event.type}-${event.timestamp}-${index}`}
+                    className="flex items-start gap-3 text-xs"
+                  >
+                    <div className="w-2 h-2 mt-1.5 rounded-full bg-border flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-foreground">
+                        {formatEventType(event.type)}
+                      </p>
+                      {event.details?.from && event.details?.to && (
+                        <p className="text-muted-foreground">
+                          {event.details.from} → {event.details.to}
+                        </p>
+                      )}
+                      <p className="text-muted-foreground">
+                        {formatDate(event.timestamp)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
-      <TooltipProvider>
-        <div className="space-y-4">
-          {/* Status */}
+      {/* Right column - Status and Priority */}
+      <div className="w-56 space-y-6">
+        <TooltipProvider>
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">
-              Status
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium text-foreground">
+                Status
+              </label>
+              <span className="text-sm text-muted-foreground">
+                {getStatusLabel(formData.status ?? 'todo')}
+              </span>
+            </div>
             <ToggleGroup
               value={formData.status ?? 'todo'}
               onValueChange={(value) => handleInputChange('status', value)}
               size="sm"
+              className="flex-wrap"
             >
               <Tooltip content="Backlog">
                 <ToggleGroup.Item value="backlog" colorScheme="slate">
@@ -535,16 +679,20 @@ export function TaskDetailDialog({
               </Tooltip>
             </ToggleGroup>
           </div>
-
-          {/* Priority */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">
-              Priority
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium text-foreground">
+                Priority
+              </label>
+              <span className="text-sm text-muted-foreground">
+                {getPriorityLabel(formData.priority ?? 'medium')}
+              </span>
+            </div>
             <ToggleGroup
               value={formData.priority ?? 'medium'}
               onValueChange={(value) => handleInputChange('priority', value)}
               size="sm"
+              className="flex-wrap"
             >
               <Tooltip content="Low">
                 <ToggleGroup.Item value="low" colorScheme="green">
@@ -568,122 +716,8 @@ export function TaskDetailDialog({
               </Tooltip>
             </ToggleGroup>
           </div>
-        </div>
-      </TooltipProvider>
-
-      {/* Artifacts */}
-      {!isNewTask && (
-        <div className="space-y-2 pt-4 border-t border-border">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Paperclip className="h-4 w-4" />
-              Attachments{' '}
-              {task?.artifacts &&
-                task.artifacts.length > 0 &&
-                `(${task.artifacts.length})`}
-            </div>
-            {onAttachArtifact && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onAttachArtifact}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Attach
-              </Button>
-            )}
-          </div>
-          {task?.artifacts && task.artifacts.length > 0 ? (
-            <div className="border border-border rounded-md divide-y divide-border">
-              {task.artifacts.map((artifact) => (
-                <div
-                  key={artifact.id}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 text-sm group transition-colors',
-                    onArtifactClick && 'hover:bg-muted/50 cursor-pointer'
-                  )}
-                  onClick={() => onArtifactClick?.(artifact.id)}
-                  role={onArtifactClick ? 'button' : undefined}
-                  tabIndex={onArtifactClick ? 0 : undefined}
-                >
-                  <span className="flex-1 min-w-0 text-left truncate">
-                    {artifact.title}
-                  </span>
-                  {artifact.type && (
-                    <span className="text-xs text-muted-foreground flex-shrink-0">
-                      {artifact.type}
-                    </span>
-                  )}
-                  {onDetachArtifact && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDetachArtifact(artifact.id);
-                      }}
-                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No attachments</p>
-          )}
-        </div>
-      )}
-
-      {/* History - Collapsible */}
-      {!isNewTask && task?.events && task.events.length > 0 && (
-        <div className="pt-4 border-t border-border">
-          <button
-            type="button"
-            onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
-            className="flex items-center justify-between w-full text-sm font-medium hover:text-foreground transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <History className="h-4 w-4" />
-              History ({task.events.length})
-            </div>
-            <ChevronDown
-              className={cn(
-                'h-4 w-4 text-muted-foreground transition-transform',
-                isHistoryExpanded && 'rotate-180'
-              )}
-            />
-          </button>
-          {isHistoryExpanded && (
-            <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
-              {task.events.map((event, index) => (
-                <div
-                  key={`${event.type}-${event.timestamp}-${index}`}
-                  className="flex items-start gap-3 text-xs"
-                >
-                  <div className="w-2 h-2 mt-1.5 rounded-full bg-border flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-foreground">
-                      {formatEventType(event.type)}
-                    </p>
-                    {event.details?.from && event.details?.to && (
-                      <p className="text-muted-foreground">
-                        {event.details.from} → {event.details.to}
-                      </p>
-                    )}
-                    <p className="text-muted-foreground">
-                      {formatDate(event.timestamp)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+        </TooltipProvider>
+      </div>
     </div>
   );
 
@@ -715,9 +749,9 @@ export function TaskDetailDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <Dialog.Content
-        size={showDeleteConfirm ? 'sm' : 'lg'}
+        size={showDeleteConfirm ? 'sm' : '2xl'}
         className={cn(
-          !showDeleteConfirm && 'h-[70vh] flex flex-col overflow-hidden',
+          !showDeleteConfirm && 'h-[80vh] flex flex-col overflow-hidden',
           className
         )}
       >

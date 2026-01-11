@@ -1,11 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { env } from '../env';
 import { db } from './index';
-import {
-  seedSystemAgents,
-  seedDemoData,
-  isDemoDataSeeded,
-} from './seed/index';
+import { seedSystemAgents, seedDemoData, isDemoDataSeeded } from './seed/index';
 
 // Advisory lock ID for PR environment seeding (arbitrary unique number)
 const SEED_LOCK_ID = 12345;

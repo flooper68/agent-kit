@@ -5,17 +5,22 @@ import {
   CreateProjectCommand,
   UpdateProjectCommand,
   DeleteProjectCommand,
+  AttachArtifactToProjectCommand,
+  DetachArtifactFromProjectCommand,
 } from './commands';
 import type {
   CreateProjectInput,
   UpdateProjectInput,
   DeleteProjectInput,
+  AttachArtifactToProjectInput,
+  DetachArtifactFromProjectInput,
 } from './commands';
 import {
   GetProjectByIdQuery,
   ListProjectsQuery,
   SearchProjectsQuery,
   GetProjectStatsQuery,
+  ListProjectArtifactsQuery,
 } from './queries';
 import type {
   GetProjectByIdInput,
@@ -26,6 +31,8 @@ import type {
   SearchProjectsResult,
   GetProjectStatsInput,
   GetProjectStatsResult,
+  ListProjectArtifactsInput,
+  ListProjectArtifactsResult,
 } from './queries';
 
 /**
@@ -35,20 +42,26 @@ export class ProjectsFeature {
   private createProjectCommand: CreateProjectCommand;
   private updateProjectCommand: UpdateProjectCommand;
   private deleteProjectCommand: DeleteProjectCommand;
+  private attachArtifactCommand: AttachArtifactToProjectCommand;
+  private detachArtifactCommand: DetachArtifactFromProjectCommand;
   private getProjectByIdQuery: GetProjectByIdQuery;
   private listProjectsQuery: ListProjectsQuery;
   private searchProjectsQuery: SearchProjectsQuery;
   private getProjectStatsQuery: GetProjectStatsQuery;
+  private listProjectArtifactsQuery: ListProjectArtifactsQuery;
   private cacheInvalidation?: CacheInvalidationService;
 
   constructor(db: typeof DbType) {
     this.createProjectCommand = new CreateProjectCommand(db);
     this.updateProjectCommand = new UpdateProjectCommand(db);
     this.deleteProjectCommand = new DeleteProjectCommand(db);
+    this.attachArtifactCommand = new AttachArtifactToProjectCommand(db);
+    this.detachArtifactCommand = new DetachArtifactFromProjectCommand(db);
     this.getProjectByIdQuery = new GetProjectByIdQuery(db);
     this.listProjectsQuery = new ListProjectsQuery(db);
     this.searchProjectsQuery = new SearchProjectsQuery(db);
     this.getProjectStatsQuery = new GetProjectStatsQuery(db);
+    this.listProjectArtifactsQuery = new ListProjectArtifactsQuery(db);
   }
 
   setCacheInvalidation(service: CacheInvalidationService): void {
@@ -103,5 +116,38 @@ export class ProjectsFeature {
   // Stats
   getStats(input: GetProjectStatsInput): Promise<GetProjectStatsResult> {
     return this.getProjectStatsQuery.execute(input);
+  }
+
+  // Artifacts
+  async attachArtifact(
+    input: AttachArtifactToProjectInput
+  ): Promise<{ success: boolean; alreadyAttached: boolean }> {
+    const result = await this.attachArtifactCommand.execute(input);
+    if (result.success && !result.alreadyAttached) {
+      await this.cacheInvalidation?.publishProjectUpdated(
+        input.orgId,
+        input.projectId
+      );
+    }
+    return result;
+  }
+
+  async detachArtifact(
+    input: DetachArtifactFromProjectInput
+  ): Promise<{ success: boolean; wasAttached: boolean }> {
+    const result = await this.detachArtifactCommand.execute(input);
+    if (result.success && result.wasAttached) {
+      await this.cacheInvalidation?.publishProjectUpdated(
+        input.orgId,
+        input.projectId
+      );
+    }
+    return result;
+  }
+
+  listArtifacts(
+    input: ListProjectArtifactsInput
+  ): Promise<ListProjectArtifactsResult> {
+    return this.listProjectArtifactsQuery.execute(input);
   }
 }

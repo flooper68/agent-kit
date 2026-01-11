@@ -1,5 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from 'react-router-dom';
 import {
   Heading,
   Text,
@@ -8,7 +13,6 @@ import {
   Input,
   Dialog,
   Textarea,
-  IconButton,
   KanbanBoard,
   TaskListView,
   TaskFilters,
@@ -24,7 +28,7 @@ import {
 } from '@agent-kit/ui';
 import {
   Plus,
-  ArrowLeft,
+  ChevronRight,
   LayoutGrid,
   List,
   Edit2,
@@ -38,27 +42,66 @@ import {
   Minus,
   ArrowUp,
   AlertTriangle,
+  FileText,
+  Link2,
 } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { useHeaderActions } from '../contexts/HeaderActionsContext';
+import { ProjectDocumentsTab } from '../components/ProjectDocumentsTab';
+import { useDebounce } from '../hooks/useDebounce';
+
+type TabValue = 'backlog' | 'kanban' | 'list' | 'documents';
+
+const tabLabels: Record<TabValue, string> = {
+  kanban: 'Board',
+  backlog: 'Backlog',
+  list: 'List',
+  documents: 'Documents',
+};
+
+const validTabs: TabValue[] = ['kanban', 'backlog', 'list', 'documents'];
+
+const statusLabels: Record<string, string> = {
+  backlog: 'Backlog',
+  todo: 'Todo',
+  in_progress: 'In Progress',
+  review: 'Review',
+  done: 'Done',
+};
+
+const priorityLabels: Record<string, string> = {
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  urgent: 'Urgent',
+};
 
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { setActions, setMenuItems, clearActions } = useHeaderActions();
   const { addToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'backlog' | 'kanban' | 'list'>(
-    'kanban'
-  );
+  // Read tab from URL search params, default to 'kanban'
+  const tabParam = searchParams.get('tab') as TabValue | null;
+  const activeTab =
+    tabParam && validTabs.includes(tabParam) ? tabParam : 'kanban';
+
+  const handleTabChange = (tab: string) => {
+    setSearchParams({ tab }, { replace: true });
+  };
   const [filters, setFilters] = useState<TaskFiltersState>({});
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
   const [isDeleteProjectOpen, setIsDeleteProjectOpen] = useState(false);
+  const [isDocumentAttachOpen, setIsDocumentAttachOpen] = useState(false);
+  const [isDocumentCreateOpen, setIsDocumentCreateOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskData | null>(null);
   const [taskDialogMode, setTaskDialogMode] = useState<
     'view' | 'edit' | 'create'
   >('view');
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
 
   // Form state for new task
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -225,16 +268,34 @@ export function ProjectDetailPage() {
     }
   }, [projectQuery.data]);
 
-  // Set header actions and menu items
+  // Set header actions and menu items based on active tab
   useEffect(() => {
-    setActions([
-      {
-        id: 'add-task',
-        label: 'Add Task',
-        icon: <Plus className="h-4 w-4" />,
-        onClick: () => setIsCreateTaskOpen(true),
-      },
-    ]);
+    if (activeTab === 'documents') {
+      setActions([
+        {
+          id: 'attach-document',
+          label: 'Attach Existing',
+          icon: <Link2 className="h-4 w-4" />,
+          onClick: () => setIsDocumentAttachOpen(true),
+          variant: 'outline',
+        },
+        {
+          id: 'create-document',
+          label: 'Create New',
+          icon: <Plus className="h-4 w-4" />,
+          onClick: () => setIsDocumentCreateOpen(true),
+        },
+      ]);
+    } else {
+      setActions([
+        {
+          id: 'add-task',
+          label: 'Add Task',
+          icon: <Plus className="h-4 w-4" />,
+          onClick: () => setIsCreateTaskOpen(true),
+        },
+      ]);
+    }
     setMenuItems([
       {
         id: 'edit-project',
@@ -251,7 +312,7 @@ export function ProjectDetailPage() {
       },
     ]);
     return () => clearActions();
-  }, [setActions, setMenuItems, clearActions]);
+  }, [activeTab, setActions, setMenuItems, clearActions]);
 
   const resetNewTaskForm = () => {
     setNewTaskTitle('');
@@ -332,6 +393,20 @@ export function ProjectDetailPage() {
     }));
   }, [tasksQuery.data]);
 
+  // Debounce search query for client-side filtering
+  const debouncedSearchQuery = useDebounce(filters.searchQuery, 300);
+
+  // Filter list tasks by search query
+  const filteredListTasks = useMemo(() => {
+    if (!debouncedSearchQuery) return listTasks;
+    const query = debouncedSearchQuery.toLowerCase();
+    return listTasks.filter(
+      (task) =>
+        task.title.toLowerCase().includes(query) ||
+        task.description?.toLowerCase().includes(query)
+    );
+  }, [listTasks, debouncedSearchQuery]);
+
   const handleTaskMove = useCallback(
     (taskId: string, newStatus: PlanningTaskStatus, newPosition: number) => {
       moveTaskMutation.mutate({
@@ -379,6 +454,35 @@ export function ProjectDetailPage() {
     },
     [utils.tasks.get]
   );
+
+  // Handler for quick status change from context menu
+  const handleTaskStatusChange = useCallback(
+    (taskId: string, status: PlanningTaskStatus) => {
+      updateTaskMutation.mutate({ id: taskId, status });
+    },
+    [updateTaskMutation]
+  );
+
+  // Handler for quick priority change from context menu
+  const handleTaskPriorityChange = useCallback(
+    (taskId: string, priority: Priority) => {
+      updateTaskMutation.mutate({ id: taskId, priority });
+    },
+    [updateTaskMutation]
+  );
+
+  // Handler for delete request from context menu (shows confirmation)
+  const handleTaskDeleteRequest = useCallback((taskId: string) => {
+    setTaskToDelete(taskId);
+  }, []);
+
+  // Handler for confirming task deletion
+  const handleConfirmTaskDelete = useCallback(() => {
+    if (taskToDelete) {
+      deleteTaskMutation.mutate({ id: taskToDelete });
+      setTaskToDelete(null);
+    }
+  }, [taskToDelete, deleteTaskMutation]);
 
   const handleTaskSave = async (data: Partial<TaskData>) => {
     if (!selectedTask?.id) return;
@@ -461,18 +565,24 @@ export function ProjectDetailPage() {
       {/* Header */}
       <div className="border-b border-border p-4">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-2 flex items-center gap-2">
-            <IconButton
-              icon={<ArrowLeft className="h-4 w-4" />}
-              label="Back to Projects"
-              onClick={() => navigate('/app/projects')}
-              variant="ghost"
-              size="sm"
-            />
-            <Heading as="h1" size="20">
+          {/* Breadcrumb navigation */}
+          <nav className="mb-3 flex items-center gap-1.5">
+            <Link
+              to="/app/projects"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Projects
+            </Link>
+            <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+            <span className="max-w-xs truncate text-sm text-muted-foreground">
               {project.title}
-            </Heading>
-          </div>
+            </span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+            <span className="text-sm font-medium">{tabLabels[activeTab]}</span>
+          </nav>
+          <Heading as="h1" size="24">
+            {project.title}
+          </Heading>
           {project.summary && (
             <Text className="mb-4 text-sm text-muted-foreground">
               {project.summary}
@@ -480,13 +590,8 @@ export function ProjectDetailPage() {
           )}
 
           {/* Toolbar */}
-          <div className="flex items-center gap-4">
-            <Tabs
-              value={activeTab}
-              onValueChange={(v) =>
-                setActiveTab(v as 'backlog' | 'kanban' | 'list')
-              }
-            >
+          <div className="space-y-3">
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
               <Tabs.List>
                 <Tabs.Trigger value="kanban">
                   <LayoutGrid className="mr-1 h-4 w-4" />
@@ -500,15 +605,18 @@ export function ProjectDetailPage() {
                   <List className="mr-1 h-4 w-4" />
                   List
                 </Tabs.Trigger>
+                <Tabs.Trigger value="documents">
+                  <FileText className="mr-1 h-4 w-4" />
+                  Documents
+                </Tabs.Trigger>
               </Tabs.List>
             </Tabs>
 
-            {activeTab !== 'backlog' && (
+            {activeTab === 'list' && (
               <TaskFilters
                 filters={filters}
                 onFiltersChange={setFilters}
-                showStatus={activeTab === 'list'}
-                className="flex-1 min-w-0"
+                showStatus
               />
             )}
           </div>
@@ -522,6 +630,10 @@ export function ProjectDetailPage() {
             <TaskListView
               tasks={backlogTasks}
               onTaskClick={handleTaskClick}
+              onEdit={handleTaskClick}
+              onStatusChange={handleTaskStatusChange}
+              onPriorityChange={handleTaskPriorityChange}
+              onDelete={handleTaskDeleteRequest}
               emptyMessage="No tasks in backlog"
               sortable
               onTaskMove={handleBacklogMove}
@@ -537,9 +649,22 @@ export function ProjectDetailPage() {
           )}
           {activeTab === 'list' && (
             <TaskListView
-              tasks={listTasks}
+              tasks={filteredListTasks}
               onTaskClick={handleTaskClick}
+              onEdit={handleTaskClick}
+              onStatusChange={handleTaskStatusChange}
+              onPriorityChange={handleTaskPriorityChange}
+              onDelete={handleTaskDeleteRequest}
               emptyMessage="No tasks match your filters"
+            />
+          )}
+          {activeTab === 'documents' && (
+            <ProjectDocumentsTab
+              projectId={projectId!}
+              isAttachDialogOpen={isDocumentAttachOpen}
+              onAttachDialogOpenChange={setIsDocumentAttachOpen}
+              isCreateDialogOpen={isDocumentCreateOpen}
+              onCreateDialogOpenChange={setIsDocumentCreateOpen}
             />
           )}
         </div>
@@ -547,101 +672,121 @@ export function ProjectDetailPage() {
 
       {/* Create Task Dialog */}
       <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
-        <Dialog.Content size="lg">
+        <Dialog.Content size="2xl" className="h-[80vh] flex flex-col overflow-hidden">
           <Dialog.Header>
             <Dialog.Title>Create New Task</Dialog.Title>
           </Dialog.Header>
-          <div className="space-y-4 py-4">
-            <Input
-              label="Title"
-              placeholder="Enter task title"
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-            />
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">
-                Description (optional)
-              </label>
-              <Textarea
-                placeholder="Task description"
-                value={newTaskDescription}
-                onChange={(e) => setNewTaskDescription(e.target.value)}
-                rows={3}
-              />
-            </div>
-            <TooltipProvider>
+          <div className="flex-1 overflow-y-auto py-4">
+            <div className="grid grid-cols-[1fr,auto] gap-6">
+              {/* Left column - Title and Description */}
               <div className="space-y-4">
+                <Input
+                  label="Title"
+                  placeholder="Enter task title"
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                />
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-foreground">
-                    Status
+                  <label className="text-sm font-medium text-foreground">
+                    Description (optional)
                   </label>
-                  <ToggleGroup
-                    value={newTaskStatus}
-                    onValueChange={(v) =>
-                      setNewTaskStatus(v as PlanningTaskStatus)
-                    }
-                    size="sm"
-                  >
-                    <Tooltip content="Backlog">
-                      <ToggleGroup.Item value="backlog" colorScheme="slate">
-                        <Inbox className="h-4 w-4" />
-                      </ToggleGroup.Item>
-                    </Tooltip>
-                    <Tooltip content="Todo">
-                      <ToggleGroup.Item value="todo">
-                        <Circle className="h-4 w-4" />
-                      </ToggleGroup.Item>
-                    </Tooltip>
-                    <Tooltip content="In Progress">
-                      <ToggleGroup.Item value="in_progress" colorScheme="blue">
-                        <Clock className="h-4 w-4" />
-                      </ToggleGroup.Item>
-                    </Tooltip>
-                    <Tooltip content="Review">
-                      <ToggleGroup.Item value="review" colorScheme="amber">
-                        <Eye className="h-4 w-4" />
-                      </ToggleGroup.Item>
-                    </Tooltip>
-                    <Tooltip content="Done">
-                      <ToggleGroup.Item value="done" colorScheme="green">
-                        <CheckCircle className="h-4 w-4" />
-                      </ToggleGroup.Item>
-                    </Tooltip>
-                  </ToggleGroup>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-foreground">
-                    Priority
-                  </label>
-                  <ToggleGroup
-                    value={newTaskPriority}
-                    onValueChange={(v) => setNewTaskPriority(v as Priority)}
-                    size="sm"
-                  >
-                    <Tooltip content="Low">
-                      <ToggleGroup.Item value="low" colorScheme="green">
-                        <ArrowDown className="h-4 w-4" />
-                      </ToggleGroup.Item>
-                    </Tooltip>
-                    <Tooltip content="Medium">
-                      <ToggleGroup.Item value="medium" colorScheme="amber">
-                        <Minus className="h-4 w-4" />
-                      </ToggleGroup.Item>
-                    </Tooltip>
-                    <Tooltip content="High">
-                      <ToggleGroup.Item value="high" colorScheme="orange">
-                        <ArrowUp className="h-4 w-4" />
-                      </ToggleGroup.Item>
-                    </Tooltip>
-                    <Tooltip content="Urgent">
-                      <ToggleGroup.Item value="urgent" colorScheme="red">
-                        <AlertTriangle className="h-4 w-4" />
-                      </ToggleGroup.Item>
-                    </Tooltip>
-                  </ToggleGroup>
+                  <Textarea
+                    placeholder="Task description"
+                    value={newTaskDescription}
+                    onChange={(e) => setNewTaskDescription(e.target.value)}
+                    rows={8}
+                    className="min-h-[200px]"
+                  />
                 </div>
               </div>
-            </TooltipProvider>
+
+              {/* Right column - Status and Priority */}
+              <div className="w-56 space-y-6">
+                <TooltipProvider>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-sm font-medium text-foreground">
+                        Status
+                      </label>
+                      <span className="text-sm text-muted-foreground">
+                        {statusLabels[newTaskStatus]}
+                      </span>
+                    </div>
+                    <ToggleGroup
+                      value={newTaskStatus}
+                      onValueChange={(v) =>
+                        setNewTaskStatus(v as PlanningTaskStatus)
+                      }
+                      size="sm"
+                      className="flex-wrap"
+                    >
+                      <Tooltip content="Backlog">
+                        <ToggleGroup.Item value="backlog" colorScheme="slate">
+                          <Inbox className="h-4 w-4" />
+                        </ToggleGroup.Item>
+                      </Tooltip>
+                      <Tooltip content="Todo">
+                        <ToggleGroup.Item value="todo">
+                          <Circle className="h-4 w-4" />
+                        </ToggleGroup.Item>
+                      </Tooltip>
+                      <Tooltip content="In Progress">
+                        <ToggleGroup.Item value="in_progress" colorScheme="blue">
+                          <Clock className="h-4 w-4" />
+                        </ToggleGroup.Item>
+                      </Tooltip>
+                      <Tooltip content="Review">
+                        <ToggleGroup.Item value="review" colorScheme="amber">
+                          <Eye className="h-4 w-4" />
+                        </ToggleGroup.Item>
+                      </Tooltip>
+                      <Tooltip content="Done">
+                        <ToggleGroup.Item value="done" colorScheme="green">
+                          <CheckCircle className="h-4 w-4" />
+                        </ToggleGroup.Item>
+                      </Tooltip>
+                    </ToggleGroup>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-sm font-medium text-foreground">
+                        Priority
+                      </label>
+                      <span className="text-sm text-muted-foreground">
+                        {priorityLabels[newTaskPriority]}
+                      </span>
+                    </div>
+                    <ToggleGroup
+                      value={newTaskPriority}
+                      onValueChange={(v) => setNewTaskPriority(v as Priority)}
+                      size="sm"
+                      className="flex-wrap"
+                    >
+                      <Tooltip content="Low">
+                        <ToggleGroup.Item value="low" colorScheme="green">
+                          <ArrowDown className="h-4 w-4" />
+                        </ToggleGroup.Item>
+                      </Tooltip>
+                      <Tooltip content="Medium">
+                        <ToggleGroup.Item value="medium" colorScheme="amber">
+                          <Minus className="h-4 w-4" />
+                        </ToggleGroup.Item>
+                      </Tooltip>
+                      <Tooltip content="High">
+                        <ToggleGroup.Item value="high" colorScheme="orange">
+                          <ArrowUp className="h-4 w-4" />
+                        </ToggleGroup.Item>
+                      </Tooltip>
+                      <Tooltip content="Urgent">
+                        <ToggleGroup.Item value="urgent" colorScheme="red">
+                          <AlertTriangle className="h-4 w-4" />
+                        </ToggleGroup.Item>
+                      </Tooltip>
+                    </ToggleGroup>
+                  </div>
+                </TooltipProvider>
+              </div>
+            </div>
           </div>
           <Dialog.Footer>
             <Dialog.Close asChild>
@@ -684,7 +829,7 @@ export function ProjectDetailPage() {
 
       {/* Edit Project Dialog */}
       <Dialog open={isEditProjectOpen} onOpenChange={setIsEditProjectOpen}>
-        <Dialog.Content size="sm">
+        <Dialog.Content size="2xl" className="h-[80vh] flex flex-col overflow-hidden">
           <Dialog.Header>
             <Dialog.Title>Edit Project</Dialog.Title>
           </Dialog.Header>
@@ -741,6 +886,34 @@ export function ProjectDetailPage() {
               isLoading={deleteProjectMutation.isPending}
             >
               Delete Project
+            </Button>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog>
+
+      {/* Delete Task Confirmation Dialog */}
+      <Dialog
+        open={!!taskToDelete}
+        onOpenChange={(open) => !open && setTaskToDelete(null)}
+      >
+        <Dialog.Content size="sm">
+          <Dialog.Header>
+            <Dialog.Title>Delete Task</Dialog.Title>
+            <Dialog.Description>
+              Are you sure you want to delete this task? This action cannot be
+              undone.
+            </Dialog.Description>
+          </Dialog.Header>
+          <Dialog.Footer>
+            <Dialog.Close asChild>
+              <Button variant="outline">Cancel</Button>
+            </Dialog.Close>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmTaskDelete}
+              isLoading={deleteTaskMutation.isPending}
+            >
+              Delete Task
             </Button>
           </Dialog.Footer>
         </Dialog.Content>
