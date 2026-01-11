@@ -228,6 +228,7 @@ export function useAgentSession(
     toolNamesByCallIdRef.current = {};
     lastStreamIdRef.current = undefined;
     loadedMessageIdsRef.current = new Set();
+    setStreamingStartTime(null);
   }, [sessionId]);
 
   // Handle invalid session (e.g., persisted session that no longer exists)
