@@ -8,6 +8,9 @@ const envSchema = z.object({
     .enum(['development', 'production', 'test'])
     .default('development'),
 
+  // Railway (for PR environment detection)
+  RAILWAY_ENVIRONMENT_NAME: z.string().optional(),
+
   // Database
   DATABASE_URL: z.string().url(),
 
