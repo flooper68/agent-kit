@@ -119,6 +119,11 @@ export class ClaudeCodeProvider {
         pathToClaudeCodeExecutable: process.env.CLAUDE_CODE_PATH || undefined,
         // Use bypassPermissions for non-interactive mode
         permissionMode: 'bypassPermissions',
+        // Set MCP tool timeout for long-running tools like spawnAgent
+        env: {
+          ...process.env,
+          MCP_TOOL_TIMEOUT: '3600000', // 60 minutes
+        },
       };
 
       // Add disallowedTools if configured (blocklist approach)
