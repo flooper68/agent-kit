@@ -1,35 +1,42 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ChevronRight, FileText, Download } from 'lucide-react';
 import {
-  Heading,
-  Text,
-  Button,
-  MarkdownRenderer,
-  CopyButton,
-} from '@agent-kit/ui';
+  ChevronRight,
+  FileText,
+  Download,
+  Edit,
+  Copy,
+  Check,
+} from 'lucide-react';
+import { Heading, Text, Button, MarkdownRenderer } from '@agent-kit/ui';
 import { trpc } from '../../lib/trpc';
 import { ArtifactDetailPageSkeleton } from '../../components/skeletons';
+import { useHeaderActions } from '../../contexts/HeaderActionsContext';
 
 export function ArtifactDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const utils = trpc.useUtils();
+  const { setActions, clearActions } = useHeaderActions();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const artifactQuery = trpc.artifacts.get.useQuery(
     { id: id! },
     { enabled: !!id }
   );
 
-  useEffect(() => {
-    if (artifactQuery.data) {
-      document.title = `${artifactQuery.data.title} | Agent Kit`;
-    }
-    return () => {
-      document.title = 'Agent Kit';
-    };
-  }, [artifactQuery.data]);
+  const updateMutation = trpc.artifacts.update.useMutation({
+    onSuccess: () => {
+      utils.artifacts.get.invalidate({ id: id! });
+      setIsEditing(false);
+      setEditedContent('');
+    },
+  });
 
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     if (!artifactQuery.data) return;
     const blob = new Blob([artifactQuery.data.content], {
       type: 'text/markdown',
@@ -40,7 +47,87 @@ export function ArtifactDetailPage() {
     a.download = `${artifactQuery.data.title.replace(/[^a-z0-9]/gi, '_')}.md`;
     a.click();
     URL.revokeObjectURL(url);
-  };
+  }, [artifactQuery.data]);
+
+  const handleCopy = useCallback(async () => {
+    if (!artifactQuery.data) return;
+    await navigator.clipboard.writeText(artifactQuery.data.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [artifactQuery.data]);
+
+  const handleEdit = useCallback(() => {
+    if (!artifactQuery.data) return;
+    setEditedContent(artifactQuery.data.content);
+    setIsEditing(true);
+  }, [artifactQuery.data]);
+
+  const handleSave = useCallback(() => {
+    if (!id) return;
+    updateMutation.mutate({
+      id,
+      content: editedContent,
+    });
+  }, [id, editedContent, updateMutation]);
+
+  const handleCancel = useCallback(() => {
+    setIsEditing(false);
+    setEditedContent('');
+  }, []);
+
+  useEffect(() => {
+    if (artifactQuery.data) {
+      document.title = `${artifactQuery.data.title} | Agent Kit`;
+    }
+    return () => {
+      document.title = 'Agent Kit';
+    };
+  }, [artifactQuery.data]);
+
+  // Set header actions
+  useEffect(() => {
+    if (artifactQuery.data && !isEditing) {
+      setActions([
+        {
+          id: 'edit-artifact',
+          label: 'Edit',
+          icon: <Edit className="h-4 w-4" />,
+          onClick: handleEdit,
+          variant: 'primary',
+        },
+        {
+          id: 'copy-artifact',
+          label: copied ? 'Copied!' : 'Copy',
+          icon: copied ? (
+            <Check className="h-4 w-4" />
+          ) : (
+            <Copy className="h-4 w-4" />
+          ),
+          onClick: handleCopy,
+          variant: 'outline',
+        },
+        {
+          id: 'download-artifact',
+          label: 'Download',
+          icon: <Download className="h-4 w-4" />,
+          onClick: handleDownload,
+          variant: 'outline',
+        },
+      ]);
+    } else {
+      clearActions();
+    }
+    return () => clearActions();
+  }, [
+    artifactQuery.data,
+    isEditing,
+    copied,
+    setActions,
+    clearActions,
+    handleEdit,
+    handleCopy,
+    handleDownload,
+  ]);
 
   const formatDate = (date: Date | string) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -128,19 +215,29 @@ export function ArtifactDetailPage() {
           )}
         </div>
 
-        {/* Action buttons */}
-        <div className="mb-6 flex gap-2">
-          <CopyButton content={artifactQuery.data.content} />
-          <Button variant="outline" onClick={handleDownload}>
-            <Download className="mr-2 h-4 w-4" />
-            Download
-          </Button>
-        </div>
-
         {/* Content */}
-        <div className="rounded-lg border bg-muted/30 p-6">
-          <MarkdownRenderer content={artifactQuery.data.content} />
-        </div>
+        {isEditing ? (
+          <div className="flex flex-col">
+            <div className="mb-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+            <textarea
+              value={editedContent}
+              onChange={(e) => setEditedContent(e.target.value)}
+              className="min-h-[400px] w-full resize-none rounded-lg border bg-background p-4 font-mono text-sm outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Enter markdown content..."
+            />
+          </div>
+        ) : (
+          <div className="rounded-lg border bg-muted/30 p-6">
+            <MarkdownRenderer content={artifactQuery.data.content} />
+          </div>
+        )}
       </div>
     </div>
   );
