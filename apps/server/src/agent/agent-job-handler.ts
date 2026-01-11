@@ -179,7 +179,8 @@ export class AgentJobHandler {
     // Fetch allowed skills for this agent
     const allowedSkills = await this.agentsFeature.permissions.getAllowedSkills(
       agentId,
-      userId
+      userId,
+      orgId
     );
     const allowedSkillIds = allowedSkills.map((s) => s.id);
 
@@ -282,6 +283,7 @@ export class AgentJobHandler {
         currentSpawnDepth,
         parentAgentKey: agentId, // Agent key for spawn validation
         allowedSkillIds, // Skill filtering
+        allowedToolIds: agent.tools, // Tool access control for executeCommand
       });
 
       // Publish message start event

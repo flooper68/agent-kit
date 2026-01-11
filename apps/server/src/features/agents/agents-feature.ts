@@ -574,9 +574,10 @@ export class AgentsFeature {
         this.getAllowedSubagentsQuery.execute({ agentKey, userId }),
       getAllowedSkills: (
         agentKey: string,
-        userId: string
+        userId: string,
+        orgId: string
       ): Promise<AllowedSkillInfo[]> =>
-        this.getAllowedSkillsQuery.execute({ agentKey, userId }),
+        this.getAllowedSkillsQuery.execute({ agentKey, userId, orgId }),
     };
   }
 }

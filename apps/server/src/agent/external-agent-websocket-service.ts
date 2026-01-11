@@ -1015,7 +1015,8 @@ export class ExternalAgentWebSocketService {
       const allowedSkills =
         await this.agentsFeature.permissions.getAllowedSkills(
           agent.key,
-          agent.userId
+          agent.userId,
+          session.orgId
         );
       const allowedSkillIds = allowedSkills.map((s) => s.id);
 
@@ -1028,6 +1029,7 @@ export class ExternalAgentWebSocketService {
         messageId: messageId || requestId,
         agentId: agent.id,
         allowedSkillIds,
+        allowedToolIds: allowedTools, // Tool access control for executeCommand
         artifactsFeature: this.artifactsFeature,
         projectsFeature: this.projectsFeature,
         tasksFeature: this.tasksFeature,

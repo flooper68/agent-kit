@@ -236,6 +236,18 @@ export function createExecuteCommandTool(
 
       const { tool: toolName, args } = parsed;
 
+      // Validate tool is in agent's allowed list
+      const allowedTools = context.toolContext.allowedToolIds;
+      if (!allowedTools.includes(toolName)) {
+        log.warn('Tool not allowed for agent', { toolName, allowedTools });
+        return {
+          success: false,
+          tool: toolName,
+          args,
+          error: `Tool "${toolName}" is not available to this agent. Available tools: ${allowedTools.join(', ') || 'none'}`,
+        };
+      }
+
       // Get the tool implementation directly (no skill validation)
       const tools = getToolsById([toolName], context.toolContext);
       const toolImpl = tools[toolName];

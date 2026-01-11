@@ -2,6 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../types';
 import type { SkillsFeature } from '../../features/skills';
+import { parseSkillFiles } from '../skills/types';
 
 export interface GetSkillContext {
   userId: string;
@@ -80,6 +81,15 @@ export function createGetSkillTool(context: GetSkillContext): Tool {
         };
       }
 
+      // Validate files from JSONB
+      const validatedFiles = parseSkillFiles(skill.files);
+      if (!validatedFiles) {
+        return {
+          success: false,
+          error: `Skill "${skill.key}" has invalid file format`,
+        };
+      }
+
       return {
         success: true,
         skill: {
@@ -88,7 +98,7 @@ export function createGetSkillTool(context: GetSkillContext): Tool {
           name: skill.name,
           description: skill.description,
           isSystem: skill.isSystem,
-          files: skill.files.map((f) => ({
+          files: validatedFiles.map((f) => ({
             path: f.path,
             content: f.content,
           })),

@@ -147,6 +147,8 @@ export interface ToolContext {
   currentSpawnDepth: number;
   /** Allowed skill IDs for this agent (empty array = no skills allowed) */
   allowedSkillIds: string[];
+  /** Allowed tool IDs for this agent (used by executeCommand for access control) */
+  allowedToolIds: string[];
 }
 
 /**

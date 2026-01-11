@@ -114,6 +114,9 @@ export function SkillFormPage() {
           }
         );
       },
+      // Intentionally omitting 'autosave' from deps:
+      // - lastSavedDataRef is a stable ref object (same identity across renders)
+      // - useAutosave stores onSave in an internal ref, so it always uses the latest callback
       // eslint-disable-next-line react-hooks/exhaustive-deps
       [id, autosaveMutation]
     ),

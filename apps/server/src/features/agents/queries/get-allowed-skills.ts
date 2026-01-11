@@ -1,4 +1,4 @@
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, or } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import {
   serverAgents,
@@ -19,6 +19,7 @@ export interface AllowedSkillInfo {
 export interface GetAllowedSkillsInput {
   agentKey: string;
   userId: string;
+  orgId: string;
 }
 
 /**
@@ -29,9 +30,10 @@ export class GetAllowedSkillsQuery {
   constructor(private db: typeof DbType) {}
 
   async execute(input: GetAllowedSkillsInput): Promise<AllowedSkillInfo[]> {
-    const { agentKey, userId } = input;
+    const { agentKey, userId, orgId } = input;
 
     // Try server agent first with JOIN query
+    // Filter skills to only include system skills or skills owned by the same org
     const serverAgentSkills = await this.db
       .select({
         id: skills.id,
@@ -53,7 +55,9 @@ export class GetAllowedSkillsQuery {
         and(
           eq(serverAgents.key, agentKey),
           eq(serverAgents.userId, userId),
-          isNull(serverAgents.deletedAt)
+          isNull(serverAgents.deletedAt),
+          // Defense-in-depth: only return system skills or skills from the same org
+          or(eq(skills.isSystem, true), eq(skills.orgId, orgId))
         )
       );
 
@@ -83,7 +87,9 @@ export class GetAllowedSkillsQuery {
         and(
           eq(externalAgents.key, agentKey),
           eq(externalAgents.userId, userId),
-          isNull(externalAgents.deletedAt)
+          isNull(externalAgents.deletedAt),
+          // Defense-in-depth: only return system skills or skills from the same org
+          or(eq(skills.isSystem, true), eq(skills.orgId, orgId))
         )
       );
 

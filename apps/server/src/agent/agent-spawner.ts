@@ -432,7 +432,8 @@ export class AgentSpawner {
         agentUuid,
         agentId,
         message,
-        userId
+        userId,
+        orgId
       );
     } else {
       await this.dispatchToServerAgent(
@@ -495,7 +496,8 @@ export class AgentSpawner {
     agentUuid: string,
     agentKey: string,
     message: string,
-    userId: string
+    userId: string,
+    orgId: string
   ): Promise<void> {
     // Create user message + assistant placeholder
     const { userMessageId, assistantMessageId } =
@@ -518,7 +520,7 @@ export class AgentSpawner {
     // Fetch session history and allowed skills in parallel
     const [sessionHistory, allowedSkills] = await Promise.all([
       this.agentsFeature.sessions.getMessagesAndEvents(sessionId),
-      this.agentsFeature.permissions.getAllowedSkills(agentKey, userId),
+      this.agentsFeature.permissions.getAllowedSkills(agentKey, userId, orgId),
     ]);
 
     if (!sessionHistory) {
