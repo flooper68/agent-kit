@@ -11,6 +11,7 @@ export interface SessionData {
     id: string;
     role: 'user' | 'assistant';
     createdAt: string;
+    status?: 'pending' | 'streaming' | 'complete' | 'error' | 'interrupted';
     parts: Array<{
       type: string;
       content?: string;

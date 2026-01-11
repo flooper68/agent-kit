@@ -349,6 +349,10 @@ export function useAgentSession(
           case 'message_start':
             setStatus('streaming');
             setThinkingStatus({ isThinking: true });
+            // Use event timestamp for accurate timing (especially during replay)
+            if (event.timestamp) {
+              setStreamingStartTime(new Date(event.timestamp).getTime());
+            }
             // Initialize accumulators for this message
             accumulatedTextRef.current[event.messageId] = '';
             accumulatedReasoningRef.current[event.messageId] = '';
@@ -978,17 +982,27 @@ export function useAgentSession(
     }
   }, [status, messages]); // messages changes on each event
 
-  // Update streaming start time when status changes to streaming
+  // Reset streaming start time when status goes to non-streaming/ready states
+  // The start time is now set in message_start handler or from session data on page load
   useEffect(() => {
-    if (status === 'streaming') {
-      setStreamingStartTime(Date.now());
-    } else if (status === 'ready') {
-      // Keep the start time when transitioning to ready (for "Worked for" display)
-      // Only reset when starting a new conversation (status goes to submitted first)
-    } else {
+    if (status !== 'streaming' && status !== 'ready') {
       setStreamingStartTime(null);
     }
   }, [status]);
+
+  // Initialize streaming start time from session data on page load
+  // This ensures the "Running for" timer persists across page refreshes
+  useEffect(() => {
+    if (sessionQuery.data?.isStreaming && !streamingStartTime) {
+      const streamingMessage = sessionQuery.data.messages
+        ?.filter((m) => m.role === 'assistant' && m.status === 'streaming')
+        .pop();
+
+      if (streamingMessage?.createdAt) {
+        setStreamingStartTime(new Date(streamingMessage.createdAt).getTime());
+      }
+    }
+  }, [sessionQuery.data?.isStreaming, sessionQuery.data?.messages, streamingStartTime]);
 
   // Watch streaming state from server - enabled when we're in streaming state
   // This query gets invalidated by useCacheInvalidation when streaming_state_changed is received
