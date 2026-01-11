@@ -21,6 +21,7 @@ import {
 } from './queries';
 import type {
   GetArtifactByIdInput,
+  GetArtifactByIdResult,
   ListArtifactsInput,
   ListArtifactsResult,
   SearchArtifactsInput,
@@ -101,7 +102,7 @@ export class ArtifactsFeature {
   }
 
   // Queries
-  getById(input: GetArtifactByIdInput): Promise<Artifact | undefined> {
+  getById(input: GetArtifactByIdInput): Promise<GetArtifactByIdResult> {
     return this.getArtifactByIdQuery.execute(input);
   }
 

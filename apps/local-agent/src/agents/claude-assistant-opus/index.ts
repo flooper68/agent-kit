@@ -119,6 +119,7 @@ process.on('uncaughtException', (error) => {
 });
 
 process.on('unhandledRejection', (reason) => {
+  console.error(reason);
   log.error('Unhandled rejection', { reason });
 });
 

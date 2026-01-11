@@ -41,6 +41,7 @@ export function createListProjectsTool(context: ListProjectsContext): Tool {
           title: p.title,
           summary: p.summary,
           taskCounts: p.taskCounts,
+          artifactCount: p.artifactCount,
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
         })),

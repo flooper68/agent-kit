@@ -1,7 +1,17 @@
-import { eq, desc, lt, and, or, ilike, notExists, type SQL } from 'drizzle-orm';
+import {
+  eq,
+  desc,
+  lt,
+  and,
+  or,
+  ilike,
+  notExists,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
-import { artifacts, projectArtifacts } from '../../../db/schema';
+import { artifacts, projectArtifacts, taskArtifacts } from '../../../db/schema';
 
 export interface ListArtifactsInput {
   userId: string;
@@ -18,6 +28,8 @@ export interface ArtifactListItem {
   summary: string | null;
   format: string;
   sizeBytes: number;
+  projectCount: number;
+  taskCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -102,6 +114,16 @@ export class ListArtifactsQuery {
         sizeBytes: artifacts.sizeBytes,
         createdAt: artifacts.createdAt,
         updatedAt: artifacts.updatedAt,
+        projectCount: sql<number>`(
+          SELECT count(*)::int
+          FROM ${projectArtifacts}
+          WHERE ${projectArtifacts.artifactId} = ${artifacts.id}
+        )`,
+        taskCount: sql<number>`(
+          SELECT count(*)::int
+          FROM ${taskArtifacts}
+          WHERE ${taskArtifacts.artifactId} = ${artifacts.id}
+        )`,
       })
       .from(artifacts)
       .where(and(...conditions))

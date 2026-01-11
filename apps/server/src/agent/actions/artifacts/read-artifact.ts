@@ -46,6 +46,8 @@ export function createReadArtifactTool(context: ReadArtifactContext): Tool {
         title: artifact.title,
         content: artifact.content,
         summary: artifact.summary,
+        projects: artifact.projects,
+        tasks: artifact.tasks,
         createdAt: artifact.createdAt,
         updatedAt: artifact.updatedAt,
       };

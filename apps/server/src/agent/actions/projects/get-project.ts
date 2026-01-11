@@ -56,6 +56,7 @@ export function createGetProjectTool(context: GetProjectContext): Tool {
         summary: project.summary,
         taskCounts,
         tasksByStatus: project.tasksByStatus,
+        artifactCount: project.artifactCount,
         createdAt: project.createdAt,
         updatedAt: project.updatedAt,
       };
