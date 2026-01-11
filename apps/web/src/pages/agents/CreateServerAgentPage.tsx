@@ -79,10 +79,30 @@ export function CreateServerAgentPage() {
     return () => clearActions();
   }, [setActions, clearActions, navigate, isSubmitting]);
 
-  // Fetch tools and models
+  // Fetch tools, models, and skills
   const toolsQuery = trpc.agents.listTools.useQuery();
   const modelsQuery = trpc.agents.listModels.useQuery();
   const providersQuery = trpc.agents.listProviders.useQuery();
+  const skillsQuery = trpc.agents.listSkillsForAgent.useQuery();
+
+  // Auto-select core system skills on initial load
+  const hasInitializedSkills = useRef(false);
+  useEffect(() => {
+    if (
+      skillsQuery.data &&
+      !hasInitializedSkills.current &&
+      formData.allowedSkillIds.length === 0
+    ) {
+      hasInitializedSkills.current = true;
+      // Select system skills except agent-management
+      const coreSystemSkills = skillsQuery.data
+        .filter((s) => s.isSystem && s.key !== 'agent-management')
+        .map((s) => s.id);
+      if (coreSystemSkills.length > 0) {
+        setFormData((prev) => ({ ...prev, allowedSkillIds: coreSystemSkills }));
+      }
+    }
+  }, [skillsQuery.data, formData.allowedSkillIds.length]);
 
   // Update model when provider changes
   useEffect(() => {
