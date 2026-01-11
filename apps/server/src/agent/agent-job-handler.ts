@@ -266,7 +266,7 @@ export class AgentJobHandler {
       }
 
       // Get tools for this agent (with context for artifact, planning, client-side, spawn, and agent management tools)
-      const tools = getToolsById(agent.tools, {
+      const toolContext = {
         userId,
         orgId,
         sessionId,
@@ -284,7 +284,8 @@ export class AgentJobHandler {
         parentAgentKey: agentId, // Agent key for spawn validation
         allowedSkillIds, // Skill filtering
         allowedToolIds: agent.tools, // Tool access control for executeCommand
-      });
+      };
+      const tools = getToolsById(agent.tools, toolContext);
 
       // Publish message start event
       await this.eventStreamManager.publish(sessionId, {

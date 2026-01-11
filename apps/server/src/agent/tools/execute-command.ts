@@ -14,7 +14,8 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../types';
 import type { ExecuteSkillResult, ParsedCommand } from '../skills/types';
-import { getToolsById, type ToolContext } from './index';
+import { getActionsById } from './actions';
+import type { ToolContext } from './types';
 import { logger } from '../logger';
 import { SERVER_TOOL_DEFINITIONS } from '@agent-kit/shared';
 
@@ -236,29 +237,29 @@ export function createExecuteCommandTool(
 
       const { tool: toolName, args } = parsed;
 
-      // Get the tool implementation directly (no skill validation)
-      const tools = getToolsById([toolName], context.toolContext);
-      const toolImpl = tools[toolName];
+      // Get the action implementation directly (no skill validation)
+      const actions = getActionsById([toolName], context.toolContext);
+      const actionImpl = actions[toolName];
 
-      if (!toolImpl) {
-        log.warn('Tool not found', { toolName });
+      if (!actionImpl) {
+        log.warn('Action not found', { actionName: toolName });
         return {
           success: false,
           tool: toolName,
           args,
-          error: `Tool "${toolName}" not found or not available.`,
+          error: `Action "${toolName}" not found or not available.`,
         };
       }
 
-      // Execute the tool
+      // Execute the action
       try {
-        log.info('Executing tool', { toolName, args });
+        log.info('Executing action', { actionName: toolName, args });
 
         // The AI SDK tool has an execute function we need to call
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const result = await (toolImpl as any).execute(args);
+        const result = await (actionImpl as any).execute(args);
 
-        log.info('Tool execution completed', { toolName, success: true });
+        log.info('Action execution completed', { actionName: toolName, success: true });
 
         return {
           success: true,
@@ -269,8 +270,8 @@ export function createExecuteCommandTool(
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : 'Unknown error during execution';
-        log.error('Tool execution failed', {
-          toolName,
+        log.error('Action execution failed', {
+          actionName: toolName,
           args,
           error: errorMessage,
         });
