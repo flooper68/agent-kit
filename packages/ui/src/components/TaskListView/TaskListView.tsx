@@ -338,7 +338,12 @@ export function TaskListView({
   sortable = false,
   onTaskMove,
 }: TaskListViewProps) {
-  const showContextMenu = !!(onEdit || onStatusChange || onPriorityChange || onDelete);
+  const showContextMenu = !!(
+    onEdit ||
+    onStatusChange ||
+    onPriorityChange ||
+    onDelete
+  );
   const [sortField, setSortField] = useState<SortField>(defaultSort);
   const [sortDirection, setSortDirection] =
     useState<SortDirection>(defaultSortDirection);

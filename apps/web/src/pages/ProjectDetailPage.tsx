@@ -659,7 +659,10 @@ export function ProjectDetailPage() {
 
       {/* Create Task Dialog */}
       <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
-        <Dialog.Content size="2xl" className="h-[80vh] flex flex-col overflow-hidden">
+        <Dialog.Content
+          size="2xl"
+          className="h-[80vh] flex flex-col overflow-hidden"
+        >
           <Dialog.Header>
             <Dialog.Title>Create New Task</Dialog.Title>
           </Dialog.Header>
@@ -718,7 +721,10 @@ export function ProjectDetailPage() {
                         </ToggleGroup.Item>
                       </Tooltip>
                       <Tooltip content="In Progress">
-                        <ToggleGroup.Item value="in_progress" colorScheme="blue">
+                        <ToggleGroup.Item
+                          value="in_progress"
+                          colorScheme="blue"
+                        >
                           <Clock className="h-4 w-4" />
                         </ToggleGroup.Item>
                       </Tooltip>
@@ -816,7 +822,10 @@ export function ProjectDetailPage() {
 
       {/* Edit Project Dialog */}
       <Dialog open={isEditProjectOpen} onOpenChange={setIsEditProjectOpen}>
-        <Dialog.Content size="2xl" className="h-[80vh] flex flex-col overflow-hidden">
+        <Dialog.Content
+          size="2xl"
+          className="h-[80vh] flex flex-col overflow-hidden"
+        >
           <Dialog.Header>
             <Dialog.Title>Edit Project</Dialog.Title>
           </Dialog.Header>

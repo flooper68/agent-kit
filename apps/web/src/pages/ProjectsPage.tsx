@@ -192,7 +192,10 @@ export function ProjectsPage() {
 
       {/* Create Project Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <Dialog.Content size="2xl" className="h-[80vh] flex flex-col overflow-hidden">
+        <Dialog.Content
+          size="2xl"
+          className="h-[80vh] flex flex-col overflow-hidden"
+        >
           <Dialog.Header>
             <Dialog.Title>Create New Project</Dialog.Title>
             <Dialog.Description>

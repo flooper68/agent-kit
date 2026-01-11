@@ -84,12 +84,13 @@ export class ListProjectArtifactsQuery {
     // Add search filter if provided
     if (search?.trim()) {
       const searchPattern = `%${escapeLikePattern(search.trim())}%`;
-      conditions.push(
-        or(
-          ilike(artifacts.title, searchPattern),
-          ilike(artifacts.summary, searchPattern)
-        )!
+      const searchCondition = or(
+        ilike(artifacts.title, searchPattern),
+        ilike(artifacts.summary, searchPattern)
       );
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
     }
 
     // Execute query with join
@@ -114,12 +115,13 @@ export class ListProjectArtifactsQuery {
 
     if (search?.trim()) {
       const searchPattern = `%${escapeLikePattern(search.trim())}%`;
-      countConditions.push(
-        or(
-          ilike(artifacts.title, searchPattern),
-          ilike(artifacts.summary, searchPattern)
-        )!
+      const searchCondition = or(
+        ilike(artifacts.title, searchPattern),
+        ilike(artifacts.summary, searchPattern)
       );
+      if (searchCondition) {
+        countConditions.push(searchCondition);
+      }
     }
 
     // Get total count with search filter applied

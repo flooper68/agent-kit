@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Text,
@@ -60,7 +60,8 @@ export function ProjectDocumentsTab({
   const isCreateDialogOpen = externalCreateOpen ?? internalCreateOpen;
   const setIsCreateDialogOpen =
     onCreateDialogOpenChange ?? setInternalCreateOpen;
-  const isExternallyControlled = !!onAttachDialogOpenChange || !!onCreateDialogOpenChange;
+  const isExternallyControlled =
+    !!onAttachDialogOpenChange || !!onCreateDialogOpenChange;
 
   const [detachTarget, setDetachTarget] = useState<{
     id: string;
@@ -82,6 +83,9 @@ export function ProjectDocumentsTab({
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(
     null
   );
+
+  // Track if we're in create-and-attach flow to prevent duplicate toasts
+  const isCreateAndAttachRef = useRef(false);
 
   // Reset pagination on search change
   useEffect(() => {
@@ -111,10 +115,13 @@ export function ProjectDocumentsTab({
   // Mutations
   const attachMutation = trpc.projects.attachArtifact.useMutation({
     onSuccess: (result) => {
-      if (result.alreadyAttached) {
-        addToast({ message: 'Document already attached', variant: 'info' });
-      } else {
-        addToast({ message: 'Document attached', variant: 'success' });
+      // Skip toast if this is part of create-and-attach flow (handled by createMutation)
+      if (!isCreateAndAttachRef.current) {
+        if (result.alreadyAttached) {
+          addToast({ message: 'Document already attached', variant: 'info' });
+        } else {
+          addToast({ message: 'Document attached', variant: 'success' });
+        }
       }
       setIsAttachDialogOpen(false);
       setSelectedArtifactId(null);
@@ -151,6 +158,7 @@ export function ProjectDocumentsTab({
   const createMutation = trpc.artifacts.create.useMutation({
     onSuccess: async (artifact) => {
       // Also attach to project
+      isCreateAndAttachRef.current = true;
       try {
         await attachMutation.mutateAsync({
           projectId,
@@ -172,6 +180,8 @@ export function ProjectDocumentsTab({
         setIsCreateDialogOpen(false);
         resetCreateForm();
         utils.artifacts.invalidate();
+      } finally {
+        isCreateAndAttachRef.current = false;
       }
     },
     onError: (error) => {
@@ -261,7 +271,12 @@ export function ProjectDocumentsTab({
             onClick={() => artifactsQuery.refetch()}
             disabled={artifactsQuery.isFetching}
           >
-            <RefreshCw className={cn('mr-2 h-4 w-4', artifactsQuery.isFetching && 'animate-spin')} />
+            <RefreshCw
+              className={cn(
+                'mr-2 h-4 w-4',
+                artifactsQuery.isFetching && 'animate-spin'
+              )}
+            />
             Try Again
           </Button>
         </div>
@@ -289,7 +304,9 @@ export function ProjectDocumentsTab({
                   key={artifact.id}
                   className="cursor-pointer transition-colors hover:bg-muted/50"
                   onClick={() =>
-                    navigate(`/app/projects/${projectId}/artifacts/${artifact.id}`)
+                    navigate(
+                      `/app/projects/${projectId}/artifacts/${artifact.id}`
+                    )
                   }
                 >
                   <DataList.Cell shrink>
