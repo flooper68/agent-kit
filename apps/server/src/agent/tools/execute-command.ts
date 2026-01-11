@@ -14,8 +14,8 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../types';
 import type { ExecuteSkillResult, ParsedCommand } from '../skills/types';
-import { getActionsById } from './actions';
-import type { ToolContext } from './types';
+import { getActionsById } from '../actions';
+import type { ToolsContext } from './types';
 import { logger } from '../logger';
 import { SERVER_TOOL_DEFINITIONS } from '@agent-kit/shared';
 
@@ -23,7 +23,7 @@ const log = logger.child({ module: 'execute-command-tool' });
 
 export interface ExecuteCommandToolContext {
   /** Tool context for creating actual tools */
-  toolContext: ToolContext;
+  toolContext: ToolsContext;
 }
 
 /**
@@ -259,7 +259,10 @@ export function createExecuteCommandTool(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = await (actionImpl as any).execute(args);
 
-        log.info('Action execution completed', { actionName: toolName, success: true });
+        log.info('Action execution completed', {
+          actionName: toolName,
+          success: true,
+        });
 
         return {
           success: true,

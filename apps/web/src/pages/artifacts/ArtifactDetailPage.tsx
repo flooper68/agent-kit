@@ -255,7 +255,10 @@ export function ArtifactDetailPage() {
                 <Button variant="outline" onClick={handleCancel}>
                   Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={updateMutation.isPending}>
+                <Button
+                  onClick={handleSave}
+                  disabled={updateMutation.isPending}
+                >
                   {updateMutation.isPending ? 'Saving...' : 'Save'}
                 </Button>
               </div>

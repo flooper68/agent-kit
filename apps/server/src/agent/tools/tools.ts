@@ -9,7 +9,7 @@
  */
 
 import type { Tool } from '../types';
-import type { ToolContext, ToolMetadata } from './types';
+import type { ToolsContext, ToolMetadata } from './types';
 import { SERVER_TOOL_DEFINITIONS, type ToolCategory } from '@agent-kit/shared';
 import { createSpawnAgentTool } from './spawn-agent';
 import { createListSkillFilesTool } from './list-skill-files';
@@ -34,7 +34,7 @@ export type ToolId = (typeof TOOL_IDS)[number];
  */
 export function getToolsById(
   ids: string[],
-  context: ToolContext
+  context: ToolsContext
 ): Record<string, Tool> {
   const result: Record<string, Tool> = {};
 

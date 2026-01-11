@@ -8,6 +8,7 @@ import {
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { WebSocketServer } from 'ws';
 import { runMigrations } from './db/migrate';
+import { seedPREnvironment } from './db/seed-pr';
 import { db } from './db';
 import corsPlugin from './plugins/cors';
 import clerkPlugin from './plugins/clerk';
@@ -255,6 +256,9 @@ const start = async () => {
   try {
     // Run database migrations
     await runMigrations();
+
+    // Seed PR environments with demo data (no-op for non-PR environments)
+    await seedPREnvironment();
 
     // Set up WebSocket server for tRPC subscriptions
     // Using noServer mode to manually handle upgrade and avoid conflicts with Fastify

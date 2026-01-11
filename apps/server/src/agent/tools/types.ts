@@ -1,53 +1,32 @@
-import type { ArtifactsFeature } from '../../features/artifacts';
-import type { ProjectsFeature } from '../../features/projects';
-import type { TasksFeature } from '../../features/tasks';
-import type { AgentsFeature } from '../../features/agents';
-import type { SkillsFeature } from '../../features/skills';
-import type { EventStreamManager } from '../event-stream-manager';
-import type { PubSubManager } from '../../real-time';
 import type { AgentSpawner } from '../agent-spawner';
 import type { ToolCategory } from '@agent-kit/shared';
+import type { ActionsContext } from '../actions/types';
+
+// Re-export ActionsContext for convenience
+export type { ActionsContext };
 
 /**
- * Context required for context-aware tools
+ * Context required for tools (extends ActionsContext with tool-specific dependencies)
  */
-export interface ToolContext {
-  // Core identifiers - always required
-  userId: string;
-  orgId: string;
-  sessionId: string;
-  messageId: string;
-
-  // Agent context - optional, not all contexts have an agent
-  agentId?: string;
+export interface ToolsContext extends ActionsContext {
   /** Key of the current agent (for spawn validation) */
   parentAgentKey?: string;
 
-  // Core features - always required
-  artifactsFeature: ArtifactsFeature;
-  /** Agents feature for agent management tools */
-  agentsFeature: AgentsFeature;
-  /** Skills feature for skill tools */
-  skillsFeature: SkillsFeature;
-  /** Event stream manager for client-side tools */
-  eventStreamManager: EventStreamManager;
-  /** Pub/Sub manager for stateful client-side tools */
-  pubsub: PubSubManager;
   /** Agent spawner for spawnAgent tool */
   agentSpawner: AgentSpawner;
 
-  // Feature-flagged - remain optional
-  projectsFeature?: ProjectsFeature;
-  tasksFeature?: TasksFeature;
-
-  // Spawn context - required (callers set defaults)
   /** Current spawn depth for recursion tracking (0 for root sessions) */
   currentSpawnDepth: number;
-  /** Allowed skill IDs for this agent (empty array = no skills allowed) */
-  allowedSkillIds: string[];
+
   /** Allowed tool IDs for this agent (used by executeCommand for access control) */
   allowedToolIds: string[];
 }
+
+/**
+ * Backward-compatible alias for ToolsContext
+ * @deprecated Use ToolsContext instead
+ */
+export type ToolContext = ToolsContext;
 
 /**
  * Tool metadata for UI display
