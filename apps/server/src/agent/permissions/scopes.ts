@@ -1,44 +1,11 @@
-/**
- * Agent permission scopes.
- * Agents start with NO scopes by default (opt-in model).
- */
-export enum AgentScope {
-  // Artifacts
-  ARTIFACTS_READ = 'artifacts:read',
-  ARTIFACTS_WRITE = 'artifacts:write',
+// Re-export scope enum and constants from shared package
+export {
+  AgentScope,
+  ALL_SCOPES,
+  DEFAULT_AGENT_SCOPES,
+} from '@agent-kit/shared';
 
-  // Utilities (Static Actions)
-  UTILITIES_TIME = 'utilities:time',
-  UTILITIES_WEB_SEARCH = 'utilities:webSearch',
-  UTILITIES_FETCH = 'utilities:fetch',
-  UTILITIES_EXTRACT = 'utilities:extract',
-
-  // Projects
-  PROJECTS_READ = 'projects:read',
-  PROJECTS_WRITE = 'projects:write',
-  PROJECTS_DELETE = 'projects:delete',
-
-  // Tasks
-  TASKS_READ = 'tasks:read',
-  TASKS_WRITE = 'tasks:write',
-  TASKS_DELETE = 'tasks:delete',
-
-  // UI (Client Actions)
-  UI_NAVIGATE = 'ui:navigate',
-  UI_STATE = 'ui:state',
-
-  // Agents
-  AGENTS_READ = 'agents:read',
-  AGENTS_MANAGE = 'agents:manage',
-
-  // Skills
-  SKILLS_READ = 'skills:read',
-  SKILLS_WRITE = 'skills:write',
-  SKILLS_DELETE = 'skills:delete',
-}
-
-/** Array of all scopes for iteration */
-export const ALL_SCOPES = Object.values(AgentScope);
+import { AgentScope } from '@agent-kit/shared';
 
 /** Scope metadata for UI display */
 export interface ScopeMetadata {
@@ -57,6 +24,11 @@ export const SCOPE_METADATA: Record<AgentScope, ScopeMetadata> = {
   [AgentScope.ARTIFACTS_WRITE]: {
     label: 'Write Artifacts',
     description: 'Allow creating and updating documents',
+    category: 'Artifacts',
+  },
+  [AgentScope.ARTIFACTS_DELETE]: {
+    label: 'Delete Artifacts',
+    description: 'Allow deleting documents permanently',
     category: 'Artifacts',
   },
 

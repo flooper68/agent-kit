@@ -17,7 +17,7 @@ export function checkActionPermission(
   actionId: string,
   agentScopes: string[]
 ): PermissionCheckResult {
-  const requiredScopes = getActionRequiredScopes(actionId) as AgentScope[];
+  const requiredScopes = getActionRequiredScopes(actionId);
 
   // Actions without scope requirements are denied (deny-by-default)
   if (requiredScopes.length === 0) {

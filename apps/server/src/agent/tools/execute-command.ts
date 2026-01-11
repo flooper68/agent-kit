@@ -238,21 +238,7 @@ export function createExecuteCommandTool(
 
       const { tool: toolName, args } = parsed;
 
-      // Get the action implementation directly (no skill validation)
-      const actions = getActionsById([toolName], context.toolContext);
-      const actionImpl = actions[toolName];
-
-      if (!actionImpl) {
-        log.warn('Action not found', { actionName: toolName });
-        return {
-          success: false,
-          tool: toolName,
-          args,
-          error: `Action "${toolName}" not found or not available.`,
-        };
-      }
-
-      // Check permissions before execution
+      // Check permissions before instantiating the action
       const permCheck = checkActionPermission(
         toolName,
         context.toolContext.agentScopes
@@ -267,6 +253,20 @@ export function createExecuteCommandTool(
           tool: toolName,
           args,
           error: createPermissionError(toolName, permCheck.missingScopes),
+        };
+      }
+
+      // Get the action implementation (only after permission check passes)
+      const actions = getActionsById([toolName], context.toolContext);
+      const actionImpl = actions[toolName];
+
+      if (!actionImpl) {
+        log.warn('Action not found', { actionName: toolName });
+        return {
+          success: false,
+          tool: toolName,
+          args,
+          error: `Action "${toolName}" not found or not available.`,
         };
       }
 

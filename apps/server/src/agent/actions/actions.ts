@@ -14,6 +14,7 @@
 import type { Tool } from '../types';
 import type { ActionsContext } from './types';
 import { logger } from '../logger';
+import { AgentScope } from '../permissions/scopes';
 
 // Static actions (no context needed)
 import { getTimeTool, getTimeMetadata } from './static/get-time';
@@ -192,7 +193,7 @@ export const ACTION_METADATA: Record<string, ActionMetadata> = {
  * Get the required scopes for an action from its metadata.
  * Returns empty array if action has no scope requirements.
  */
-export function getActionRequiredScopes(actionId: string): string[] {
+export function getActionRequiredScopes(actionId: string): AgentScope[] {
   const metadata = ACTION_METADATA[actionId];
   return metadata?.requiredScopes ?? [];
 }

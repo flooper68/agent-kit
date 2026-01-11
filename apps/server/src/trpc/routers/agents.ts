@@ -59,8 +59,10 @@ const allowedSubagentsSchema = z
 const allowedSkillIdsSchema = z.array(z.string().uuid()).optional();
 
 // Schema for agent scopes (permissions)
-// Uses string array for flexibility - valid values are defined in AgentScope enum
-const scopesSchema = z.array(z.string()).optional();
+// Validates against actual scope values from AgentScope enum
+const scopesSchema = z
+  .array(z.enum(ALL_SCOPES as [string, ...string[]]))
+  .optional();
 
 export const agentsRouter = router({
   // ==========================================

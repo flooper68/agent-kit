@@ -1,4 +1,5 @@
 // Types for the Agent Builder
+import { DEFAULT_AGENT_SCOPES } from '@agent-kit/shared';
 
 export interface ThinkingConfig {
   enabled: boolean;
@@ -106,24 +107,7 @@ export const DEFAULT_AGENT_FORM_DATA: AgentFormData = {
   isFavorite: false,
   allowedSubagents: {},
   allowedSkillIds: [],
-  scopes: [
-    // Utilities - basic functions
-    'utilities:time',
-    'utilities:webSearch',
-    'utilities:fetch',
-    'utilities:extract',
-    // Artifacts - document access
-    'artifacts:read',
-    'artifacts:write',
-    // Tasks - task management
-    'tasks:read',
-    'tasks:write',
-    // Projects - read-only
-    'projects:read',
-    // UI - interaction
-    'ui:navigate',
-    'ui:state',
-  ],
+  scopes: [...DEFAULT_AGENT_SCOPES],
 };
 
 export interface ToolMetadata {

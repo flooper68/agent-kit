@@ -131,6 +131,7 @@ export function ScopesCheckboxList({
                           : 'hover:bg-muted/50 border-border',
                         disabled && 'opacity-50 cursor-not-allowed'
                       )}
+                      onClick={() => toggleScope(scope.id)}
                     >
                       <div
                         className={cn(
@@ -142,7 +143,6 @@ export function ScopesCheckboxList({
                         role="checkbox"
                         aria-checked={isSelected}
                         tabIndex={disabled ? -1 : 0}
-                        onClick={() => toggleScope(scope.id)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
@@ -152,10 +152,7 @@ export function ScopesCheckboxList({
                       >
                         {isSelected && <Check className="h-2.5 w-2.5" />}
                       </div>
-                      <span
-                        className="font-medium truncate"
-                        onClick={() => toggleScope(scope.id)}
-                      >
+                      <span className="font-medium truncate">
                         {scope.label}
                       </span>
                     </label>

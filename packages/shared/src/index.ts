@@ -69,3 +69,6 @@ export type {
 
 // Spawn configuration constants
 export { SPAWN_DEFAULTS } from './spawn-config';
+
+// Agent permission scopes
+export { AgentScope, ALL_SCOPES, DEFAULT_AGENT_SCOPES } from './scopes';
