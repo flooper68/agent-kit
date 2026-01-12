@@ -42,11 +42,11 @@ const DialogRoot = ({
     if (newOpen) {
       onOpenChange(true);
     } else {
-      // Use requestAnimationFrame to defer until after browser paint
-      // This gives Radix UI time to clean up the inert attribute
-      requestAnimationFrame(() => {
+      // Use setTimeout to defer to a new task, ensuring Radix UI
+      // has fully cleaned up the inert attribute before React re-renders
+      setTimeout(() => {
         onOpenChange(false);
-      });
+      }, 0);
     }
   };
 
