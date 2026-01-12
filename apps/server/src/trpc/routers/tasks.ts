@@ -30,12 +30,22 @@ export const tasksRouter = router({
 
   // Get tasks grouped by status (for Kanban view)
   getByStatus: orgProcedure
-    .input(z.object({ projectId: z.string().uuid() }))
+    .input(
+      z.object({
+        projectId: z.string().uuid(),
+        priority: TaskPrioritySchema.optional(),
+        hasArtifacts: z.boolean().optional(),
+        searchQuery: z.string().max(200).optional(),
+      })
+    )
     .query(async ({ ctx, input }) => {
       return ctx.tasksFeature.getByStatus({
         projectId: input.projectId,
         userId: ctx.auth.userId,
         orgId: ctx.auth.orgId,
+        priority: input.priority ? [input.priority] : undefined,
+        hasArtifacts: input.hasArtifacts,
+        searchQuery: input.searchQuery,
       });
     }),
 

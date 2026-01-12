@@ -219,13 +219,15 @@ function DashboardLayoutInner() {
     },
   });
 
+  // Note: No navigation here - user stays on current page while chat loads in side panel
+  // The side panel is always visible (showSidePanel = true) so the selected session
+  // will appear there regardless of what page the user is viewing
   const handleSessionSelect = useCallback(
     (sessionId: string) => {
       setSessionId(sessionId);
       setIsHistoryOpen(false);
-      navigate('/app');
     },
-    [setSessionId, navigate]
+    [setSessionId]
   );
 
   const handleSessionDelete = useCallback(

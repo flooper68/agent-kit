@@ -3,9 +3,21 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import type { AgentType } from '@agent-kit/ui';
+
+const STORAGE_KEY_PREFIX = 'agent-kit:lastAgentId';
+
+/**
+ * Get user-specific storage key for agent ID.
+ * Returns null if userId is not available.
+ */
+function getStorageKey(userId: string | null | undefined): string | null {
+  return userId ? `${STORAGE_KEY_PREFIX}:${userId}` : null;
+}
 
 interface AgentSelectionContextValue {
   selectedAgentId: string | null;
@@ -20,36 +32,53 @@ const AgentSelectionContext = createContext<AgentSelectionContextValue | null>(
 );
 
 export function AgentSelectionProvider({ children }: { children: ReactNode }) {
+  const { userId } = useAuth();
+
+  // Initialize to null; sync from localStorage when userId is available
   const [selectedAgentId, setSelectedAgentIdState] = useState<string | null>(
-    () => {
-      // SSR/environment safety check - localStorage may not exist
-      if (typeof window === 'undefined' || !window.localStorage) {
-        return null;
-      }
-      try {
-        return localStorage.getItem('agent-kit:lastAgentId');
-      } catch {
-        // Handle errors from private browsing modes or quota exceeded
-        return null;
-      }
-    }
+    null
   );
   const [pendingInputFocus, setPendingInputFocus] = useState(false);
 
-  const setSelectedAgentId = useCallback((agentId: string | null) => {
-    setSelectedAgentIdState(agentId);
-    if (agentId) {
+  // Sync agent selection from localStorage when userId changes
+  useEffect(() => {
+    const storageKey = getStorageKey(userId);
+    // SSR/environment safety check
+    if (typeof window === 'undefined' || !window.localStorage) {
+      setSelectedAgentIdState(null);
+      return;
+    }
+    if (!storageKey) {
+      setSelectedAgentIdState(null);
+      return;
+    }
+    try {
+      const savedAgentId = localStorage.getItem(storageKey);
+      setSelectedAgentIdState(savedAgentId);
+    } catch {
+      setSelectedAgentIdState(null);
+    }
+  }, [userId]);
+
+  const setSelectedAgentId = useCallback(
+    (agentId: string | null) => {
+      setSelectedAgentIdState(agentId);
+      const storageKey = getStorageKey(userId);
       // SSR/environment safety check
       if (typeof window === 'undefined' || !window.localStorage) {
         return;
       }
-      try {
-        localStorage.setItem('agent-kit:lastAgentId', agentId);
-      } catch {
-        // Ignore localStorage errors (private browsing, quota exceeded)
+      if (!storageKey) return;
+      if (agentId) {
+        try {
+          localStorage.setItem(storageKey, agentId);
+        } catch {
+          // Ignore localStorage errors (private browsing, quota exceeded)
+        }
       }
-    }
-  }, []);
+    },
+    [userId]
+  );
 
   const requestInputFocus = useCallback(() => {
     setPendingInputFocus(true);

@@ -1,12 +1,28 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, inArray, gt, ilike, or, type SQL } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
-import { tasks, taskArtifacts, type TaskStatus } from '../../../db/schema';
+import {
+  tasks,
+  taskArtifacts,
+  type TaskStatus,
+  type TaskPriority,
+} from '../../../db/schema';
 import type { TaskListItem } from './list-tasks-by-project';
+
+/**
+ * Escapes special SQL LIKE pattern characters to prevent pattern injection.
+ * Characters %, _, and \ have special meaning in LIKE patterns.
+ */
+function escapeLikePattern(str: string): string {
+  return str.replace(/[%_\\]/g, '\\$&');
+}
 
 export interface GetTasksByStatusInput {
   projectId: string;
   userId: string;
   orgId: string;
+  priority?: TaskPriority[];
+  hasArtifacts?: boolean;
+  searchQuery?: string;
 }
 
 export interface TasksByStatus {
@@ -27,7 +43,43 @@ export class GetTasksByStatusQuery {
   }
 
   async execute(input: GetTasksByStatusInput): Promise<GetTasksByStatusResult> {
-    const { projectId, userId, orgId } = input;
+    const { projectId, userId, orgId, priority, hasArtifacts, searchQuery } =
+      input;
+
+    const conditions: SQL[] = [
+      eq(tasks.projectId, projectId),
+      eq(tasks.userId, userId),
+      eq(tasks.orgId, orgId),
+    ];
+
+    // Filter by priority
+    if (priority && priority.length > 0) {
+      conditions.push(inArray(tasks.priority, priority));
+    }
+
+    // Filter by search query
+    if (searchQuery && searchQuery.trim()) {
+      const escapedQuery = escapeLikePattern(searchQuery.trim());
+      const searchPattern = `%${escapedQuery}%`;
+      const searchCondition = or(
+        ilike(tasks.title, searchPattern),
+        ilike(tasks.description, searchPattern)
+      );
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
+    }
+
+    // Build HAVING clause for hasArtifacts filter
+    const havingConditions: SQL[] = [];
+    if (hasArtifacts !== undefined) {
+      if (hasArtifacts) {
+        havingConditions.push(gt(sql<number>`count(${taskArtifacts.id})`, 0));
+      } else {
+        havingConditions.push(sql`count(${taskArtifacts.id}) = 0`);
+      }
+    }
+
     const results = await this.db
       .select({
         id: tasks.id,
@@ -44,14 +96,11 @@ export class GetTasksByStatusQuery {
       })
       .from(tasks)
       .leftJoin(taskArtifacts, eq(tasks.id, taskArtifacts.taskId))
-      .where(
-        and(
-          eq(tasks.projectId, projectId),
-          eq(tasks.userId, userId),
-          eq(tasks.orgId, orgId)
-        )
-      )
+      .where(and(...conditions))
       .groupBy(tasks.id)
+      .having(
+        havingConditions.length > 0 ? and(...havingConditions) : undefined
+      )
       .orderBy(tasks.position, tasks.createdAt);
 
     // Group by status

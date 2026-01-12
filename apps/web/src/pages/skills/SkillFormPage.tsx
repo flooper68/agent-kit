@@ -386,7 +386,6 @@ export function SkillFormPage() {
                     // Clear key error when user types valid input
                     if (errors.key && /^[a-z0-9-]*$/.test(sanitized)) {
                       setErrors((prev) => {
-                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
                         const { key: _, ...rest } = prev;
                         return rest;
                       });

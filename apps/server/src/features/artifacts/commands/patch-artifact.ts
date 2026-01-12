@@ -61,7 +61,9 @@ export class PatchArtifactCommand {
         );
       }
       if (endLine > totalLines) {
-        throw new Error(`endLine ${endLine} is out of range (max ${totalLines})`);
+        throw new Error(
+          `endLine ${endLine} is out of range (max ${totalLines})`
+        );
       }
 
       // Convert to 0-indexed for splice

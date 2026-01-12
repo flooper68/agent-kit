@@ -1,4 +1,4 @@
-import { Folder } from 'lucide-react';
+import { FileText, Folder } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export interface TaskCounts {
@@ -14,6 +14,7 @@ export interface ProjectCardProps {
   title: string;
   summary?: string | null;
   taskCounts: TaskCounts;
+  documentCount?: number;
   onClick?: () => void;
   className?: string;
 }
@@ -22,6 +23,7 @@ export function ProjectCard({
   title,
   summary,
   taskCounts,
+  documentCount,
   onClick,
   className,
 }: ProjectCardProps) {
@@ -48,10 +50,16 @@ export function ProjectCard({
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-foreground line-clamp-2">{title}</h3>
-          {summary && (
-            <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-              {summary}
-            </p>
+          <p className="mt-1 text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
+            {summary || '\u00A0'}
+          </p>
+          {documentCount !== undefined && (
+            <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+              <FileText className="h-3.5 w-3.5" />
+              <span>
+                {documentCount} {documentCount === 1 ? 'document' : 'documents'}
+              </span>
+            </div>
           )}
         </div>
       </div>

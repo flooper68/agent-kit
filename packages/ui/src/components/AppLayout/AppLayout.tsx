@@ -154,7 +154,7 @@ export const AppLayout = forwardRef<AppLayoutRef, AppLayoutProps>(
                 <PanelResizer />
               </>
             )}
-            <main className="flex-1 overflow-auto pb-8">{children}</main>
+            <main className="flex-1 overflow-auto pb-6">{children}</main>
           </div>
         </div>
       </AppLayoutContext.Provider>

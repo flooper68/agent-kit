@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Heading,
@@ -10,6 +10,7 @@ import {
   Button,
   Input,
   DropdownMenu,
+  Select,
   cn,
   useToast,
 } from '@agent-kit/ui';
@@ -44,8 +45,12 @@ export function ArtifactsPage() {
     null
   );
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [projectDialogSearch, setProjectDialogSearch] = useState('');
   const [searchQuery, setSearchQuery, debouncedSearch] = useUrlState('search', {
     debounceMs: 300,
+  });
+  const [projectFilter, setProjectFilter] = useUrlState('project', {
+    defaultValue: 'all',
   });
   const currentCursor = cursors[cursors.length - 1];
   const utils = trpc.useUtils();
@@ -54,16 +59,51 @@ export function ArtifactsPage() {
     document.title = 'Artifacts | Agent Kit';
   }, []);
 
-  // Reset pagination when search changes
+  // Reset pagination when search or project filter changes
   useEffect(() => {
     setCursors([]);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, projectFilter]);
 
-  const artifactsQuery = trpc.artifacts.list.useQuery({
-    limit: 25,
-    cursor: currentCursor,
-    search: debouncedSearch || undefined,
-  });
+  // Projects query (used for filter dropdown and attachment dialogs)
+  const projectsQuery = trpc.projects.list.useQuery({ limit: 50 });
+
+  // Filtered projects for dialogs (client-side search for better UX with many projects)
+  const filteredProjects = useMemo(() => {
+    const projects = projectsQuery.data?.items ?? [];
+    if (!projectDialogSearch.trim()) return projects;
+    const query = projectDialogSearch.toLowerCase();
+    return projects.filter((p) => p.title.toLowerCase().includes(query));
+  }, [projectsQuery.data?.items, projectDialogSearch]);
+
+  // Conditional query logic: use different queries based on project filter
+  const isUncategorized = projectFilter === 'uncategorized';
+  const isProjectFiltered =
+    projectFilter !== 'all' && projectFilter !== 'uncategorized';
+
+  const allArtifactsQuery = trpc.artifacts.list.useQuery(
+    {
+      limit: 25,
+      cursor: currentCursor,
+      search: debouncedSearch || undefined,
+      uncategorized: isUncategorized || undefined,
+    },
+    { enabled: !isProjectFiltered }
+  );
+
+  const projectArtifactsQuery = trpc.projects.listArtifacts.useQuery(
+    {
+      projectId: projectFilter,
+      limit: 25,
+      cursor: currentCursor,
+      search: debouncedSearch || undefined,
+    },
+    { enabled: isProjectFiltered }
+  );
+
+  // Unified query result
+  const artifactsQuery = isProjectFiltered
+    ? projectArtifactsQuery
+    : allArtifactsQuery;
 
   const deleteMutation = trpc.artifacts.delete.useMutation({
     onSuccess: () => {
@@ -72,11 +112,11 @@ export function ArtifactsPage() {
         setDeleteTarget(null);
       });
       utils.artifacts.list.invalidate();
+      if (isProjectFiltered) {
+        utils.projects.listArtifacts.invalidate({ projectId: projectFilter });
+      }
     },
   });
-
-  // Queries for attachment dialogs
-  const projectsQuery = trpc.projects.list.useQuery({ limit: 50 });
   const tasksQuery = trpc.tasks.list.useQuery(
     { projectId: selectedProjectId! },
     { enabled: !!selectedProjectId && !!attachTaskTarget }
@@ -153,14 +193,29 @@ export function ArtifactsPage() {
           </Text>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search artifacts..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+        {/* Filters */}
+        <div className="mb-4 flex gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search artifacts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select
+            value={projectFilter}
+            onValueChange={setProjectFilter}
+            options={[
+              { value: 'all', label: 'All Projects' },
+              { value: 'uncategorized', label: 'Uncategorized' },
+              ...(projectsQuery.data?.items ?? []).map((project) => ({
+                value: project.id,
+                label: project.title,
+              })),
+            ]}
+            className="w-48"
           />
         </div>
 
@@ -337,6 +392,7 @@ export function ArtifactsPage() {
           if (!open) {
             setAttachProjectTarget(null);
             setSelectedProjectId(null);
+            setProjectDialogSearch('');
           }
         }}
       >
@@ -348,6 +404,15 @@ export function ArtifactsPage() {
               &rdquo; to.
             </Dialog.Description>
           </Dialog.Header>
+          <div className="relative mb-2">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search projects..."
+              value={projectDialogSearch}
+              onChange={(e) => setProjectDialogSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
           <div className="max-h-64 overflow-y-auto">
             {projectsQuery.isLoading ? (
               <div className="space-y-2 p-2">
@@ -358,12 +423,14 @@ export function ArtifactsPage() {
                   />
                 ))}
               </div>
-            ) : projectsQuery.data?.items.length === 0 ? (
+            ) : filteredProjects.length === 0 ? (
               <Text className="p-4 text-center text-muted-foreground">
-                No projects found
+                {projectDialogSearch
+                  ? 'No matching projects'
+                  : 'No projects found'}
               </Text>
             ) : (
-              projectsQuery.data?.items.map((project) => (
+              filteredProjects.map((project) => (
                 <div
                   key={project.id}
                   className={cn(
@@ -406,6 +473,7 @@ export function ArtifactsPage() {
             setAttachTaskTarget(null);
             setSelectedProjectId(null);
             setSelectedTaskId(null);
+            setProjectDialogSearch('');
           }
         }}
       >
@@ -418,6 +486,17 @@ export function ArtifactsPage() {
                 : 'Now select a task to attach to.'}
             </Dialog.Description>
           </Dialog.Header>
+          {!selectedProjectId && (
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search projects..."
+                value={projectDialogSearch}
+                onChange={(e) => setProjectDialogSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          )}
           <div className="max-h-64 overflow-y-auto">
             {!selectedProjectId ? (
               // Step 1: Select project
@@ -430,16 +509,21 @@ export function ArtifactsPage() {
                     />
                   ))}
                 </div>
-              ) : projectsQuery.data?.items.length === 0 ? (
+              ) : filteredProjects.length === 0 ? (
                 <Text className="p-4 text-center text-muted-foreground">
-                  No projects found
+                  {projectDialogSearch
+                    ? 'No matching projects'
+                    : 'No projects found'}
                 </Text>
               ) : (
-                projectsQuery.data?.items.map((project) => (
+                filteredProjects.map((project) => (
                   <div
                     key={project.id}
                     className="cursor-pointer rounded-md p-2 hover:bg-muted"
-                    onClick={() => setSelectedProjectId(project.id)}
+                    onClick={() => {
+                      setSelectedProjectId(project.id);
+                      setProjectDialogSearch('');
+                    }}
                   >
                     <Text className="font-medium">{project.title}</Text>
                   </div>
