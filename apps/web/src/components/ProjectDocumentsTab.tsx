@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { useDebounce } from '../hooks/useDebounce';
+import { useUrlState } from '../hooks/useUrlState';
 
 interface ProjectDocumentsTabProps {
   projectId: string;
@@ -47,8 +48,10 @@ export function ProjectDocumentsTab({
 
   // State for pagination
   const [cursors, setCursors] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const [searchQuery, setSearchQuery, debouncedSearch] = useUrlState(
+    'docSearch',
+    { debounceMs: 300 }
+  );
   const currentCursor = cursors[cursors.length - 1];
 
   // State for dialogs - use external state if provided, otherwise internal

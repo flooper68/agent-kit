@@ -76,9 +76,79 @@ export function ProjectDetailPage() {
     tabParam && validTabs.includes(tabParam) ? tabParam : 'documents';
 
   const handleTabChange = (tab: string) => {
-    setSearchParams({ tab }, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams();
+        next.set('tab', tab);
+
+        // Preserve list tab filters when switching TO list
+        if (tab === 'list') {
+          ['search', 'priority', 'status', 'hasArtifacts'].forEach((param) => {
+            const value = prev.get(param);
+            if (value) next.set(param, value);
+          });
+        }
+
+        // Preserve doc search when switching TO documents
+        if (tab === 'documents') {
+          const docSearch = prev.get('docSearch');
+          if (docSearch) next.set('docSearch', docSearch);
+        }
+
+        return next;
+      },
+      { replace: true }
+    );
   };
-  const [filters, setFilters] = useState<TaskFiltersState>({});
+
+  // URL state for task filters (list tab)
+  const [searchQuery, setSearchQuery, debouncedSearchQuery] = useUrlState(
+    'search',
+    { debounceMs: 300 }
+  );
+  const [priority, setPriority] = useUrlState<Priority | undefined>(
+    'priority',
+    {
+      parse: (v) =>
+        v && ['low', 'medium', 'high', 'urgent'].includes(v)
+          ? (v as Priority)
+          : undefined,
+    }
+  );
+  const [status, setStatus] = useUrlState<PlanningTaskStatus | undefined>(
+    'status',
+    {
+      parse: (v) =>
+        v && ['backlog', 'todo', 'in_progress', 'review', 'done'].includes(v)
+          ? (v as PlanningTaskStatus)
+          : undefined,
+    }
+  );
+  const [hasArtifacts, setHasArtifacts] = useUrlState<boolean | undefined>(
+    'hasArtifacts',
+    {
+      parse: (v) => (v === 'true' ? true : undefined),
+      serialize: (v) => (v ? 'true' : undefined),
+    }
+  );
+
+  // Compose filters object for TaskFilters component
+  const filters: TaskFiltersState = useMemo(
+    () => ({
+      searchQuery: searchQuery || undefined,
+      priority,
+      status,
+      hasArtifacts,
+    }),
+    [searchQuery, priority, status, hasArtifacts]
+  );
+
+  const setFilters = useCallback((newFilters: TaskFiltersState) => {
+    setSearchQuery(newFilters.searchQuery ?? '');
+    setPriority(newFilters.priority);
+    setStatus(newFilters.status);
+    setHasArtifacts(newFilters.hasArtifacts);
+  }, [setSearchQuery, setPriority, setStatus, setHasArtifacts]);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
   const [isDeleteProjectOpen, setIsDeleteProjectOpen] = useState(false);
@@ -379,9 +449,6 @@ export function ProjectDetailPage() {
       updatedAt: new Date(task.updatedAt),
     }));
   }, [tasksQuery.data]);
-
-  // Debounce search query for client-side filtering
-  const debouncedSearchQuery = useDebounce(filters.searchQuery, 300);
 
   // Filter list tasks by search query
   const filteredListTasks = useMemo(() => {
