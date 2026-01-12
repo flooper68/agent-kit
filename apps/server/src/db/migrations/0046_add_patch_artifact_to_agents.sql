@@ -22,18 +22,18 @@ WHERE "tools"::text LIKE '%updateArtifact%'
 
 -- Update external_agents: add patchArtifact after updateArtifact
 UPDATE "external_agents"
-SET "tools" = (
+SET "allowed_tools" = (
   SELECT jsonb_agg(elem ORDER BY ord)
   FROM (
     SELECT elem, row_number() OVER () * 2 - 1 AS ord
-    FROM jsonb_array_elements("tools") AS elem
+    FROM jsonb_array_elements("allowed_tools") AS elem
     UNION ALL
     SELECT '"patchArtifact"'::jsonb AS elem,
            (row_number() OVER ()) * 2 AS ord
-    FROM jsonb_array_elements("tools") AS e
+    FROM jsonb_array_elements("allowed_tools") AS e
     WHERE e::text = '"updateArtifact"'
   ) sub
 ),
 "updated_at" = NOW()
-WHERE "tools"::text LIKE '%updateArtifact%'
-  AND "tools"::text NOT LIKE '%patchArtifact%';
+WHERE "allowed_tools"::text LIKE '%updateArtifact%'
+  AND "allowed_tools"::text NOT LIKE '%patchArtifact%';
