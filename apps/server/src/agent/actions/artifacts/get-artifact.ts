@@ -19,19 +19,19 @@ export interface GetArtifactContext {
 export function createGetArtifactTool(context: GetArtifactContext): Tool {
   return tool({
     description:
-      'Read a saved document by its ID. Supports partial reads with offset and limit parameters (like head/tail commands).',
+      'Read a saved document by its ID. Supports partial reads with startLine (1-indexed) and limit parameters.',
     inputSchema: z.object({
       artifactId: z
         .string()
         .uuid()
         .describe('The unique ID of the document to read'),
-      offset: z
+      startLine: z
         .number()
         .int()
-        .min(0)
+        .min(1)
         .optional()
         .describe(
-          'Line number to start reading from (0-indexed). Omit to start from beginning.'
+          'Line number to start reading from (1-indexed). Omit to start from beginning.'
         ),
       limit: z
         .number()
@@ -44,11 +44,11 @@ export function createGetArtifactTool(context: GetArtifactContext): Tool {
     }),
     execute: async ({
       artifactId,
-      offset,
+      startLine,
       limit,
     }: {
       artifactId: string;
-      offset?: number;
+      startLine?: number;
       limit?: number;
     }) => {
       const artifact = await context.artifactsFeature.getById({
@@ -69,12 +69,14 @@ export function createGetArtifactTool(context: GetArtifactContext): Tool {
       const totalLines = lines.length;
       let truncated = false;
 
-      // Apply offset and limit if specified
-      if (offset !== undefined || limit !== undefined) {
-        const startLine = offset ?? 0;
-        const endLine = limit !== undefined ? startLine + limit : lines.length;
-        content = lines.slice(startLine, endLine).join('\n');
-        truncated = endLine < lines.length || startLine > 0;
+      // Apply startLine and limit if specified (startLine is 1-indexed)
+      if (startLine !== undefined || limit !== undefined) {
+        // Convert 1-indexed startLine to 0-indexed for slice
+        const startIndex = startLine !== undefined ? startLine - 1 : 0;
+        const endIndex =
+          limit !== undefined ? startIndex + limit : lines.length;
+        content = lines.slice(startIndex, endIndex).join('\n');
+        truncated = endIndex < lines.length || startIndex > 0;
       }
 
       return {
@@ -84,7 +86,7 @@ export function createGetArtifactTool(context: GetArtifactContext): Tool {
         content,
         totalLines,
         truncated,
-        offset: offset ?? 0,
+        startLine: startLine ?? 1,
         linesReturned: content.split('\n').length,
         summary: artifact.summary,
         projects: artifact.projects,

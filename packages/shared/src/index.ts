@@ -22,6 +22,7 @@ export {
   searchArtifactsSchema,
   getArtifactSchema,
   updateArtifactSchema,
+  patchArtifactSchema,
   listProjectsSchema,
   searchProjectsSchema,
   getProjectSchema,

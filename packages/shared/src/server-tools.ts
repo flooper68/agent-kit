@@ -125,13 +125,13 @@ export const searchArtifactsSchema = z.object({
 
 export const getArtifactSchema = z.object({
   artifactId: z.string().uuid().describe('The artifact ID to read'),
-  offset: z
+  startLine: z
     .number()
     .int()
-    .min(0)
+    .min(1)
     .optional()
     .describe(
-      'Line number to start reading from (0-indexed). Omit to start from beginning.'
+      'Line number to start reading from (1-indexed). Omit to start from beginning.'
     ),
   limit: z
     .number()
@@ -483,7 +483,7 @@ export const SERVER_TOOL_DEFINITIONS = {
   getArtifact: {
     name: 'getArtifact',
     description:
-      'Read a saved document/artifact by its ID. Supports partial reads with offset and limit parameters.',
+      'Read a saved document/artifact by its ID. Supports partial reads with startLine (1-indexed) and limit parameters.',
     schema: getArtifactSchema,
     category: 'artifact' as const,
   },
@@ -706,7 +706,7 @@ Command format:
 Examples:
   webSearch --query "typescript best practices"
   createTask --projectId abc123 --title "Implement feature" --priority high
-  readArtifact --artifactId def456
+  getArtifact --artifactId def456
   getTime --timezone "America/New_York"
 
 Notes:
