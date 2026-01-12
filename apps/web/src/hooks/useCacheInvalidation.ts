@@ -24,6 +24,10 @@ export function useCacheInvalidation() {
           // Invalidate specific project if we have the ID
           if (event.entityId) {
             utils.projects.get.invalidate({ id: event.entityId });
+            // Invalidate project artifacts list (documents tab)
+            utils.projects.listArtifacts.invalidate({
+              projectId: event.entityId,
+            });
           }
           break;
 
