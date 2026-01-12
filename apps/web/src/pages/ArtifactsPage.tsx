@@ -255,12 +255,10 @@ export function ArtifactsPage() {
                           <DropdownMenu.Content align="end">
                             <DropdownMenu.Item
                               onClick={() =>
-                                setTimeout(() => {
-                                  setAttachProjectTarget({
-                                    id: artifact.id,
-                                    title: artifact.title,
-                                  });
-                                }, 0)
+                                setAttachProjectTarget({
+                                  id: artifact.id,
+                                  title: artifact.title,
+                                })
                               }
                             >
                               <FolderPlus className="h-4 w-4" />
@@ -268,12 +266,10 @@ export function ArtifactsPage() {
                             </DropdownMenu.Item>
                             <DropdownMenu.Item
                               onClick={() =>
-                                setTimeout(() => {
-                                  setAttachTaskTarget({
-                                    id: artifact.id,
-                                    title: artifact.title,
-                                  });
-                                }, 0)
+                                setAttachTaskTarget({
+                                  id: artifact.id,
+                                  title: artifact.title,
+                                })
                               }
                             >
                               <ListPlus className="h-4 w-4" />
@@ -283,12 +279,10 @@ export function ArtifactsPage() {
                             <DropdownMenu.Item
                               variant="destructive"
                               onClick={() =>
-                                setTimeout(() => {
-                                  setDeleteTarget({
-                                    id: artifact.id,
-                                    title: artifact.title,
-                                  });
-                                }, 0)
+                                setDeleteTarget({
+                                  id: artifact.id,
+                                  title: artifact.title,
+                                })
                               }
                             >
                               <Trash2 className="h-4 w-4" />

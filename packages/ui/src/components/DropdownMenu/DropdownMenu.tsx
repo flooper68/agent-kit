@@ -60,19 +60,31 @@ export interface DropdownMenuItemProps
 const DropdownMenuItem = forwardRef<
   React.ComponentRef<typeof DropdownMenuPrimitive.Item>,
   DropdownMenuItemProps
->(({ className, variant = 'default', ...props }, ref) => (
-  <DropdownMenuPrimitive.Item
-    ref={ref}
-    className={cn(
-      'relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
-      'transition-colors focus:bg-accent focus:text-accent-foreground',
-      'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-      variant === 'destructive' && 'text-destructive focus:text-destructive',
-      className
-    )}
-    {...props}
-  />
-));
+>(({ className, variant = 'default', onClick, ...props }, ref) => {
+  // Wrap onClick to delay execution, allowing the dropdown to fully close
+  // before any action (like opening a dialog) is triggered.
+  // This prevents pointer-events conflicts with Radix UI's dismissable layer.
+  const handleClick = onClick
+    ? (e: React.MouseEvent<HTMLDivElement>) => {
+        setTimeout(() => onClick(e), 0);
+      }
+    : undefined;
+
+  return (
+    <DropdownMenuPrimitive.Item
+      ref={ref}
+      className={cn(
+        'relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
+        'transition-colors focus:bg-accent focus:text-accent-foreground',
+        'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+        variant === 'destructive' && 'text-destructive focus:text-destructive',
+        className
+      )}
+      onClick={handleClick}
+      {...props}
+    />
+  );
+});
 
 DropdownMenuItem.displayName = 'DropdownMenuItem';
 
