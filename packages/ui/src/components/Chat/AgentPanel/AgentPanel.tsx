@@ -291,7 +291,7 @@ export const AgentPanel = memo(
 
           {/* Input area (only when not in empty state) */}
           {!showEmptyState && (
-            <div className="max-w-3xl mx-auto w-full px-4 pb-4 pt-2">
+            <div className="max-w-3xl mx-auto w-full px-4 pb-6 pt-2">
               <ChatInput
                 isSubmitting={isSubmitting || inputDisabled}
                 onSubmit={handleSubmit}

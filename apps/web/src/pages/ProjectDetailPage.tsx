@@ -50,7 +50,7 @@ import {
 import { trpc } from '../lib/trpc';
 import { useHeaderActions } from '../contexts/HeaderActionsContext';
 import { ProjectDocumentsTab } from '../components/ProjectDocumentsTab';
-import { useDebounce } from '../hooks/useDebounce';
+import { useUrlState } from '../hooks/useUrlState';
 
 type TabValue = 'backlog' | 'kanban' | 'list' | 'documents';
 
@@ -61,7 +61,7 @@ const tabLabels: Record<TabValue, string> = {
   documents: 'Documents',
 };
 
-const validTabs: TabValue[] = ['kanban', 'backlog', 'list', 'documents'];
+const validTabs: TabValue[] = ['documents', 'kanban', 'backlog', 'list'];
 
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -70,10 +70,10 @@ export function ProjectDetailPage() {
   const { setActions, setMenuItems, clearActions } = useHeaderActions();
   const { addToast } = useToast();
 
-  // Read tab from URL search params, default to 'kanban'
+  // Read tab from URL search params, default to 'documents'
   const tabParam = searchParams.get('tab') as TabValue | null;
   const activeTab =
-    tabParam && validTabs.includes(tabParam) ? tabParam : 'kanban';
+    tabParam && validTabs.includes(tabParam) ? tabParam : 'documents';
 
   const handleTabChange = (tab: string) => {
     setSearchParams({ tab }, { replace: true });
@@ -580,6 +580,10 @@ export function ProjectDetailPage() {
           <div className="space-y-3">
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <Tabs.List>
+                <Tabs.Trigger value="documents">
+                  <FileText className="mr-1 h-4 w-4" />
+                  Documents
+                </Tabs.Trigger>
                 <Tabs.Trigger value="kanban">
                   <LayoutGrid className="mr-1 h-4 w-4" />
                   Board
@@ -591,10 +595,6 @@ export function ProjectDetailPage() {
                 <Tabs.Trigger value="list">
                   <List className="mr-1 h-4 w-4" />
                   List
-                </Tabs.Trigger>
-                <Tabs.Trigger value="documents">
-                  <FileText className="mr-1 h-4 w-4" />
-                  Documents
                 </Tabs.Trigger>
               </Tabs.List>
             </Tabs>
@@ -611,7 +611,7 @@ export function ProjectDetailPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto px-4 pt-4 pb-6">
         <div className="mx-auto max-w-6xl h-full">
           {activeTab === 'backlog' && (
             <TaskListView
