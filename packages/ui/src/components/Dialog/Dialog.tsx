@@ -42,7 +42,9 @@ const DialogRoot = ({
     if (newOpen) {
       onOpenChange(true);
     } else {
-      queueMicrotask(() => {
+      // Use requestAnimationFrame to defer until after browser paint
+      // This gives Radix UI time to clean up the inert attribute
+      requestAnimationFrame(() => {
         onOpenChange(false);
       });
     }
