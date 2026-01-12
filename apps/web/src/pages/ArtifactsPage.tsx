@@ -9,8 +9,17 @@ import {
   Dialog,
   Button,
   Input,
+  DropdownMenu,
+  cn,
 } from '@agent-kit/ui';
-import { FileText, Trash2, Search } from 'lucide-react';
+import {
+  FileText,
+  Trash2,
+  Search,
+  MoreHorizontal,
+  FolderPlus,
+  ListPlus,
+} from 'lucide-react';
 import { trpc } from '../lib/trpc';
 
 /**
@@ -34,6 +43,18 @@ export function ArtifactsPage() {
     id: string;
     title: string;
   } | null>(null);
+  const [attachProjectTarget, setAttachProjectTarget] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+  const [attachTaskTarget, setAttachTaskTarget] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null
+  );
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
   const currentCursor = cursors[cursors.length - 1];
@@ -59,6 +80,35 @@ export function ArtifactsPage() {
       // Use queueMicrotask to ensure Radix UI Dialog can properly clean up
       queueMicrotask(() => {
         setDeleteTarget(null);
+      });
+      utils.artifacts.list.invalidate();
+    },
+  });
+
+  // Queries for attachment dialogs
+  const projectsQuery = trpc.projects.list.useQuery({ limit: 50 });
+  const tasksQuery = trpc.tasks.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: !!selectedProjectId && !!attachTaskTarget }
+  );
+
+  // Mutations for attaching artifacts
+  const attachToProjectMutation = trpc.projects.attachArtifact.useMutation({
+    onSuccess: () => {
+      queueMicrotask(() => {
+        setAttachProjectTarget(null);
+        setSelectedProjectId(null);
+      });
+      utils.artifacts.list.invalidate();
+    },
+  });
+
+  const attachToTaskMutation = trpc.tasks.attachArtifact.useMutation({
+    onSuccess: () => {
+      queueMicrotask(() => {
+        setAttachTaskTarget(null);
+        setSelectedProjectId(null);
+        setSelectedTaskId(null);
       });
       utils.artifacts.list.invalidate();
     },
@@ -178,22 +228,54 @@ export function ArtifactsPage() {
                       </Text>
                     </DataList.Cell>
                     <DataList.Cell shrink>
-                      <div
-                        className="flex gap-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <IconButton
-                          icon={<Trash2 className="h-4 w-4" />}
-                          onClick={() =>
-                            setDeleteTarget({
-                              id: artifact.id,
-                              title: artifact.title,
-                            })
-                          }
-                          label="Delete"
-                          size="sm"
-                          variant="destructive"
-                        />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenu.Trigger asChild>
+                            <IconButton
+                              icon={<MoreHorizontal className="h-4 w-4" />}
+                              label="Actions"
+                              size="sm"
+                              variant="ghost"
+                            />
+                          </DropdownMenu.Trigger>
+                          <DropdownMenu.Content align="end">
+                            <DropdownMenu.Item
+                              onClick={() =>
+                                setAttachProjectTarget({
+                                  id: artifact.id,
+                                  title: artifact.title,
+                                })
+                              }
+                            >
+                              <FolderPlus className="h-4 w-4" />
+                              Attach to project
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item
+                              onClick={() =>
+                                setAttachTaskTarget({
+                                  id: artifact.id,
+                                  title: artifact.title,
+                                })
+                              }
+                            >
+                              <ListPlus className="h-4 w-4" />
+                              Attach to task
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Separator />
+                            <DropdownMenu.Item
+                              variant="destructive"
+                              onClick={() =>
+                                setDeleteTarget({
+                                  id: artifact.id,
+                                  title: artifact.title,
+                                })
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </DropdownMenu.Item>
+                          </DropdownMenu.Content>
+                        </DropdownMenu>
                       </div>
                     </DataList.Cell>
                   </DataList.Item>
@@ -241,6 +323,182 @@ export function ArtifactsPage() {
               }
             >
               Delete
+            </Button>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog>
+
+      {/* Attach to Project Dialog */}
+      <Dialog
+        open={!!attachProjectTarget}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setAttachProjectTarget(null);
+            setSelectedProjectId(null);
+          }
+        }}
+      >
+        <Dialog.Content size="sm">
+          <Dialog.Header>
+            <Dialog.Title>Attach to Project</Dialog.Title>
+            <Dialog.Description>
+              Select a project to attach &ldquo;{attachProjectTarget?.title}
+              &rdquo; to.
+            </Dialog.Description>
+          </Dialog.Header>
+          <div className="max-h-64 overflow-y-auto">
+            {projectsQuery.isLoading ? (
+              <div className="space-y-2 p-2">
+                {[...Array(3)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-10 animate-pulse rounded-md bg-muted"
+                  />
+                ))}
+              </div>
+            ) : projectsQuery.data?.items.length === 0 ? (
+              <Text className="p-4 text-center text-muted-foreground">
+                No projects found
+              </Text>
+            ) : (
+              projectsQuery.data?.items.map((project) => (
+                <div
+                  key={project.id}
+                  className={cn(
+                    'cursor-pointer rounded-md p-2 hover:bg-muted',
+                    selectedProjectId === project.id && 'bg-muted'
+                  )}
+                  onClick={() => setSelectedProjectId(project.id)}
+                >
+                  <Text className="font-medium">{project.title}</Text>
+                </div>
+              ))
+            )}
+          </div>
+          <Dialog.Footer>
+            <Dialog.Close asChild>
+              <Button variant="outline">Cancel</Button>
+            </Dialog.Close>
+            <Button
+              disabled={!selectedProjectId || attachToProjectMutation.isPending}
+              onClick={() => {
+                if (attachProjectTarget && selectedProjectId) {
+                  attachToProjectMutation.mutate({
+                    projectId: selectedProjectId,
+                    artifactId: attachProjectTarget.id,
+                  });
+                }
+              }}
+            >
+              Attach
+            </Button>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog>
+
+      {/* Attach to Task Dialog */}
+      <Dialog
+        open={!!attachTaskTarget}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setAttachTaskTarget(null);
+            setSelectedProjectId(null);
+            setSelectedTaskId(null);
+          }
+        }}
+      >
+        <Dialog.Content size="sm">
+          <Dialog.Header>
+            <Dialog.Title>Attach to Task</Dialog.Title>
+            <Dialog.Description>
+              {!selectedProjectId
+                ? 'First, select a project.'
+                : 'Now select a task to attach to.'}
+            </Dialog.Description>
+          </Dialog.Header>
+          <div className="max-h-64 overflow-y-auto">
+            {!selectedProjectId ? (
+              // Step 1: Select project
+              projectsQuery.isLoading ? (
+                <div className="space-y-2 p-2">
+                  {[...Array(3)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-10 animate-pulse rounded-md bg-muted"
+                    />
+                  ))}
+                </div>
+              ) : projectsQuery.data?.items.length === 0 ? (
+                <Text className="p-4 text-center text-muted-foreground">
+                  No projects found
+                </Text>
+              ) : (
+                projectsQuery.data?.items.map((project) => (
+                  <div
+                    key={project.id}
+                    className="cursor-pointer rounded-md p-2 hover:bg-muted"
+                    onClick={() => setSelectedProjectId(project.id)}
+                  >
+                    <Text className="font-medium">{project.title}</Text>
+                  </div>
+                ))
+              )
+            ) : // Step 2: Select task
+            tasksQuery.isLoading ? (
+              <div className="space-y-2 p-2">
+                {[...Array(3)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-10 animate-pulse rounded-md bg-muted"
+                  />
+                ))}
+              </div>
+            ) : tasksQuery.data?.length === 0 ? (
+              <Text className="p-4 text-center text-muted-foreground">
+                No tasks found in this project
+              </Text>
+            ) : (
+              tasksQuery.data?.map((task) => (
+                <div
+                  key={task.id}
+                  className={cn(
+                    'cursor-pointer rounded-md p-2 hover:bg-muted',
+                    selectedTaskId === task.id && 'bg-muted'
+                  )}
+                  onClick={() => setSelectedTaskId(task.id)}
+                >
+                  <Text className="font-medium">{task.title}</Text>
+                </div>
+              ))
+            )}
+          </div>
+          <Dialog.Footer>
+            {selectedProjectId && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setSelectedProjectId(null);
+                  setSelectedTaskId(null);
+                }}
+              >
+                Back
+              </Button>
+            )}
+            <Dialog.Close asChild>
+              <Button variant="outline">Cancel</Button>
+            </Dialog.Close>
+            <Button
+              disabled={!selectedTaskId || attachToTaskMutation.isPending}
+              onClick={() => {
+                if (attachTaskTarget && selectedTaskId) {
+                  attachToTaskMutation.mutate({
+                    taskId: selectedTaskId,
+                    artifactId: attachTaskTarget.id,
+                  });
+                }
+              }}
+            >
+              Attach
             </Button>
           </Dialog.Footer>
         </Dialog.Content>
