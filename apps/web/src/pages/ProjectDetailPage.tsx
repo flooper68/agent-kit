@@ -122,12 +122,34 @@ export function ProjectDetailPage() {
   };
 
   // URL state for task filters (list tab)
-  const [searchQuery, _setSearchQuery, debouncedSearchQuery] = useUrlState(
-    'search',
+  // Note: Individual setters not used - using setFilters for atomic URL updates
+  const [searchQuery, , debouncedSearchQuery] = useUrlState('search', {
+    debounceMs: 300,
+  });
+  const [priority] = useUrlState<Priority | undefined>('priority', {
+    parse: (v) =>
+      v && ['low', 'medium', 'high', 'urgent'].includes(v)
+        ? (v as Priority)
+        : undefined,
+  });
+  const [status] = useUrlState<PlanningTaskStatus | undefined>('status', {
+    parse: (v) =>
+      v && ['backlog', 'todo', 'in_progress', 'review', 'done'].includes(v)
+        ? (v as PlanningTaskStatus)
+        : undefined,
+  });
+  const [hasArtifacts] = useUrlState<boolean | undefined>('hasArtifacts', {
+    parse: (v) => (v === 'true' ? true : undefined),
+    serialize: (v) => (v ? 'true' : undefined),
+  });
+
+  // URL state for backlog filters (separate from list tab)
+  const [backlogSearchQuery, , debouncedBacklogSearch] = useUrlState(
+    'backlogSearch',
     { debounceMs: 300 }
   );
-  const [priority, _setPriority] = useUrlState<Priority | undefined>(
-    'priority',
+  const [backlogPriority] = useUrlState<Priority | undefined>(
+    'backlogPriority',
     {
       parse: (v) =>
         v && ['low', 'medium', 'high', 'urgent'].includes(v)
@@ -135,58 +157,79 @@ export function ProjectDetailPage() {
           : undefined,
     }
   );
-  const [status, _setStatus] = useUrlState<PlanningTaskStatus | undefined>(
-    'status',
-    {
-      parse: (v) =>
-        v && ['backlog', 'todo', 'in_progress', 'review', 'done'].includes(v)
-          ? (v as PlanningTaskStatus)
-          : undefined,
-    }
-  );
-  const [hasArtifacts, _setHasArtifacts] = useUrlState<boolean | undefined>(
-    'hasArtifacts',
+  const [backlogHasArtifacts] = useUrlState<boolean | undefined>(
+    'backlogHasArtifacts',
     {
       parse: (v) => (v === 'true' ? true : undefined),
       serialize: (v) => (v ? 'true' : undefined),
     }
   );
 
-  // URL state for backlog filters (separate from list tab)
-  const [backlogSearchQuery, _setBacklogSearchQuery, debouncedBacklogSearch] =
-    useUrlState('backlogSearch', { debounceMs: 300 });
-  const [backlogPriority, _setBacklogPriority] = useUrlState<
-    Priority | undefined
-  >('backlogPriority', {
-    parse: (v) =>
-      v && ['low', 'medium', 'high', 'urgent'].includes(v)
-        ? (v as Priority)
-        : undefined,
-  });
-  const [backlogHasArtifacts, _setBacklogHasArtifacts] = useUrlState<
-    boolean | undefined
-  >('backlogHasArtifacts', {
-    parse: (v) => (v === 'true' ? true : undefined),
-    serialize: (v) => (v ? 'true' : undefined),
-  });
-
   // URL state for kanban/board filters (separate from other tabs)
-  const [kanbanSearchQuery, _setKanbanSearchQuery, debouncedKanbanSearch] =
-    useUrlState('kanbanSearch', { debounceMs: 300 });
-  const [kanbanPriority, _setKanbanPriority] = useUrlState<
-    Priority | undefined
-  >('kanbanPriority', {
+  const [kanbanSearchQuery, , debouncedKanbanSearch] = useUrlState(
+    'kanbanSearch',
+    { debounceMs: 300 }
+  );
+  const [kanbanPriority] = useUrlState<Priority | undefined>('kanbanPriority', {
     parse: (v) =>
       v && ['low', 'medium', 'high', 'urgent'].includes(v)
         ? (v as Priority)
         : undefined,
   });
-  const [kanbanHasArtifacts, _setKanbanHasArtifacts] = useUrlState<
-    boolean | undefined
-  >('kanbanHasArtifacts', {
-    parse: (v) => (v === 'true' ? true : undefined),
-    serialize: (v) => (v ? 'true' : undefined),
-  });
+  const [kanbanHasArtifacts] = useUrlState<boolean | undefined>(
+    'kanbanHasArtifacts',
+    {
+      parse: (v) => (v === 'true' ? true : undefined),
+      serialize: (v) => (v ? 'true' : undefined),
+    }
+  );
+
+  // Factory for creating filter setters with configurable URL param names
+  const createFilterSetter = useCallback(
+    (paramNames: {
+      search: string;
+      priority: string;
+      hasArtifacts: string;
+      status?: string;
+    }) =>
+      (newFilters: TaskFiltersState) => {
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+
+            if (newFilters.searchQuery) {
+              next.set(paramNames.search, newFilters.searchQuery);
+            } else {
+              next.delete(paramNames.search);
+            }
+
+            if (newFilters.priority) {
+              next.set(paramNames.priority, newFilters.priority);
+            } else {
+              next.delete(paramNames.priority);
+            }
+
+            if (paramNames.status) {
+              if (newFilters.status) {
+                next.set(paramNames.status, newFilters.status);
+              } else {
+                next.delete(paramNames.status);
+              }
+            }
+
+            if (newFilters.hasArtifacts) {
+              next.set(paramNames.hasArtifacts, 'true');
+            } else {
+              next.delete(paramNames.hasArtifacts);
+            }
+
+            return next;
+          },
+          { replace: true }
+        );
+      },
+    [setSearchParams]
+  );
 
   // Compose filters object for TaskFilters component
   const filters: TaskFiltersState = useMemo(
@@ -199,42 +242,15 @@ export function ProjectDetailPage() {
     [searchQuery, priority, status, hasArtifacts]
   );
 
-  const setFilters = useCallback(
-    (newFilters: TaskFiltersState) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-
-          if (newFilters.searchQuery) {
-            next.set('search', newFilters.searchQuery);
-          } else {
-            next.delete('search');
-          }
-
-          if (newFilters.priority) {
-            next.set('priority', newFilters.priority);
-          } else {
-            next.delete('priority');
-          }
-
-          if (newFilters.status) {
-            next.set('status', newFilters.status);
-          } else {
-            next.delete('status');
-          }
-
-          if (newFilters.hasArtifacts) {
-            next.set('hasArtifacts', 'true');
-          } else {
-            next.delete('hasArtifacts');
-          }
-
-          return next;
-        },
-        { replace: true }
-      );
-    },
-    [setSearchParams]
+  const setFilters = useMemo(
+    () =>
+      createFilterSetter({
+        search: 'search',
+        priority: 'priority',
+        status: 'status',
+        hasArtifacts: 'hasArtifacts',
+      }),
+    [createFilterSetter]
   );
 
   // Compose backlog filters object
@@ -247,36 +263,14 @@ export function ProjectDetailPage() {
     [backlogSearchQuery, backlogPriority, backlogHasArtifacts]
   );
 
-  const setBacklogFilters = useCallback(
-    (newFilters: TaskFiltersState) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-
-          if (newFilters.searchQuery) {
-            next.set('backlogSearch', newFilters.searchQuery);
-          } else {
-            next.delete('backlogSearch');
-          }
-
-          if (newFilters.priority) {
-            next.set('backlogPriority', newFilters.priority);
-          } else {
-            next.delete('backlogPriority');
-          }
-
-          if (newFilters.hasArtifacts) {
-            next.set('backlogHasArtifacts', 'true');
-          } else {
-            next.delete('backlogHasArtifacts');
-          }
-
-          return next;
-        },
-        { replace: true }
-      );
-    },
-    [setSearchParams]
+  const setBacklogFilters = useMemo(
+    () =>
+      createFilterSetter({
+        search: 'backlogSearch',
+        priority: 'backlogPriority',
+        hasArtifacts: 'backlogHasArtifacts',
+      }),
+    [createFilterSetter]
   );
 
   // Compose kanban filters object
@@ -289,36 +283,14 @@ export function ProjectDetailPage() {
     [kanbanSearchQuery, kanbanPriority, kanbanHasArtifacts]
   );
 
-  const setKanbanFilters = useCallback(
-    (newFilters: TaskFiltersState) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-
-          if (newFilters.searchQuery) {
-            next.set('kanbanSearch', newFilters.searchQuery);
-          } else {
-            next.delete('kanbanSearch');
-          }
-
-          if (newFilters.priority) {
-            next.set('kanbanPriority', newFilters.priority);
-          } else {
-            next.delete('kanbanPriority');
-          }
-
-          if (newFilters.hasArtifacts) {
-            next.set('kanbanHasArtifacts', 'true');
-          } else {
-            next.delete('kanbanHasArtifacts');
-          }
-
-          return next;
-        },
-        { replace: true }
-      );
-    },
-    [setSearchParams]
+  const setKanbanFilters = useMemo(
+    () =>
+      createFilterSetter({
+        search: 'kanbanSearch',
+        priority: 'kanbanPriority',
+        hasArtifacts: 'kanbanHasArtifacts',
+      }),
+    [createFilterSetter]
   );
 
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
@@ -607,40 +579,6 @@ export function ProjectDetailPage() {
     }));
   }, [kanbanTasksQuery.data]);
 
-  // Filter kanban tasks by filters
-  const filteredKanbanTasks = useMemo(() => {
-    let filtered = kanbanTasks;
-
-    // Filter by priority
-    if (kanbanFilters.priority) {
-      filtered = filtered.filter(
-        (task) => task.priority === kanbanFilters.priority
-      );
-    }
-
-    // Filter by hasArtifacts
-    if (kanbanFilters.hasArtifacts) {
-      filtered = filtered.filter((task) => (task.artifactCount ?? 0) > 0);
-    }
-
-    // Filter by search query
-    if (debouncedKanbanSearch) {
-      const query = debouncedKanbanSearch.toLowerCase();
-      filtered = filtered.filter(
-        (task) =>
-          task.title.toLowerCase().includes(query) ||
-          task.description?.toLowerCase().includes(query)
-      );
-    }
-
-    return filtered;
-  }, [
-    kanbanTasks,
-    kanbanFilters.priority,
-    kanbanFilters.hasArtifacts,
-    debouncedKanbanSearch,
-  ]);
-
   // Transform tasks for Backlog view (sorted by position for DnD)
   // Use createdAt as secondary sort to handle duplicate positions
   // Filters are applied server-side via backlogTasksQuery
@@ -666,40 +604,6 @@ export function ProjectDetailPage() {
         return a.createdAt.getTime() - b.createdAt.getTime();
       });
   }, [backlogTasksQuery.data]);
-
-  // Filter backlog tasks by filters
-  const filteredBacklogTasks = useMemo(() => {
-    let filtered = backlogTasks;
-
-    // Filter by priority
-    if (backlogFilters.priority) {
-      filtered = filtered.filter(
-        (task) => task.priority === backlogFilters.priority
-      );
-    }
-
-    // Filter by hasArtifacts
-    if (backlogFilters.hasArtifacts) {
-      filtered = filtered.filter((task) => (task.artifactCount ?? 0) > 0);
-    }
-
-    // Filter by search query
-    if (debouncedBacklogSearch) {
-      const query = debouncedBacklogSearch.toLowerCase();
-      filtered = filtered.filter(
-        (task) =>
-          task.title.toLowerCase().includes(query) ||
-          task.description?.toLowerCase().includes(query)
-      );
-    }
-
-    return filtered;
-  }, [
-    backlogTasks,
-    backlogFilters.priority,
-    backlogFilters.hasArtifacts,
-    debouncedBacklogSearch,
-  ]);
 
   // Transform tasks for TaskListView
   const listTasks = useMemo(() => {
@@ -977,7 +881,7 @@ export function ProjectDetailPage() {
         <div className="mx-auto max-w-6xl h-full">
           {activeTab === 'backlog' && (
             <TaskListView
-              tasks={filteredBacklogTasks}
+              tasks={backlogTasks}
               onTaskClick={handleTaskClick}
               onEdit={handleTaskClick}
               onStatusChange={handleTaskStatusChange}
@@ -996,7 +900,7 @@ export function ProjectDetailPage() {
           )}
           {activeTab === 'kanban' && (
             <KanbanBoard
-              tasks={filteredKanbanTasks}
+              tasks={kanbanTasks}
               onTaskMove={handleTaskMove}
               onTaskClick={handleTaskClick}
               className="h-full"

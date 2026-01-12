@@ -35,7 +35,7 @@ export const tasksRouter = router({
         projectId: z.string().uuid(),
         priority: TaskPrioritySchema.optional(),
         hasArtifacts: z.boolean().optional(),
-        searchQuery: z.string().optional(),
+        searchQuery: z.string().max(200).optional(),
       })
     )
     .query(async ({ ctx, input }) => {

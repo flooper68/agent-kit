@@ -8,6 +8,14 @@ import {
 } from '../../../db/schema';
 import type { TaskListItem } from './list-tasks-by-project';
 
+/**
+ * Escapes special SQL LIKE pattern characters to prevent pattern injection.
+ * Characters %, _, and \ have special meaning in LIKE patterns.
+ */
+function escapeLikePattern(str: string): string {
+  return str.replace(/[%_\\]/g, '\\$&');
+}
+
 export interface GetTasksByStatusInput {
   projectId: string;
   userId: string;
@@ -51,13 +59,15 @@ export class GetTasksByStatusQuery {
 
     // Filter by search query
     if (searchQuery && searchQuery.trim()) {
-      const searchPattern = `%${searchQuery.trim()}%`;
-      conditions.push(
-        or(
-          ilike(tasks.title, searchPattern),
-          ilike(tasks.description, searchPattern)
-        )!
+      const escapedQuery = escapeLikePattern(searchQuery.trim());
+      const searchPattern = `%${escapedQuery}%`;
+      const searchCondition = or(
+        ilike(tasks.title, searchPattern),
+        ilike(tasks.description, searchPattern)
       );
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
     }
 
     // Build HAVING clause for hasArtifacts filter

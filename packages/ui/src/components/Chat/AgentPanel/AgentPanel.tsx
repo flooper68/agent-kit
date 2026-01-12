@@ -239,7 +239,8 @@ export const AgentPanel = memo(
             >
               {messages.map((message, index) => (
                 <MessageListItem
-                  key={message.id}
+                  // Id changes (optimistic→real) but index stays same
+                  key={index}
                   message={message}
                   index={index}
                   messagesLength={messages.length}
