@@ -17,7 +17,7 @@ import type { ExecuteSkillResult, ParsedCommand } from '../skills/types';
 import { getActionsById } from '../actions';
 import type { ToolsContext } from './types';
 import { logger } from '../logger';
-import { SERVER_TOOL_DEFINITIONS } from '@agent-kit/shared';
+import { SERVER_TOOL_DEFINITIONS, type ToolName } from '@agent-kit/shared';
 import { checkActionPermission, createPermissionError } from '../permissions';
 
 const log = logger.child({ module: 'execute-command-tool' });
@@ -270,13 +270,35 @@ export function createExecuteCommandTool(
         };
       }
 
+      // Validate args against schema before execution
+      const toolDef = SERVER_TOOL_DEFINITIONS[toolName as ToolName];
+      if (toolDef?.schema) {
+        const validationResult = toolDef.schema.safeParse(args);
+        if (!validationResult.success) {
+          const errors = validationResult.error.issues
+            .map((issue) => `${issue.path.join('.') || 'argument'}: ${issue.message}`)
+            .join(', ');
+
+          log.warn('Argument validation failed', {
+            actionName: toolName,
+            args,
+            errors,
+          });
+
+          return {
+            success: false,
+            tool: toolName,
+            args,
+            error: `Invalid arguments for ${toolName}: ${errors}. Check parameter names and types.`,
+          };
+        }
+      }
+
       // Execute the action
       try {
         log.info('Executing action', { actionName: toolName, args });
 
-        // The AI SDK tool has an execute function we need to call
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const result = await (actionImpl as any).execute(args);
+        const result = await actionImpl.execute(args);
 
         log.info('Action execution completed', {
           actionName: toolName,
