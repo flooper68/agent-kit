@@ -271,9 +271,6 @@ export function AppCommandPalette({
           trackUsage('new-chat');
           clearSession();
           onExpandPanel?.();
-          if (shouldNavigateOnChatOpen) {
-            navigate('/app');
-          }
         },
       },
       {

@@ -73,6 +73,14 @@ export function useElapsedTime({
     }
   }, [startTime, isRunning]);
 
+  // Reset finalElapsed when startTime is cleared (session switch)
+  useEffect(() => {
+    if (!startTime) {
+      setFinalElapsed(null);
+      wasRunningRef.current = false;
+    }
+  }, [startTime]);
+
   const displayElapsed = finalElapsed ?? elapsed;
 
   // Don't show time if we haven't started counting

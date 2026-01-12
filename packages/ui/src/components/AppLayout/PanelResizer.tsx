@@ -73,7 +73,7 @@ export const PanelResizer = ({
 
   return (
     <div
-      className="w-1 cursor-col-resize flex-shrink-0 relative group"
+      className="w-1 cursor-col-resize flex-shrink-0 flex items-center justify-center group"
       onMouseDown={handleMouseDown}
       role="separator"
       aria-orientation="vertical"
@@ -85,8 +85,7 @@ export const PanelResizer = ({
       {/* Visual handle - only visible on hover or while dragging */}
       <div
         className={cn(
-          'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
-          'w-1 h-8 rounded-full',
+          'w-1 h-8 rounded-full -translate-x-0.5',
           'opacity-0 group-hover:opacity-100',
           'bg-primary/60',
           'transition-opacity',

@@ -11,20 +11,7 @@ import {
 import { BookOpen, Search, Plus, Files, Lock } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { useHeaderActions } from '../contexts/HeaderActionsContext';
-
-/**
- * Custom hook for debouncing a value
- */
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-
-  return debouncedValue;
-}
+import { useUrlState } from '../hooks/useUrlState';
 
 type FilterType = 'all' | 'system' | 'user';
 
@@ -32,9 +19,14 @@ export function SkillsPage() {
   const navigate = useNavigate();
   const { setActions, clearActions } = useHeaderActions();
   const [cursors, setCursors] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<FilterType>('all');
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const [searchQuery, setSearchQuery, debouncedSearch] = useUrlState('search', {
+    debounceMs: 300,
+  });
+  const [filter, setFilter] = useUrlState<FilterType>('filter', {
+    defaultValue: 'all',
+    parse: (v) =>
+      v && ['all', 'system', 'user'].includes(v) ? (v as FilterType) : 'all',
+  });
   const currentCursor = cursors[cursors.length - 1];
 
   useEffect(() => {

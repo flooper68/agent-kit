@@ -22,20 +22,7 @@ import {
   ListPlus,
 } from 'lucide-react';
 import { trpc } from '../lib/trpc';
-
-/**
- * Custom hook for debouncing a value
- */
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-
-  return debouncedValue;
-}
+import { useUrlState } from '../hooks/useUrlState';
 
 export function ArtifactsPage() {
   const navigate = useNavigate();
@@ -57,8 +44,9 @@ export function ArtifactsPage() {
     null
   );
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const [searchQuery, setSearchQuery, debouncedSearch] = useUrlState('search', {
+    debounceMs: 300,
+  });
   const currentCursor = cursors[cursors.length - 1];
   const utils = trpc.useUtils();
 
