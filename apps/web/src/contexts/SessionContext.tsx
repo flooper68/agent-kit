@@ -1,6 +1,21 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+} from 'react';
+import { useAuth } from '@clerk/clerk-react';
 
-const STORAGE_KEY_SESSION = 'agent-kit:lastSessionId';
+const STORAGE_KEY_PREFIX = 'agent-kit:lastSessionId';
+
+/**
+ * Get user-specific storage key for session ID.
+ * Returns null if userId is not available.
+ */
+function getStorageKey(userId: string | null | undefined): string | null {
+  return userId ? `${STORAGE_KEY_PREFIX}:${userId}` : null;
+}
 
 /**
  * Check if localStorage is available.
@@ -32,20 +47,31 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const [sessionId, setSessionIdState] = useState<string | null>(() => {
-    if (!storageAvailable) return null;
-    try {
-      return localStorage.getItem(STORAGE_KEY_SESSION);
-    } catch {
-      return null;
-    }
-  });
+  const { userId } = useAuth();
+
+  // Initialize to null; sync from localStorage when userId is available
+  const [sessionId, setSessionIdState] = useState<string | null>(null);
 
   // Track streaming sessions client-side for immediate UI feedback
   // This eliminates race conditions with pub/sub event propagation
   const [streamingSessionIds, setStreamingSessionIds] = useState<Set<string>>(
     new Set()
   );
+
+  // Sync session state from localStorage when userId changes
+  useEffect(() => {
+    const storageKey = getStorageKey(userId);
+    if (!storageKey || !storageAvailable) {
+      setSessionIdState(null);
+      return;
+    }
+    try {
+      const savedSession = localStorage.getItem(storageKey);
+      setSessionIdState(savedSession);
+    } catch {
+      setSessionIdState(null);
+    }
+  }, [userId]);
 
   const setSessionStreaming = useCallback(
     (sessionId: string, isStreaming: boolean) => {
@@ -62,29 +88,34 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  const setSessionId = useCallback((id: string | null) => {
-    setSessionIdState(id);
-    if (!storageAvailable) return;
-    try {
-      if (id) {
-        localStorage.setItem(STORAGE_KEY_SESSION, id);
-      } else {
-        localStorage.removeItem(STORAGE_KEY_SESSION);
+  const setSessionId = useCallback(
+    (id: string | null) => {
+      setSessionIdState(id);
+      const storageKey = getStorageKey(userId);
+      if (!storageAvailable || !storageKey) return;
+      try {
+        if (id) {
+          localStorage.setItem(storageKey, id);
+        } else {
+          localStorage.removeItem(storageKey);
+        }
+      } catch {
+        // Ignore localStorage errors
       }
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
+    },
+    [userId]
+  );
 
   const clearSession = useCallback(() => {
     setSessionIdState(null);
-    if (!storageAvailable) return;
+    const storageKey = getStorageKey(userId);
+    if (!storageAvailable || !storageKey) return;
     try {
-      localStorage.removeItem(STORAGE_KEY_SESSION);
+      localStorage.removeItem(storageKey);
     } catch {
       // Ignore localStorage errors
     }
-  }, []);
+  }, [userId]);
 
   return (
     <SessionContext.Provider
