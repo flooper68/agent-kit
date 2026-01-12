@@ -34,25 +34,11 @@ const DialogRoot = ({
   modal = true,
   children,
 }: DialogProps) => {
-  // Wrap onOpenChange to defer close events, allowing Radix UI to clean up
-  // the inert attribute before React re-renders
-  const handleOpenChange = (newOpen: boolean) => {
-    if (!onOpenChange) return;
-
-    if (newOpen) {
-      onOpenChange(true);
-    } else {
-      queueMicrotask(() => {
-        onOpenChange(false);
-      });
-    }
-  };
-
   return (
     <DialogPrimitive.Root
       open={open}
       defaultOpen={defaultOpen}
-      onOpenChange={handleOpenChange}
+      onOpenChange={onOpenChange}
       modal={modal}
     >
       <DialogContext.Provider value={{ open: open ?? false }}>
