@@ -20,7 +20,7 @@ export {
   fetchSchema,
   writeArtifactSchema,
   searchArtifactsSchema,
-  readArtifactSchema,
+  getArtifactSchema,
   updateArtifactSchema,
   listProjectsSchema,
   searchProjectsSchema,

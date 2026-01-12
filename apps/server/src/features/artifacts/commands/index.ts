@@ -13,3 +13,5 @@ export type {
   UpdateArtifactInput,
   UpdateArtifactResult,
 } from './update-artifact';
+export { PatchArtifactCommand } from './patch-artifact';
+export type { PatchArtifactInput, PatchArtifactResult } from './patch-artifact';

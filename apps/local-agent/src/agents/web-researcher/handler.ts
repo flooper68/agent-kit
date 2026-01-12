@@ -21,7 +21,7 @@ export class WebResearcherHandler implements AgentHandler {
       ...config,
       loggerName: 'WebResearcher',
       errorCodePrefix: 'WEB_RESEARCHER',
-      artifactRelay: context?.artifactRelay,
+      serverRelay: context?.serverRelay,
     });
   }
 

@@ -276,7 +276,10 @@ export function createExecuteCommandTool(
         const validationResult = toolDef.schema.safeParse(args);
         if (!validationResult.success) {
           const errors = validationResult.error.issues
-            .map((issue) => `${issue.path.join('.') || 'argument'}: ${issue.message}`)
+            .map(
+              (issue) =>
+                `${issue.path.join('.') || 'argument'}: ${issue.message}`
+            )
             .join(', ');
 
           log.warn('Argument validation failed', {

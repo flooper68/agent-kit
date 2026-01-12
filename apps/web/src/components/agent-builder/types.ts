@@ -63,7 +63,7 @@ export const DEFAULT_AGENT_FORM_DATA: AgentFormData = {
     'fetch',
     // Artifact tools
     'writeArtifact',
-    'readArtifact',
+    'getArtifact',
     'searchArtifacts',
     'updateArtifact',
     // Project tools

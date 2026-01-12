@@ -207,28 +207,6 @@ export const EventPayloadSchema = z.object({
 
 export type EventPayload = z.infer<typeof EventPayloadSchema>;
 
-// Artifact tool request sent from agent to server
-export const ArtifactToolNameSchema = z.enum([
-  'writeArtifact',
-  'readArtifact',
-  'searchArtifacts',
-]);
-
-export type ArtifactToolName = z.infer<typeof ArtifactToolNameSchema>;
-
-export const ArtifactToolRequestPayloadSchema = z.object({
-  type: z.literal('artifact_tool_request'),
-  requestId: z.string().uuid(),
-  sessionId: z.string().uuid(),
-  tool: ArtifactToolNameSchema,
-  params: z.record(z.string(), z.unknown()),
-  timestamp: z.string(),
-});
-
-export type ArtifactToolRequestPayload = z.infer<
-  typeof ArtifactToolRequestPayloadSchema
->;
-
 // Server tool request sent from agent to server
 export const ServerToolRequestPayloadSchema = z.object({
   type: z.literal('server_tool_request'),
@@ -247,7 +225,6 @@ export type ServerToolRequestPayload = z.infer<
 // Agent to server message types
 export const AgentToServerMessageSchema = z.discriminatedUnion('type', [
   EventPayloadSchema,
-  ArtifactToolRequestPayloadSchema,
   ServerToolRequestPayloadSchema,
 ]);
 
@@ -285,9 +262,7 @@ export interface ClaudeCodeHandlerConfig extends AgentHandlerConfig {
   customSystemPrompt?: string;
   /** Permission handling mode (for Claude CLI) */
   permissionMode?: 'dangerously-skip-permissions' | 'allowed-tools';
-  /** Enable server artifact tools via WebSocket relay */
-  enableArtifactTools?: boolean;
-  /** Enable all server tools via WebSocket relay (supersedes enableArtifactTools) */
+  /** Enable all server tools via WebSocket relay */
   enableServerTools?: boolean;
   /**
    * Use an isolated temp directory as cwd instead of the configured cwd.

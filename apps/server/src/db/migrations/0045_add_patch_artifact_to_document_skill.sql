@@ -1,0 +1,11 @@
+-- Add patchArtifact tool to document-management skill
+
+UPDATE "skills"
+SET "files" = '[
+  {
+    "path": "SKILL.md",
+    "content": "# Document Management Skill\n\nManage documents (artifacts) - create, read, update, patch, and search.\n\n## Available Tools\n\n- **writeArtifact**: Create a new document\n- **getArtifact**: Read an existing document by ID (supports partial reads)\n- **searchArtifacts**: Search documents by title/content\n- **updateArtifact**: Update an existing document (replaces entire content)\n- **patchArtifact**: Patch specific lines of a document (for surgical edits)\n\n## Common Operations\n\n### Create a Document\n```\nwriteArtifact --title \"Meeting Notes\" --content \"# Meeting Notes\\n\\n...\" --summary \"Notes from team sync\"\n```\n\n### Search Documents\n```\nsearchArtifacts --query \"meeting notes\"\n```\n\n### Read a Document\n```\ngetArtifact --artifactId \"uuid-here\"\n```\n\n### Read First 50 Lines (like head)\n```\ngetArtifact --artifactId \"uuid-here\" --limit 50\n```\n\n### Read Lines 100-150 (pagination)\n```\ngetArtifact --artifactId \"uuid-here\" --offset 100 --limit 50\n```\n\n### Update Entire Document\n```\nupdateArtifact --artifactId \"uuid-here\" --content \"Updated content...\"\n```\n\n### Patch Specific Lines\nReplace lines 5-10 with new content:\n```\npatchArtifact --artifactId \"uuid-here\" --startLine 5 --endLine 10 --newContent \"replacement text\"\n```\n\n### Delete Lines\nDelete lines 3-5 (use empty newContent):\n```\npatchArtifact --artifactId \"uuid-here\" --startLine 3 --endLine 5 --newContent \"\"\n```\n\n### Insert Lines\nInsert before line 7 (set endLine to startLine - 1):\n```\npatchArtifact --artifactId \"uuid-here\" --startLine 7 --endLine 6 --newContent \"inserted line\"\n```\n\n## Best Practices\n\n- Use descriptive titles for easy searching\n- Include a summary for quick reference\n- Use markdown formatting for structure\n- Search before creating to avoid duplicates\n- Use offset/limit for large documents to reduce response size\n- Use patchArtifact for small edits instead of replacing entire content\n- Always use getArtifact first to see current line numbers before patching\n"
+  }
+]'::jsonb,
+"updated_at" = NOW()
+WHERE "key" = 'document-management' AND "is_system" = true;

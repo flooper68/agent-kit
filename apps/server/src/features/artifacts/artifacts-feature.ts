@@ -5,11 +5,13 @@ import {
   CreateArtifactCommand,
   DeleteArtifactCommand,
   UpdateArtifactCommand,
+  PatchArtifactCommand,
 } from './commands';
 import type {
   CreateArtifactInput,
   DeleteArtifactInput,
   UpdateArtifactInput,
+  PatchArtifactInput,
 } from './commands';
 import {
   GetArtifactByIdQuery,
@@ -41,6 +43,7 @@ export class ArtifactsFeature {
   private createArtifactCommand: CreateArtifactCommand;
   private deleteArtifactCommand: DeleteArtifactCommand;
   private updateArtifactCommand: UpdateArtifactCommand;
+  private patchArtifactCommand: PatchArtifactCommand;
   private getArtifactByIdQuery: GetArtifactByIdQuery;
   private listArtifactsQuery: ListArtifactsQuery;
   private searchArtifactsQuery: SearchArtifactsQuery;
@@ -53,6 +56,7 @@ export class ArtifactsFeature {
     this.createArtifactCommand = new CreateArtifactCommand(db);
     this.deleteArtifactCommand = new DeleteArtifactCommand(db);
     this.updateArtifactCommand = new UpdateArtifactCommand(db);
+    this.patchArtifactCommand = new PatchArtifactCommand(db);
     this.getArtifactByIdQuery = new GetArtifactByIdQuery(db);
     this.listArtifactsQuery = new ListArtifactsQuery(db);
     this.searchArtifactsQuery = new SearchArtifactsQuery(db);
@@ -92,6 +96,17 @@ export class ArtifactsFeature {
 
   async update(input: UpdateArtifactInput): Promise<Artifact | undefined> {
     const artifact = await this.updateArtifactCommand.execute(input);
+    if (artifact) {
+      await this.cacheInvalidation?.publishArtifactUpdated(
+        input.userId,
+        artifact.id
+      );
+    }
+    return artifact;
+  }
+
+  async patch(input: PatchArtifactInput): Promise<Artifact | undefined> {
+    const artifact = await this.patchArtifactCommand.execute(input);
     if (artifact) {
       await this.cacheInvalidation?.publishArtifactUpdated(
         input.userId,

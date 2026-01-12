@@ -7,11 +7,11 @@ const log = createLogger('WebResearcher');
 // Handler type identifier
 const HANDLER_TYPE = 'web-researcher';
 
-// Web-specific tools + artifact write tool
+// Web-specific tools + artifact write tool via server MCP
 const ALLOWED_TOOLS = [
   'WebFetch',
   'WebSearch',
-  'mcp__agent-kit-artifacts__writeArtifact',
+  'mcp__agent-kit-server__writeArtifact',
   'TodoRead',
   'TodoWrite',
 ];
@@ -107,7 +107,7 @@ const client = new LocalAgentClient({
     model: env.MODEL,
     maxThinkingTokens: env.MAX_THINKING_TOKENS,
     includePartialMessages: true,
-    enableArtifactTools: true,
+    enableServerTools: true,
     customSystemPrompt: SYSTEM_PROMPT,
     useIsolatedSessionCwd: true, // Prevent loading .claude.md from working directory
   },

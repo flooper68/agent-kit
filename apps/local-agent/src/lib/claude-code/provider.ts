@@ -12,17 +12,13 @@ import type {
 import { SDKMessageMapper } from './message-mapper';
 import { reconstructConversationFromEvents } from './conversation-builder';
 import { createLogger } from '../logger';
-import { createArtifactMcpServer } from '../artifact-mcp-server';
 import { createServerToolsMcpServer } from '../server-tools-mcp-server';
-import type { ArtifactToolRelay } from '../artifact-tool-relay';
 import type { ServerToolRelay } from '../server-tool-relay';
 
 export interface ClaudeCodeProviderConfig extends ClaudeCodeHandlerConfig {
   /** Logger name prefix */
   loggerName: string;
-  /** Artifact tool relay for communicating with the server (optional, legacy) */
-  artifactRelay?: ArtifactToolRelay;
-  /** Server tool relay for all server operations (supersedes artifactRelay) */
+  /** Server tool relay for all server operations */
   serverRelay?: ServerToolRelay;
 }
 
@@ -169,22 +165,14 @@ export class ClaudeCodeProvider {
       // Configure MCP servers based on enabled tools
       const mcpServers: Record<string, unknown> = {};
 
-      // Add in-process MCP server for server tools if enabled (supersedes artifact tools)
+      // Add in-process MCP server for server tools if enabled
       if (this.config.enableServerTools && this.config.serverRelay) {
         mcpServers['agent-kit-server'] = createServerToolsMcpServer(
           this.config.serverRelay,
           sessionId,
           messageId
         );
-        this.log.debug('In-process MCP server configured for all server tools');
-      }
-      // Add in-process MCP server for artifact tools if enabled (legacy)
-      else if (this.config.enableArtifactTools && this.config.artifactRelay) {
-        mcpServers['agent-kit-artifacts'] = createArtifactMcpServer(
-          this.config.artifactRelay,
-          sessionId
-        );
-        this.log.debug('In-process MCP server configured for artifact tools');
+        this.log.debug('In-process MCP server configured for server tools');
       }
 
       if (Object.keys(mcpServers).length > 0) {

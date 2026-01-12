@@ -4,10 +4,10 @@ export {
   type WriteArtifactContext,
 } from './write-artifact';
 export {
-  createReadArtifactTool,
-  readArtifactMetadata,
-  type ReadArtifactContext,
-} from './read-artifact';
+  createGetArtifactTool,
+  getArtifactMetadata,
+  type GetArtifactContext,
+} from './get-artifact';
 export {
   createSearchArtifactsTool,
   searchArtifactsMetadata,
@@ -18,3 +18,8 @@ export {
   updateArtifactMetadata,
   type UpdateArtifactContext,
 } from './update-artifact';
+export {
+  createPatchArtifactTool,
+  patchArtifactMetadata,
+  type PatchArtifactContext,
+} from './patch-artifact';

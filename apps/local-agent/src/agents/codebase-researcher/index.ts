@@ -17,8 +17,8 @@ const ALLOWED_TOOLS = [
   // Web tools for external research
   'WebSearch',
   'WebFetch',
-  // Artifact tools via MCP server (write-only)
-  'mcp__agent-kit-artifacts__writeArtifact',
+  // Artifact tools via server MCP (write-only)
+  'mcp__agent-kit-server__writeArtifact',
   // Todo tools for task tracking
   'TodoRead',
   'TodoWrite',
@@ -178,7 +178,7 @@ const client = new LocalAgentClient({
     model: env.MODEL,
     maxThinkingTokens: env.MAX_THINKING_TOKENS,
     includePartialMessages: true,
-    enableArtifactTools: true,
+    enableServerTools: true,
     customSystemPrompt: SYSTEM_PROMPT,
   },
 });
