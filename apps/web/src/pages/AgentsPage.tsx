@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useUrlState } from '../hooks/useUrlState';
 import {
   Heading,
   Text,
@@ -81,19 +82,23 @@ function ServerAgentCard({
 type TabValue = 'agents' | 'local';
 const validTabs: TabValue[] = ['agents', 'local'];
 
+type AgentsStatusFilter = 'all' | 'enabled' | 'disabled' | 'favorites';
+type LocalStatusFilter = 'all' | 'enabled' | 'disabled';
+
 export function AgentsPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { setActions, clearActions } = useHeaderActions();
 
   // Get tab from URL, default to 'agents'
-  const tabParam = searchParams.get('tab') as TabValue | null;
-  const activeTab =
-    tabParam && validTabs.includes(tabParam) ? tabParam : 'agents';
+  const [activeTab, setActiveTab] = useUrlState<TabValue>('tab', {
+    defaultValue: 'agents',
+    parse: (v) =>
+      v && validTabs.includes(v as TabValue) ? (v as TabValue) : 'agents',
+  });
 
   const handleTabChange = (tab: string) => {
-    setSearchParams({ tab }, { replace: true });
+    setActiveTab(tab as TabValue);
   };
   const [regenerateTarget, setRegenerateTarget] = useState<{
     id: string;
@@ -105,18 +110,32 @@ export function AgentsPage() {
     agentType: 'external' | 'server';
   } | null>(null);
 
-  // Agents tab filters
-  const [agentsStatusFilter, setAgentsStatusFilter] = useState<
-    'all' | 'enabled' | 'disabled' | 'favorites'
-  >('enabled');
-  const [agentsProviderFilter, setAgentsProviderFilter] =
-    useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  // Agents tab filters (URL persisted)
+  const [agentsStatusFilter, setAgentsStatusFilter] =
+    useUrlState<AgentsStatusFilter>('status', {
+      defaultValue: 'enabled',
+      parse: (v) =>
+        v && ['all', 'enabled', 'disabled', 'favorites'].includes(v)
+          ? (v as AgentsStatusFilter)
+          : 'enabled',
+    });
+  const [agentsProviderFilter, setAgentsProviderFilter] = useUrlState(
+    'provider',
+    { defaultValue: 'all' }
+  );
+  const [searchQuery, setSearchQuery] = useUrlState('search', {
+    debounceMs: 300,
+  });
 
-  // Local agents tab filters
-  const [localStatusFilter, setLocalStatusFilter] = useState<
-    'all' | 'enabled' | 'disabled'
-  >('enabled');
+  // Local agents tab filters (URL persisted)
+  const [localStatusFilter, setLocalStatusFilter] =
+    useUrlState<LocalStatusFilter>('localStatus', {
+      defaultValue: 'enabled',
+      parse: (v) =>
+        v && ['all', 'enabled', 'disabled'].includes(v)
+          ? (v as LocalStatusFilter)
+          : 'enabled',
+    });
 
   // Track loading state for individual agent operations
   const [loadingAgentId, setLoadingAgentId] = useState<string | null>(null);
@@ -180,14 +199,14 @@ export function AgentsPage() {
       });
     }
     if (state?.activeTab) {
-      setSearchParams({ tab: state.activeTab }, { replace: true });
+      setActiveTab(state.activeTab);
     }
   }, [
     location.state,
     location.pathname,
     location.search,
     navigate,
-    setSearchParams,
+    setActiveTab,
   ]);
 
   // Queries
