@@ -89,6 +89,26 @@ export function ProjectDetailPage() {
           });
         }
 
+        // Preserve backlog tab filters when switching TO backlog
+        if (tab === 'backlog') {
+          ['backlogSearch', 'backlogPriority', 'backlogHasArtifacts'].forEach(
+            (param) => {
+              const value = prev.get(param);
+              if (value) next.set(param, value);
+            }
+          );
+        }
+
+        // Preserve kanban tab filters when switching TO kanban
+        if (tab === 'kanban') {
+          ['kanbanSearch', 'kanbanPriority', 'kanbanHasArtifacts'].forEach(
+            (param) => {
+              const value = prev.get(param);
+              if (value) next.set(param, value);
+            }
+          );
+        }
+
         // Preserve doc search when switching TO documents
         if (tab === 'documents') {
           const docSearch = prev.get('docSearch');
@@ -102,11 +122,11 @@ export function ProjectDetailPage() {
   };
 
   // URL state for task filters (list tab)
-  const [searchQuery, setSearchQuery, debouncedSearchQuery] = useUrlState(
+  const [searchQuery, _setSearchQuery, debouncedSearchQuery] = useUrlState(
     'search',
     { debounceMs: 300 }
   );
-  const [priority, setPriority] = useUrlState<Priority | undefined>(
+  const [priority, _setPriority] = useUrlState<Priority | undefined>(
     'priority',
     {
       parse: (v) =>
@@ -115,7 +135,7 @@ export function ProjectDetailPage() {
           : undefined,
     }
   );
-  const [status, setStatus] = useUrlState<PlanningTaskStatus | undefined>(
+  const [status, _setStatus] = useUrlState<PlanningTaskStatus | undefined>(
     'status',
     {
       parse: (v) =>
@@ -124,13 +144,49 @@ export function ProjectDetailPage() {
           : undefined,
     }
   );
-  const [hasArtifacts, setHasArtifacts] = useUrlState<boolean | undefined>(
+  const [hasArtifacts, _setHasArtifacts] = useUrlState<boolean | undefined>(
     'hasArtifacts',
     {
       parse: (v) => (v === 'true' ? true : undefined),
       serialize: (v) => (v ? 'true' : undefined),
     }
   );
+
+  // URL state for backlog filters (separate from list tab)
+  const [backlogSearchQuery, _setBacklogSearchQuery, debouncedBacklogSearch] =
+    useUrlState('backlogSearch', { debounceMs: 300 });
+  const [backlogPriority, _setBacklogPriority] = useUrlState<
+    Priority | undefined
+  >('backlogPriority', {
+    parse: (v) =>
+      v && ['low', 'medium', 'high', 'urgent'].includes(v)
+        ? (v as Priority)
+        : undefined,
+  });
+  const [backlogHasArtifacts, _setBacklogHasArtifacts] = useUrlState<
+    boolean | undefined
+  >('backlogHasArtifacts', {
+    parse: (v) => (v === 'true' ? true : undefined),
+    serialize: (v) => (v ? 'true' : undefined),
+  });
+
+  // URL state for kanban/board filters (separate from other tabs)
+  const [kanbanSearchQuery, _setKanbanSearchQuery, debouncedKanbanSearch] =
+    useUrlState('kanbanSearch', { debounceMs: 300 });
+  const [kanbanPriority, _setKanbanPriority] = useUrlState<
+    Priority | undefined
+  >('kanbanPriority', {
+    parse: (v) =>
+      v && ['low', 'medium', 'high', 'urgent'].includes(v)
+        ? (v as Priority)
+        : undefined,
+  });
+  const [kanbanHasArtifacts, _setKanbanHasArtifacts] = useUrlState<
+    boolean | undefined
+  >('kanbanHasArtifacts', {
+    parse: (v) => (v === 'true' ? true : undefined),
+    serialize: (v) => (v ? 'true' : undefined),
+  });
 
   // Compose filters object for TaskFilters component
   const filters: TaskFiltersState = useMemo(
@@ -143,12 +199,128 @@ export function ProjectDetailPage() {
     [searchQuery, priority, status, hasArtifacts]
   );
 
-  const setFilters = useCallback((newFilters: TaskFiltersState) => {
-    setSearchQuery(newFilters.searchQuery ?? '');
-    setPriority(newFilters.priority);
-    setStatus(newFilters.status);
-    setHasArtifacts(newFilters.hasArtifacts);
-  }, [setSearchQuery, setPriority, setStatus, setHasArtifacts]);
+  const setFilters = useCallback(
+    (newFilters: TaskFiltersState) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+
+          if (newFilters.searchQuery) {
+            next.set('search', newFilters.searchQuery);
+          } else {
+            next.delete('search');
+          }
+
+          if (newFilters.priority) {
+            next.set('priority', newFilters.priority);
+          } else {
+            next.delete('priority');
+          }
+
+          if (newFilters.status) {
+            next.set('status', newFilters.status);
+          } else {
+            next.delete('status');
+          }
+
+          if (newFilters.hasArtifacts) {
+            next.set('hasArtifacts', 'true');
+          } else {
+            next.delete('hasArtifacts');
+          }
+
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
+  // Compose backlog filters object
+  const backlogFilters: TaskFiltersState = useMemo(
+    () => ({
+      searchQuery: backlogSearchQuery || undefined,
+      priority: backlogPriority,
+      hasArtifacts: backlogHasArtifacts,
+    }),
+    [backlogSearchQuery, backlogPriority, backlogHasArtifacts]
+  );
+
+  const setBacklogFilters = useCallback(
+    (newFilters: TaskFiltersState) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+
+          if (newFilters.searchQuery) {
+            next.set('backlogSearch', newFilters.searchQuery);
+          } else {
+            next.delete('backlogSearch');
+          }
+
+          if (newFilters.priority) {
+            next.set('backlogPriority', newFilters.priority);
+          } else {
+            next.delete('backlogPriority');
+          }
+
+          if (newFilters.hasArtifacts) {
+            next.set('backlogHasArtifacts', 'true');
+          } else {
+            next.delete('backlogHasArtifacts');
+          }
+
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
+  // Compose kanban filters object
+  const kanbanFilters: TaskFiltersState = useMemo(
+    () => ({
+      searchQuery: kanbanSearchQuery || undefined,
+      priority: kanbanPriority,
+      hasArtifacts: kanbanHasArtifacts,
+    }),
+    [kanbanSearchQuery, kanbanPriority, kanbanHasArtifacts]
+  );
+
+  const setKanbanFilters = useCallback(
+    (newFilters: TaskFiltersState) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+
+          if (newFilters.searchQuery) {
+            next.set('kanbanSearch', newFilters.searchQuery);
+          } else {
+            next.delete('kanbanSearch');
+          }
+
+          if (newFilters.priority) {
+            next.set('kanbanPriority', newFilters.priority);
+          } else {
+            next.delete('kanbanPriority');
+          }
+
+          if (newFilters.hasArtifacts) {
+            next.set('kanbanHasArtifacts', 'true');
+          } else {
+            next.delete('kanbanHasArtifacts');
+          }
+
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
   const [isDeleteProjectOpen, setIsDeleteProjectOpen] = useState(false);
@@ -195,8 +367,24 @@ export function ProjectDetailPage() {
     { enabled: !!projectId }
   );
 
-  const tasksByStatusQuery = trpc.tasks.getByStatus.useQuery(
-    { projectId: projectId ?? '' },
+  // Separate queries for backlog and kanban with their respective filters
+  const backlogTasksQuery = trpc.tasks.getByStatus.useQuery(
+    {
+      projectId: projectId ?? '',
+      priority: backlogFilters.priority,
+      hasArtifacts: backlogFilters.hasArtifacts,
+      searchQuery: debouncedBacklogSearch || undefined,
+    },
+    { enabled: !!projectId }
+  );
+
+  const kanbanTasksQuery = trpc.tasks.getByStatus.useQuery(
+    {
+      projectId: projectId ?? '',
+      priority: kanbanFilters.priority,
+      hasArtifacts: kanbanFilters.hasArtifacts,
+      searchQuery: debouncedKanbanSearch || undefined,
+    },
     { enabled: !!projectId }
   );
 
@@ -223,16 +411,23 @@ export function ProjectDetailPage() {
   const moveTaskMutation = trpc.tasks.move.useMutation({
     onMutate: async ({ id, status, position }) => {
       if (!projectId) return;
+
+      // Build the kanban query key (matches kanbanTasksQuery parameters)
+      const kanbanQueryKey = {
+        projectId,
+        priority: kanbanFilters.priority,
+        hasArtifacts: kanbanFilters.hasArtifacts,
+        searchQuery: debouncedKanbanSearch || undefined,
+      };
+
       // Cancel any outgoing refetches
-      await utils.tasks.getByStatus.cancel({ projectId });
+      await utils.tasks.getByStatus.cancel(kanbanQueryKey);
 
       // Snapshot the previous value
-      const previousData = utils.tasks.getByStatus.getData({
-        projectId,
-      });
+      const previousData = utils.tasks.getByStatus.getData(kanbanQueryKey);
 
       // Optimistically update the cache
-      utils.tasks.getByStatus.setData({ projectId }, (old) => {
+      utils.tasks.getByStatus.setData(kanbanQueryKey, (old) => {
         if (!old) return old;
 
         // Find the task in any column
@@ -272,12 +467,15 @@ export function ProjectDetailPage() {
         return newData;
       });
 
-      return { previousData };
+      return { previousData, kanbanQueryKey };
     },
     onError: (_err, _variables, context) => {
       // Rollback on error
-      if (context?.previousData && projectId) {
-        utils.tasks.getByStatus.setData({ projectId }, context.previousData);
+      if (context?.previousData && context?.kanbanQueryKey) {
+        utils.tasks.getByStatus.setData(
+          context.kanbanQueryKey,
+          context.previousData
+        );
       }
       addToast({
         message: 'Failed to move task. Please try again.',
@@ -389,14 +587,14 @@ export function ProjectDetailPage() {
     });
   };
 
-  // Transform tasks for KanbanBoard
+  // Transform tasks for KanbanBoard (filters applied server-side)
   const kanbanTasks = useMemo(() => {
-    if (!tasksByStatusQuery.data) return [];
+    if (!kanbanTasksQuery.data) return [];
     const allTasks = [
-      ...tasksByStatusQuery.data.todo,
-      ...tasksByStatusQuery.data.in_progress,
-      ...tasksByStatusQuery.data.review,
-      ...tasksByStatusQuery.data.done,
+      ...kanbanTasksQuery.data.todo,
+      ...kanbanTasksQuery.data.in_progress,
+      ...kanbanTasksQuery.data.review,
+      ...kanbanTasksQuery.data.done,
     ];
     return allTasks.map((task) => ({
       id: task.id,
@@ -407,13 +605,48 @@ export function ProjectDetailPage() {
       position: task.position,
       artifactCount: task.artifactCount,
     }));
-  }, [tasksByStatusQuery.data]);
+  }, [kanbanTasksQuery.data]);
+
+  // Filter kanban tasks by filters
+  const filteredKanbanTasks = useMemo(() => {
+    let filtered = kanbanTasks;
+
+    // Filter by priority
+    if (kanbanFilters.priority) {
+      filtered = filtered.filter(
+        (task) => task.priority === kanbanFilters.priority
+      );
+    }
+
+    // Filter by hasArtifacts
+    if (kanbanFilters.hasArtifacts) {
+      filtered = filtered.filter((task) => (task.artifactCount ?? 0) > 0);
+    }
+
+    // Filter by search query
+    if (debouncedKanbanSearch) {
+      const query = debouncedKanbanSearch.toLowerCase();
+      filtered = filtered.filter(
+        (task) =>
+          task.title.toLowerCase().includes(query) ||
+          task.description?.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [
+    kanbanTasks,
+    kanbanFilters.priority,
+    kanbanFilters.hasArtifacts,
+    debouncedKanbanSearch,
+  ]);
 
   // Transform tasks for Backlog view (sorted by position for DnD)
   // Use createdAt as secondary sort to handle duplicate positions
+  // Filters are applied server-side via backlogTasksQuery
   const backlogTasks = useMemo(() => {
-    if (!tasksByStatusQuery.data?.backlog) return [];
-    return tasksByStatusQuery.data.backlog
+    if (!backlogTasksQuery.data?.backlog) return [];
+    return backlogTasksQuery.data.backlog
       .map((task) => ({
         id: task.id,
         title: task.title,
@@ -432,7 +665,41 @@ export function ProjectDetailPage() {
         if (positionDiff !== 0) return positionDiff;
         return a.createdAt.getTime() - b.createdAt.getTime();
       });
-  }, [tasksByStatusQuery.data]);
+  }, [backlogTasksQuery.data]);
+
+  // Filter backlog tasks by filters
+  const filteredBacklogTasks = useMemo(() => {
+    let filtered = backlogTasks;
+
+    // Filter by priority
+    if (backlogFilters.priority) {
+      filtered = filtered.filter(
+        (task) => task.priority === backlogFilters.priority
+      );
+    }
+
+    // Filter by hasArtifacts
+    if (backlogFilters.hasArtifacts) {
+      filtered = filtered.filter((task) => (task.artifactCount ?? 0) > 0);
+    }
+
+    // Filter by search query
+    if (debouncedBacklogSearch) {
+      const query = debouncedBacklogSearch.toLowerCase();
+      filtered = filtered.filter(
+        (task) =>
+          task.title.toLowerCase().includes(query) ||
+          task.description?.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [
+    backlogTasks,
+    backlogFilters.priority,
+    backlogFilters.hasArtifacts,
+    debouncedBacklogSearch,
+  ]);
 
   // Transform tasks for TaskListView
   const listTasks = useMemo(() => {
@@ -450,16 +717,32 @@ export function ProjectDetailPage() {
     }));
   }, [tasksQuery.data]);
 
-  // Filter list tasks by search query
+  // Filter list tasks by filters and search query
   const filteredListTasks = useMemo(() => {
-    if (!debouncedSearchQuery) return listTasks;
-    const query = debouncedSearchQuery.toLowerCase();
-    return listTasks.filter(
-      (task) =>
-        task.title.toLowerCase().includes(query) ||
-        task.description?.toLowerCase().includes(query)
-    );
-  }, [listTasks, debouncedSearchQuery]);
+    let filtered = listTasks;
+
+    // Filter by priority
+    if (filters.priority) {
+      filtered = filtered.filter((task) => task.priority === filters.priority);
+    }
+
+    // Filter by hasArtifacts
+    if (filters.hasArtifacts) {
+      filtered = filtered.filter((task) => (task.artifactCount ?? 0) > 0);
+    }
+
+    // Filter by search query
+    if (debouncedSearchQuery) {
+      const query = debouncedSearchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (task) =>
+          task.title.toLowerCase().includes(query) ||
+          task.description?.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [listTasks, filters.priority, filters.hasArtifacts, debouncedSearchQuery]);
 
   const handleTaskMove = useCallback(
     (taskId: string, newStatus: PlanningTaskStatus, newPosition: number) => {
@@ -673,6 +956,18 @@ export function ProjectDetailPage() {
                 showStatus
               />
             )}
+            {activeTab === 'backlog' && (
+              <TaskFilters
+                filters={backlogFilters}
+                onFiltersChange={setBacklogFilters}
+              />
+            )}
+            {activeTab === 'kanban' && (
+              <TaskFilters
+                filters={kanbanFilters}
+                onFiltersChange={setKanbanFilters}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -682,20 +977,26 @@ export function ProjectDetailPage() {
         <div className="mx-auto max-w-6xl h-full">
           {activeTab === 'backlog' && (
             <TaskListView
-              tasks={backlogTasks}
+              tasks={filteredBacklogTasks}
               onTaskClick={handleTaskClick}
               onEdit={handleTaskClick}
               onStatusChange={handleTaskStatusChange}
               onPriorityChange={handleTaskPriorityChange}
               onDelete={handleTaskDeleteRequest}
-              emptyMessage="No tasks in backlog"
+              emptyMessage={
+                backlogFilters.searchQuery ||
+                backlogFilters.priority ||
+                backlogFilters.hasArtifacts
+                  ? 'No tasks match your filters'
+                  : 'No tasks in backlog'
+              }
               sortable
               onTaskMove={handleBacklogMove}
             />
           )}
           {activeTab === 'kanban' && (
             <KanbanBoard
-              tasks={kanbanTasks}
+              tasks={filteredKanbanTasks}
               onTaskMove={handleTaskMove}
               onTaskClick={handleTaskClick}
               className="h-full"

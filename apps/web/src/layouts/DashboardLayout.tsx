@@ -223,9 +223,8 @@ function DashboardLayoutInner() {
     (sessionId: string) => {
       setSessionId(sessionId);
       setIsHistoryOpen(false);
-      navigate('/app');
     },
-    [setSessionId, navigate]
+    [setSessionId]
   );
 
   const handleSessionDelete = useCallback(

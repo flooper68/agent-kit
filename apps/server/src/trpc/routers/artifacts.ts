@@ -13,6 +13,7 @@ export const artifactsRouter = router({
         cursor: z.string().uuid().optional(),
         search: z.string().optional(),
         excludeProjectId: z.string().uuid().optional(),
+        uncategorized: z.boolean().optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -23,6 +24,7 @@ export const artifactsRouter = router({
         cursor: input.cursor,
         search: input.search,
         excludeProjectId: input.excludeProjectId,
+        uncategorized: input.uncategorized,
       });
     }),
 

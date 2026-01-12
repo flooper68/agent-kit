@@ -39,12 +39,7 @@ export function useUrlState<T = string>(
   param: string,
   options: UseUrlStateOptions<T> = {}
 ): [T, (value: T) => void, T] {
-  const {
-    defaultValue,
-    parse,
-    serialize,
-    debounceMs = 0,
-  } = options;
+  const { defaultValue, parse, serialize, debounceMs = 0 } = options;
 
   const [searchParams, setSearchParams] = useSearchParams();
 

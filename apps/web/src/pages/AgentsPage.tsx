@@ -83,7 +83,7 @@ type TabValue = 'agents' | 'local';
 const validTabs: TabValue[] = ['agents', 'local'];
 
 type AgentsStatusFilter = 'all' | 'enabled' | 'disabled' | 'favorites';
-type LocalStatusFilter = 'all' | 'enabled' | 'disabled';
+type LocalStatusFilter = 'all' | 'enabled' | 'disabled' | 'favorites';
 
 export function AgentsPage() {
   const navigate = useNavigate();
@@ -132,10 +132,13 @@ export function AgentsPage() {
     useUrlState<LocalStatusFilter>('localStatus', {
       defaultValue: 'enabled',
       parse: (v) =>
-        v && ['all', 'enabled', 'disabled'].includes(v)
+        v && ['all', 'enabled', 'disabled', 'favorites'].includes(v)
           ? (v as LocalStatusFilter)
           : 'enabled',
     });
+  const [localSearchQuery, setLocalSearchQuery] = useUrlState('localSearch', {
+    debounceMs: 300,
+  });
 
   // Track loading state for individual agent operations
   const [loadingAgentId, setLoadingAgentId] = useState<string | null>(null);
@@ -303,6 +306,7 @@ export function AgentsPage() {
     if (!externalAgentsQuery.data) return [];
     let agents = externalAgentsQuery.data;
 
+    // Apply status filter
     switch (localStatusFilter) {
       case 'enabled':
         agents = agents.filter((agent) => !agent.disabled);
@@ -310,10 +314,28 @@ export function AgentsPage() {
       case 'disabled':
         agents = agents.filter((agent) => agent.disabled);
         break;
+      case 'favorites':
+        agents = agents.filter((agent) => agent.isFavorite);
+        break;
     }
 
-    return agents;
-  }, [externalAgentsQuery.data, localStatusFilter]);
+    // Apply search
+    if (localSearchQuery) {
+      const query = localSearchQuery.toLowerCase();
+      agents = agents.filter(
+        (agent) =>
+          agent.name.toLowerCase().includes(query) ||
+          (agent.description?.toLowerCase().includes(query) ?? false)
+      );
+    }
+
+    // Sort: favorites first, then alphabetically
+    return agents.sort((a, b) => {
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [externalAgentsQuery.data, localStatusFilter, localSearchQuery]);
 
   // Count for filter badges
   const serverAgentCounts = useMemo(() => {
@@ -328,11 +350,13 @@ export function AgentsPage() {
   }, [serverAgentsQuery.data]);
 
   const externalAgentCounts = useMemo(() => {
-    if (!externalAgentsQuery.data) return { all: 0, enabled: 0, disabled: 0 };
+    if (!externalAgentsQuery.data)
+      return { all: 0, enabled: 0, disabled: 0, favorites: 0 };
     return {
       all: externalAgentsQuery.data.length,
       enabled: externalAgentsQuery.data.filter((a) => !a.disabled).length,
       disabled: externalAgentsQuery.data.filter((a) => a.disabled).length,
+      favorites: externalAgentsQuery.data.filter((a) => a.isFavorite).length,
     };
   }, [externalAgentsQuery.data]);
 
@@ -375,6 +399,7 @@ export function AgentsPage() {
   const toggleFavoriteMutation = trpc.agents.toggleFavorite.useMutation({
     onSuccess: () => {
       utils.agents.listServer.invalidate();
+      utils.agents.listExternal.invalidate();
     },
   });
 
@@ -579,14 +604,25 @@ export function AgentsPage() {
           {/* External Agents Tab - External WebSocket agents */}
           <Tabs.Content value="local">
             {/* Filter Bar */}
-            {externalAgentsQuery.data &&
-              externalAgentsQuery.data.length > 0 && (
-                <div className="mb-4 flex items-center gap-3">
+            {((externalAgentsQuery.data &&
+              externalAgentsQuery.data.length > 0) ||
+              localSearchQuery) && (
+              <div className="mb-4 flex gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search external agents..."
+                    value={localSearchQuery}
+                    onChange={(e) => setLocalSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
                   <Select
                     value={localStatusFilter}
                     onValueChange={(value) =>
                       setLocalStatusFilter(
-                        value as 'all' | 'enabled' | 'disabled'
+                        value as 'all' | 'enabled' | 'disabled' | 'favorites'
                       )
                     }
                     options={[
@@ -602,11 +638,16 @@ export function AgentsPage() {
                         value: 'disabled',
                         label: `Disabled (${externalAgentCounts.disabled})`,
                       },
+                      {
+                        value: 'favorites',
+                        label: `Favorites (${externalAgentCounts.favorites})`,
+                      },
                     ]}
                     className="w-44"
                   />
                 </div>
-              )}
+              </div>
+            )}
 
             {/* Loading State */}
             {externalAgentsQuery.isLoading && (
@@ -633,16 +674,19 @@ export function AgentsPage() {
                 </div>
               )}
 
-            {/* Empty State - No agents matching filter */}
+            {/* Empty State - No agents matching filter/search */}
             {externalAgentsQuery.data &&
               externalAgentsQuery.data.length > 0 &&
               filteredExternalAgents.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <Cable className="mb-4 h-12 w-12 text-muted-foreground" />
-                  <Text className="font-medium">
-                    No{' '}
-                    {localStatusFilter === 'enabled' ? 'enabled' : 'disabled'}{' '}
-                    agents
+                  <Text className="font-medium">No agents found</Text>
+                  <Text className="text-sm text-muted-foreground">
+                    {localSearchQuery
+                      ? 'Try adjusting your search'
+                      : localStatusFilter === 'favorites'
+                        ? 'No favorite agents yet'
+                        : `No ${localStatusFilter} agents`}
                   </Text>
                 </div>
               )}

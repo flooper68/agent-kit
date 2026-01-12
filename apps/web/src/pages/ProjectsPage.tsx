@@ -13,28 +13,19 @@ import {
 import { Plus, Search, FolderKanban } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { useHeaderActions } from '../contexts/HeaderActionsContext';
-
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-
-  return debouncedValue;
-}
+import { useUrlState } from '../hooks/useUrlState';
 
 export function ProjectsPage() {
   const navigate = useNavigate();
   const { setActions, clearActions } = useHeaderActions();
   const [cursors, setCursors] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery, debouncedSearch] = useUrlState('search', {
+    debounceMs: 300,
+  });
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newProjectTitle, setNewProjectTitle] = useState('');
   const [newProjectSummary, setNewProjectSummary] = useState('');
 
-  const debouncedSearch = useDebounce(searchQuery, 300);
   const currentCursor = cursors[cursors.length - 1];
 
   useEffect(() => {
@@ -168,6 +159,7 @@ export function ProjectsPage() {
                     title={project.title}
                     summary={project.summary}
                     taskCounts={project.taskCounts}
+                    documentCount={project.artifactCount}
                     onClick={() => handleProjectClick(project.id)}
                   />
                 ))}

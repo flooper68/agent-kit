@@ -20,6 +20,7 @@ export interface ListArtifactsInput {
   cursor?: string;
   search?: string;
   excludeProjectId?: string;
+  uncategorized?: boolean;
 }
 
 export interface ArtifactListItem {
@@ -47,7 +48,15 @@ export class ListArtifactsQuery {
   }
 
   async execute(input: ListArtifactsInput): Promise<ListArtifactsResult> {
-    const { userId, orgId, limit, cursor, search, excludeProjectId } = input;
+    const {
+      userId,
+      orgId,
+      limit,
+      cursor,
+      search,
+      excludeProjectId,
+      uncategorized,
+    } = input;
 
     // If cursor is provided, get the cursor artifact's createdAt for filtering
     let cursorDate: Date | undefined;
@@ -100,6 +109,18 @@ export class ListArtifactsQuery {
                 eq(projectArtifacts.projectId, excludeProjectId)
               )
             )
+        )
+      );
+    }
+
+    // Filter to only uncategorized artifacts (not attached to any project)
+    if (uncategorized) {
+      conditions.push(
+        notExists(
+          this.db
+            .select()
+            .from(projectArtifacts)
+            .where(eq(projectArtifacts.artifactId, artifacts.id))
         )
       );
     }
