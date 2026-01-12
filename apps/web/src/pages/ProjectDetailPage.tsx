@@ -50,7 +50,7 @@ import {
 import { trpc } from '../lib/trpc';
 import { useHeaderActions } from '../contexts/HeaderActionsContext';
 import { ProjectDocumentsTab } from '../components/ProjectDocumentsTab';
-import { useDebounce } from '../hooks/useDebounce';
+import { useUrlState } from '../hooks/useUrlState';
 
 type TabValue = 'backlog' | 'kanban' | 'list' | 'documents';
 
@@ -61,7 +61,7 @@ const tabLabels: Record<TabValue, string> = {
   documents: 'Documents',
 };
 
-const validTabs: TabValue[] = ['kanban', 'backlog', 'list', 'documents'];
+const validTabs: TabValue[] = ['documents', 'kanban', 'backlog', 'list'];
 
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -70,15 +70,85 @@ export function ProjectDetailPage() {
   const { setActions, setMenuItems, clearActions } = useHeaderActions();
   const { addToast } = useToast();
 
-  // Read tab from URL search params, default to 'kanban'
+  // Read tab from URL search params, default to 'documents'
   const tabParam = searchParams.get('tab') as TabValue | null;
   const activeTab =
-    tabParam && validTabs.includes(tabParam) ? tabParam : 'kanban';
+    tabParam && validTabs.includes(tabParam) ? tabParam : 'documents';
 
   const handleTabChange = (tab: string) => {
-    setSearchParams({ tab }, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams();
+        next.set('tab', tab);
+
+        // Preserve list tab filters when switching TO list
+        if (tab === 'list') {
+          ['search', 'priority', 'status', 'hasArtifacts'].forEach((param) => {
+            const value = prev.get(param);
+            if (value) next.set(param, value);
+          });
+        }
+
+        // Preserve doc search when switching TO documents
+        if (tab === 'documents') {
+          const docSearch = prev.get('docSearch');
+          if (docSearch) next.set('docSearch', docSearch);
+        }
+
+        return next;
+      },
+      { replace: true }
+    );
   };
-  const [filters, setFilters] = useState<TaskFiltersState>({});
+
+  // URL state for task filters (list tab)
+  const [searchQuery, setSearchQuery, debouncedSearchQuery] = useUrlState(
+    'search',
+    { debounceMs: 300 }
+  );
+  const [priority, setPriority] = useUrlState<Priority | undefined>(
+    'priority',
+    {
+      parse: (v) =>
+        v && ['low', 'medium', 'high', 'urgent'].includes(v)
+          ? (v as Priority)
+          : undefined,
+    }
+  );
+  const [status, setStatus] = useUrlState<PlanningTaskStatus | undefined>(
+    'status',
+    {
+      parse: (v) =>
+        v && ['backlog', 'todo', 'in_progress', 'review', 'done'].includes(v)
+          ? (v as PlanningTaskStatus)
+          : undefined,
+    }
+  );
+  const [hasArtifacts, setHasArtifacts] = useUrlState<boolean | undefined>(
+    'hasArtifacts',
+    {
+      parse: (v) => (v === 'true' ? true : undefined),
+      serialize: (v) => (v ? 'true' : undefined),
+    }
+  );
+
+  // Compose filters object for TaskFilters component
+  const filters: TaskFiltersState = useMemo(
+    () => ({
+      searchQuery: searchQuery || undefined,
+      priority,
+      status,
+      hasArtifacts,
+    }),
+    [searchQuery, priority, status, hasArtifacts]
+  );
+
+  const setFilters = useCallback((newFilters: TaskFiltersState) => {
+    setSearchQuery(newFilters.searchQuery ?? '');
+    setPriority(newFilters.priority);
+    setStatus(newFilters.status);
+    setHasArtifacts(newFilters.hasArtifacts);
+  }, [setSearchQuery, setPriority, setStatus, setHasArtifacts]);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
   const [isDeleteProjectOpen, setIsDeleteProjectOpen] = useState(false);
@@ -380,9 +450,6 @@ export function ProjectDetailPage() {
     }));
   }, [tasksQuery.data]);
 
-  // Debounce search query for client-side filtering
-  const debouncedSearchQuery = useDebounce(filters.searchQuery, 300);
-
   // Filter list tasks by search query
   const filteredListTasks = useMemo(() => {
     if (!debouncedSearchQuery) return listTasks;
@@ -580,6 +647,10 @@ export function ProjectDetailPage() {
           <div className="space-y-3">
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <Tabs.List>
+                <Tabs.Trigger value="documents">
+                  <FileText className="mr-1 h-4 w-4" />
+                  Documents
+                </Tabs.Trigger>
                 <Tabs.Trigger value="kanban">
                   <LayoutGrid className="mr-1 h-4 w-4" />
                   Board
@@ -591,10 +662,6 @@ export function ProjectDetailPage() {
                 <Tabs.Trigger value="list">
                   <List className="mr-1 h-4 w-4" />
                   List
-                </Tabs.Trigger>
-                <Tabs.Trigger value="documents">
-                  <FileText className="mr-1 h-4 w-4" />
-                  Documents
                 </Tabs.Trigger>
               </Tabs.List>
             </Tabs>
