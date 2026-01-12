@@ -21,7 +21,7 @@ export class CodebaseResearcherHandler implements AgentHandler {
       ...config,
       loggerName: 'CodebaseResearcher',
       errorCodePrefix: 'CODEBASE_RESEARCHER',
-      artifactRelay: context?.artifactRelay,
+      serverRelay: context?.serverRelay,
     });
   }
 

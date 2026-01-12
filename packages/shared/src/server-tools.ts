@@ -123,8 +123,22 @@ export const searchArtifactsSchema = z.object({
     .describe('Maximum number of results to return'),
 });
 
-export const readArtifactSchema = z.object({
+export const getArtifactSchema = z.object({
   artifactId: z.string().uuid().describe('The artifact ID to read'),
+  startLine: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .describe(
+      'Line number to start reading from (1-indexed). Omit to start from beginning.'
+    ),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .describe('Maximum number of lines to return. Omit to return all content.'),
 });
 
 export const updateArtifactSchema = z.object({
@@ -146,6 +160,27 @@ export const updateArtifactSchema = z.object({
     .max(500)
     .optional()
     .describe('New summary for the document'),
+});
+
+export const patchArtifactSchema = z.object({
+  artifactId: z.string().uuid().describe('The artifact ID to patch'),
+  startLine: z
+    .number()
+    .int()
+    .min(1)
+    .describe('The starting line number (1-indexed, inclusive)'),
+  endLine: z
+    .number()
+    .int()
+    .describe(
+      'The ending line number (1-indexed, inclusive). Set to startLine - 1 to insert without replacing.'
+    ),
+  newContent: z
+    .string()
+    .max(1_000_000)
+    .describe(
+      'The content to replace the specified line range with. Empty string deletes the lines.'
+    ),
 });
 
 // --- Project Tools ---
@@ -445,11 +480,11 @@ export const SERVER_TOOL_DEFINITIONS = {
     schema: searchArtifactsSchema,
     category: 'artifact' as const,
   },
-  readArtifact: {
-    name: 'readArtifact',
+  getArtifact: {
+    name: 'getArtifact',
     description:
-      'Read the full content of a saved document/artifact by its ID.',
-    schema: readArtifactSchema,
+      'Read a saved document/artifact by its ID. Supports partial reads with startLine (1-indexed) and limit parameters.',
+    schema: getArtifactSchema,
     category: 'artifact' as const,
   },
   updateArtifact: {
@@ -457,6 +492,13 @@ export const SERVER_TOOL_DEFINITIONS = {
     description:
       'Update an existing document/artifact. Can update title, content, or summary.',
     schema: updateArtifactSchema,
+    category: 'artifact' as const,
+  },
+  patchArtifact: {
+    name: 'patchArtifact',
+    description:
+      'Patch an artifact by replacing a specific line range with new content. Use getArtifact first to see current content and line numbers.',
+    schema: patchArtifactSchema,
     category: 'artifact' as const,
   },
 
@@ -664,7 +706,7 @@ Command format:
 Examples:
   webSearch --query "typescript best practices"
   createTask --projectId abc123 --title "Implement feature" --priority high
-  readArtifact --artifactId def456
+  getArtifact --artifactId def456
   getTime --timezone "America/New_York"
 
 Notes:

@@ -2,7 +2,6 @@ import type WebSocket from 'ws';
 import { createHandler } from './handlers';
 import { createLogger } from './logger';
 import { EventBufferQueue } from './event-buffer-queue';
-import { ArtifactToolRelay } from './artifact-tool-relay';
 import { ServerToolRelay } from './server-tool-relay';
 import type { AgentHandler } from './types';
 import {
@@ -33,19 +32,16 @@ export class MessageHandler {
   private activeSessions: Map<string, ActiveSession> = new Map();
   private eventsSentCount: Map<string, number> = new Map();
   private eventBuffer: EventBufferQueue;
-  private artifactRelay: ArtifactToolRelay;
   private serverRelay: ServerToolRelay;
 
   constructor(ws: WebSocket, options: MessageHandlerOptions) {
     this.ws = ws;
     this.eventBuffer = options.eventBuffer;
-    this.artifactRelay = new ArtifactToolRelay();
     this.serverRelay = new ServerToolRelay();
     // Create handler once and reuse for all messages
     // This allows stateful providers (like ClaudeCliProvider) to persist session data
-    // Pass artifact relay and server relay to handler for server operations
+    // Pass server relay to handler for server operations
     this.handler = createHandler(options.handlerType, options.config, {
-      artifactRelay: this.artifactRelay,
       serverRelay: this.serverRelay,
     });
     log.debug('MessageHandler constructed', {
@@ -54,13 +50,6 @@ export class MessageHandler {
       cwd: options.config.cwd,
       allowedTools: options.config.allowedTools,
     });
-  }
-
-  /**
-   * Get the artifact tool relay for handlers to use.
-   */
-  getArtifactRelay(): ArtifactToolRelay {
-    return this.artifactRelay;
   }
 
   /**
@@ -141,8 +130,7 @@ export class MessageHandler {
       hasMetadata: !!metadata,
     });
 
-    // Set relay WebSocket connections
-    this.artifactRelay.setConnection(this.ws);
+    // Set relay WebSocket connection
     this.serverRelay.setConnection(this.ws);
 
     // Create abort controller for this session
@@ -232,9 +220,8 @@ export class MessageHandler {
     } finally {
       this.activeSessions.delete(sessionId);
       this.eventsSentCount.delete(sessionId);
-      // Clear relay connections when no more active sessions
+      // Clear relay connection when no more active sessions
       if (this.activeSessions.size === 0) {
-        this.artifactRelay.clearConnection();
         this.serverRelay.clearConnection();
       }
       log.debug('Session cleaned up', {
@@ -377,12 +364,13 @@ export class MessageHandler {
   }
 
   /**
-   * Handle an artifact tool response from the server.
+   * Handle an artifact tool response from the server (legacy, routes to serverRelay).
    */
   private handleArtifactToolResponse(
     message: ArtifactToolResponsePayload
   ): void {
-    this.artifactRelay.handleResponse(
+    // Route legacy artifact responses through serverRelay for backward compatibility
+    this.serverRelay.handleResponse(
       message.requestId,
       message.result,
       message.isError

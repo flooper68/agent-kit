@@ -3,7 +3,7 @@
  *
  * Organized by category:
  * - Static (utility): getTime, webSearch, extractContent, fetch
- * - Artifact: writeArtifact, searchArtifacts, readArtifact, updateArtifact
+ * - Artifact: writeArtifact, searchArtifacts, getArtifact, updateArtifact
  * - Project: listProjects, searchProjects, getProject, createProject, updateProject, deleteProject, attachArtifactToProject, detachArtifactFromProject, listProjectArtifacts
  * - Task: listTasks, searchTasks, getTask, createTask, updateTask, deleteTask, moveTask, reorderTask, attachArtifactToTask, detachArtifactFromTask
  * - Client: navigateTo, getCurrentUIState
@@ -35,13 +35,17 @@ import {
   searchArtifactsMetadata,
 } from './artifacts/search-artifacts';
 import {
-  createReadArtifactTool,
-  readArtifactMetadata,
-} from './artifacts/read-artifact';
+  createGetArtifactTool,
+  getArtifactMetadata,
+} from './artifacts/get-artifact';
 import {
   createUpdateArtifactTool,
   updateArtifactMetadata,
 } from './artifacts/update-artifact';
+import {
+  createPatchArtifactTool,
+  patchArtifactMetadata,
+} from './artifacts/patch-artifact';
 import type { ActionMetadata } from './types';
 
 // Project actions
@@ -158,9 +162,10 @@ export const ACTION_METADATA: Record<string, ActionMetadata> = {
 
   // Artifact actions
   [writeArtifactMetadata.id]: writeArtifactMetadata,
-  [readArtifactMetadata.id]: readArtifactMetadata,
+  [getArtifactMetadata.id]: getArtifactMetadata,
   [searchArtifactsMetadata.id]: searchArtifactsMetadata,
   [updateArtifactMetadata.id]: updateArtifactMetadata,
+  [patchArtifactMetadata.id]: patchArtifactMetadata,
 
   // Project actions
   [listProjectsMetadata.id]: listProjectsMetadata,
@@ -230,8 +235,9 @@ export const ACTION_IDS = [
   // Artifact actions
   'writeArtifact',
   'searchArtifacts',
-  'readArtifact',
+  'getArtifact',
   'updateArtifact',
+  'patchArtifact',
   // Project actions
   'listProjects',
   'searchProjects',
@@ -303,11 +309,14 @@ export function getActionsById(
         case 'searchArtifacts':
           result[id] = createSearchArtifactsTool(context);
           break;
-        case 'readArtifact':
-          result[id] = createReadArtifactTool(context);
+        case 'getArtifact':
+          result[id] = createGetArtifactTool(context);
           break;
         case 'updateArtifact':
           result[id] = createUpdateArtifactTool(context);
+          break;
+        case 'patchArtifact':
+          result[id] = createPatchArtifactTool(context);
           break;
         // Project actions
         case 'listProjects':

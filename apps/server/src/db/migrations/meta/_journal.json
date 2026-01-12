@@ -309,6 +309,27 @@
       "when": 1767900000027,
       "tag": "0043_add_project_artifacts",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1767900000028,
+      "tag": "0044_rename_read_artifact_to_get_artifact",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1767900000029,
+      "tag": "0045_add_patch_artifact_to_document_skill",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1767900000030,
+      "tag": "0046_add_patch_artifact_to_agents",
+      "breakpoints": true
     }
   ]
 }

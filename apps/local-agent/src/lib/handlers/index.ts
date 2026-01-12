@@ -1,11 +1,8 @@
 import type { AgentHandler, ClaudeCodeHandlerConfig } from '../types';
-import type { ArtifactToolRelay } from '../artifact-tool-relay';
 import type { ServerToolRelay } from '../server-tool-relay';
 
 /** Context passed to handler factories beyond configuration */
 export interface HandlerContext {
-  /** Artifact relay for server artifact operations (legacy - use serverRelay instead) */
-  artifactRelay?: ArtifactToolRelay;
   /** Server tool relay for all server operations */
   serverRelay?: ServerToolRelay;
 }
