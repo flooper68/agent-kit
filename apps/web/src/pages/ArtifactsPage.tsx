@@ -11,6 +11,7 @@ import {
   Input,
   DropdownMenu,
   cn,
+  useToast,
 } from '@agent-kit/ui';
 import {
   FileText,
@@ -38,6 +39,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export function ArtifactsPage() {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [cursors, setCursors] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
@@ -94,23 +96,35 @@ export function ArtifactsPage() {
 
   // Mutations for attaching artifacts
   const attachToProjectMutation = trpc.projects.attachArtifact.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queueMicrotask(() => {
         setAttachProjectTarget(null);
         setSelectedProjectId(null);
       });
       utils.artifacts.list.invalidate();
+      utils.projects.listArtifacts.invalidate({
+        projectId: variables.projectId,
+      });
+      addToast({
+        message: 'Artifact attached to project',
+        variant: 'success',
+      });
     },
   });
 
   const attachToTaskMutation = trpc.tasks.attachArtifact.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queueMicrotask(() => {
         setAttachTaskTarget(null);
         setSelectedProjectId(null);
         setSelectedTaskId(null);
       });
       utils.artifacts.list.invalidate();
+      utils.tasks.get.invalidate({ id: variables.taskId });
+      addToast({
+        message: 'Artifact attached to task',
+        variant: 'success',
+      });
     },
   });
 
