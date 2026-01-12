@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
+import { ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 // DropdownMenu Root
@@ -103,6 +104,63 @@ const DropdownMenuLabel = forwardRef<
 
 DropdownMenuLabel.displayName = 'DropdownMenuLabel';
 
+// DropdownMenu Sub (for nested menus)
+const DropdownMenuSub = DropdownMenuPrimitive.Sub;
+
+// DropdownMenu SubTrigger
+export interface DropdownMenuSubTriggerProps
+  extends React.ComponentPropsWithoutRef<
+    typeof DropdownMenuPrimitive.SubTrigger
+  > {
+  inset?: boolean;
+}
+
+const DropdownMenuSubTrigger = forwardRef<
+  React.ComponentRef<typeof DropdownMenuPrimitive.SubTrigger>,
+  DropdownMenuSubTriggerProps
+>(({ className, inset, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubTrigger
+    ref={ref}
+    className={cn(
+      'relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
+      'transition-colors focus:bg-accent focus:text-accent-foreground',
+      'data-[state=open]:bg-accent data-[state=open]:text-accent-foreground',
+      inset && 'pl-8',
+      className
+    )}
+    {...props}
+  >
+    {children}
+    <ChevronRight className="ml-auto h-4 w-4" />
+  </DropdownMenuPrimitive.SubTrigger>
+));
+
+DropdownMenuSubTrigger.displayName = 'DropdownMenuSubTrigger';
+
+// DropdownMenu SubContent
+export type DropdownMenuSubContentProps = React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.SubContent
+>;
+
+const DropdownMenuSubContent = forwardRef<
+  React.ComponentRef<typeof DropdownMenuPrimitive.SubContent>,
+  DropdownMenuSubContentProps
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.SubContent
+      ref={ref}
+      className={cn(
+        'z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg',
+        'data-[state=open]:animate-fade-in-fast data-[state=closed]:animate-fade-out-fast',
+        className
+      )}
+      {...props}
+    />
+  </DropdownMenuPrimitive.Portal>
+));
+
+DropdownMenuSubContent.displayName = 'DropdownMenuSubContent';
+
 // Compose DropdownMenu
 export const DropdownMenu = Object.assign(DropdownMenuRoot, {
   Trigger: DropdownMenuTrigger,
@@ -110,4 +168,7 @@ export const DropdownMenu = Object.assign(DropdownMenuRoot, {
   Item: DropdownMenuItem,
   Separator: DropdownMenuSeparator,
   Label: DropdownMenuLabel,
+  Sub: DropdownMenuSub,
+  SubTrigger: DropdownMenuSubTrigger,
+  SubContent: DropdownMenuSubContent,
 });

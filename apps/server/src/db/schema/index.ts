@@ -5,6 +5,7 @@ export * from './artifacts';
 export * from './projects';
 export * from './tasks';
 export * from './task-artifacts';
+export * from './project-artifacts';
 export * from './agents';
 export * from './skills';
 export * from './relations';

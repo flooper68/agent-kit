@@ -1,7 +1,7 @@
 import { eq, desc, lt, and, or, ilike, sql, type SQL } from 'drizzle-orm';
 import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
-import { projects, tasks } from '../../../db/schema';
+import { projects, tasks, projectArtifacts } from '../../../db/schema';
 
 export interface ListProjectsInput {
   userId: string;
@@ -25,6 +25,7 @@ export interface ProjectListItem {
   title: string;
   summary: string | null;
   taskCounts: TaskCounts;
+  artifactCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -95,6 +96,11 @@ export class ListProjectsQuery {
         reviewCount: sql<number>`count(case when ${tasks.status} = 'review' then 1 end)::int`,
         doneCount: sql<number>`count(case when ${tasks.status} = 'done' then 1 end)::int`,
         totalCount: sql<number>`count(${tasks.id})::int`,
+        artifactCount: sql<number>`(
+          SELECT count(*)::int
+          FROM ${projectArtifacts}
+          WHERE ${projectArtifacts.projectId} = ${projects.id}
+        )`,
       })
       .from(projects)
       .leftJoin(tasks, eq(projects.id, tasks.projectId))
@@ -123,6 +129,7 @@ export class ListProjectsQuery {
         done: r.doneCount,
         total: r.totalCount,
       },
+      artifactCount: r.artifactCount,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     }));

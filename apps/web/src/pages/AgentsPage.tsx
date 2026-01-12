@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   Heading,
   Text,
@@ -78,11 +78,23 @@ function ServerAgentCard({
   );
 }
 
+type TabValue = 'agents' | 'local';
+const validTabs: TabValue[] = ['agents', 'local'];
+
 export function AgentsPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { setActions, clearActions } = useHeaderActions();
-  const [activeTab, setActiveTab] = useState<'agents' | 'local'>('agents');
+
+  // Get tab from URL, default to 'agents'
+  const tabParam = searchParams.get('tab') as TabValue | null;
+  const activeTab =
+    tabParam && validTabs.includes(tabParam) ? tabParam : 'agents';
+
+  const handleTabChange = (tab: string) => {
+    setSearchParams({ tab }, { replace: true });
+  };
   const [regenerateTarget, setRegenerateTarget] = useState<{
     id: string;
     name: string;
@@ -162,12 +174,21 @@ export function AgentsPage() {
     if (state?.revealSecretKey) {
       setRevealedSecretKey(state.revealSecretKey);
       // Clear state to prevent showing again on refresh
-      navigate(location.pathname, { replace: true, state: {} });
+      navigate(location.pathname + location.search, {
+        replace: true,
+        state: {},
+      });
     }
     if (state?.activeTab) {
-      setActiveTab(state.activeTab);
+      setSearchParams({ tab: state.activeTab }, { replace: true });
     }
-  }, [location.state, location.pathname, navigate]);
+  }, [
+    location.state,
+    location.pathname,
+    location.search,
+    navigate,
+    setSearchParams,
+  ]);
 
   // Queries
   const serverAgentsQuery = trpc.agents.listServer.useQuery();
@@ -418,10 +439,7 @@ export function AgentsPage() {
         </div>
 
         {/* Tabs */}
-        <Tabs
-          value={activeTab}
-          onValueChange={(v) => setActiveTab(v as 'agents' | 'local')}
-        >
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <Tabs.List>
             <Tabs.Trigger value="agents">
               <Bot className="mr-1 h-4 w-4" />

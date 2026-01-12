@@ -12,6 +12,7 @@ export const artifactsRouter = router({
         limit: z.number().min(1).max(100).default(25),
         cursor: z.string().uuid().optional(),
         search: z.string().optional(),
+        excludeProjectId: z.string().uuid().optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -21,6 +22,7 @@ export const artifactsRouter = router({
         limit: input.limit,
         cursor: input.cursor,
         search: input.search,
+        excludeProjectId: input.excludeProjectId,
       });
     }),
 
@@ -40,6 +42,27 @@ export const artifactsRouter = router({
         });
       }
       return artifact;
+    }),
+
+  // Create artifact
+  create: orgProcedure
+    .input(
+      z.object({
+        title: z.string().min(1).max(255),
+        content: z.string().min(1).max(1_000_000),
+        summary: z.string().max(500).optional(),
+        format: z.enum(['markdown']).default('markdown'),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.artifactsFeature.create({
+        userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
+        title: input.title,
+        content: input.content,
+        summary: input.summary,
+        format: input.format,
+      });
     }),
 
   // Delete artifact

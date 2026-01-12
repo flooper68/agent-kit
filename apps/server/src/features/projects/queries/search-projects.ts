@@ -1,7 +1,7 @@
 import { eq, and, or, ilike, sql, desc } from 'drizzle-orm';
 import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
-import { projects, tasks } from '../../../db/schema';
+import { projects, tasks, projectArtifacts } from '../../../db/schema';
 import type { ProjectListItem } from './list-projects';
 
 export interface SearchProjectsInput {
@@ -38,6 +38,11 @@ export class SearchProjectsQuery {
         reviewCount: sql<number>`count(case when ${tasks.status} = 'review' then 1 end)::int`,
         doneCount: sql<number>`count(case when ${tasks.status} = 'done' then 1 end)::int`,
         totalCount: sql<number>`count(${tasks.id})::int`,
+        artifactCount: sql<number>`(
+          SELECT count(*)::int
+          FROM ${projectArtifacts}
+          WHERE ${projectArtifacts.projectId} = ${projects.id}
+        )`,
       })
       .from(projects)
       .leftJoin(tasks, eq(projects.id, tasks.projectId))
@@ -67,6 +72,7 @@ export class SearchProjectsQuery {
         done: r.doneCount,
         total: r.totalCount,
       },
+      artifactCount: r.artifactCount,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     }));

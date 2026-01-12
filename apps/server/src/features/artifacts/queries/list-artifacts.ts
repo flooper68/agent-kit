@@ -1,7 +1,17 @@
-import { eq, desc, lt, and, or, ilike, type SQL } from 'drizzle-orm';
+import {
+  eq,
+  desc,
+  lt,
+  and,
+  or,
+  ilike,
+  notExists,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
-import { artifacts } from '../../../db/schema';
+import { artifacts, projectArtifacts, taskArtifacts } from '../../../db/schema';
 
 export interface ListArtifactsInput {
   userId: string;
@@ -9,6 +19,7 @@ export interface ListArtifactsInput {
   limit: number;
   cursor?: string;
   search?: string;
+  excludeProjectId?: string;
 }
 
 export interface ArtifactListItem {
@@ -17,6 +28,8 @@ export interface ArtifactListItem {
   summary: string | null;
   format: string;
   sizeBytes: number;
+  projectCount: number;
+  taskCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,7 +47,7 @@ export class ListArtifactsQuery {
   }
 
   async execute(input: ListArtifactsInput): Promise<ListArtifactsResult> {
-    const { userId, orgId, limit, cursor, search } = input;
+    const { userId, orgId, limit, cursor, search, excludeProjectId } = input;
 
     // If cursor is provided, get the cursor artifact's createdAt for filtering
     let cursorDate: Date | undefined;
@@ -74,6 +87,23 @@ export class ListArtifactsQuery {
       );
     }
 
+    // Exclude artifacts already attached to a specific project
+    if (excludeProjectId) {
+      conditions.push(
+        notExists(
+          this.db
+            .select()
+            .from(projectArtifacts)
+            .where(
+              and(
+                eq(projectArtifacts.artifactId, artifacts.id),
+                eq(projectArtifacts.projectId, excludeProjectId)
+              )
+            )
+        )
+      );
+    }
+
     // Execute query
     const results = await this.db
       .select({
@@ -84,6 +114,16 @@ export class ListArtifactsQuery {
         sizeBytes: artifacts.sizeBytes,
         createdAt: artifacts.createdAt,
         updatedAt: artifacts.updatedAt,
+        projectCount: sql<number>`(
+          SELECT count(*)::int
+          FROM ${projectArtifacts}
+          WHERE ${projectArtifacts.artifactId} = ${artifacts.id}
+        )`,
+        taskCount: sql<number>`(
+          SELECT count(*)::int
+          FROM ${taskArtifacts}
+          WHERE ${taskArtifacts.artifactId} = ${artifacts.id}
+        )`,
       })
       .from(artifacts)
       .where(and(...conditions))

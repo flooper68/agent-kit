@@ -1,7 +1,7 @@
 import { eq, or, ilike, and, desc, sql } from 'drizzle-orm';
 import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
-import { artifacts } from '../../../db/schema';
+import { artifacts, projectArtifacts, taskArtifacts } from '../../../db/schema';
 import type { ArtifactListItem } from './list-artifacts';
 
 export interface SearchArtifactsInput {
@@ -53,6 +53,16 @@ export class SearchArtifactsQuery {
           sizeBytes: artifacts.sizeBytes,
           createdAt: artifacts.createdAt,
           updatedAt: artifacts.updatedAt,
+          projectCount: sql<number>`(
+            SELECT count(*)::int
+            FROM ${projectArtifacts}
+            WHERE ${projectArtifacts.artifactId} = ${artifacts.id}
+          )`,
+          taskCount: sql<number>`(
+            SELECT count(*)::int
+            FROM ${taskArtifacts}
+            WHERE ${taskArtifacts.artifactId} = ${artifacts.id}
+          )`,
         })
         .from(artifacts)
         .where(searchCondition)

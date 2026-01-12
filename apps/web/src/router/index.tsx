@@ -275,6 +275,14 @@ const router = createBrowserRouter([
                     ),
                   },
                   {
+                    path: 'projects/:projectId/artifacts/:artifactId',
+                    element: (
+                      <Suspense fallback={<ArtifactDetailPageSkeleton />}>
+                        <ArtifactDetailPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
                     path: 'skills',
                     element: (
                       <Suspense fallback={<ArtifactsPageSkeleton />}>

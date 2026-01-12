@@ -20,6 +20,7 @@ export function validateConnectionSecurity(serverUrl: string): void {
     hostname === 'localhost' ||
     hostname === '127.0.0.1' ||
     hostname === '::1' ||
+    hostname === 'host.docker.internal' ||
     hostname === '[::1]';
   const isSecure = url.protocol === 'wss:';
 

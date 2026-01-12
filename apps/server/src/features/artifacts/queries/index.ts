@@ -2,6 +2,9 @@ export { GetArtifactByIdQuery } from './get-artifact-by-id';
 export type {
   GetArtifactByIdInput,
   GetArtifactByIdResult,
+  ArtifactWithRelations,
+  AttachedProject,
+  AttachedTask,
 } from './get-artifact-by-id';
 
 export { ListArtifactsQuery } from './list-artifacts';

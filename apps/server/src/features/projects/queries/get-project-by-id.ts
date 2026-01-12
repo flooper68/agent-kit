@@ -4,6 +4,7 @@ import {
   projects,
   tasks,
   taskArtifacts,
+  projectArtifacts,
   type TaskStatus,
 } from '../../../db/schema';
 
@@ -29,6 +30,7 @@ export interface ProjectWithTasks {
   title: string;
   summary: string | null;
   tasksByStatus: Record<TaskStatus, TaskSummary[]>;
+  artifactCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -103,11 +105,18 @@ export class GetProjectByIdQuery {
       tasksByStatus[task.status].push(summary);
     }
 
+    // Get artifact count for the project
+    const [artifactCountResult] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(projectArtifacts)
+      .where(eq(projectArtifacts.projectId, id));
+
     return {
       id: project.id,
       title: project.title,
       summary: project.summary,
       tasksByStatus,
+      artifactCount: artifactCountResult?.count ?? 0,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     };
