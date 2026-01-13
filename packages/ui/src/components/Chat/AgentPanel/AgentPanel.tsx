@@ -74,6 +74,7 @@ export const AgentPanel = memo(
         onOpenSubAgentDialog,
         inputDisabled = false,
         renderSubAgentCard,
+        approvalBanner,
         // Compact mode props
         variant = 'full',
         agentName,
@@ -266,11 +267,13 @@ export const AgentPanel = memo(
           {/* Banners RIGHT ABOVE input (only when not in empty state) */}
           {!showEmptyState && (
             <div className="max-w-3xl mx-auto w-full">
-              {showTokenWarning && contextUsage && !selectedAgent?.isExternal && (
-                <div className="px-4">
-                  <TokenLimitBanner usage={contextUsage} />
-                </div>
-              )}
+              {showTokenWarning &&
+                contextUsage &&
+                !selectedAgent?.isExternal && (
+                  <div className="px-4">
+                    <TokenLimitBanner usage={contextUsage} />
+                  </div>
+                )}
               {hasError && error && (
                 <div className="px-4">
                   <ErrorBanner
@@ -280,6 +283,7 @@ export const AgentPanel = memo(
                   />
                 </div>
               )}
+              {approvalBanner && <div className="px-4">{approvalBanner}</div>}
             </div>
           )}
 

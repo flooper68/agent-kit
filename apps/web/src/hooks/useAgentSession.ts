@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { trpc } from '../lib/trpc';
+import { calculateCompletedDuration } from '../lib/time-utils';
 import { useSession } from '../contexts/SessionContext';
 import { getDefaultDependencies } from './useAgentSessionDependencies';
 import type {
@@ -63,6 +64,8 @@ interface UseAgentSessionReturn {
   sessionAgentId: string | null;
   todos: TodoItem[];
   streamingStartTime: number | null;
+  /** Pre-calculated duration for completed sessions (stable across refreshes) */
+  completedDuration: number | null;
 }
 
 // Map server error codes to TaskError types
@@ -1096,6 +1099,12 @@ export function useAgentSession(
     return () => clearTimeout(timeout);
   }, [status, sessionId, utils]);
 
+  // Calculate completed duration from messages (stable across page refreshes)
+  const completedDuration = useMemo(
+    () => calculateCompletedDuration(messages, status !== 'streaming'),
+    [status, messages]
+  );
+
   return {
     messages,
     status,
@@ -1113,5 +1122,6 @@ export function useAgentSession(
     sessionAgentId: sessionQuery.data?.agentId ?? null,
     todos,
     streamingStartTime,
+    completedDuration,
   };
 }
