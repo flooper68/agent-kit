@@ -3,7 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/utils';
 
 const checkboxVariants = cva(
-  'shrink-0 flex items-center justify-center rounded border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+  'shrink-0 flex items-center justify-center rounded border transition-colors',
   {
     variants: {
       size: {
@@ -47,6 +47,7 @@ const CheckIcon = ({ className }: { className?: string }) => (
     viewBox="0 0 24 24"
     stroke="currentColor"
     strokeWidth="3"
+    aria-hidden="true"
   >
     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
   </svg>
@@ -69,19 +70,6 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
     const generatedId = useId();
     const id = providedId ?? generatedId;
 
-    const handleClick = () => {
-      if (!disabled && onChange) {
-        onChange(!checked);
-      }
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        handleClick();
-      }
-    };
-
     return (
       <label
         className={cn(
@@ -98,17 +86,14 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
           checked={checked}
           onChange={(e) => onChange?.(e.target.checked)}
           disabled={disabled}
-          className="sr-only"
+          className="sr-only peer"
           {...props}
         />
         <div
-          role="checkbox"
-          aria-checked={checked}
-          tabIndex={disabled ? -1 : 0}
-          onClick={handleClick}
-          onKeyDown={handleKeyDown}
+          aria-hidden="true"
           className={cn(
             checkboxVariants({ size }),
+            'peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2',
             checked
               ? 'bg-info border-info text-info-foreground'
               : 'border-input bg-background hover:bg-muted/50'

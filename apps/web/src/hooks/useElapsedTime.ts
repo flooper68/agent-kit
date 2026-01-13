@@ -43,7 +43,13 @@ export function useElapsedTime({
   const elapsedRef = useRef(0);
   const wasRunningRef = useRef(false);
 
+  // Determine if we should use completedDuration (skip interval setup in this case)
+  const useCompletedDuration = completedDuration != null && !isRunning;
+
   useEffect(() => {
+    // Skip interval setup if we're using completedDuration
+    if (useCompletedDuration) return;
+
     if (isRunning && startTime) {
       wasRunningRef.current = true;
       setFinalElapsed(null);
@@ -67,26 +73,28 @@ export function useElapsedTime({
       }
       wasRunningRef.current = false;
     }
-  }, [isRunning, startTime]);
+  }, [isRunning, startTime, useCompletedDuration]);
 
   // Reset when startTime changes (new session)
   useEffect(() => {
+    if (useCompletedDuration) return;
     if (startTime && !isRunning) {
       setElapsed(0);
     }
-  }, [startTime, isRunning]);
+  }, [startTime, isRunning, useCompletedDuration]);
 
   // Reset finalElapsed when startTime is cleared (session switch)
   useEffect(() => {
+    if (useCompletedDuration) return;
     if (!startTime) {
       setFinalElapsed(null);
       wasRunningRef.current = false;
     }
-  }, [startTime]);
+  }, [startTime, useCompletedDuration]);
 
   // If completedDuration is provided and not running, use it directly
   // This ensures stable display for completed sessions across page refreshes
-  if (completedDuration != null && !isRunning) {
+  if (useCompletedDuration) {
     return {
       elapsedSeconds: completedDuration,
       formattedElapsed:

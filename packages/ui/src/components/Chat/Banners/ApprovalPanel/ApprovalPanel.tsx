@@ -19,14 +19,15 @@ export interface ApprovalPanelProps {
   className?: string;
 }
 
-// Clipboard/plan icon
-const PlanIcon = () => (
+// Clipboard/plan icon (constant JSX to avoid recreation)
+const PlanIcon = (
   <svg
     className="h-5 w-5 flex-shrink-0 text-info"
     fill="none"
     viewBox="0 0 24 24"
     stroke="currentColor"
     strokeWidth="2"
+    aria-hidden="true"
   >
     <path
       strokeLinecap="round"
@@ -61,7 +62,7 @@ export const ApprovalPanel = forwardRef<HTMLDivElement, ApprovalPanelProps>(
           className
         )}
       >
-        <PlanIcon />
+        {PlanIcon}
         <p className="flex-1 font-medium text-foreground">{title}</p>
         <div className="flex items-center gap-2 flex-shrink-0">
           <Button

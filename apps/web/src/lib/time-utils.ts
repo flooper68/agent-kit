@@ -70,3 +70,31 @@ export function formatDate(date: Date | string): string {
     minute: '2-digit',
   });
 }
+
+/**
+ * Calculate duration from message timestamps for completed sessions.
+ * Uses assistant messages to determine the time span of the conversation.
+ *
+ * @param messages - Array of messages with role and createdAt timestamp
+ * @param isComplete - Whether the session is complete (duration only calculated when true)
+ * @returns Duration in seconds, or null if not calculable
+ */
+export function calculateCompletedDuration(
+  messages: Array<{ role: string; createdAt?: string | Date | null }>,
+  isComplete: boolean
+): number | null {
+  if (!isComplete || messages.length === 0) return null;
+
+  const assistantMessages = messages.filter((m) => m.role === 'assistant');
+  if (assistantMessages.length === 0) return null;
+
+  const firstMsg = assistantMessages[0];
+  const lastMsg = assistantMessages[assistantMessages.length - 1];
+
+  if (!firstMsg?.createdAt || !lastMsg?.createdAt) return null;
+
+  const start = new Date(firstMsg.createdAt).getTime();
+  const end = new Date(lastMsg.createdAt).getTime();
+
+  return Math.max(1, Math.floor((end - start) / 1000));
+}
