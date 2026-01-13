@@ -176,6 +176,7 @@ export function AppAgentPanel({
     sessionAgentId,
     todos,
     streamingStartTime,
+    completedDuration,
   } = useAgentSession({
     sessionId,
     onSessionInvalid: handleSessionInvalid,
@@ -184,15 +185,19 @@ export function AppAgentPanel({
   });
 
   // Convert streamingStartTime to formatted elapsed label for main session
+  // Use completedDuration for stable display across page refreshes
   const { formattedElapsed: elapsedLabel } = useElapsedTime({
     startTime: streamingStartTime,
     isRunning: status === 'streaming',
+    completedDuration,
   });
 
   // Convert streamingStartTime to formatted elapsed label for sub-agent dialog
+  // Use completedDuration for stable display across page refreshes
   const { formattedElapsed: subAgentElapsedLabel } = useElapsedTime({
     startTime: subAgentStreaming.streamingStartTime,
     isRunning: subAgentStreaming.isStreaming,
+    completedDuration: subAgentStreaming.completedDuration,
   });
 
   // Track when selectedAgentId changes from parent (command palette selection)

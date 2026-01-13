@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { trpc } from '../lib/trpc';
 import type {
   TaskMessage,
@@ -24,6 +24,8 @@ export interface UseSubAgentStreamingReturn {
   latestAction?: string;
   todos: TodoItem[];
   streamingStartTime: number | null;
+  /** Pre-calculated duration for completed sessions (stable across refreshes) */
+  completedDuration: number | null;
 }
 
 // Maximum size for tracking refs to prevent memory leaks
@@ -528,6 +530,25 @@ export function useSubAgentStreaming(
     }
   );
 
+  // Calculate completed duration from messages (stable across page refreshes)
+  const completedDuration = useMemo(() => {
+    if (status !== 'complete' || messages.length === 0) return null;
+
+    // Find first and last assistant messages to calculate duration
+    const assistantMessages = messages.filter((m) => m.role === 'assistant');
+    if (assistantMessages.length === 0) return null;
+
+    const firstMsg = assistantMessages[0];
+    const lastMsg = assistantMessages[assistantMessages.length - 1];
+
+    if (!firstMsg?.createdAt || !lastMsg?.createdAt) return null;
+
+    const start = new Date(firstMsg.createdAt).getTime();
+    const end = new Date(lastMsg.createdAt).getTime();
+
+    return Math.max(1, Math.floor((end - start) / 1000));
+  }, [status, messages]);
+
   return {
     messages,
     isStreaming,
@@ -535,5 +556,6 @@ export function useSubAgentStreaming(
     latestAction,
     todos,
     streamingStartTime,
+    completedDuration,
   };
 }

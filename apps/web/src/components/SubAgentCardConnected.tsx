@@ -128,9 +128,11 @@ export const SubAgentCardConnected = memo(function SubAgentCardConnected({
   const isRunning = compactStatus === 'pending' || compactStatus === 'running';
 
   // Convert streamingStartTime to formatted elapsed label
+  // Use completedDuration for stable display across page refreshes
   const { formattedElapsed: elapsedLabel } = useElapsedTime({
     startTime: streaming.streamingStartTime,
     isRunning,
+    completedDuration: streaming.completedDuration,
   });
 
   return (

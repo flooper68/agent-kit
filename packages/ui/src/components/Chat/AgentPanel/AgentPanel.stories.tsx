@@ -1126,3 +1126,148 @@ export const CompactWithMarkdown: Story = {
     },
   },
 };
+
+// ============================================
+// 16. Approval Flow Integration
+// ============================================
+
+import { ApprovalPanel } from '../Banners';
+
+// Static story showing approval panel in context
+export const WithApprovalBanner: Story = {
+  render: () => (
+    <AgentPanel
+      messages={[
+        createMessage('user', [createTextPart('Research founder mode')]),
+        createMessage('assistant', [
+          createTextPart(
+            "I'll help you research founder mode. Let me outline my approach before we begin."
+          ),
+        ]),
+      ]}
+      status="ready"
+      avatars={defaultAvatars}
+      onSend={() => {}}
+      approvalBanner={
+        <ApprovalPanel
+          title="Ok, here's my plan:"
+          onApprove={() => console.log('Approved')}
+          onDeny={() => console.log('Denied')}
+        />
+      }
+    />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Static view showing the ApprovalPanel positioned above the chat input, same as error banners.',
+      },
+    },
+  },
+};
+
+// Interactive story with full approval flow
+const ApprovalFlowDemoComponent = () => {
+  const [showApproval, setShowApproval] = useState(false);
+  const [messages, setMessages] = useState<TaskMessage[]>([]);
+  const [status, setStatus] = useState<TaskStatus>('ready');
+
+  const handleSend = useCallback(async (message: string) => {
+    // Add user message
+    setMessages((prev) => [
+      ...prev,
+      createMessage('user', [createTextPart(message)]),
+    ]);
+    setStatus('streaming');
+
+    // Simulate assistant thinking
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Add assistant response with plan
+    setMessages((prev) => [
+      ...prev,
+      createMessage('assistant', [
+        createTextPart(
+          "I'll help you with that. Here's my proposed approach - please review and approve."
+        ),
+      ]),
+    ]);
+    setStatus('ready');
+    setShowApproval(true);
+  }, []);
+
+  const handleApprove = useCallback(async () => {
+    setShowApproval(false);
+    setStatus('streaming');
+
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    setMessages((prev) => [
+      ...prev,
+      createMessage('assistant', [
+        createTextPart('Great! Starting the task now...'),
+      ]),
+    ]);
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setMessages((prev) => [
+      ...prev,
+      createMessage('assistant', [
+        createTextPart('Task completed successfully!'),
+      ]),
+    ]);
+    setStatus('ready');
+  }, []);
+
+  const handleDeny = useCallback(() => {
+    setShowApproval(false);
+    setMessages((prev) => [
+      ...prev,
+      createMessage('assistant', [
+        createTextPart('Understood. What would you like me to do instead?'),
+      ]),
+    ]);
+  }, []);
+
+  return (
+    <AgentPanel
+      messages={messages}
+      status={status}
+      suggestions={defaultSuggestions}
+      emptyStateConfig={{
+        title: 'Approval Flow Demo',
+        description: 'Send a message to see the approval workflow in action',
+      }}
+      avatars={defaultAvatars}
+      onSend={handleSend}
+      approvalBanner={
+        showApproval ? (
+          <ApprovalPanel
+            title="Ok, here's my plan:"
+            onApprove={handleApprove}
+            onDeny={handleDeny}
+          />
+        ) : undefined
+      }
+    />
+  );
+};
+
+export const ApprovalFlowDemo: Story = {
+  render: () => <ApprovalFlowDemoComponent />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+Interactive demo of the approval flow using the AgentPanel component.
+
+1. **Send a message** - Type anything or click a suggestion
+2. **Review plan** - Agent proposes a plan with approval banner
+3. **Approve or Deny** - Click to proceed or reject
+
+The ApprovalPanel appears in the same position as error banners - right above the chat input.
+        `,
+      },
+    },
+  },
+};

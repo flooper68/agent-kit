@@ -230,6 +230,12 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
    * If not provided, falls back to the default SubAgentCard.
    */
   renderSubAgentCard?: (props: RenderSubAgentCardProps) => ReactNode;
+
+  /**
+   * Optional approval banner to display above the chat input.
+   * Rendered in the same position as error banners.
+   */
+  approvalBanner?: ReactNode;
 }
 
 /**

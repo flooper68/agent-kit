@@ -6,6 +6,8 @@ export interface UseElapsedTimeOptions {
   startTime?: number | null;
   /** Whether the timer should be actively counting */
   isRunning: boolean;
+  /** Pre-calculated duration for completed sessions (takes precedence when not running) */
+  completedDuration?: number | null;
 }
 
 export interface UseElapsedTimeReturn {
@@ -34,6 +36,7 @@ export interface UseElapsedTimeReturn {
 export function useElapsedTime({
   startTime,
   isRunning,
+  completedDuration,
 }: UseElapsedTimeOptions): UseElapsedTimeReturn {
   const [elapsed, setElapsed] = useState(0);
   const [finalElapsed, setFinalElapsed] = useState<number | null>(null);
@@ -80,6 +83,16 @@ export function useElapsedTime({
       wasRunningRef.current = false;
     }
   }, [startTime]);
+
+  // If completedDuration is provided and not running, use it directly
+  // This ensures stable display for completed sessions across page refreshes
+  if (completedDuration != null && !isRunning) {
+    return {
+      elapsedSeconds: completedDuration,
+      formattedElapsed:
+        completedDuration > 0 ? formatDuration(completedDuration) : null,
+    };
+  }
 
   const displayElapsed = finalElapsed ?? elapsed;
 

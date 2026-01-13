@@ -2,6 +2,9 @@
 export { Button, buttonVariants } from './Button';
 export type { ButtonProps } from './Button';
 
+export { Checkbox } from './Checkbox';
+export type { CheckboxProps } from './Checkbox';
+
 export { Avatar } from './Avatar';
 export type { AvatarProps } from './Avatar';
 

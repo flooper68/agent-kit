@@ -63,6 +63,8 @@ interface UseAgentSessionReturn {
   sessionAgentId: string | null;
   todos: TodoItem[];
   streamingStartTime: number | null;
+  /** Pre-calculated duration for completed sessions (stable across refreshes) */
+  completedDuration: number | null;
 }
 
 // Map server error codes to TaskError types
@@ -1096,6 +1098,25 @@ export function useAgentSession(
     return () => clearTimeout(timeout);
   }, [status, sessionId, utils]);
 
+  // Calculate completed duration from messages (stable across page refreshes)
+  const completedDuration = useMemo(() => {
+    if (status === 'streaming' || messages.length === 0) return null;
+
+    // Find first and last assistant messages to calculate duration
+    const assistantMessages = messages.filter((m) => m.role === 'assistant');
+    if (assistantMessages.length === 0) return null;
+
+    const firstMsg = assistantMessages[0];
+    const lastMsg = assistantMessages[assistantMessages.length - 1];
+
+    if (!firstMsg?.createdAt || !lastMsg?.createdAt) return null;
+
+    const start = new Date(firstMsg.createdAt).getTime();
+    const end = new Date(lastMsg.createdAt).getTime();
+
+    return Math.max(1, Math.floor((end - start) / 1000));
+  }, [status, messages]);
+
   return {
     messages,
     status,
@@ -1113,5 +1134,6 @@ export function useAgentSession(
     sessionAgentId: sessionQuery.data?.agentId ?? null,
     todos,
     streamingStartTime,
+    completedDuration,
   };
 }
