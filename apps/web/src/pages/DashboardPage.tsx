@@ -38,6 +38,7 @@ export function DashboardPage() {
       name: agent.name,
       description: agent.description ?? undefined,
       isLocal: agent.isLocal,
+      isExternal: agent.isExternal,
       isFavorite: agent.isFavorite,
       model: agent.model ?? undefined,
       provider: agent.provider ?? undefined,

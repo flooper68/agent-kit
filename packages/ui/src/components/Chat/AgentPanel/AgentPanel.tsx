@@ -266,7 +266,7 @@ export const AgentPanel = memo(
           {/* Banners RIGHT ABOVE input (only when not in empty state) */}
           {!showEmptyState && (
             <div className="max-w-3xl mx-auto w-full">
-              {showTokenWarning && contextUsage && (
+              {showTokenWarning && contextUsage && !selectedAgent?.isExternal && (
                 <div className="px-4">
                   <TokenLimitBanner usage={contextUsage} />
                 </div>
@@ -327,7 +327,7 @@ export const AgentPanel = memo(
                           status={status}
                           elapsedLabel={elapsedLabel}
                         />
-                        {selectedAgent?.isLocal && contextUsage && (
+                        {!selectedAgent?.isExternal && contextUsage && (
                           <ContextIndicator usage={contextUsage} />
                         )}
                       </div>

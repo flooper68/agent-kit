@@ -201,6 +201,8 @@ export interface AgentType {
   model?: string;
   provider?: string;
   isLocal?: boolean;
+  /** Whether this agent connects to an external endpoint (vs running on the server) */
+  isExternal?: boolean;
   disabled?: boolean;
   isFavorite?: boolean;
 }

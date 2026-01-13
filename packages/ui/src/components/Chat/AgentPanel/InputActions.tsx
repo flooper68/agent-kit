@@ -95,7 +95,7 @@ export const InputActions = memo(function InputActions({
       </div>
       <div className="flex items-center gap-2">
         <RunningTimeIndicator status={status} elapsedLabel={elapsedLabel} />
-        {isAgentSelectorDisabled && selectedAgent?.isLocal && (
+        {isAgentSelectorDisabled && !selectedAgent?.isExternal && (
           <ContextIndicator usage={contextUsage ?? DEFAULT_CONTEXT_USAGE} />
         )}
       </div>
