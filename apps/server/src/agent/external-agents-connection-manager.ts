@@ -197,31 +197,67 @@ export class ExternalAgentsConnectionManager {
    * Subscribe to connection status updates for all of a user's external agents.
    * Yields initial status for all agents, then streams updates from pubsub.
    * Uses agent.key (not UUID) as agentId for UI matching consistency.
+   *
+   * Important: Subscribes to pubsub BEFORE fetching initial status to avoid
+   * race conditions where connection events are missed during the fetch window.
    */
   async *subscribeToStatusUpdates(
     userId: string,
     agentLister: AgentLister
   ): AsyncGenerator<ConnectionStatusUpdate> {
-    // Yield initial status for all user's agents (use key for UI matching)
-    const agents = await agentLister.list(userId);
-    for (const agent of agents) {
-      const connection = await this.getConnectionStatus(userId, agent.key);
-      yield {
-        agentId: agent.key,
-        userId,
-        status: connection ? 'connected' : 'disconnected',
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    // Stream updates from pubsub
     const channel = this.getStatusChannel(userId);
-    for await (const update of this.pubsub.subscribeAsync<ConnectionStatusUpdate>(
-      channel
-    )) {
+
+    // Queue for pubsub events - starts buffering before initial fetch
+    const queue: ConnectionStatusUpdate[] = [];
+    const waiters: Array<() => void> = [];
+    let closed = false;
+
+    const handler = (message: { data: unknown }) => {
+      if (closed) return;
+      const update = message.data as ConnectionStatusUpdate;
       if (update.userId === userId) {
-        yield update;
+        queue.push(update);
+        const waiter = waiters.shift();
+        if (waiter) waiter();
       }
+    };
+
+    // Subscribe FIRST to start buffering events during initial fetch
+    await this.pubsub.subscribe(channel, handler);
+
+    try {
+      // Yield initial status for all user's agents (use key for UI matching)
+      const agents = await agentLister.list(userId);
+      for (const agent of agents) {
+        const connection = await this.getConnectionStatus(userId, agent.key);
+        yield {
+          agentId: agent.key,
+          userId,
+          status: connection ? 'connected' : 'disconnected',
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      // Yield buffered events and continue with live updates
+      while (!closed) {
+        if (queue.length > 0) {
+          const update = queue.shift();
+          if (update) {
+            yield update;
+          }
+        } else {
+          await new Promise<void>((resolve) => {
+            waiters.push(resolve);
+          });
+        }
+      }
+    } finally {
+      closed = true;
+      // Wake up any waiters so they can exit
+      for (const waiter of waiters) {
+        waiter();
+      }
+      await this.pubsub.unsubscribe(channel, handler);
     }
   }
 }
