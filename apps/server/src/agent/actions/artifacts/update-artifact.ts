@@ -10,6 +10,7 @@ const MAX_CONTENT_SIZE = 1_000_000; // 1MB
 export const updateArtifactMetadata: ActionMetadata = {
   id: 'updateArtifact',
   requiredScopes: [AgentScope.ARTIFACTS_WRITE],
+  needsApproval: true,
 };
 
 export interface UpdateArtifactContext {
@@ -22,8 +23,6 @@ export function createUpdateArtifactTool(context: UpdateArtifactContext): Tool {
   return tool({
     description:
       'Update an existing artifact/document. Can update the title, content, or summary. Use getArtifact first to get the current content if you need to modify it.',
-    // Requires user approval before execution
-    needsApproval: true,
     inputSchema: z.object({
       artifactId: z
         .string()

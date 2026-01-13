@@ -9,6 +9,7 @@ import { TaskStatusSchema } from '../../../features/tasks/schemas';
 export const moveTaskMetadata: ActionMetadata = {
   id: 'moveTask',
   requiredScopes: [AgentScope.TASKS_WRITE],
+  needsApproval: true,
 };
 
 export interface MoveTaskContext {

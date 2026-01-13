@@ -8,6 +8,7 @@ import type { TasksFeature } from '../../../features/tasks';
 export const detachArtifactFromTaskMetadata: ActionMetadata = {
   id: 'detachArtifactFromTask',
   requiredScopes: [AgentScope.TASKS_WRITE],
+  needsApproval: true,
 };
 
 export interface DetachArtifactFromTaskContext {

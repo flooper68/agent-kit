@@ -14,25 +14,14 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../types';
 import type { ExecuteSkillResult, ParsedCommand } from '../skills/types';
-import { getActionsById, getActionRequiredScopes } from '../actions';
+import { getActionsById } from '../actions';
 import type { ToolsContext } from './types';
 import { logger } from '../logger';
-import { SERVER_TOOL_DEFINITIONS, AgentScope, type ToolName } from '@agent-kit/shared';
+import { SERVER_TOOL_DEFINITIONS, type ToolName } from '@agent-kit/shared';
 import { checkActionPermission, createPermissionError } from '../permissions';
+import { checkCommandRequiresApproval } from './approvals';
 
 const log = logger.child({ module: 'execute-command-tool' });
-
-/**
- * Scopes that require human approval before tool execution.
- * This is the same list used by needsApproval to determine if a command
- * should trigger the approval flow.
- */
-const SCOPES_REQUIRING_APPROVAL: AgentScope[] = [AgentScope.ARTIFACTS_WRITE];
-
-export interface ExecuteCommandToolContext {
-  /** Tool context for creating actual tools */
-  toolContext: ToolsContext;
-}
 
 /**
  * Parse a CLI-style command string into tool name and arguments
@@ -202,21 +191,6 @@ function parseValue(value: string): unknown {
 }
 
 /**
- * Check if a command requires approval based on the inner action's scopes.
- * This is used by the needsApproval function.
- */
-function checkCommandRequiresApproval(command: string): boolean {
-  try {
-    const parsed = parseCommand(command);
-    const scopes = getActionRequiredScopes(parsed.tool);
-    return scopes.some((s: AgentScope) => SCOPES_REQUIRING_APPROVAL.includes(s));
-  } catch {
-    // Parse error - will fail at execute time, no approval needed
-    return false;
-  }
-}
-
-/**
  * Create the executeCommand tool with needsApproval and execute.
  * Uses AI SDK's native approval flow via needsApproval function.
  */
@@ -238,125 +212,112 @@ export function createExecuteCommandTool(context: ToolsContext): Tool {
       return checkCommandRequiresApproval(command);
     },
     // Execute the inner action
-    execute: async ({ command }: { command: string }) => {
+    execute: async ({ command }: { command: string }): Promise<ExecuteSkillResult> => {
       const parsed = parseCommand(command);
-      return executeCommandAction(parsed, { toolContext: context });
+      const { tool: toolName, args } = parsed;
+
+      log.info('Executing command action', { toolName, args });
+
+      // Check permissions before instantiating the action
+      const permCheck = checkActionPermission(toolName, context.agentScopes);
+      if (!permCheck.allowed) {
+        log.warn('Permission denied', {
+          actionName: toolName,
+          missingScopes: permCheck.missingScopes,
+        });
+        return {
+          success: false,
+          tool: toolName,
+          args,
+          error: createPermissionError(toolName, permCheck.missingScopes),
+        };
+      }
+
+      // Get the action implementation (only after permission check passes)
+      const actions = getActionsById([toolName], context);
+      const actionImpl = actions[toolName];
+
+      if (!actionImpl) {
+        log.warn('Action not found', { actionName: toolName });
+        return {
+          success: false,
+          tool: toolName,
+          args,
+          error: `Action "${toolName}" not found or not available.`,
+        };
+      }
+
+      // Check if action has execute method (approval-required actions don't)
+      if (!actionImpl.execute) {
+        log.warn('Action requires approval', { actionName: toolName });
+        return {
+          success: false,
+          tool: toolName,
+          args,
+          error: `Action "${toolName}" requires approval.`,
+        };
+      }
+
+      // Validate args against schema before execution
+      const toolDef = SERVER_TOOL_DEFINITIONS[toolName as ToolName];
+      if (toolDef?.schema) {
+        const validationResult = toolDef.schema.safeParse(args);
+        if (!validationResult.success) {
+          const errors = validationResult.error.issues
+            .map(
+              (issue) =>
+                `${issue.path.join('.') || 'argument'}: ${issue.message}`
+            )
+            .join(', ');
+
+          log.warn('Argument validation failed', {
+            actionName: toolName,
+            args,
+            errors,
+          });
+
+          return {
+            success: false,
+            tool: toolName,
+            args,
+            error: `Invalid arguments for ${toolName}: ${errors}. Check parameter names and types.`,
+          };
+        }
+      }
+
+      // Execute the action
+      try {
+        log.info('Executing action', { actionName: toolName, args });
+
+        const result = await actionImpl.execute(args);
+
+        log.info('Action execution completed', {
+          actionName: toolName,
+          success: true,
+        });
+
+        return {
+          success: true,
+          tool: toolName,
+          args,
+          result,
+        };
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Unknown error during execution';
+        log.error('Action execution failed', {
+          actionName: toolName,
+          args,
+          error: errorMessage,
+        });
+
+        return {
+          success: false,
+          tool: toolName,
+          args,
+          error: errorMessage,
+        };
+      }
     },
   });
-}
-
-/**
- * Execute a parsed command. Called by the stream handler after approval checks.
- */
-export async function executeCommandAction(
-  parsed: ParsedCommand,
-  context: ExecuteCommandToolContext
-): Promise<ExecuteSkillResult> {
-  const { tool: toolName, args } = parsed;
-
-  log.info('Executing command action', { toolName, args });
-
-  // Check permissions before instantiating the action
-  const permCheck = checkActionPermission(
-    toolName,
-    context.toolContext.agentScopes
-  );
-  if (!permCheck.allowed) {
-    log.warn('Permission denied', {
-      actionName: toolName,
-      missingScopes: permCheck.missingScopes,
-    });
-    return {
-      success: false,
-      tool: toolName,
-      args,
-      error: createPermissionError(toolName, permCheck.missingScopes),
-    };
-  }
-
-  // Get the action implementation (only after permission check passes)
-  const actions = getActionsById([toolName], context.toolContext);
-  const actionImpl = actions[toolName];
-
-  if (!actionImpl) {
-    log.warn('Action not found', { actionName: toolName });
-    return {
-      success: false,
-      tool: toolName,
-      args,
-      error: `Action "${toolName}" not found or not available.`,
-    };
-  }
-
-  // Check if action has execute method (approval-required actions don't)
-  if (!actionImpl.execute) {
-    log.warn('Action requires approval', { actionName: toolName });
-    return {
-      success: false,
-      tool: toolName,
-      args,
-      error: `Action "${toolName}" requires approval.`,
-    };
-  }
-
-  // Validate args against schema before execution
-  const toolDef = SERVER_TOOL_DEFINITIONS[toolName as ToolName];
-  if (toolDef?.schema) {
-    const validationResult = toolDef.schema.safeParse(args);
-    if (!validationResult.success) {
-      const errors = validationResult.error.issues
-        .map(
-          (issue) =>
-            `${issue.path.join('.') || 'argument'}: ${issue.message}`
-        )
-        .join(', ');
-
-      log.warn('Argument validation failed', {
-        actionName: toolName,
-        args,
-        errors,
-      });
-
-      return {
-        success: false,
-        tool: toolName,
-        args,
-        error: `Invalid arguments for ${toolName}: ${errors}. Check parameter names and types.`,
-      };
-    }
-  }
-
-  // Execute the action
-  try {
-    log.info('Executing action', { actionName: toolName, args });
-
-    const result = await actionImpl.execute(args);
-
-    log.info('Action execution completed', {
-      actionName: toolName,
-      success: true,
-    });
-
-    return {
-      success: true,
-      tool: toolName,
-      args,
-      result,
-    };
-  } catch (err) {
-    const errorMessage =
-      err instanceof Error ? err.message : 'Unknown error during execution';
-    log.error('Action execution failed', {
-      actionName: toolName,
-      args,
-      error: errorMessage,
-    });
-
-    return {
-      success: false,
-      tool: toolName,
-      args,
-      error: errorMessage,
-    };
-  }
 }

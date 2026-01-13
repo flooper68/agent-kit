@@ -219,6 +219,15 @@ export function getActionRequiredScopes(actionId: string): AgentScope[] {
 }
 
 /**
+ * Check if an action requires user approval before execution.
+ * Returns false if action not found or doesn't require approval.
+ */
+export function getActionNeedsApproval(actionId: string): boolean {
+  const metadata = ACTION_METADATA[actionId];
+  return metadata?.needsApproval ?? false;
+}
+
+/**
  * Static actions (no context needed)
  */
 export const STATIC_ACTIONS: Record<string, Tool> = {

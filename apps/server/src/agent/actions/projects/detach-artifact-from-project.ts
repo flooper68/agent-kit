@@ -8,6 +8,7 @@ import type { ProjectsFeature } from '../../../features/projects';
 export const detachArtifactFromProjectMetadata: ActionMetadata = {
   id: 'detachArtifactFromProject',
   requiredScopes: [AgentScope.PROJECTS_WRITE],
+  needsApproval: true,
 };
 
 export interface DetachArtifactFromProjectContext {

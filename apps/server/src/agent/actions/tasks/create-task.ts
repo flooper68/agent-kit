@@ -12,6 +12,7 @@ import {
 export const createTaskMetadata: ActionMetadata = {
   id: 'createTask',
   requiredScopes: [AgentScope.TASKS_WRITE],
+  needsApproval: true,
 };
 
 export interface CreateTaskContext {

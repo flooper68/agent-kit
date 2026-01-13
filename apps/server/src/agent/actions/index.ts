@@ -16,5 +16,6 @@ export {
   getActionsById,
   listActionIds,
   getActionRequiredScopes,
+  getActionNeedsApproval,
 } from './actions';
 export type { StaticActionId, ContextActionId, ActionId } from './actions';
