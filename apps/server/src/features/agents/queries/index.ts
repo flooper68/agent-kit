@@ -43,6 +43,11 @@ export type {
   GetMessagesBySessionIdResult,
   MessageWithParts,
 } from './get-messages-by-session-id';
+export { GetLastAssistantMessageQuery } from './get-last-assistant-message';
+export { GetLastAwaitingApprovalMessageQuery } from './get-last-awaiting-approval-message';
+
+// Event queries
+export { GetMaxEventSequenceQuery } from './get-max-event-sequence';
 
 // Session resource queries
 export { GetSessionResourcesQuery } from './get-session-resources';

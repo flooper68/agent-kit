@@ -8,6 +8,7 @@ import type { TasksFeature } from '../../../features/tasks';
 export const deleteTaskMetadata: ActionMetadata = {
   id: 'deleteTask',
   requiredScopes: [AgentScope.TASKS_DELETE],
+  needsApproval: true,
 };
 
 export interface DeleteTaskContext {

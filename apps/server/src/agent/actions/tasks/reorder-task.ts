@@ -8,6 +8,7 @@ import type { TasksFeature } from '../../../features/tasks';
 export const reorderTaskMetadata: ActionMetadata = {
   id: 'reorderTask',
   requiredScopes: [AgentScope.TASKS_WRITE],
+  needsApproval: true,
 };
 
 export interface ReorderTaskContext {

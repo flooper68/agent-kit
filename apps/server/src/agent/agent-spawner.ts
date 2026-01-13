@@ -282,6 +282,64 @@ export class AgentSpawner {
   }
 
   /**
+   * Continue a session after user approves/denies a tool.
+   * Used by AI SDK's needsApproval flow.
+   */
+  async spawnWithApprovalResponse(input: {
+    sessionId: string;
+    agentId: string;
+    userId: string;
+    orgId: string;
+    approvalResponse: {
+      approvalId: string;
+      approved: boolean;
+      reason?: string;
+    };
+  }): Promise<SpawnResult> {
+    const { sessionId, agentId, userId, orgId, approvalResponse } = input;
+
+    try {
+      // Start streaming state
+      await this.streamingStateManager.startStreaming(
+        sessionId,
+        userId,
+        agentId,
+        true // isLocalAgent
+      );
+
+      // Enqueue job with approval response
+      await this.jobQueueManager.enqueue({
+        sessionId,
+        agentId,
+        userId,
+        orgId,
+        content: '', // No user message for approval continuation
+        approvalResponse,
+      });
+
+      // Publish cache invalidation
+      await this.cacheInvalidation.publishSessionMessageAdded(userId, sessionId);
+
+      return { sessionId, dispatched: true };
+    } catch (error) {
+      // Clean up streaming state on failure
+      await this.streamingStateManager.stopStreaming(sessionId);
+
+      log.error('Spawn with approval response failed', {
+        sessionId,
+        agentId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      return {
+        sessionId,
+        dispatched: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
    * Resolve agent info - validates agent exists and is available
    */
   private async resolveAgentInfo(

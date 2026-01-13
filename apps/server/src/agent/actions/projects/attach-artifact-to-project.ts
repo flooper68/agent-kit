@@ -8,6 +8,7 @@ import type { ProjectsFeature } from '../../../features/projects';
 export const attachArtifactToProjectMetadata: ActionMetadata = {
   id: 'attachArtifactToProject',
   requiredScopes: [AgentScope.PROJECTS_WRITE],
+  needsApproval: true,
 };
 
 export interface AttachArtifactToProjectContext {

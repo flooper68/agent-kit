@@ -8,6 +8,7 @@ import type { TasksFeature } from '../../../features/tasks';
 export const attachArtifactToTaskMetadata: ActionMetadata = {
   id: 'attachArtifactToTask',
   requiredScopes: [AgentScope.TASKS_WRITE],
+  needsApproval: true,
 };
 
 export interface AttachArtifactToTaskContext {

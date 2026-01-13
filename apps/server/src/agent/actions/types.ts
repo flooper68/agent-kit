@@ -16,6 +16,8 @@ export interface ActionMetadata {
   id: string;
   /** Scopes required to execute this action (empty = action denied) */
   requiredScopes: AgentScope[];
+  /** Whether this action requires user approval before execution */
+  needsApproval?: boolean;
 }
 
 /**

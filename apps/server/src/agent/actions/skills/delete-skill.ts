@@ -16,6 +16,7 @@ import { logger } from '../../logger';
 export const deleteSkillMetadata: ActionMetadata = {
   id: 'deleteSkill',
   requiredScopes: [AgentScope.SKILLS_DELETE],
+  needsApproval: true,
 };
 
 const log = logger.child({ module: 'delete-skill-action' });

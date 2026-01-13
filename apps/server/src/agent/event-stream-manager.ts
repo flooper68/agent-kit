@@ -19,6 +19,8 @@ const StreamEventTypeSchema = z.enum([
   'interrupted',
   'client_tool_request',
   'spawn_session_created',
+  'tool_approval_requested',
+  'tool_approval_responded',
 ]);
 
 const BaseStreamEventSchema = z.object({
@@ -111,6 +113,24 @@ const SpawnSessionCreatedEventSchema = BaseStreamEventSchema.extend({
   spawnedSessionId: z.string(),
 });
 
+const ToolApprovalRequestedEventSchema = BaseStreamEventSchema.extend({
+  type: z.literal('tool_approval_requested'),
+  approvalId: z.string(), // AI SDK's approval ID
+  toolCallId: z.string(),
+  toolName: z.string(),
+  toolArgs: z.record(z.string(), z.unknown()).optional(),
+  requiredScopes: z.array(z.string()).optional(), // Legacy, may not be present
+});
+
+const ToolApprovalRespondedEventSchema = BaseStreamEventSchema.extend({
+  type: z.literal('tool_approval_responded'),
+  approvalId: z.string(),
+  approved: z.boolean(),
+  denialReason: z.string().optional(),
+  approvedByUserId: z.string().nullable().optional(),
+  approvedAt: z.string().optional(), // ISO string
+});
+
 export const StreamEventSchema = z.discriminatedUnion('type', [
   UserMessageCreatedEventSchema,
   MessageStartEventSchema,
@@ -124,6 +144,8 @@ export const StreamEventSchema = z.discriminatedUnion('type', [
   InterruptedEventSchema,
   ClientToolRequestEventSchema,
   SpawnSessionCreatedEventSchema,
+  ToolApprovalRequestedEventSchema,
+  ToolApprovalRespondedEventSchema,
 ]);
 
 export type StreamEvent = z.infer<typeof StreamEventSchema>;

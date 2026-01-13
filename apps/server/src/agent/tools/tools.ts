@@ -69,9 +69,7 @@ export function getToolsById(
         });
         break;
       case 'executeCommand':
-        result[id] = createExecuteCommandTool({
-          toolContext: context,
-        });
+        result[id] = createExecuteCommandTool(context);
         break;
       default:
         unknownIds.push(id);

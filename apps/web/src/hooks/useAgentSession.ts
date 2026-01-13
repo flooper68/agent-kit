@@ -66,6 +66,12 @@ interface UseAgentSessionReturn {
   streamingStartTime: number | null;
   /** Pre-calculated duration for completed sessions (stable across refreshes) */
   completedDuration: number | null;
+  /** Pending tool approval if awaiting user action */
+  pendingApproval: { messageId: string; approvalId: string; toolCallId: string; toolName: string; args?: Record<string, unknown> } | null;
+  /** Handle user approval/denial of pending tool */
+  handleApproval: (approved: boolean) => Promise<void>;
+  /** Whether approval mutation is in progress */
+  isApprovalLoading: boolean;
 }
 
 // Map server error codes to TaskError types
@@ -177,6 +183,10 @@ export function useAgentSession(
   const needsNewTextPartRef = useRef<Record<string, boolean>>({});
   // Track when a new reasoning part is needed (after tool calls)
   const needsNewReasoningPartRef = useRef<Record<string, boolean>>({});
+  // Track the current reasoning part ID being built (to handle React state update timing)
+  const currentReasoningPartIdRef = useRef<Record<string, string | null>>({});
+  // Track if we've initiated creating a new reasoning part (to prevent duplicates from state batching)
+  const creatingNewReasoningPartRef = useRef<Record<string, boolean>>({});
   // Track the current placeholder ID to avoid race conditions when replacing
   const currentPlaceholderIdRef = useRef<string | null>(null);
   // Track tool names by callId to identify resource-creating tools
@@ -209,6 +219,9 @@ export function useAgentSession(
   // Interrupt mutation
   const interruptMutation = deps.useInterruptMutation();
 
+  // Approval mutation (direct tRPC, not injected)
+  const approvalMutation = trpc.messages.resumeWithApproval.useMutation();
+
   // Reset state when sessionId changes
   useEffect(() => {
     // Clear messages and reset state when switching sessions
@@ -225,6 +238,7 @@ export function useAgentSession(
     accumulatedReasoningRef.current = {};
     needsNewTextPartRef.current = {};
     needsNewReasoningPartRef.current = {};
+    currentReasoningPartIdRef.current = {};
     lastMessageRef.current = null;
     hasInitialScrolledRef.current = false;
     currentPlaceholderIdRef.current = null;
@@ -459,10 +473,21 @@ export function useAgentSession(
             const needsNewPart =
               needsNewReasoningPartRef.current[event.messageId] ?? false;
 
+            // Generate a new part ID when starting a new reasoning segment
+            // This ID is used to track which part to update (handles React state timing)
+            let targetPartId = currentReasoningPartIdRef.current[event.messageId];
+            let shouldCreatePart = false;
+
             if (needsNewPart) {
               // Reset flag and clear accumulator for new reasoning segment
               needsNewReasoningPartRef.current[event.messageId] = false;
               accumulatedReasoningRef.current[event.messageId] = '';
+              // Generate new part ID for this segment
+              targetPartId = generatePartId();
+              currentReasoningPartIdRef.current[event.messageId] = targetPartId;
+              // Mark that we're creating a new part (prevents duplicates from batching)
+              creatingNewReasoningPartRef.current[event.messageId] = true;
+              shouldCreatePart = true;
             }
 
             // Append the delta
@@ -480,43 +505,85 @@ export function useAgentSession(
                   if (m.id !== event.messageId) return m;
 
                   const newParts = [...m.parts];
-                  if (needsNewPart) {
-                    // Create new reasoning part at the end (after tool results)
-                    newParts.push(createReasoningPart(currentReasoning));
-                  } else {
-                    // Find the LAST reasoning part to update (iterate backwards)
-                    let reasoningPartIndex = -1;
+
+                  // Try to find the reasoning part by ID first (handles state timing)
+                  let reasoningPartIndex = -1;
+                  if (targetPartId) {
+                    reasoningPartIndex = newParts.findIndex(
+                      (p) => p.type === 'reasoning' && p.id === targetPartId
+                    );
+                  }
+
+                  if (reasoningPartIndex >= 0) {
+                    // Found the target part, update it
+                    const existingPart = newParts[reasoningPartIndex];
+                    if (existingPart) {
+                      newParts[reasoningPartIndex] = {
+                        ...existingPart,
+                        content: currentReasoning,
+                      } as ReasoningPart;
+                    }
+                    // Part exists now, clear the creating flag
+                    creatingNewReasoningPartRef.current[event.messageId] = false;
+                  } else if (shouldCreatePart) {
+                    // Only the first delta (shouldCreatePart=true) creates the new part
+                    const newPart = createReasoningPart(currentReasoning);
+                    if (targetPartId) {
+                      newPart.id = targetPartId;
+                    }
+                    newParts.push(newPart);
+                  } else if (creatingNewReasoningPartRef.current[event.messageId]) {
+                    // We're in the middle of creating a part but state hasn't updated yet
+                    // DON'T create another part - the delta that set shouldCreatePart=true will create it
+                    // Just wait for state to catch up; the accumulator already has the latest content
+                    // Once state commits, future deltas will find the part by ID
+                  } else if (!targetPartId) {
+                    // No target ID yet (first delta in message), find or create
+                    let lastReasoningIndex = -1;
                     for (let i = newParts.length - 1; i >= 0; i--) {
                       if (newParts[i]?.type === 'reasoning') {
-                        reasoningPartIndex = i;
+                        lastReasoningIndex = i;
                         break;
                       }
                     }
 
-                    if (reasoningPartIndex >= 0) {
-                      const existingPart = newParts[reasoningPartIndex];
+                    if (lastReasoningIndex >= 0) {
+                      const existingPart = newParts[lastReasoningIndex];
                       if (existingPart) {
-                        newParts[reasoningPartIndex] = {
+                        newParts[lastReasoningIndex] = {
                           ...existingPart,
                           content: currentReasoning,
                         } as ReasoningPart;
+                        // Track this part for future updates
+                        currentReasoningPartIdRef.current[event.messageId] = existingPart.id;
                       }
                     } else {
                       // No reasoning part yet, create one
-                      newParts.push(createReasoningPart(currentReasoning));
+                      const newPart = createReasoningPart(currentReasoning);
+                      currentReasoningPartIdRef.current[event.messageId] = newPart.id;
+                      newParts.push(newPart);
                     }
+                  } else {
+                    // Have targetPartId but part not found - wait for state to catch up
+                    // Don't create duplicate, just update accumulator (already done above)
+                    // The part should appear once state commits
                   }
 
                   return { ...m, parts: newParts };
                 });
               } else {
                 // Message doesn't exist - create new
+                const newPart = createReasoningPart(currentReasoning);
+                if (targetPartId) {
+                  newPart.id = targetPartId;
+                }
+                currentReasoningPartIdRef.current[event.messageId] = newPart.id;
                 return [
                   ...prev,
                   {
                     id: event.messageId,
                     role: 'assistant' as const,
-                    parts: [createReasoningPart(currentReasoning)],
+                    parts: [newPart],
                     createdAt: new Date(),
                   },
                 ];
@@ -664,6 +731,7 @@ export function useAgentSession(
             delete accumulatedReasoningRef.current[event.messageId];
             delete needsNewTextPartRef.current[event.messageId];
             delete needsNewReasoningPartRef.current[event.messageId];
+            delete currentReasoningPartIdRef.current[event.messageId];
 
             // Keep reasoning parts expanded after streaming is complete
             // (no auto-collapse)
@@ -761,6 +829,92 @@ export function useAgentSession(
                 };
               });
             });
+            break;
+
+          case 'tool_approval_requested':
+            // Update tool invocation state to pending_approval and store approvalId
+            setMessages((prev) => {
+              return prev.map((m) => {
+                if (m.id !== event.messageId) return m;
+                return {
+                  ...m,
+                  parts: m.parts.map((part) => {
+                    if (part.type !== 'tool_invocation') return part;
+                    if (
+                      (part as ToolInvocationPart).toolCallId !==
+                      event.toolCallId
+                    )
+                      return part;
+                    return {
+                      ...part,
+                      state: 'pending_approval' as const,
+                      args: {
+                        ...(part as ToolInvocationPart).args,
+                        _approvalId: event.approvalId,
+                      },
+                    };
+                  }),
+                };
+              });
+            });
+            // Stop thinking indicator since we're waiting for approval
+            setStatus('ready');
+            setThinkingStatus({ isThinking: false });
+            break;
+
+          case 'tool_approval_responded':
+            // Mark that next text_delta/reasoning_delta needs a new part
+            // This ensures content after the approval response appears after the tool
+            needsNewTextPartRef.current[event.messageId] = true;
+            needsNewReasoningPartRef.current[event.messageId] = true;
+
+            // Update tool invocation state based on approval response
+            setMessages((prev) => {
+              return prev.map((m) => {
+                if (m.id !== event.messageId) return m;
+                return {
+                  ...m,
+                  parts: m.parts.map((part) => {
+                    if (part.type !== 'tool_invocation') return part;
+                    const toolPart = part as ToolInvocationPart;
+                    // Find the tool by matching approvalId stored in args
+                    if (toolPart.args?._approvalId !== event.approvalId)
+                      return part;
+
+                    if (event.approved) {
+                      // Approved: transition to running state, preserve approval status
+                      const { _approvalId: _, ...restArgs } = toolPart.args || {};
+                      return {
+                        ...part,
+                        state: 'running' as const,
+                        args: restArgs,
+                        approvalStatus: 'approved' as const,
+                        approvedByUserId: event.approvedByUserId,
+                        approvedAt: event.approvedAt,
+                      };
+                    } else {
+                      // Denied: transition to error state with denial message
+                      const { _approvalId: _, ...restArgs } = toolPart.args || {};
+                      return {
+                        ...part,
+                        state: 'error' as const,
+                        args: restArgs,
+                        approvalStatus: 'denied' as const,
+                        approvalDenialReason: event.denialReason || 'User denied this action',
+                        approvedByUserId: event.approvedByUserId,
+                        approvedAt: event.approvedAt,
+                      };
+                    }
+                  }),
+                };
+              });
+            });
+
+            if (event.approved) {
+              // If approved, agent will continue - show thinking indicator
+              setStatus('streaming');
+              setThinkingStatus({ isThinking: true });
+            }
             break;
         }
       },
@@ -1105,6 +1259,61 @@ export function useAgentSession(
     [status, messages]
   );
 
+  // Detect if there's a pending tool approval.
+  // Note: We only check the last assistant message because the AI SDK's needsApproval
+  // flow pauses the stream when approval is needed, so there can only be one pending
+  // approval at a time per session. The stream resumes after approval/denial.
+  const pendingApproval = useMemo(() => {
+    if (messages.length === 0) return null;
+    const lastMsg = messages[messages.length - 1];
+    if (!lastMsg || lastMsg.role !== 'assistant') return null;
+
+    const pendingPart = lastMsg.parts.find(
+      (p): p is ToolInvocationPart =>
+        p.type === 'tool_invocation' &&
+        (p as ToolInvocationPart).state === 'pending_approval'
+    );
+
+    if (!pendingPart) return null;
+
+    // Extract approvalId from args (stored during tool_approval_requested event)
+    const approvalId = pendingPart.args?._approvalId as string | undefined;
+    if (!approvalId) return null;
+
+    return {
+      messageId: lastMsg.id,
+      approvalId,
+      toolCallId: pendingPart.toolCallId,
+      toolName: pendingPart.toolName,
+      args: pendingPart.args,
+    };
+  }, [messages]);
+
+  // Handle approval/denial of pending tool
+  const handleApproval = useCallback(
+    async (approved: boolean) => {
+      if (!sessionId || !pendingApproval?.approvalId) return;
+
+      try {
+        await approvalMutation.mutateAsync({
+          sessionId,
+          approvalId: pendingApproval.approvalId,
+          approved,
+          denialReason: approved ? undefined : 'User denied this action',
+        });
+      } catch (err) {
+        console.error('Failed to submit approval:', err);
+        setError({
+          type: 'api',
+          message:
+            err instanceof Error ? err.message : 'Failed to submit approval',
+          retryable: true,
+        });
+      }
+    },
+    [sessionId, pendingApproval?.approvalId, approvalMutation]
+  );
+
   return {
     messages,
     status,
@@ -1123,5 +1332,8 @@ export function useAgentSession(
     todos,
     streamingStartTime,
     completedDuration,
+    pendingApproval,
+    handleApproval,
+    isApprovalLoading: approvalMutation.isPending,
   };
 }
