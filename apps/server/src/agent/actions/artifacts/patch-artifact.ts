@@ -22,6 +22,8 @@ export function createPatchArtifactTool(context: PatchArtifactContext): Tool {
   return tool({
     description:
       'Patch an artifact by replacing a specific line range with new content. Use getArtifact first to see the current content and line numbers. Lines are 1-indexed. To delete lines, provide empty newContent. To insert without replacing, set endLine to startLine - 1.',
+    // Requires user approval before execution
+    needsApproval: true,
     inputSchema: z.object({
       artifactId: z.string().uuid().describe('The ID of the artifact to patch'),
       startLine: z

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CollapsibleList, CopyButton, Text, Code } from '@agent-kit/ui';
+import { CollapsibleList, CopyButton, Text, Code, cn } from '@agent-kit/ui';
 import { EventTypeBadge } from './EventTypeBadge';
 
 type EventType =
@@ -7,6 +7,7 @@ type EventType =
   | 'reasoning_delta'
   | 'tool_call'
   | 'tool_result'
+  | 'tool_approval_request'
   | 'error'
   | 'unknown';
 
@@ -16,7 +17,8 @@ type MessageStatus =
   | 'streaming'
   | 'complete'
   | 'error'
-  | 'interrupted';
+  | 'interrupted'
+  | 'awaiting_approval';
 
 interface MessageMetadata {
   model?: string;
@@ -36,6 +38,8 @@ interface SessionMessage {
   createdAt: Date | string;
 }
 
+type ApprovalStatus = 'pending' | 'approved' | 'denied';
+
 interface SessionEvent {
   id: string;
   messageId: string;
@@ -54,6 +58,12 @@ interface SessionEvent {
   errorDetails: Record<string, unknown> | null;
   rawEventType: string | null;
   rawData?: unknown;
+  // Approval fields
+  approvalId: string | null;
+  approvalStatus: ApprovalStatus | null;
+  approvalDenialReason: string | null;
+  approvedByUserId: string | null;
+  approvedAt: Date | string | null;
 }
 
 interface SessionEventsTimelineProps {
@@ -203,6 +213,83 @@ function EventContent({ event }: { event: SessionEvent }) {
         </div>
       );
 
+    case 'tool_approval_request':
+      return (
+        <div className="space-y-3">
+          {event.approvalId && (
+            <div>
+              <Text className="text-sm text-muted-foreground">Approval ID:</Text>
+              <Code className="mt-1 text-xs">{event.approvalId}</Code>
+            </div>
+          )}
+          {event.toolName && (
+            <div>
+              <Text className="text-sm text-muted-foreground">Tool Name:</Text>
+              <Code className="mt-1">{event.toolName}</Code>
+            </div>
+          )}
+          {event.toolCallId && (
+            <div>
+              <Text className="text-sm text-muted-foreground">Tool Call ID:</Text>
+              <Code className="mt-1 text-xs">{event.toolCallId}</Code>
+            </div>
+          )}
+          {event.toolArgs && (
+            <div>
+              <Text className="text-sm text-muted-foreground">Arguments:</Text>
+              <pre className="text-sm whitespace-pre-wrap break-words bg-muted/50 p-3 rounded-md mt-1 overflow-x-auto">
+                {JSON.stringify(event.toolArgs, null, 2)}
+              </pre>
+            </div>
+          )}
+          {event.approvalStatus && (
+            <div>
+              <Text className="text-sm text-muted-foreground">Status:</Text>
+              <span
+                className={cn(
+                  'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1',
+                  event.approvalStatus === 'approved'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                    : event.approvalStatus === 'denied'
+                      ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                )}
+              >
+                {event.approvalStatus}
+              </span>
+            </div>
+          )}
+          {event.approvedByUserId && (
+            <div>
+              <Text className="text-sm text-muted-foreground">
+                {event.approvalStatus === 'approved'
+                  ? 'Approved By:'
+                  : 'Denied By:'}
+              </Text>
+              <Code className="mt-1 text-xs">{event.approvedByUserId}</Code>
+            </div>
+          )}
+          {event.approvedAt && (
+            <div>
+              <Text className="text-sm text-muted-foreground">Decision Time:</Text>
+              <Text className="text-sm mt-1">
+                {new Date(event.approvedAt).toLocaleString()}
+              </Text>
+            </div>
+          )}
+          {event.approvalDenialReason && (
+            <div>
+              <Text className="text-sm text-muted-foreground">
+                Denial Reason:
+              </Text>
+              <pre className="text-sm whitespace-pre-wrap break-words bg-red-50 dark:bg-red-900/20 p-3 rounded-md mt-1">
+                {event.approvalDenialReason}
+              </pre>
+            </div>
+          )}
+        </div>
+      );
+
     default:
       return null;
   }
@@ -217,6 +304,12 @@ function getEventPreview(event: SessionEvent): string {
       return event.toolName ?? 'Unknown tool';
     case 'tool_result':
       return event.isError ? 'Error result' : 'Success';
+    case 'tool_approval_request': {
+      const toolName = event.toolName ?? 'Unknown tool';
+      if (event.approvalStatus === 'approved') return `${toolName} - Approved`;
+      if (event.approvalStatus === 'denied') return `${toolName} - Denied`;
+      return `${toolName} - Pending`;
+    }
     case 'error':
       return event.errorCode ?? event.errorMessage ?? 'Unknown error';
     case 'unknown':
@@ -259,6 +352,8 @@ function getStatusBadge(status: MessageStatus) {
     error: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     interrupted:
       'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+    awaiting_approval:
+      'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
   };
 
   return (

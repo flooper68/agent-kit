@@ -11,7 +11,7 @@ import {
   type MessagePart,
 } from '../../../db/schema';
 import type { AgentSessionEvent } from '../../../db/schema/agent-session-events';
-import { reconstructPartsFromEvents } from '../utils';
+import { reconstructPartsFromEvents, buildApprovalRequestMap } from '../utils';
 import { logger } from '../../../agent/logger';
 import { getModelInfo } from '../../../agent/model-config';
 
@@ -138,10 +138,14 @@ export class GetSessionWithMessagesQuery {
       eventsByMessage.set(event.messageId, messageEvents);
     }
 
+    // Build session-wide approval map for cross-message lookups
+    // This allows tool_call events to find approval info from earlier messages
+    const sessionApprovalMap = buildApprovalRequestMap(events);
+
     // Reconstruct messages with parts
     const messagesWithParts = sessionMessages.map((m) => ({
       ...m,
-      parts: reconstructPartsFromEvents(eventsByMessage.get(m.id) || []),
+      parts: reconstructPartsFromEvents(eventsByMessage.get(m.id) || [], sessionApprovalMap),
     }));
 
     return {

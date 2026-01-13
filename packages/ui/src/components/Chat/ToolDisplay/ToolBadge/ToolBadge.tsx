@@ -6,6 +6,11 @@ import { Button } from '../../../Button';
 import { Text } from '../../../Typography';
 import { Tooltip } from '../../../Tooltip';
 import type { ToolResultPart } from '../../../../types/chat';
+import {
+  getExecuteCommandDisplayInfo,
+  getBaseToolName,
+  formatToolName,
+} from '../tool-display-utils';
 
 /**
  * =============================================================================
@@ -60,77 +65,8 @@ function getListSkillFilesDisplayInfo(
   return skillKey;
 }
 
-/**
- * Extract display info from executeCommand command string.
- *
- * Parses CLI-style command to show the inner tool name and first value argument.
- * Displayed as "{ToolName}: {summary}" (e.g., "Web Search: react tutorials")
- */
-function getExecuteCommandDisplayInfo(args: Record<string, unknown>): {
-  toolName: string;
-  summary: string;
-} | null {
-  const command = args.command;
-  if (typeof command !== 'string' || !command.trim()) {
-    return null;
-  }
 
-  // Tokenize respecting quotes: split on spaces but keep quoted strings together
-  const parts = command.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
-  const toolName = parts[0];
-  if (!toolName) {
-    return null;
-  }
-
-  // Find first non-flag argument for summary (skip --arg patterns)
-  let summary = '';
-  for (let i = 1; i < parts.length; i++) {
-    const part = parts[i];
-    if (part && !part.startsWith('-')) {
-      // Remove surrounding quotes
-      summary = part.replace(/^["']|["']$/g, '');
-      break;
-    }
-  }
-
-  return { toolName, summary };
-}
-
-/**
- * Extracts the base tool name from an MCP pattern.
- * MCP tools have the format: mcp__server__toolName
- * Returns the original name if not an MCP tool.
- */
-function getBaseToolName(toolName: string): string {
-  if (toolName.startsWith('mcp__')) {
-    const parts = toolName.split('__');
-    return parts[parts.length - 1] ?? toolName;
-  }
-  return toolName;
-}
-
-/**
- * Formats a tool name to be human-readable.
- * Handles MCP pattern (mcp__server__toolName), camelCase, PascalCase, and snake_case.
- */
-function formatToolName(toolName: string): string {
-  // Extract tool name from MCP pattern: mcp__server__toolName
-  let name = getBaseToolName(toolName);
-
-  // Handle snake_case: replace underscores with spaces
-  name = name.replace(/_/g, ' ');
-
-  // Handle camelCase and PascalCase: insert space before capital letters
-  name = name.replace(/([a-z])([A-Z])/g, '$1 $2');
-
-  // Capitalize first letter of each word
-  return name
-    .split(' ')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
-type ToolState = 'pending' | 'running' | 'completed' | 'error';
+type ToolState = 'pending' | 'running' | 'completed' | 'error' | 'pending_approval';
 
 const toolBadgeVariants = cva(
   [
@@ -144,6 +80,7 @@ const toolBadgeVariants = cva(
         running: 'bg-info/10 text-info',
         completed: 'bg-success/10 text-success',
         error: 'bg-destructive/10 text-destructive',
+        pending_approval: 'bg-warning/10 text-warning',
       },
       interactive: {
         true: 'cursor-pointer hover:opacity-80',
@@ -214,6 +151,25 @@ const StateIcon = ({ state }: { state: ToolState }) => {
           />
         </svg>
       );
+    case 'pending_approval':
+      return (
+        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24">
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="2"
+          />
+          <path
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M12 8v4M12 16h.01"
+          />
+        </svg>
+      );
   }
 };
 
@@ -238,6 +194,52 @@ const ToolIcon = () => (
     />
   </svg>
 );
+
+// Approval status badge overlay - shows shield with check/x for approved/denied
+// Positioned as an overlay on the top-right of the badge
+const ApprovalStatusBadge = ({
+  status,
+}: {
+  status: 'pending' | 'approved' | 'denied' | undefined;
+}) => {
+  if (!status || status === 'pending') return null;
+
+  if (status === 'approved') {
+    // Shield with checkmark - green, positioned as overlay
+    return (
+      <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-4 w-4 rounded-full bg-green-500 dark:bg-green-600 ring-2 ring-white dark:ring-gray-900">
+        <svg
+          className="h-2.5 w-2.5 text-white"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="3"
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+      </span>
+    );
+  }
+
+  // Shield with X - red, positioned as overlay
+  return (
+    <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-4 w-4 rounded-full bg-red-500 dark:bg-red-600 ring-2 ring-white dark:ring-gray-900">
+      <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24">
+        <path
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="3"
+          d="M6 18L18 6M6 6l12 12"
+        />
+      </svg>
+    </span>
+  );
+};
 
 // Result display component for dialog
 const ResultDisplay = ({
@@ -285,6 +287,14 @@ export interface ToolBadgeProps
   toolCallId?: string;
   /** Tool result - displayed in the detail dialog */
   result?: ToolResultPart;
+  /** Approval status for tools that required user approval */
+  approvalStatus?: 'pending' | 'approved' | 'denied';
+  /** Reason for denial if the tool was rejected */
+  approvalDenialReason?: string;
+  /** User ID of who approved/denied the tool */
+  approvedByUserId?: string;
+  /** Timestamp when the approval decision was made (ISO string) */
+  approvedAt?: string;
 }
 
 /**
@@ -300,6 +310,12 @@ function areToolBadgePropsEqual(
   if (prev.state !== next.state) return false;
   if (prev.toolCallId !== next.toolCallId) return false;
 
+  // Compare approval props
+  if (prev.approvalStatus !== next.approvalStatus) return false;
+  if (prev.approvalDenialReason !== next.approvalDenialReason) return false;
+  if (prev.approvedByUserId !== next.approvedByUserId) return false;
+  if (prev.approvedAt !== next.approvedAt) return false;
+
   // Compare result - check if result exists and error state
   const prevHasResult = prev.result !== undefined;
   const nextHasResult = next.result !== undefined;
@@ -314,7 +330,20 @@ function areToolBadgePropsEqual(
 
 export const ToolBadge = memo(
   forwardRef<HTMLButtonElement, ToolBadgeProps>(
-    ({ toolName, state, args, toolCallId: _toolCallId, result }, ref) => {
+    (
+      {
+        toolName,
+        state,
+        args,
+        toolCallId: _toolCallId,
+        result,
+        approvalStatus,
+        approvalDenialReason,
+        approvedByUserId,
+        approvedAt,
+      },
+      ref
+    ) => {
       const [dialogOpen, setDialogOpen] = useState(false);
 
       // Badge is interactive (clickable) when args are provided
@@ -391,6 +420,32 @@ export const ToolBadge = memo(
         </>
       );
 
+      // Build tooltip content with approval status
+      const tooltipLines = [tooltipContent];
+      if (approvalStatus === 'approved') {
+        let approvalLine = '✓ Approved';
+        if (approvedAt) {
+          approvalLine += ` at ${new Date(approvedAt).toLocaleTimeString()}`;
+        }
+        if (approvedByUserId) {
+          approvalLine += ` by ${approvedByUserId}`;
+        }
+        tooltipLines.push(approvalLine);
+      } else if (approvalStatus === 'denied') {
+        let denialLine = '✗ Denied';
+        if (approvedAt) {
+          denialLine += ` at ${new Date(approvedAt).toLocaleTimeString()}`;
+        }
+        if (approvedByUserId) {
+          denialLine += ` by ${approvedByUserId}`;
+        }
+        tooltipLines.push(denialLine);
+        if (approvalDenialReason) {
+          tooltipLines.push(`Reason: ${approvalDenialReason}`);
+        }
+      }
+      const fullTooltipContent = tooltipLines.join('\n');
+
       const badgeElement = hasDialogData ? (
         <button
           ref={ref}
@@ -412,9 +467,17 @@ export const ToolBadge = memo(
         </span>
       );
 
-      const badge = (
-        <Tooltip content={tooltipContent} side="bottom">
+      // Wrap badge with relative container for the approval overlay
+      const badgeWithOverlay = (
+        <span className="relative inline-flex">
           {badgeElement}
+          <ApprovalStatusBadge status={approvalStatus} />
+        </span>
+      );
+
+      const badge = (
+        <Tooltip content={fullTooltipContent} side="bottom">
+          {badgeWithOverlay}
         </Tooltip>
       );
 
@@ -451,6 +514,62 @@ export const ToolBadge = memo(
               </Dialog.Header>
 
               <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                {/* Approval Status Section */}
+                {approvalStatus && (
+                  <div className="space-y-2">
+                    <Text size="14" variant="strong">
+                      Approval Status
+                    </Text>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                          approvalStatus === 'approved'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            : approvalStatus === 'denied'
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                              : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                        )}
+                      >
+                        {approvalStatus.charAt(0).toUpperCase() +
+                          approvalStatus.slice(1)}
+                      </span>
+                    </div>
+                    {approvedByUserId && (
+                      <div className="mt-2">
+                        <Text size="14" variant="muted">
+                          {approvalStatus === 'approved'
+                            ? 'Approved by:'
+                            : 'Denied by:'}{' '}
+                          <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                            {approvedByUserId}
+                          </code>
+                        </Text>
+                      </div>
+                    )}
+                    {approvedAt && (
+                      <div className="mt-1">
+                        <Text size="14" variant="muted">
+                          Decision at:{' '}
+                          <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                            {new Date(approvedAt).toLocaleString()}
+                          </code>
+                        </Text>
+                      </div>
+                    )}
+                    {approvalDenialReason && (
+                      <div className="mt-2">
+                        <Text size="14" variant="muted">
+                          Denial Reason:
+                        </Text>
+                        <pre className="text-xs bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 p-3 rounded-md mt-1">
+                          {approvalDenialReason}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Input Section */}
                 <div className="space-y-2">
                   <Text size="14" variant="strong">

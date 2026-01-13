@@ -35,6 +35,15 @@ export const JOB_QUEUE_CONFIG = {
   JOB_FAILURE_BACKOFF_BASE_MS: 1000,
 } as const;
 
+// Zod schema for approval response (for continuing after user approves/denies a tool)
+export const ApprovalResponseSchema = z.object({
+  approvalId: z.string(),
+  approved: z.boolean(),
+  reason: z.string().optional(),
+});
+
+export type ApprovalResponse = z.infer<typeof ApprovalResponseSchema>;
+
 // Zod schema for agent jobs
 export const AgentJobSchema = z.object({
   id: z.string(),
@@ -47,6 +56,8 @@ export const AgentJobSchema = z.object({
   // Retry tracking for session-locked jobs
   retryCount: z.number().default(0),
   nextAttemptAfter: z.string().optional(),
+  // Optional: For continuing after tool approval (AI SDK needsApproval flow)
+  approvalResponse: ApprovalResponseSchema.optional(),
 });
 
 export type AgentJob = z.infer<typeof AgentJobSchema>;

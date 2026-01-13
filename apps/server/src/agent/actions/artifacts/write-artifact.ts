@@ -24,6 +24,8 @@ export function createWriteArtifactTool(context: WriteArtifactContext): Tool {
   return tool({
     description:
       'Create or save a markdown document/note. Use this when the user asks you to save, write, or create a document, note, or artifact.',
+    // Requires user approval before execution
+    needsApproval: true,
     inputSchema: z.object({
       title: z
         .string()

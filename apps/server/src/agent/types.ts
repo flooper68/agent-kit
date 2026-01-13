@@ -21,6 +21,7 @@ export type ToolCallContentPart = {
   toolCallId: string;
   toolName: string;
   input: Record<string, unknown>;
+  providerOptions?: Record<string, unknown>; // For Gemini thought_signature, etc.
 };
 // AI SDK v6 ToolResultOutput format - must have type discriminator
 export type ToolResultOutput =
@@ -37,16 +38,28 @@ export type ToolResultContentPart = {
   output: ToolResultOutput;
 };
 
+// AI SDK v6 tool-approval-response format
+export type ToolApprovalResponseContentPart = {
+  type: 'tool-approval-response';
+  approvalId: string;
+  approved: boolean;
+  reason?: string;
+};
+
 export type AssistantContentPart =
   | TextContentPart
   | ToolCallContentPart
   | ToolResultContentPart;
 
+// Tool message content parts for AI SDK
+export type ToolMessageContentPart = ToolApprovalResponseContentPart;
+
 // Message type for conversation history (structurally compatible with AI SDK)
 export type Message =
   | { role: 'user'; content: string }
   | { role: 'assistant'; content: string | AssistantContentPart[] }
-  | { role: 'system'; content: string };
+  | { role: 'system'; content: string }
+  | { role: 'tool'; content: ToolMessageContentPart[] };
 
 // Tool type - using unknown to allow any tool shape
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -80,12 +93,21 @@ export type ProviderStreamEvent =
       toolCallId: string;
       toolName: string;
       args: Record<string, unknown>;
+      providerMetadata?: Record<string, unknown>; // For Gemini thought_signature, etc.
     }
   | {
       type: 'tool_result';
       toolCallId: string;
       result: unknown;
       isError?: boolean;
+    }
+  | {
+      type: 'tool_approval_request';
+      approvalId: string;
+      toolCallId: string;
+      toolName: string;
+      toolArgs: Record<string, unknown>;
+      providerMetadata?: Record<string, unknown>; // For Gemini thought_signature, etc.
     }
   | {
       type: 'done';

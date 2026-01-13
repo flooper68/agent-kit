@@ -48,7 +48,12 @@ export interface ToolInvocationPart extends BaseMessagePart {
   toolName: string;
   toolCallId: string;
   args: Record<string, unknown>;
-  state: 'pending' | 'running' | 'completed' | 'error';
+  state: 'pending' | 'running' | 'completed' | 'error' | 'pending_approval';
+  // Approval fields (for tools that required approval)
+  approvalStatus?: 'pending' | 'approved' | 'denied';
+  approvalDenialReason?: string;
+  approvedByUserId?: string;
+  approvedAt?: string; // ISO string
 }
 
 // Tool result part

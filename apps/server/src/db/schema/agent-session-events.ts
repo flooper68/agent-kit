@@ -1,3 +1,22 @@
+/**
+ * Agent Session Events Schema
+ *
+ * Events are the granular, streaming units that make up message content.
+ * Each event is immutable and ordered by sequence number within a session.
+ *
+ * Event Types:
+ * - text_delta: Incremental text content from the model
+ * - reasoning_delta: Model's reasoning/thinking content
+ * - tool_call: Tool invocation with name and arguments
+ * - tool_result: Result returned from a tool execution
+ * - error: Error that occurred during processing
+ * - unknown: Unhandled event types (stored for debugging)
+ *
+ * Tool calls may require approval before execution. When approval is
+ * needed, the approvalStatus/approvalScopes columns track the state.
+ * For nested executeCommand calls, innerToolName/innerToolArgs store
+ * what's actually being executed.
+ */
 import {
   pgTable,
   uuid,
@@ -17,8 +36,11 @@ export type AgentSessionEventType =
   | 'reasoning_delta'
   | 'tool_call'
   | 'tool_result'
+  | 'tool_approval_request'
   | 'error'
   | 'unknown';
+
+export type ApprovalStatus = 'pending' | 'approved' | 'denied';
 
 export const agentSessionEvents = pgTable(
   'agent_session_events',
@@ -41,6 +63,26 @@ export const agentSessionEvents = pgTable(
     toolName: varchar('tool_name', { length: 64 }), // For tool_call
     toolArgs: jsonb('tool_args').$type<Record<string, unknown>>(), // For tool_call
     toolResult: jsonb('tool_result').$type<unknown>(), // For tool_result
+
+    // AI SDK approval flow fields (for tool_approval_request events)
+    approvalId: varchar('approval_id', { length: 64 }), // AI SDK's approval ID for needsApproval flow
+
+    // Provider-specific metadata (e.g., Gemini thought_signature for tool calls)
+    providerMetadata: jsonb('provider_metadata').$type<Record<string, unknown>>(),
+
+    // Legacy approval fields (for backwards compatibility, will be removed)
+    approvalStatus: varchar('approval_status', { length: 16 }).$type<ApprovalStatus>(),
+    approvalScopes: text('approval_scopes').array(),
+    approvalDenialReason: text('approval_denial_reason'),
+
+    // Approval tracking: who approved and when
+    approvedByUserId: varchar('approved_by_user_id', { length: 64 }),
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+
+    // For nested calls via executeCommand: the inner tool being executed
+    // When executeCommand calls an approval-required tool, we store what's actually being run
+    innerToolName: varchar('inner_tool_name', { length: 64 }),
+    innerToolArgs: jsonb('inner_tool_args').$type<Record<string, unknown>>(),
     isError: boolean('is_error'), // For tool_result
 
     // Error event fields

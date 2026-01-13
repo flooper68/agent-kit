@@ -2,8 +2,12 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import {
   AgentPanel,
+  ApprovalPanel,
   ConnectionSnackbar,
   SubAgentFullViewDialog,
+  getExecuteCommandDisplayInfo,
+  getBaseToolName,
+  formatToolName,
 } from '@agent-kit/ui';
 import type {
   AgentType,
@@ -177,6 +181,9 @@ export function AppAgentPanel({
     todos,
     streamingStartTime,
     completedDuration,
+    pendingApproval,
+    handleApproval,
+    isApprovalLoading,
   } = useAgentSession({
     sessionId,
     onSessionInvalid: handleSessionInvalid,
@@ -456,6 +463,55 @@ export function AppAgentPanel({
     inputRef.current = node;
   }, []);
 
+  // Get display name for approval banner, parsing executeCommand to show inner action
+  const getApprovalDisplayName = useCallback(
+    (toolName: string, args?: Record<string, unknown>) => {
+      const baseToolName = getBaseToolName(toolName);
+
+      if (baseToolName === 'executeCommand' && args) {
+        const cmdInfo = getExecuteCommandDisplayInfo(args);
+        if (cmdInfo) {
+          let displayName = formatToolName(cmdInfo.toolName);
+          if (cmdInfo.summary) {
+            displayName = `${displayName}: ${cmdInfo.summary}`;
+          }
+          return displayName;
+        }
+      }
+
+      return formatToolName(toolName);
+    },
+    []
+  );
+
+  // Get full command string for display in approval panel
+  const getCommandDetails = useCallback(
+    (toolName: string, args?: Record<string, unknown>): string | undefined => {
+      const baseToolName = getBaseToolName(toolName);
+      if (baseToolName === 'executeCommand' && args?.command) {
+        return args.command as string;
+      }
+      return undefined;
+    },
+    []
+  );
+
+  // Create approval banner if there's a pending approval
+  const approvalBanner = pendingApproval ? (
+    <ApprovalPanel
+      title={`Allow "${getApprovalDisplayName(pendingApproval.toolName, pendingApproval.args)}" to execute?`}
+      commandDetails={getCommandDetails(
+        pendingApproval.toolName,
+        pendingApproval.args
+      )}
+      onApprove={() => handleApproval(true)}
+      onDeny={() => handleApproval(false)}
+      isLoading={isApprovalLoading}
+      approveLabel="Allow"
+      denyLabel="Deny"
+    />
+  ) : undefined;
+
   return (
     <div className="relative h-full">
       <AgentPanel
@@ -491,6 +547,7 @@ export function AppAgentPanel({
         elapsedLabel={elapsedLabel}
         onOpenSubAgentDialog={handleOpenSubAgentDialog}
         renderSubAgentCard={renderSubAgentCard}
+        approvalBanner={approvalBanner}
       />
       <ConnectionSnackbar
         status={connectionStatus}
