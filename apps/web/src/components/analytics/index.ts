@@ -16,3 +16,14 @@ export { EventTypeBadge } from './EventTypeBadge';
 export { ChartErrorBoundary } from './ChartErrorBoundary';
 export { TasksByStatusChart } from './TasksByStatusChart';
 export { TasksByPriorityChart } from './TasksByPriorityChart';
+export { ActivitySessionStats } from './ActivitySessionStats';
+export { ActivitySessionsTable } from './ActivitySessionsTable';
+
+// Tab components
+export {
+  OverviewTab,
+  SessionsCostsTab,
+  AgentsTab,
+  UsersTab,
+  ActivityTab,
+} from './tabs';

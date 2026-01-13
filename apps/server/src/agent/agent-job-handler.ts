@@ -10,6 +10,7 @@ import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
 import type { SkillsFeature } from '../features/skills';
+import type { ActivityFeature } from '../features/activity';
 import type { AgentSpawner } from './agent-spawner';
 import { getProvider } from './providers';
 import { getToolsById } from './tools';
@@ -52,6 +53,7 @@ export class AgentJobHandler {
   private cacheInvalidation: CacheInvalidationService;
   private projectsFeature?: ProjectsFeature;
   private tasksFeature?: TasksFeature;
+  private activityFeature?: ActivityFeature;
   private workerId: string;
   private eventSequence = 0;
   private eventBuffer = new EventBuffer();
@@ -69,7 +71,8 @@ export class AgentJobHandler {
     cacheInvalidation: CacheInvalidationService,
     workerId: string,
     projectsFeature?: ProjectsFeature,
-    tasksFeature?: TasksFeature
+    tasksFeature?: TasksFeature,
+    activityFeature?: ActivityFeature
   ) {
     this.eventStreamManager = eventStreamManager;
     this.jobRegistryManager = jobRegistryManager;
@@ -83,6 +86,7 @@ export class AgentJobHandler {
     this.workerId = workerId;
     this.projectsFeature = projectsFeature;
     this.tasksFeature = tasksFeature;
+    this.activityFeature = activityFeature;
     this.log = logger.child({ workerId });
   }
 
@@ -442,6 +446,32 @@ export class AgentJobHandler {
           model: agent.model,
           provider: agent.provider,
         });
+
+      // Update activity session metrics (fire-and-forget)
+      if (finalUsage && this.activityFeature) {
+        const costDelta = calculateCost(agent.model, {
+          promptTokens: finalUsage.promptTokens,
+          completionTokens: finalUsage.completionTokens,
+          cacheReadTokens: finalUsage.cacheReadTokens,
+          cacheWriteTokens: finalUsage.cacheWriteTokens,
+        });
+        const tokensDelta =
+          finalUsage.promptTokens + finalUsage.completionTokens;
+
+        this.activityFeature
+          .updateSessionMetrics({
+            userId,
+            orgId,
+            costDelta,
+            tokensDelta,
+          })
+          .catch((err) => {
+            this.log.error('Activity session metrics update failed', {
+              sessionId,
+              error: err instanceof Error ? err.message : 'Unknown error',
+            });
+          });
+      }
 
       // Trigger summarization for successful completions (fire-and-forget)
       if (finalStatus === 'complete' && completeResult.messageCount) {

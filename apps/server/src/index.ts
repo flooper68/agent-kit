@@ -32,6 +32,7 @@ import { ArtifactsFeature } from './features/artifacts';
 import { ProjectsFeature } from './features/projects';
 import { TasksFeature } from './features/tasks';
 import { SkillsFeature } from './features/skills';
+import { ActivityFeature } from './features/activity';
 import { CacheInvalidationService, PubSubManager } from './real-time';
 import { createRedisClient, createPubSubClients } from './lib/redis/client';
 
@@ -98,6 +99,9 @@ const tasksFeature = new TasksFeature(db);
 
 // Create skills feature
 const skillsFeature = new SkillsFeature(db);
+
+// Create activity feature
+const activityFeature = new ActivityFeature(db);
 
 // Will be initialized in onReady hook
 let jobQueueManager!: JobQueueManager;
@@ -195,7 +199,8 @@ fastify.addHook('onReady', async () => {
     pubsub,
     cacheInvalidation,
     projectsFeature,
-    tasksFeature
+    tasksFeature,
+    activityFeature
   );
 
   fastify.log.info('Starting agent worker...');
@@ -223,6 +228,7 @@ fastify.register(fastifyTRPCPlugin, {
         projectsFeature,
         tasksFeature,
         skillsFeature,
+        activityFeature,
         jobQueueManager,
         eventStreamManager,
         jobRegistryManager,
@@ -331,6 +337,7 @@ const start = async () => {
           projectsFeature,
           tasksFeature,
           skillsFeature,
+          activityFeature,
           jobQueueManager,
           eventStreamManager,
           jobRegistryManager,

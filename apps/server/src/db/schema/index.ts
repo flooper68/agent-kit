@@ -8,4 +8,5 @@ export * from './task-artifacts';
 export * from './project-artifacts';
 export * from './agents';
 export * from './skills';
+export * from './user-activity-sessions';
 export * from './relations';
