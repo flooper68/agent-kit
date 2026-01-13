@@ -1259,7 +1259,10 @@ export function useAgentSession(
     [status, messages]
   );
 
-  // Detect if there's a pending tool approval
+  // Detect if there's a pending tool approval.
+  // Note: We only check the last assistant message because the AI SDK's needsApproval
+  // flow pauses the stream when approval is needed, so there can only be one pending
+  // approval at a time per session. The stream resumes after approval/denial.
   const pendingApproval = useMemo(() => {
     if (messages.length === 0) return null;
     const lastMsg = messages[messages.length - 1];

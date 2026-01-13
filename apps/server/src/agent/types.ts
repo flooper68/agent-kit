@@ -46,10 +46,18 @@ export type ToolApprovalResponseContentPart = {
   reason?: string;
 };
 
+// AI SDK v6 tool-approval-request format (for pending approvals in assistant messages)
+export type ToolApprovalRequestContentPart = {
+  type: 'tool-approval-request';
+  approvalId: string;
+  toolCallId: string;
+};
+
 export type AssistantContentPart =
   | TextContentPart
   | ToolCallContentPart
-  | ToolResultContentPart;
+  | ToolResultContentPart
+  | ToolApprovalRequestContentPart;
 
 // Tool message content parts for AI SDK
 export type ToolMessageContentPart = ToolApprovalResponseContentPart;

@@ -29,7 +29,6 @@ import { calculateCost } from '../features/agents/pricing';
 import { EventBuffer } from './event-buffer';
 import { calculateTokenBreakdown, type TokenBreakdown } from '../lib/tokenizer';
 import type { ThinkingConfig } from '../db/schema/agents';
-import type { ToolsContext } from './tools/types';
 
 export interface DbMessage {
   id: string;
@@ -423,8 +422,7 @@ export class AgentJobHandler {
           sessionId,
           messageId,
           sequence,
-          agent.model,
-          toolContext
+          agent.model
         );
 
         // Track if any tool requested approval (stream continues normally)
@@ -562,8 +560,7 @@ export class AgentJobHandler {
     sessionId: string,
     messageId: string,
     sequence: number,
-    model: string,
-    _toolContext: ToolsContext
+    model: string
   ): Promise<EventProcessingResult> {
     switch (event.type) {
       case 'text_delta': {
@@ -953,7 +950,7 @@ export function convertToAIMessages(dbMessages: DbMessage[]): Message[] {
                 type: 'tool-approval-request',
                 approvalId: _approvalId,
                 toolCallId: part.toolCallId,
-              } as unknown as AssistantContentPart);
+              });
             }
             break;
           }
