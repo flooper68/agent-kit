@@ -1,5 +1,6 @@
 import type { ClerkClient } from '@clerk/backend';
 import type { db as DbType } from '../../db';
+import { ActivityCommandContextManager } from './context';
 import { RecordHeartbeatCommand } from './commands';
 import type { RecordHeartbeatInput } from './commands';
 import {
@@ -15,12 +16,14 @@ import type {
  * ActivityFeature - manages user activity session tracking
  */
 export class ActivityFeature {
+  private contextManager: ActivityCommandContextManager;
   private recordHeartbeatCommand: RecordHeartbeatCommand;
   private getActivitySessionsQuery: GetActivitySessionsQuery;
   private getActivitySessionStatsQuery: GetActivitySessionStatsQuery;
 
   constructor(db: typeof DbType, clerk: ClerkClient) {
-    this.recordHeartbeatCommand = new RecordHeartbeatCommand(db);
+    this.contextManager = new ActivityCommandContextManager(db);
+    this.recordHeartbeatCommand = new RecordHeartbeatCommand();
     this.getActivitySessionsQuery = new GetActivitySessionsQuery(db, clerk);
     this.getActivitySessionStatsQuery = new GetActivitySessionStatsQuery(db);
   }
@@ -28,9 +31,12 @@ export class ActivityFeature {
   /**
    * Records a heartbeat to track user activity.
    * Creates a new session if inactive for too long, or updates existing session.
+   * Uses a transaction to ensure atomicity.
    */
   recordHeartbeat(input: RecordHeartbeatInput) {
-    return this.recordHeartbeatCommand.execute(input);
+    return this.contextManager.handleCommand((ctx) =>
+      this.recordHeartbeatCommand.execute(ctx, input)
+    );
   }
 
   /**

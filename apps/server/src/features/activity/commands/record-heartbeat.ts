@@ -1,7 +1,7 @@
-import { eq, and, gte, desc } from 'drizzle-orm';
-import type { db as DbType } from '../../../db';
+import { eq, and, gte, desc, isNull } from 'drizzle-orm';
 import { userActivitySessions } from '../../../db/schema';
 import { DEFAULT_INACTIVITY_THRESHOLD_MINUTES } from '../types';
+import type { ActivityCommandContext } from '../context';
 
 export interface RecordHeartbeatInput {
   userId: string;
@@ -18,28 +18,28 @@ export interface RecordHeartbeatResult {
  * Records a heartbeat for user activity tracking.
  * Creates a new activity session if the user has been inactive for longer than the threshold,
  * or updates the existing session's lastActivityAt timestamp.
+ *
+ * Uses a transaction to ensure atomicity when closing old sessions and creating new ones.
  */
 export class RecordHeartbeatCommand {
-  private db: typeof DbType;
-
-  constructor(db: typeof DbType) {
-    this.db = db;
-  }
-
-  async execute(input: RecordHeartbeatInput): Promise<RecordHeartbeatResult> {
+  async execute(
+    ctx: ActivityCommandContext,
+    input: RecordHeartbeatInput
+  ): Promise<RecordHeartbeatResult> {
     const {
       userId,
       orgId,
       inactivityThresholdMinutes = DEFAULT_INACTIVITY_THRESHOLD_MINUTES,
     } = input;
 
+    const { tx } = ctx;
     const now = new Date();
     const thresholdTime = new Date(
       now.getTime() - inactivityThresholdMinutes * 60 * 1000
     );
 
-    // Find the user's most recent activity session
-    const [existingSession] = await this.db
+    // Find the user's most recent active session (recent activity and not ended)
+    const [existingSession] = await tx
       .select({
         id: userActivitySessions.id,
         lastActivityAt: userActivitySessions.lastActivityAt,
@@ -49,8 +49,10 @@ export class RecordHeartbeatCommand {
         and(
           eq(userActivitySessions.userId, userId),
           eq(userActivitySessions.orgId, orgId),
-          // Session is still "active" (no endedAt or recent activity)
-          gte(userActivitySessions.lastActivityAt, thresholdTime)
+          // Session is still "active" (recent activity)
+          gte(userActivitySessions.lastActivityAt, thresholdTime),
+          // Session has not been explicitly ended
+          isNull(userActivitySessions.endedAt)
         )
       )
       .orderBy(desc(userActivitySessions.lastActivityAt))
@@ -58,7 +60,7 @@ export class RecordHeartbeatCommand {
 
     if (existingSession) {
       // Update existing session's last activity
-      await this.db
+      await tx
         .update(userActivitySessions)
         .set({
           lastActivityAt: now,
@@ -72,8 +74,8 @@ export class RecordHeartbeatCommand {
       };
     }
 
-    // Close any previous sessions that don't have an endedAt yet
-    await this.db
+    // Close any previous open sessions for this user
+    await tx
       .update(userActivitySessions)
       .set({
         endedAt: thresholdTime, // Use threshold time as approximate end
@@ -82,12 +84,13 @@ export class RecordHeartbeatCommand {
       .where(
         and(
           eq(userActivitySessions.userId, userId),
-          eq(userActivitySessions.orgId, orgId)
+          eq(userActivitySessions.orgId, orgId),
+          isNull(userActivitySessions.endedAt)
         )
       );
 
     // Create a new activity session
-    const [newSession] = await this.db
+    const [newSession] = await tx
       .insert(userActivitySessions)
       .values({
         userId,
