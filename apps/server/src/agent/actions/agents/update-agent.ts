@@ -9,6 +9,7 @@ import type { ThinkingConfig } from '../../../db/schema/agents';
 export const updateAgentMetadata: ActionMetadata = {
   id: 'updateAgent',
   requiredScopes: [AgentScope.AGENTS_MANAGE],
+  needsApproval: true,
 };
 
 export interface UpdateAgentContext {

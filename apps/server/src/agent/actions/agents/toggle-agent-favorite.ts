@@ -8,6 +8,7 @@ import type { AgentsFeature } from '../../../features/agents';
 export const toggleAgentFavoriteMetadata: ActionMetadata = {
   id: 'toggleAgentFavorite',
   requiredScopes: [AgentScope.AGENTS_MANAGE],
+  needsApproval: true,
 };
 
 export interface ToggleAgentFavoriteContext {

@@ -8,6 +8,7 @@ import type { ProjectsFeature } from '../../../features/projects';
 export const deleteProjectMetadata: ActionMetadata = {
   id: 'deleteProject',
   requiredScopes: [AgentScope.PROJECTS_DELETE],
+  needsApproval: true,
 };
 
 export interface DeleteProjectContext {

@@ -9,7 +9,7 @@ import {
 export interface SessionMessageInfo {
   id: string;
   role: 'user' | 'assistant' | 'system';
-  status: 'pending' | 'streaming' | 'complete' | 'error' | 'interrupted';
+  status: 'pending' | 'streaming' | 'complete' | 'error' | 'interrupted' | 'awaiting_approval';
   createdAt: string;
 }
 
@@ -22,6 +22,7 @@ export interface SessionEventInfo {
     | 'reasoning_delta'
     | 'tool_call'
     | 'tool_result'
+    | 'tool_approval_request'
     | 'error'
     | 'unknown';
   content?: string | null;
@@ -31,6 +32,12 @@ export interface SessionEventInfo {
   toolResult?: unknown;
   isError?: boolean | null;
   createdAt: string;
+  // Approval fields
+  approvalId?: string | null;
+  approvalStatus?: 'pending' | 'approved' | 'denied' | null;
+  approvalDenialReason?: string | null;
+  approvedByUserId?: string | null;
+  approvedAt?: string | null;
 }
 
 export interface SessionMessagesAndEvents {
@@ -89,6 +96,11 @@ export class GetSessionMessagesAndEventsQuery {
               toolResult: agentSessionEvents.toolResult,
               isError: agentSessionEvents.isError,
               createdAt: agentSessionEvents.createdAt,
+              approvalId: agentSessionEvents.approvalId,
+              approvalStatus: agentSessionEvents.approvalStatus,
+              approvalDenialReason: agentSessionEvents.approvalDenialReason,
+              approvedByUserId: agentSessionEvents.approvedByUserId,
+              approvedAt: agentSessionEvents.approvedAt,
             })
             .from(agentSessionEvents)
             .where(inArray(agentSessionEvents.messageId, messageIds))
@@ -115,6 +127,11 @@ export class GetSessionMessagesAndEventsQuery {
       toolResult: e.toolResult,
       isError: e.isError,
       createdAt: e.createdAt.toISOString(),
+      approvalId: e.approvalId,
+      approvalStatus: e.approvalStatus,
+      approvalDenialReason: e.approvalDenialReason,
+      approvedByUserId: e.approvedByUserId,
+      approvedAt: e.approvedAt?.toISOString() ?? null,
     }));
 
     return {

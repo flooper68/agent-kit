@@ -38,6 +38,14 @@ export interface DbMessage {
 }
 
 /**
+ * Result from processing a provider event.
+ * approvalRequested indicates a tool needs user approval (stream continues normally).
+ */
+type EventProcessingResult = {
+  approvalRequested?: boolean;
+};
+
+/**
  * Handles the execution of a single agent job
  * Manages streaming, event persistence, and error handling
  */
@@ -98,24 +106,42 @@ export class AgentJobHandler {
     this.eventSequence = 0;
     this.eventBuffer = new EventBuffer();
 
-    const { sessionId, agentId, userId, orgId, content } = job;
+    const { sessionId, agentId, userId, orgId, content, approvalResponse } = job;
 
-    // Create user message and assistant placeholder using shared command
-    const { userMessageId, assistantMessageId } =
-      await this.agentsFeature.messageLifecycle.sendUserMessage({
+    let messageId: string;
+
+    // Check if this is an approval response continuation
+    if (approvalResponse) {
+      // Approval response flow: continue from existing awaiting_approval message
+      const pendingMessage =
+        await this.agentsFeature.messages.getLastAwaitingApproval(sessionId);
+      if (!pendingMessage) {
+        this.log.error('No pending approval message found', { sessionId });
+        return;
+      }
+      messageId = pendingMessage.id;
+
+      // Get the current sequence number for this message
+      const maxSeq = await this.agentsFeature.events.getMaxSequence(messageId);
+      this.eventSequence = maxSeq + 1;
+    } else {
+      // Normal flow: create user message and assistant placeholder
+      const { userMessageId, assistantMessageId } =
+        await this.agentsFeature.messageLifecycle.sendUserMessage({
+          sessionId,
+          content,
+        });
+
+      // Publish user_message_created event so client can update optimistic message
+      await this.eventStreamManager.publish(sessionId, {
+        type: 'user_message_created',
         sessionId,
+        messageId: userMessageId,
         content,
-      });
+      } as Omit<StreamEvent, 'id' | 'timestamp'>);
 
-    // Publish user_message_created event so client can update optimistic message
-    await this.eventStreamManager.publish(sessionId, {
-      type: 'user_message_created',
-      sessionId,
-      messageId: userMessageId,
-      content,
-    } as Omit<StreamEvent, 'id' | 'timestamp'>);
-
-    const messageId = assistantMessageId;
+      messageId = assistantMessageId;
+    }
 
     // Get session info for spawn depth and local agent flag
     const session = await this.agentsFeature.sessions.getById(sessionId);
@@ -242,7 +268,36 @@ export class AgentJobHandler {
       // Get conversation history
       const dbMessages =
         await this.agentsFeature.messages.getBySessionId(sessionId);
-      const messages = convertToAIMessages(dbMessages);
+      let messages = convertToAIMessages(dbMessages);
+
+      // If this is an approval response, add it to the messages
+      if (approvalResponse) {
+        this.log.debug('Approval response - messages before adding response', {
+          messageCount: messages.length,
+          lastMessage: JSON.stringify(messages[messages.length - 1]),
+        });
+
+        // AI SDK expects a 'tool' role message with approval response
+        messages = [
+          ...messages,
+          {
+            role: 'tool' as const,
+            content: [
+              {
+                type: 'tool-approval-response' as const,
+                approvalId: approvalResponse.approvalId,
+                approved: approvalResponse.approved,
+                reason: approvalResponse.reason,
+              },
+            ],
+          },
+        ];
+
+        this.log.debug('Approval response - messages after adding response', {
+          messageCount: messages.length,
+          messages: JSON.stringify(messages),
+        });
+      }
 
       // Check context limit before processing
       if (maxContextTokens && session?.usage) {
@@ -343,6 +398,9 @@ export class AgentJobHandler {
       // Track last heartbeat time for streaming state TTL refresh
       let lastHeartbeat = Date.now();
 
+      // Track if any tool requested approval (for status update after stream)
+      let hasPendingApproval = false;
+
       for await (const event of stream) {
         // Send heartbeat to keep streaming state alive during long streams
         if (Date.now() - lastHeartbeat > STREAMING_HEARTBEAT_INTERVAL_MS) {
@@ -363,13 +421,18 @@ export class AgentJobHandler {
 
         // Write event to database and publish to Redis
         const sequence = this.eventSequence++;
-        await this.handleProviderEvent(
+        const result = await this.handleProviderEvent(
           event,
           sessionId,
           messageId,
           sequence,
           agent.model
         );
+
+        // Track if any tool requested approval (stream continues normally)
+        if (result.approvalRequested) {
+          hasPendingApproval = true;
+        }
 
         // Capture final metadata from done event
         if (event.type === 'done') {
@@ -434,12 +497,18 @@ export class AgentJobHandler {
       // Calculate latency
       const latency = Date.now() - startTime;
 
+      // If there are pending approvals, mark message as awaiting_approval
+      // Otherwise use the normal final status
+      const messageStatus = hasPendingApproval
+        ? 'awaiting_approval'
+        : finalStatus;
+
       // Update message status and session usage via completeMessage
       const completeResult =
         await this.agentsFeature.messageLifecycle.completeMessage({
           messageId,
           sessionId,
-          status: finalStatus,
+          status: messageStatus,
           metadata: finalMetadata,
           usage: finalUsage,
           latency,
@@ -469,6 +538,8 @@ export class AgentJobHandler {
         messageId,
         code: agentError.code,
         statusCode: agentError.details?.statusCode,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
       // Flush any buffered events before marking as error
       await this.flushBuffer(sessionId, messageId);
@@ -485,7 +556,8 @@ export class AgentJobHandler {
   }
 
   /**
-   * Handle a provider stream event - persist to DB and publish to Redis
+   * Handle a provider stream event - persist to DB and publish to Redis.
+   * Returns approvalRequested if a tool needs user approval (stream continues normally).
    */
   private async handleProviderEvent(
     event: ProviderStreamEvent,
@@ -493,7 +565,7 @@ export class AgentJobHandler {
     messageId: string,
     sequence: number,
     model: string
-  ): Promise<void> {
+  ): Promise<EventProcessingResult> {
     switch (event.type) {
       case 'text_delta': {
         // Buffer consecutive text deltas to reduce DB writes
@@ -517,7 +589,7 @@ export class AgentJobHandler {
           messageId,
           delta: event.content,
         } as Omit<StreamEvent, 'id' | 'timestamp'>);
-        break;
+        return {};
       }
 
       case 'reasoning_delta': {
@@ -542,18 +614,20 @@ export class AgentJobHandler {
           messageId,
           delta: event.content,
         } as Omit<StreamEvent, 'id' | 'timestamp'>);
-        break;
+        return {};
       }
 
-      case 'tool_call':
+      case 'tool_call': {
         // Flush any buffered deltas before tool call
         await this.flushBuffer(sessionId, messageId);
         this.log.debug('Tool call', {
           sessionId,
           toolName: event.toolName,
           toolCallId: event.toolCallId,
+          hasProviderMetadata: !!event.providerMetadata,
         });
 
+        // Save tool call event (including providerMetadata for Gemini thought_signature)
         await this.agentsFeature.events.insert({
           sessionId,
           messageId,
@@ -562,7 +636,10 @@ export class AgentJobHandler {
           toolCallId: event.toolCallId,
           toolName: event.toolName,
           toolArgs: event.args,
+          providerMetadata: event.providerMetadata,
         });
+
+        // Publish tool_call_start so UI shows the tool
         await this.eventStreamManager.publish(sessionId, {
           type: 'tool_call_start',
           sessionId,
@@ -571,15 +648,59 @@ export class AgentJobHandler {
           toolName: event.toolName,
           toolArgs: event.args,
         } as Omit<StreamEvent, 'id' | 'timestamp'>);
-        break;
 
-      case 'tool_result':
+        // Tool execution handled by AI SDK via needsApproval and execute functions
+        return {};
+      }
+
+      case 'tool_approval_request': {
+        // AI SDK emitted a tool approval request (tool has needsApproval: true)
+        await this.flushBuffer(sessionId, messageId);
+        this.log.info('Tool approval requested', {
+          sessionId,
+          approvalId: event.approvalId,
+          toolName: event.toolName,
+          toolCallId: event.toolCallId,
+          hasProviderMetadata: !!event.providerMetadata,
+        });
+
+        // Save approval request event (including providerMetadata for Gemini thought_signature)
+        await this.agentsFeature.events.insert({
+          sessionId,
+          messageId,
+          sequence,
+          type: 'tool_approval_request',
+          toolCallId: event.toolCallId,
+          toolName: event.toolName,
+          toolArgs: event.toolArgs,
+          approvalId: event.approvalId,
+          providerMetadata: event.providerMetadata,
+        });
+
+        // Publish approval request to client
+        await this.eventStreamManager.publish(sessionId, {
+          type: 'tool_approval_requested',
+          sessionId,
+          messageId,
+          toolCallId: event.toolCallId,
+          toolName: event.toolName,
+          toolArgs: event.toolArgs,
+          approvalId: event.approvalId,
+        } as Omit<StreamEvent, 'id' | 'timestamp'>);
+
+        // Signal that approval was requested (stream continues normally)
+        return { approvalRequested: true };
+      }
+
+      case 'tool_result': {
         // Flush any buffered deltas before tool result
         await this.flushBuffer(sessionId, messageId);
         this.log.debug('Tool result', {
           sessionId,
           toolCallId: event.toolCallId,
         });
+
+        // Normal tool result from AI SDK (tools with execute function)
         await this.agentsFeature.events.insert({
           sessionId,
           messageId,
@@ -597,7 +718,8 @@ export class AgentJobHandler {
           result: event.result,
           isError: event.isError,
         } as Omit<StreamEvent, 'id' | 'timestamp'>);
-        break;
+        return {};
+      }
 
       case 'done': {
         // Flush any remaining buffered deltas
@@ -627,7 +749,7 @@ export class AgentJobHandler {
             : undefined,
           finishReason: event.finishReason,
         } as Omit<StreamEvent, 'id' | 'timestamp'>);
-        break;
+        return {};
       }
 
       case 'error':
@@ -652,7 +774,7 @@ export class AgentJobHandler {
             : undefined,
         });
         await this.publishError(sessionId, messageId, event.error);
-        break;
+        return {};
 
       default:
         // Flush any buffered deltas before unknown event
@@ -670,7 +792,7 @@ export class AgentJobHandler {
           `Unknown event type: ${(event as { type: string }).type}`,
           event
         );
-        break;
+        return {};
     }
   }
 
@@ -808,14 +930,34 @@ export function convertToAIMessages(dbMessages: DbMessage[]): Message[] {
           case 'text':
             content.push({ type: 'text', text: part.content });
             break;
-          case 'tool_invocation':
+          case 'tool_invocation': {
+            // Extract approvalId and providerMetadata if present (stored during tool_call/tool_approval_request events)
+            const { _approvalId, _providerMetadata, ...cleanArgs } =
+              part.args as Record<string, unknown> & {
+                _approvalId?: string;
+                _providerMetadata?: Record<string, unknown>;
+              };
+
+            // Add the tool-call part (include providerOptions for Gemini thought_signature)
             content.push({
               type: 'tool-call',
               toolCallId: part.toolCallId,
               toolName: part.toolName,
-              input: part.args,
+              input: cleanArgs,
+              ...(_providerMetadata && { providerOptions: _providerMetadata }),
             });
+
+            // For pending approval, also add the tool-approval-request
+            // Format: { type: 'tool-approval-request', approvalId, toolCallId }
+            if (part.state === 'pending_approval' && _approvalId) {
+              content.push({
+                type: 'tool-approval-request',
+                approvalId: _approvalId,
+                toolCallId: part.toolCallId,
+              });
+            }
             break;
+          }
           case 'tool_result':
             content.push({
               type: 'tool-result',

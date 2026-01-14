@@ -247,6 +247,10 @@ export const MessagePartItem = memo(function MessagePartItem({
             args={toolPart.args}
             toolCallId={toolPart.toolCallId}
             result={result}
+            approvalStatus={toolPart.approvalStatus}
+            approvalDenialReason={toolPart.approvalDenialReason}
+            approvedByUserId={toolPart.approvedByUserId}
+            approvedAt={toolPart.approvedAt}
           />
         </div>
       );

@@ -17,6 +17,7 @@ import { SkillFilePathSchema } from '../../skills/types';
 export const createSkillMetadata: ActionMetadata = {
   id: 'createSkill',
   requiredScopes: [AgentScope.SKILLS_WRITE],
+  needsApproval: true,
 };
 
 const log = logger.child({ module: 'create-skill-action' });

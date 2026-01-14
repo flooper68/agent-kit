@@ -8,6 +8,7 @@ import type { AgentsFeature } from '../../../features/agents';
 export const setAgentEnabledMetadata: ActionMetadata = {
   id: 'setAgentEnabled',
   requiredScopes: [AgentScope.AGENTS_MANAGE],
+  needsApproval: true,
 };
 
 export interface SetAgentEnabledContext {

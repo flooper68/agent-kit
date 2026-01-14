@@ -1,3 +1,19 @@
+/**
+ * Agent Session Messages Schema
+ *
+ * Messages are containers that track the lifecycle and metadata of each
+ * turn in the conversation. They do NOT store content directly.
+ *
+ * Architecture (Event Sourcing Pattern):
+ * - Session (1) → Messages (many) → Events (many)
+ * - Messages track: status, role, token usage, latency, model info
+ * - Events track: actual content (text deltas, tool calls, results)
+ * - Content is reconstructed from events via reconstructPartsFromEvents()
+ *
+ * Why separate tables:
+ * - Messages: mutable status/metadata, quick status lookups
+ * - Events: immutable write-once records, streaming inserts, audit log
+ */
 import {
   pgTable,
   uuid,
@@ -19,7 +35,12 @@ export type ToolInvocationPart = {
   toolCallId: string;
   toolName: string;
   args: Record<string, unknown>;
-  state: 'pending' | 'running' | 'completed' | 'error';
+  state: 'pending' | 'running' | 'completed' | 'error' | 'pending_approval';
+  // Approval fields (for tools that required approval)
+  approvalStatus?: 'pending' | 'approved' | 'denied';
+  approvalDenialReason?: string;
+  approvedByUserId?: string;
+  approvedAt?: string; // ISO string
 };
 
 export type ToolResultPart = {
@@ -72,7 +93,8 @@ export type AgentSessionMessageStatus =
   | 'streaming'
   | 'complete'
   | 'error'
-  | 'interrupted';
+  | 'interrupted'
+  | 'awaiting_approval';
 
 export const agentSessionMessages = pgTable(
   'agent_session_messages',
@@ -84,7 +106,7 @@ export const agentSessionMessages = pgTable(
     role: varchar('role', { length: 16 })
       .$type<AgentSessionMessageRole>()
       .notNull(),
-    status: varchar('status', { length: 16 })
+    status: varchar('status', { length: 32 })
       .$type<AgentSessionMessageStatus>()
       .notNull()
       .default('pending'),

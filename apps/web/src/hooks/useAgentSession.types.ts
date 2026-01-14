@@ -11,7 +11,7 @@ export interface SessionData {
     id: string;
     role: 'user' | 'assistant';
     createdAt: string;
-    status?: 'pending' | 'streaming' | 'complete' | 'error' | 'interrupted';
+    status?: 'pending' | 'streaming' | 'complete' | 'error' | 'interrupted' | 'awaiting_approval';
     parts: Array<{
       type: string;
       content?: string;
@@ -112,6 +112,24 @@ export interface SpawnSessionCreatedEvent extends BaseStreamEvent {
   spawnedSessionId: string;
 }
 
+export interface ToolApprovalRequestedEvent extends BaseStreamEvent {
+  type: 'tool_approval_requested';
+  approvalId: string;
+  toolCallId: string;
+  toolName: string;
+  toolArgs?: Record<string, unknown>;
+  requiredScopes?: string[];
+}
+
+export interface ToolApprovalRespondedEvent extends BaseStreamEvent {
+  type: 'tool_approval_responded';
+  approvalId: string;
+  approved: boolean;
+  denialReason?: string;
+  approvedByUserId?: string;
+  approvedAt?: string; // ISO string
+}
+
 export type StreamEvent =
   | UserMessageCreatedEvent
   | MessageStartEvent
@@ -123,7 +141,9 @@ export type StreamEvent =
   | ErrorEvent
   | InterruptedEvent
   | ClientToolRequestEvent
-  | SpawnSessionCreatedEvent;
+  | SpawnSessionCreatedEvent
+  | ToolApprovalRequestedEvent
+  | ToolApprovalRespondedEvent;
 
 // Query result interface
 export interface SessionQueryResult {

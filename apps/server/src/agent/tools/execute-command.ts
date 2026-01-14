@@ -19,13 +19,9 @@ import type { ToolsContext } from './types';
 import { logger } from '../logger';
 import { SERVER_TOOL_DEFINITIONS, type ToolName } from '@agent-kit/shared';
 import { checkActionPermission, createPermissionError } from '../permissions';
+import { checkCommandRequiresApproval } from './approvals';
 
 const log = logger.child({ module: 'execute-command-tool' });
-
-export interface ExecuteCommandToolContext {
-  /** Tool context for creating actual tools */
-  toolContext: ToolsContext;
-}
 
 /**
  * Parse a CLI-style command string into tool name and arguments
@@ -195,11 +191,10 @@ function parseValue(value: string): unknown {
 }
 
 /**
- * Create the executeCommand tool
+ * Create the executeCommand tool with needsApproval and execute.
+ * Uses AI SDK's native approval flow via needsApproval function.
  */
-export function createExecuteCommandTool(
-  context: ExecuteCommandToolContext
-): Tool {
+export function createExecuteCommandTool(context: ToolsContext): Tool {
   return tool({
     // Use shared description from @agent-kit/shared (single source of truth)
     description: SERVER_TOOL_DEFINITIONS.executeCommand.description,
@@ -212,37 +207,19 @@ export function createExecuteCommandTool(
           'CLI-style command: toolName --arg1 value1 --arg2 "value with spaces"'
         ),
     }),
-
-    execute: async ({
-      command,
-    }: {
-      command: string;
-    }): Promise<ExecuteSkillResult> => {
-      log.info('Executing command', { command });
-
-      // Parse the command
-      let parsed: ParsedCommand;
-      try {
-        parsed = parseCommand(command);
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : 'Failed to parse command';
-        log.warn('Command parse error', { command, error: errorMessage });
-        return {
-          success: false,
-          tool: '',
-          args: {},
-          error: `Parse error: ${errorMessage}`,
-        };
-      }
-
+    // Dynamic approval based on inner action's scopes
+    needsApproval: async ({ command }: { command: string }) => {
+      return checkCommandRequiresApproval(command);
+    },
+    // Execute the inner action
+    execute: async ({ command }: { command: string }): Promise<ExecuteSkillResult> => {
+      const parsed = parseCommand(command);
       const { tool: toolName, args } = parsed;
 
+      log.info('Executing command action', { toolName, args });
+
       // Check permissions before instantiating the action
-      const permCheck = checkActionPermission(
-        toolName,
-        context.toolContext.agentScopes
-      );
+      const permCheck = checkActionPermission(toolName, context.agentScopes);
       if (!permCheck.allowed) {
         log.warn('Permission denied', {
           actionName: toolName,
@@ -257,7 +234,7 @@ export function createExecuteCommandTool(
       }
 
       // Get the action implementation (only after permission check passes)
-      const actions = getActionsById([toolName], context.toolContext);
+      const actions = getActionsById([toolName], context);
       const actionImpl = actions[toolName];
 
       if (!actionImpl) {
@@ -267,6 +244,17 @@ export function createExecuteCommandTool(
           tool: toolName,
           args,
           error: `Action "${toolName}" not found or not available.`,
+        };
+      }
+
+      // Check if action has execute method (approval-required actions don't)
+      if (!actionImpl.execute) {
+        log.warn('Action requires approval', { actionName: toolName });
+        return {
+          success: false,
+          tool: toolName,
+          args,
+          error: `Action "${toolName}" requires approval.`,
         };
       }
 

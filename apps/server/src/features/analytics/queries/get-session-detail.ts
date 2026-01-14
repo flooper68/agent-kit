@@ -47,6 +47,12 @@ export interface SessionDetailEvent {
   errorDetails: Record<string, unknown> | null;
   rawEventType: string | null;
   rawData: unknown;
+  // Approval fields
+  approvalId: string | null;
+  approvalStatus: 'pending' | 'approved' | 'denied' | null;
+  approvalDenialReason: string | null;
+  approvedByUserId: string | null;
+  approvedAt: Date | null;
 }
 
 export interface SessionDetailData {
@@ -146,6 +152,11 @@ export class GetSessionDetailQuery {
         errorDetails: agentSessionEvents.errorDetails,
         rawEventType: agentSessionEvents.rawEventType,
         rawData: agentSessionEvents.rawData,
+        approvalId: agentSessionEvents.approvalId,
+        approvalStatus: agentSessionEvents.approvalStatus,
+        approvalDenialReason: agentSessionEvents.approvalDenialReason,
+        approvedByUserId: agentSessionEvents.approvedByUserId,
+        approvedAt: agentSessionEvents.approvedAt,
       })
       .from(agentSessionEvents)
       .where(eq(agentSessionEvents.sessionId, input.sessionId))

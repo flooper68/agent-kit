@@ -1,10 +1,13 @@
 import { forwardRef } from 'react';
 import { cn } from '../../../../lib/utils';
 import { Button } from '../../../Button';
+import { Tooltip } from '../../../Tooltip';
 
 export interface ApprovalPanelProps {
   /** Title/message displayed in the panel */
   title?: string;
+  /** Full command details to display in a scrollable box */
+  commandDetails?: string;
   /** Callback when approve button is clicked */
   onApprove: () => void;
   /** Callback when deny button is clicked */
@@ -41,6 +44,7 @@ export const ApprovalPanel = forwardRef<HTMLDivElement, ApprovalPanelProps>(
   (
     {
       title = "Here's my plan:",
+      commandDetails,
       onApprove,
       onDeny,
       approveLabel = 'Approve',
@@ -56,32 +60,48 @@ export const ApprovalPanel = forwardRef<HTMLDivElement, ApprovalPanelProps>(
         role="region"
         aria-label="Approval panel"
         className={cn(
-          'flex items-center gap-3 p-3 rounded-lg',
+          'flex flex-col gap-2 p-3 rounded-lg',
           'bg-info/10 border border-info/20',
           'text-sm animate-slide-down',
           className
         )}
       >
-        {PlanIcon}
-        <p className="flex-1 font-medium text-foreground">{title}</p>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onDeny}
-            disabled={isLoading}
-          >
-            {denyLabel}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={onApprove}
-            isLoading={isLoading}
-          >
-            {approveLabel}
-          </Button>
+        <div className="flex items-center gap-3">
+          {PlanIcon}
+          <p className="flex-1 font-medium text-foreground">{title}</p>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDeny}
+              disabled={isLoading}
+            >
+              {denyLabel}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={onApprove}
+              isLoading={isLoading}
+            >
+              {approveLabel}
+            </Button>
+          </div>
         </div>
+        {commandDetails && (
+          <Tooltip
+            content={
+              <pre className="max-w-md whitespace-pre-wrap break-words text-xs font-mono">
+                {commandDetails}
+              </pre>
+            }
+            side="bottom"
+          >
+            <code className="block truncate rounded bg-muted/50 px-2 py-1 text-xs font-mono text-muted-foreground cursor-help">
+              {commandDetails}
+            </code>
+          </Tooltip>
+        )}
       </div>
     );
   }

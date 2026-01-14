@@ -57,6 +57,9 @@ import {
   ListSessionsByUserQuery,
   VerifySessionOwnershipQuery,
   GetMessagesBySessionIdQuery,
+  GetLastAssistantMessageQuery,
+  GetLastAwaitingApprovalMessageQuery,
+  GetMaxEventSequenceQuery,
   GetSessionResourcesQuery,
   GetSessionMessagesAndEventsQuery,
   GetActiveSessionIdsQuery,
@@ -134,6 +137,9 @@ export class AgentsFeature {
   private listSessionsByUserQuery: ListSessionsByUserQuery;
   private verifySessionOwnershipQuery: VerifySessionOwnershipQuery;
   private getMessagesBySessionIdQuery: GetMessagesBySessionIdQuery;
+  private getLastAssistantMessageQuery: GetLastAssistantMessageQuery;
+  private getLastAwaitingApprovalMessageQuery: GetLastAwaitingApprovalMessageQuery;
+  private getMaxEventSequenceQuery: GetMaxEventSequenceQuery;
   private getSessionResourcesQuery: GetSessionResourcesQuery;
   private getSessionMessagesAndEventsQuery: GetSessionMessagesAndEventsQuery;
 
@@ -231,6 +237,10 @@ export class AgentsFeature {
     this.listSessionsByUserQuery = new ListSessionsByUserQuery(db);
     this.verifySessionOwnershipQuery = new VerifySessionOwnershipQuery(db);
     this.getMessagesBySessionIdQuery = new GetMessagesBySessionIdQuery(db);
+    this.getLastAssistantMessageQuery = new GetLastAssistantMessageQuery(db);
+    this.getLastAwaitingApprovalMessageQuery =
+      new GetLastAwaitingApprovalMessageQuery(db);
+    this.getMaxEventSequenceQuery = new GetMaxEventSequenceQuery(db);
     this.getSessionResourcesQuery = new GetSessionResourcesQuery(db);
     this.getSessionMessagesAndEventsQuery =
       new GetSessionMessagesAndEventsQuery(db);
@@ -385,6 +395,10 @@ export class AgentsFeature {
         this.updateMessageStatusCommand.execute(input),
       getBySessionId: (sessionId: string) =>
         this.getMessagesBySessionIdQuery.execute({ sessionId }),
+      getLastAssistantMessage: (sessionId: string) =>
+        this.getLastAssistantMessageQuery.execute(sessionId),
+      getLastAwaitingApproval: (sessionId: string) =>
+        this.getLastAwaitingApprovalMessageQuery.execute(sessionId),
     };
   }
 
@@ -395,6 +409,8 @@ export class AgentsFeature {
     return {
       insert: (event: InsertEventInput) =>
         this.insertEventCommand.execute(event),
+      getMaxSequence: (messageId: string) =>
+        this.getMaxEventSequenceQuery.execute(messageId),
     };
   }
 

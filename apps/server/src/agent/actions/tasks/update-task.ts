@@ -9,6 +9,7 @@ import { TaskPrioritySchema } from '../../../features/tasks/schemas';
 export const updateTaskMetadata: ActionMetadata = {
   id: 'updateTask',
   requiredScopes: [AgentScope.TASKS_WRITE],
+  needsApproval: true,
 };
 
 export interface UpdateTaskContext {

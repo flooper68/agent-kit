@@ -108,6 +108,9 @@ export class AnthropicProvider implements AgentProvider {
               toolCallId: chunk.toolCallId,
               toolName: chunk.toolName,
               args: (chunk.input ?? {}) as Record<string, unknown>,
+              providerMetadata: chunk.providerMetadata as
+                | Record<string, unknown>
+                | undefined,
             };
             break;
 
@@ -138,6 +141,23 @@ export class AnthropicProvider implements AgentProvider {
                   ? chunk.error.message
                   : String(chunk.error),
               isError: true,
+            };
+            break;
+
+          case 'tool-approval-request':
+            logger.debug('Tool approval request received', {
+              approvalId: chunk.approvalId,
+              toolCallId: chunk.toolCall.toolCallId,
+              toolName: chunk.toolCall.toolName,
+              model,
+            });
+            yield {
+              type: 'tool_approval_request',
+              approvalId: chunk.approvalId,
+              toolCallId: chunk.toolCall.toolCallId,
+              toolName: chunk.toolCall.toolName,
+              toolArgs: (chunk.toolCall.input ?? {}) as Record<string, unknown>,
+              providerMetadata: (chunk.toolCall as { providerMetadata?: Record<string, unknown> }).providerMetadata,
             };
             break;
 

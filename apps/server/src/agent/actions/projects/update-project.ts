@@ -8,6 +8,7 @@ import type { ProjectsFeature } from '../../../features/projects';
 export const updateProjectMetadata: ActionMetadata = {
   id: 'updateProject',
   requiredScopes: [AgentScope.PROJECTS_WRITE],
+  needsApproval: true,
 };
 
 export interface UpdateProjectContext {

@@ -10,6 +10,7 @@ const MAX_CONTENT_SIZE = 1_000_000; // 1MB
 export const patchArtifactMetadata: ActionMetadata = {
   id: 'patchArtifact',
   requiredScopes: [AgentScope.ARTIFACTS_WRITE],
+  needsApproval: true,
 };
 
 export interface PatchArtifactContext {

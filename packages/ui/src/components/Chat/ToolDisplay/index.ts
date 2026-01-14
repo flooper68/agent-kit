@@ -6,3 +6,10 @@ export type { ToolBadgeGroupProps } from './ToolBadgeGroup';
 
 export { SubAgentCard } from './SubAgentCard';
 export type { SubAgentCardProps } from './SubAgentCard';
+
+// Utils
+export {
+  getExecuteCommandDisplayInfo,
+  getBaseToolName,
+  formatToolName,
+} from './tool-display-utils';
