@@ -169,3 +169,4 @@ Run AI agents on your local machine with access to your file system and local to
 - [Architecture Overview](./docs/local-agents.md#architecture-overview)
 - [Authentication Protocol](./docs/local-agent-authentication.md) - HMAC mutual authentication
 - [Troubleshooting](./docs/local-agents.md#troubleshooting)
+
