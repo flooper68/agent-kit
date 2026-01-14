@@ -1,12 +1,6 @@
 import type { db as DbType } from '../../db';
-import {
-  RecordHeartbeatCommand,
-  UpdateActivitySessionMetricsCommand,
-} from './commands';
-import type {
-  RecordHeartbeatInput,
-  UpdateActivitySessionMetricsInput,
-} from './commands';
+import { RecordHeartbeatCommand } from './commands';
+import type { RecordHeartbeatInput } from './commands';
 import {
   GetActivitySessionsQuery,
   GetActivitySessionStatsQuery,
@@ -21,14 +15,11 @@ import type {
  */
 export class ActivityFeature {
   private recordHeartbeatCommand: RecordHeartbeatCommand;
-  private updateActivitySessionMetricsCommand: UpdateActivitySessionMetricsCommand;
   private getActivitySessionsQuery: GetActivitySessionsQuery;
   private getActivitySessionStatsQuery: GetActivitySessionStatsQuery;
 
   constructor(db: typeof DbType) {
     this.recordHeartbeatCommand = new RecordHeartbeatCommand(db);
-    this.updateActivitySessionMetricsCommand =
-      new UpdateActivitySessionMetricsCommand(db);
     this.getActivitySessionsQuery = new GetActivitySessionsQuery(db);
     this.getActivitySessionStatsQuery = new GetActivitySessionStatsQuery(db);
   }
@@ -39,13 +30,6 @@ export class ActivityFeature {
    */
   recordHeartbeat(input: RecordHeartbeatInput) {
     return this.recordHeartbeatCommand.execute(input);
-  }
-
-  /**
-   * Updates activity session metrics when an agent session completes.
-   */
-  updateSessionMetrics(input: UpdateActivitySessionMetricsInput) {
-    return this.updateActivitySessionMetricsCommand.execute(input);
   }
 
   /**

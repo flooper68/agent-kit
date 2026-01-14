@@ -447,32 +447,6 @@ export class AgentJobHandler {
           provider: agent.provider,
         });
 
-      // Update activity session metrics (fire-and-forget)
-      if (finalUsage && this.activityFeature) {
-        const costDelta = calculateCost(agent.model, {
-          promptTokens: finalUsage.promptTokens,
-          completionTokens: finalUsage.completionTokens,
-          cacheReadTokens: finalUsage.cacheReadTokens,
-          cacheWriteTokens: finalUsage.cacheWriteTokens,
-        });
-        const tokensDelta =
-          finalUsage.promptTokens + finalUsage.completionTokens;
-
-        this.activityFeature
-          .updateSessionMetrics({
-            userId,
-            orgId,
-            costDelta,
-            tokensDelta,
-          })
-          .catch((err) => {
-            this.log.error('Activity session metrics update failed', {
-              sessionId,
-              error: err instanceof Error ? err.message : 'Unknown error',
-            });
-          });
-      }
-
       // Trigger summarization for successful completions (fire-and-forget)
       if (finalStatus === 'complete' && completeResult.messageCount) {
         this.agentsFeature.summarization
