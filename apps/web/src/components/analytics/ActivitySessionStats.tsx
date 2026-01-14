@@ -1,10 +1,9 @@
-import { Clock, DollarSign, Coins, Activity } from 'lucide-react';
+import { Clock, Activity, Calendar } from 'lucide-react';
 import { StatCard } from './StatCard';
 
 interface ActivitySessionStatsProps {
   totalSessions: number;
   averageDurationMinutes: number;
-  averageCostPerSession: number;
   sessionsPerDay: number;
   isLoading?: boolean;
 }
@@ -16,13 +15,6 @@ function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const mins = Math.round(minutes % 60);
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-}
-
-function formatCurrency(value: number): string {
-  if (value >= 1000) {
-    return `$${(value / 1000).toFixed(1)}K`;
-  }
-  return `$${value.toFixed(2)}`;
 }
 
 function formatNumber(value: number): string {
@@ -38,7 +30,6 @@ function formatNumber(value: number): string {
 export function ActivitySessionStats({
   totalSessions,
   averageDurationMinutes,
-  averageCostPerSession,
   sessionsPerDay,
   isLoading,
 }: ActivitySessionStatsProps) {
@@ -54,14 +45,9 @@ export function ActivitySessionStats({
       icon: Clock,
     },
     {
-      label: 'Avg Cost/Session',
-      value: isLoading ? '-' : formatCurrency(averageCostPerSession),
-      icon: DollarSign,
-    },
-    {
       label: 'Sessions/Day',
       value: isLoading ? '-' : sessionsPerDay.toFixed(1),
-      icon: Coins,
+      icon: Calendar,
     },
   ];
 

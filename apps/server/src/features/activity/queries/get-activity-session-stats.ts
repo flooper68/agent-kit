@@ -12,11 +12,7 @@ export interface GetActivitySessionStatsInput {
 
 export interface ActivitySessionStats {
   totalSessions: number;
-  totalCost: number;
-  totalTokens: number;
   averageDurationMinutes: number;
-  averageCostPerSession: number;
-  averageTokensPerSession: number;
   sessionsPerDay: number;
 }
 
@@ -52,8 +48,6 @@ export class GetActivitySessionStatsQuery {
     const [stats] = await this.db
       .select({
         totalSessions: count(),
-        totalCost: sql<number>`COALESCE(SUM(${userActivitySessions.estimatedCost}), 0)`,
-        totalTokens: sql<number>`COALESCE(SUM(${userActivitySessions.totalTokens}), 0)`,
         avgDuration: sql<number>`
           COALESCE(AVG(
             EXTRACT(EPOCH FROM (
@@ -67,19 +61,11 @@ export class GetActivitySessionStatsQuery {
       .where(and(...conditions));
 
     const totalSessions = Number(stats?.totalSessions) || 0;
-    const totalCost = Number(stats?.totalCost) || 0;
-    const totalTokens = Number(stats?.totalTokens) || 0;
     const averageDurationMinutes = Number(stats?.avgDuration) || 0;
 
     return {
       totalSessions,
-      totalCost,
-      totalTokens,
       averageDurationMinutes: Math.round(averageDurationMinutes),
-      averageCostPerSession:
-        totalSessions > 0 ? totalCost / totalSessions : 0,
-      averageTokensPerSession:
-        totalSessions > 0 ? Math.round(totalTokens / totalSessions) : 0,
       sessionsPerDay:
         daysInRange > 0
           ? Math.round((totalSessions / daysInRange) * 10) / 10

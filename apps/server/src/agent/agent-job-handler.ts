@@ -10,7 +10,6 @@ import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
 import type { SkillsFeature } from '../features/skills';
-import type { ActivityFeature } from '../features/activity';
 import type { AgentSpawner } from './agent-spawner';
 import { getProvider } from './providers';
 import { getToolsById } from './tools';
@@ -61,7 +60,6 @@ export class AgentJobHandler {
   private cacheInvalidation: CacheInvalidationService;
   private projectsFeature?: ProjectsFeature;
   private tasksFeature?: TasksFeature;
-  private activityFeature?: ActivityFeature;
   private workerId: string;
   private eventSequence = 0;
   private eventBuffer = new EventBuffer();
@@ -79,8 +77,7 @@ export class AgentJobHandler {
     cacheInvalidation: CacheInvalidationService,
     workerId: string,
     projectsFeature?: ProjectsFeature,
-    tasksFeature?: TasksFeature,
-    activityFeature?: ActivityFeature
+    tasksFeature?: TasksFeature
   ) {
     this.eventStreamManager = eventStreamManager;
     this.jobRegistryManager = jobRegistryManager;
@@ -94,7 +91,6 @@ export class AgentJobHandler {
     this.workerId = workerId;
     this.projectsFeature = projectsFeature;
     this.tasksFeature = tasksFeature;
-    this.activityFeature = activityFeature;
     this.log = logger.child({ workerId });
   }
 
@@ -106,7 +102,8 @@ export class AgentJobHandler {
     this.eventSequence = 0;
     this.eventBuffer = new EventBuffer();
 
-    const { sessionId, agentId, userId, orgId, content, approvalResponse } = job;
+    const { sessionId, agentId, userId, orgId, content, approvalResponse } =
+      job;
 
     let messageId: string;
 

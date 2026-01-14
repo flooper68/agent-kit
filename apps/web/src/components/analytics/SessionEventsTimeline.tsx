@@ -218,7 +218,9 @@ function EventContent({ event }: { event: SessionEvent }) {
         <div className="space-y-3">
           {event.approvalId && (
             <div>
-              <Text className="text-sm text-muted-foreground">Approval ID:</Text>
+              <Text className="text-sm text-muted-foreground">
+                Approval ID:
+              </Text>
               <Code className="mt-1 text-xs">{event.approvalId}</Code>
             </div>
           )}
@@ -230,7 +232,9 @@ function EventContent({ event }: { event: SessionEvent }) {
           )}
           {event.toolCallId && (
             <div>
-              <Text className="text-sm text-muted-foreground">Tool Call ID:</Text>
+              <Text className="text-sm text-muted-foreground">
+                Tool Call ID:
+              </Text>
               <Code className="mt-1 text-xs">{event.toolCallId}</Code>
             </div>
           )}
@@ -271,7 +275,9 @@ function EventContent({ event }: { event: SessionEvent }) {
           )}
           {event.approvedAt && (
             <div>
-              <Text className="text-sm text-muted-foreground">Decision Time:</Text>
+              <Text className="text-sm text-muted-foreground">
+                Decision Time:
+              </Text>
               <Text className="text-sm mt-1">
                 {new Date(event.approvedAt).toLocaleString()}
               </Text>

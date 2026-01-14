@@ -65,8 +65,12 @@ function getListSkillFilesDisplayInfo(
   return skillKey;
 }
 
-
-type ToolState = 'pending' | 'running' | 'completed' | 'error' | 'pending_approval';
+type ToolState =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'error'
+  | 'pending_approval';
 
 const toolBadgeVariants = cva(
   [
@@ -208,11 +212,7 @@ const ApprovalStatusBadge = ({
     // Shield with checkmark - green, positioned as overlay
     return (
       <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-4 w-4 rounded-full bg-green-500 dark:bg-green-600 ring-2 ring-white dark:ring-gray-900">
-        <svg
-          className="h-2.5 w-2.5 text-white"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
+        <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24">
           <path
             stroke="currentColor"
             strokeLinecap="round"

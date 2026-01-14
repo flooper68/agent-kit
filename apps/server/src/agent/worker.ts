@@ -9,7 +9,6 @@ import type { ArtifactsFeature } from '../features/artifacts';
 import type { ProjectsFeature } from '../features/projects';
 import type { TasksFeature } from '../features/tasks';
 import type { SkillsFeature } from '../features/skills';
-import type { ActivityFeature } from '../features/activity';
 import type { AgentSpawner } from './agent-spawner';
 import { AgentJobHandler } from './agent-job-handler';
 
@@ -36,7 +35,6 @@ export class AgentWorker {
   private cacheInvalidation: CacheInvalidationService;
   private projectsFeature?: ProjectsFeature;
   private tasksFeature?: TasksFeature;
-  private activityFeature?: ActivityFeature;
   private workerId: string;
   private isRunning = false;
 
@@ -52,8 +50,7 @@ export class AgentWorker {
     pubsub: PubSubManager,
     cacheInvalidation: CacheInvalidationService,
     projectsFeature?: ProjectsFeature,
-    tasksFeature?: TasksFeature,
-    activityFeature?: ActivityFeature
+    tasksFeature?: TasksFeature
   ) {
     this.jobQueueManager = jobQueueManager;
     this.eventStreamManager = eventStreamManager;
@@ -67,7 +64,6 @@ export class AgentWorker {
     this.cacheInvalidation = cacheInvalidation;
     this.projectsFeature = projectsFeature;
     this.tasksFeature = tasksFeature;
-    this.activityFeature = activityFeature;
     this.workerId = `worker-${randomUUID().slice(0, 8)}`;
   }
 
@@ -99,8 +95,7 @@ export class AgentWorker {
             this.cacheInvalidation,
             this.workerId,
             this.projectsFeature,
-            this.tasksFeature,
-            this.activityFeature
+            this.tasksFeature
           );
           await handler.handle(job);
         },

@@ -128,7 +128,8 @@ export const messagesRouter = router({
       const messageId = pendingMessage.id;
 
       // Get agent info for spawning
-      const agentInfo = await ctx.agentsFeature.sessions.getAgentInfo(sessionId);
+      const agentInfo =
+        await ctx.agentsFeature.sessions.getAgentInfo(sessionId);
       if (!agentInfo) {
         throw new TRPCError({
           code: 'NOT_FOUND',

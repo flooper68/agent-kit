@@ -212,7 +212,11 @@ export function createExecuteCommandTool(context: ToolsContext): Tool {
       return checkCommandRequiresApproval(command);
     },
     // Execute the inner action
-    execute: async ({ command }: { command: string }): Promise<ExecuteSkillResult> => {
+    execute: async ({
+      command,
+    }: {
+      command: string;
+    }): Promise<ExecuteSkillResult> => {
       const parsed = parseCommand(command);
       const { tool: toolName, args } = parsed;
 

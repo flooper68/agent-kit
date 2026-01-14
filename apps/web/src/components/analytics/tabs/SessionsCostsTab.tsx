@@ -44,7 +44,6 @@ export function SessionsCostsTab({ timeRange, userId }: SessionsCostsTabProps) {
       <ActivitySessionStats
         totalSessions={stats?.totalSessions ?? 0}
         averageDurationMinutes={stats?.averageDurationMinutes ?? 0}
-        averageCostPerSession={stats?.averageCostPerSession ?? 0}
         sessionsPerDay={stats?.sessionsPerDay ?? 0}
         isLoading={statsQuery.isLoading}
       />

@@ -1,8 +1,5 @@
 import { trpc } from '../../../lib/trpc';
-import {
-  AgentDistributionChart,
-  ChartErrorBoundary,
-} from '..';
+import { AgentDistributionChart, ChartErrorBoundary } from '..';
 import { ArtifactsByAgentChart } from '../ArtifactsByAgentChart';
 import type { TimeRange } from '..';
 

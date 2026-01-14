@@ -1,5 +1,5 @@
 import { Heading, Text, Button } from '@agent-kit/ui';
-import { ChevronLeft, ChevronRight, Clock, DollarSign, Coins, Bot } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 
 interface ActivitySession {
   id: string;
@@ -8,9 +8,6 @@ interface ActivitySession {
   lastActivityAt: string;
   endedAt: string | null;
   durationMinutes: number;
-  estimatedCost: number;
-  totalTokens: number;
-  agentSessionsCount: number;
   email?: string | null;
   firstName?: string | null;
   lastName?: string | null;
@@ -33,20 +30,6 @@ function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const mins = Math.round(minutes % 60);
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-}
-
-function formatCurrency(value: number): string {
-  return `$${value.toFixed(2)}`;
-}
-
-function formatNumber(value: number): string {
-  if (value >= 1000000) {
-    return `${(value / 1000000).toFixed(1)}M`;
-  }
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(1)}K`;
-  }
-  return value.toLocaleString();
 }
 
 function formatDate(dateString: string): string {
@@ -112,7 +95,9 @@ export function ActivitySessionsTable({
         </div>
         <div className="p-6 pt-0">
           <div className="flex h-48 items-center justify-center">
-            <Text className="text-muted-foreground">No activity sessions found</Text>
+            <Text className="text-muted-foreground">
+              No activity sessions found
+            </Text>
           </div>
         </div>
       </div>
@@ -152,9 +137,6 @@ export function ActivitySessionsTable({
                 <th className="pb-3 font-medium">User</th>
                 <th className="pb-3 font-medium">Started</th>
                 <th className="pb-3 font-medium">Duration</th>
-                <th className="pb-3 font-medium">Agent Sessions</th>
-                <th className="pb-3 font-medium">Tokens</th>
-                <th className="pb-3 font-medium text-right">Cost</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -177,24 +159,6 @@ export function ActivitySessionsTable({
                     <div className="flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>{formatDuration(session.durationMinutes)}</span>
-                    </div>
-                  </td>
-                  <td className="py-3">
-                    <div className="flex items-center gap-1.5">
-                      <Bot className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{session.agentSessionsCount}</span>
-                    </div>
-                  </td>
-                  <td className="py-3">
-                    <div className="flex items-center gap-1.5">
-                      <Coins className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{formatNumber(session.totalTokens)}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{formatCurrency(session.estimatedCost)}</span>
                     </div>
                   </td>
                 </tr>

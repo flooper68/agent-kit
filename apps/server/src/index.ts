@@ -199,8 +199,7 @@ fastify.addHook('onReady', async () => {
     pubsub,
     cacheInvalidation,
     projectsFeature,
-    tasksFeature,
-    activityFeature
+    tasksFeature
   );
 
   fastify.log.info('Starting agent worker...');

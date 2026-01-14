@@ -1,12 +1,4 @@
-import {
-  pgTable,
-  uuid,
-  varchar,
-  timestamp,
-  integer,
-  numeric,
-  index,
-} from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, index } from 'drizzle-orm/pg-core';
 
 /**
  * User activity sessions track periods of user activity in the application.
@@ -30,11 +22,6 @@ export const userActivitySessions = pgTable(
       .notNull()
       .defaultNow(),
     endedAt: timestamp('ended_at', { withTimezone: true }),
-
-    // Aggregated metrics from agent sessions during this activity session
-    estimatedCost: numeric('estimated_cost').default('0'),
-    totalTokens: integer('total_tokens').default(0),
-    agentSessionsCount: integer('agent_sessions_count').default(0),
 
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

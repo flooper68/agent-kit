@@ -1,8 +1,13 @@
+import type { ClerkClient } from '@clerk/backend';
 import { sql, eq, and, gte, desc, lt } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { userActivitySessions } from '../../../db/schema';
 import type { TimeRange } from '../types';
-import { getStartDate } from '../../shared';
+import {
+  getStartDate,
+  enrichWithClerkUserInfo,
+  type WithClerkUserInfo,
+} from '../../shared';
 
 export interface GetActivitySessionsInput {
   orgId: string;
@@ -19,13 +24,10 @@ export interface ActivitySessionItem {
   lastActivityAt: string;
   endedAt: string | null;
   durationMinutes: number;
-  estimatedCost: number;
-  totalTokens: number;
-  agentSessionsCount: number;
 }
 
 export interface GetActivitySessionsResult {
-  items: ActivitySessionItem[];
+  items: WithClerkUserInfo<ActivitySessionItem>[];
   nextCursor: string | undefined;
 }
 
@@ -34,9 +36,11 @@ export interface GetActivitySessionsResult {
  */
 export class GetActivitySessionsQuery {
   private db: typeof DbType;
+  private clerk: ClerkClient;
 
-  constructor(db: typeof DbType) {
+  constructor(db: typeof DbType, clerk: ClerkClient) {
     this.db = db;
+    this.clerk = clerk;
   }
 
   async execute(
@@ -67,9 +71,6 @@ export class GetActivitySessionsQuery {
         startedAt: userActivitySessions.startedAt,
         lastActivityAt: userActivitySessions.lastActivityAt,
         endedAt: userActivitySessions.endedAt,
-        estimatedCost: userActivitySessions.estimatedCost,
-        totalTokens: userActivitySessions.totalTokens,
-        agentSessionsCount: userActivitySessions.agentSessionsCount,
         // Calculate duration in minutes
         durationMinutes: sql<number>`
           EXTRACT(EPOCH FROM (
@@ -91,15 +92,13 @@ export class GetActivitySessionsQuery {
       lastActivityAt: session.lastActivityAt.toISOString(),
       endedAt: session.endedAt?.toISOString() ?? null,
       durationMinutes: Math.round(Number(session.durationMinutes) || 0),
-      estimatedCost: Number(session.estimatedCost) || 0,
-      totalTokens: session.totalTokens || 0,
-      agentSessionsCount: session.agentSessionsCount || 0,
     }));
 
     const lastItem = items[items.length - 1];
+    const enrichedItems = await enrichWithClerkUserInfo(this.clerk, items);
 
     return {
-      items,
+      items: enrichedItems,
       nextCursor: hasNextPage && lastItem ? lastItem.startedAt : undefined,
     };
   }

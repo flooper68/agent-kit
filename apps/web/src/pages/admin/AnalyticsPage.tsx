@@ -1,12 +1,6 @@
 import { useEffect } from 'react';
 import { Heading, Text, Tabs } from '@agent-kit/ui';
-import {
-  BarChart3,
-  Activity,
-  Bot,
-  Users,
-  FileText,
-} from 'lucide-react';
+import { BarChart3, Activity, Bot, Users, FileText } from 'lucide-react';
 import {
   TimeRangeSelector,
   UserSelector,
@@ -19,13 +13,30 @@ import {
 import type { TimeRange } from '../../components/analytics';
 import { useUrlState } from '../../hooks/useUrlState';
 
-type AnalyticsTabValue = 'overview' | 'sessions' | 'agents' | 'users' | 'activity';
+type AnalyticsTabValue =
+  | 'overview'
+  | 'sessions'
+  | 'agents'
+  | 'users'
+  | 'activity';
 
-const validTabs: AnalyticsTabValue[] = ['overview', 'sessions', 'agents', 'users', 'activity'];
+const validTabs: AnalyticsTabValue[] = [
+  'overview',
+  'sessions',
+  'agents',
+  'users',
+  'activity',
+];
 
-const tabLabels: Record<AnalyticsTabValue, { label: string; icon: React.ReactNode }> = {
+const tabLabels: Record<
+  AnalyticsTabValue,
+  { label: string; icon: React.ReactNode }
+> = {
   overview: { label: 'Overview', icon: <BarChart3 className="h-4 w-4" /> },
-  sessions: { label: 'Sessions & Costs', icon: <Activity className="h-4 w-4" /> },
+  sessions: {
+    label: 'Sessions & Costs',
+    icon: <Activity className="h-4 w-4" />,
+  },
   agents: { label: 'Agents', icon: <Bot className="h-4 w-4" /> },
   users: { label: 'Users', icon: <Users className="h-4 w-4" /> },
   activity: { label: 'Activity', icon: <FileText className="h-4 w-4" /> },

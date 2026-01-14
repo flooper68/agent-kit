@@ -145,7 +145,10 @@ export class GetSessionWithMessagesQuery {
     // Reconstruct messages with parts
     const messagesWithParts = sessionMessages.map((m) => ({
       ...m,
-      parts: reconstructPartsFromEvents(eventsByMessage.get(m.id) || [], sessionApprovalMap),
+      parts: reconstructPartsFromEvents(
+        eventsByMessage.get(m.id) || [],
+        sessionApprovalMap
+      ),
     }));
 
     return {
