@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useUrlState } from '../../hooks/useUrlState';
 import { Heading, Text } from '@agent-kit/ui';
 import {
   MessageSquare,
@@ -50,9 +51,16 @@ function formatCurrency(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
+const validTimeRanges = ['today', 'week', 'month', 'quarter', 'year', 'all'];
+
 export function AnalyticsPage() {
-  const [timeRange, setTimeRange] = useState<TimeRange>('month');
-  const [userId, setUserId] = useState<string>('');
+  // Persist filters in URL for shareable links and browser refresh
+  const [timeRange, setTimeRange] = useUrlState<TimeRange>('timeRange', {
+    defaultValue: 'month',
+    parse: (v) =>
+      v && validTimeRanges.includes(v) ? (v as TimeRange) : 'month',
+  });
+  const [userId, setUserId] = useUrlState('userId', { defaultValue: '' });
 
   // Pagination state - track cursor history for "previous" navigation
   const [cursors, setCursors] = useState<string[]>([]);

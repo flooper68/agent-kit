@@ -45,6 +45,7 @@ export class GetSessionLengthDistributionQuery {
       .select({
         bucket: sql<string>`
           CASE
+            WHEN ${agentSessions.messageCount} IS NULL OR ${agentSessions.messageCount} = 0 THEN '0'
             WHEN ${agentSessions.messageCount} BETWEEN 1 AND 5 THEN '1-5'
             WHEN ${agentSessions.messageCount} BETWEEN 6 AND 10 THEN '6-10'
             WHEN ${agentSessions.messageCount} BETWEEN 11 AND 20 THEN '11-20'
@@ -58,6 +59,7 @@ export class GetSessionLengthDistributionQuery {
       .where(and(...conditions))
       .groupBy(
         sql`CASE
+          WHEN ${agentSessions.messageCount} IS NULL OR ${agentSessions.messageCount} = 0 THEN '0'
           WHEN ${agentSessions.messageCount} BETWEEN 1 AND 5 THEN '1-5'
           WHEN ${agentSessions.messageCount} BETWEEN 6 AND 10 THEN '6-10'
           WHEN ${agentSessions.messageCount} BETWEEN 11 AND 20 THEN '11-20'
@@ -66,8 +68,8 @@ export class GetSessionLengthDistributionQuery {
         END`
       );
 
-    // Sort buckets in order
-    const bucketOrder = ['1-5', '6-10', '11-20', '21-50', '50+'];
+    // Sort buckets in order (0 bucket first for sessions with no messages)
+    const bucketOrder = ['0', '1-5', '6-10', '11-20', '21-50', '50+'];
     const sortedResult = bucketOrder
       .map((bucket) => {
         const found = result.find((r) => r.bucket === bucket);
@@ -121,11 +123,11 @@ export class GetToolCallsPerSessionQuery {
       sessionConditions.push(eq(agentSessions.userId, input.userId));
     }
 
-    // Get tool calls per session
-    const perSessionStats = await this.db
+    // Get per-session tool call counts with SQL aggregation
+    // This query groups by session and counts tool calls, then we aggregate in a second query
+    const perSessionCounts = await this.db
       .select({
-        sessionId: agentSessions.id,
-        toolCallCount: count(agentSessionEvents.id),
+        toolCallCount: sql<number>`COUNT(${agentSessionEvents.id})::int`,
       })
       .from(agentSessions)
       .leftJoin(
@@ -138,20 +140,22 @@ export class GetToolCallsPerSessionQuery {
       .where(and(...sessionConditions))
       .groupBy(agentSessions.id);
 
-    // Calculate aggregate stats
-    const totalSessions = perSessionStats.length;
-    const totalToolCalls = perSessionStats.reduce(
-      (sum, s) => sum + Number(s.toolCallCount),
-      0
-    );
-    const maxToolCallsInSession =
-      perSessionStats.length > 0
-        ? Math.max(...perSessionStats.map((s) => Number(s.toolCallCount)))
-        : 0;
+    // Calculate aggregate stats from the per-session counts
+    const totalSessions = perSessionCounts.length;
+    if (totalSessions === 0) {
+      return {
+        totalSessions: 0,
+        totalToolCalls: 0,
+        avgToolCallsPerSession: 0,
+        maxToolCallsInSession: 0,
+      };
+    }
+
+    const counts = perSessionCounts.map((r) => Number(r.toolCallCount));
+    const totalToolCalls = counts.reduce((sum, c) => sum + c, 0);
+    const maxToolCallsInSession = Math.max(...counts);
     const avgToolCallsPerSession =
-      totalSessions > 0
-        ? Math.round((totalToolCalls / totalSessions) * 100) / 100
-        : 0;
+      Math.round((totalToolCalls / totalSessions) * 100) / 100;
 
     return {
       totalSessions,
