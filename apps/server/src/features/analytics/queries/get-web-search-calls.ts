@@ -36,7 +36,8 @@ export class GetWebSearchCallsQuery {
       eq(agentSessionEvents.toolName, 'webSearch'),
     ];
     if (startDate) {
-      conditions.push(gte(agentSessionEvents.createdAt, startDate));
+      // Filter on session creation date for consistency with other analytics queries
+      conditions.push(gte(agentSessions.createdAt, startDate));
     }
     if (input.userId) {
       conditions.push(eq(agentSessions.userId, input.userId));

@@ -142,6 +142,67 @@ export const analyticsRouter = router({
       });
     }),
 
+  // Tool Call Analytics
+  getSessionLengthDistribution: adminProcedure
+    .input(
+      z.object({
+        timeRange: TimeRangeSchema.default('month'),
+        userId: z.string().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      return ctx.analyticsFeature.getSessionLengthDistribution({
+        timeRange: input.timeRange,
+        orgId: ctx.auth.orgId,
+        userId: input.userId,
+      });
+    }),
+
+  getToolCallsPerSession: adminProcedure
+    .input(
+      z.object({
+        timeRange: TimeRangeSchema.default('month'),
+        userId: z.string().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      return ctx.analyticsFeature.getToolCallsPerSession({
+        timeRange: input.timeRange,
+        orgId: ctx.auth.orgId,
+        userId: input.userId,
+      });
+    }),
+
+  getToolTypeDistribution: adminProcedure
+    .input(
+      z.object({
+        timeRange: TimeRangeSchema.default('month'),
+        userId: z.string().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      return ctx.analyticsFeature.getToolTypeDistribution({
+        timeRange: input.timeRange,
+        orgId: ctx.auth.orgId,
+        userId: input.userId,
+      });
+    }),
+
+  getToolCallErrors: adminProcedure
+    .input(
+      z.object({
+        timeRange: TimeRangeSchema.default('month'),
+        userId: z.string().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      return ctx.analyticsFeature.getToolCallErrors({
+        timeRange: input.timeRange,
+        orgId: ctx.auth.orgId,
+        userId: input.userId,
+      });
+    }),
+
   // Project & Task Analytics
   getProjectStats: adminProcedure.query(async ({ ctx }) => {
     return ctx.projectsFeature.getStats({ orgId: ctx.auth.orgId });

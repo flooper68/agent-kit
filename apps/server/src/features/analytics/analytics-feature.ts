@@ -10,6 +10,10 @@ import {
   GetTokensPerUserQuery,
   GetSessionDetailQuery,
   GetWebSearchCallsQuery,
+  GetSessionLengthDistributionQuery,
+  GetToolCallsPerSessionQuery,
+  GetToolTypeDistributionQuery,
+  GetToolCallErrorsQuery,
 } from './queries';
 import type {
   GetOverviewStatsInput,
@@ -21,6 +25,10 @@ import type {
   GetTokensPerUserInput,
   GetSessionDetailInput,
   GetWebSearchCallsInput,
+  GetSessionLengthDistributionInput,
+  GetToolCallsPerSessionInput,
+  GetToolTypeDistributionInput,
+  GetToolCallErrorsInput,
 } from './queries';
 import { enrichWithClerkUserInfo } from '../shared';
 
@@ -38,6 +46,10 @@ export class AnalyticsFeature {
   private getTokensPerUserQuery: GetTokensPerUserQuery;
   private getSessionDetailQuery: GetSessionDetailQuery;
   private getWebSearchCallsQuery: GetWebSearchCallsQuery;
+  private getSessionLengthDistributionQuery: GetSessionLengthDistributionQuery;
+  private getToolCallsPerSessionQuery: GetToolCallsPerSessionQuery;
+  private getToolTypeDistributionQuery: GetToolTypeDistributionQuery;
+  private getToolCallErrorsQuery: GetToolCallErrorsQuery;
 
   constructor(
     db: typeof DbType,
@@ -57,6 +69,11 @@ export class AnalyticsFeature {
     this.getTokensPerUserQuery = new GetTokensPerUserQuery(db);
     this.getSessionDetailQuery = new GetSessionDetailQuery(db, agentNames);
     this.getWebSearchCallsQuery = new GetWebSearchCallsQuery(db);
+    this.getSessionLengthDistributionQuery =
+      new GetSessionLengthDistributionQuery(db);
+    this.getToolCallsPerSessionQuery = new GetToolCallsPerSessionQuery(db);
+    this.getToolTypeDistributionQuery = new GetToolTypeDistributionQuery(db);
+    this.getToolCallErrorsQuery = new GetToolCallErrorsQuery(db);
   }
 
   getOverviewStats(input: GetOverviewStatsInput) {
@@ -105,5 +122,21 @@ export class AnalyticsFeature {
   async getWebSearchCalls(input: GetWebSearchCallsInput) {
     const data = await this.getWebSearchCallsQuery.execute(input);
     return enrichWithClerkUserInfo(this.clerk, data);
+  }
+
+  getSessionLengthDistribution(input: GetSessionLengthDistributionInput) {
+    return this.getSessionLengthDistributionQuery.execute(input);
+  }
+
+  getToolCallsPerSession(input: GetToolCallsPerSessionInput) {
+    return this.getToolCallsPerSessionQuery.execute(input);
+  }
+
+  getToolTypeDistribution(input: GetToolTypeDistributionInput) {
+    return this.getToolTypeDistributionQuery.execute(input);
+  }
+
+  getToolCallErrors(input: GetToolCallErrorsInput) {
+    return this.getToolCallErrorsQuery.execute(input);
   }
 }

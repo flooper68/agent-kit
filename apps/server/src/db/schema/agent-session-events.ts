@@ -112,6 +112,8 @@ export const agentSessionEvents = pgTable(
       table.sessionId,
       table.sequence
     ),
+    // Index for analytics queries filtering by event type (tool_call, tool_result, etc.)
+    index('agent_session_events_type_idx').on(table.type),
   ]
 );
 
