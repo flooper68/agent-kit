@@ -1,3 +1,4 @@
+import type { ClerkClient } from '@clerk/backend';
 import type { db as DbType } from '../../db';
 import {
   GetOverviewStatsQuery,
@@ -21,11 +22,13 @@ import type {
   GetSessionDetailInput,
   GetWebSearchCallsInput,
 } from './queries';
+import { enrichWithClerkUserInfo } from '../shared';
 
 /**
  * AnalyticsFeature - provides analytics queries for the admin dashboard
  */
 export class AnalyticsFeature {
+  private clerk: ClerkClient;
   private getOverviewStatsQuery: GetOverviewStatsQuery;
   private getUsageOverTimeQuery: GetUsageOverTimeQuery;
   private getAgentDistributionQuery: GetAgentDistributionQuery;
@@ -36,7 +39,12 @@ export class AnalyticsFeature {
   private getSessionDetailQuery: GetSessionDetailQuery;
   private getWebSearchCallsQuery: GetWebSearchCallsQuery;
 
-  constructor(db: typeof DbType, agentNames: Map<string, string>) {
+  constructor(
+    db: typeof DbType,
+    agentNames: Map<string, string>,
+    clerk: ClerkClient
+  ) {
+    this.clerk = clerk;
     this.getOverviewStatsQuery = new GetOverviewStatsQuery(db);
     this.getUsageOverTimeQuery = new GetUsageOverTimeQuery(db);
     this.getAgentDistributionQuery = new GetAgentDistributionQuery(
@@ -71,19 +79,31 @@ export class AnalyticsFeature {
     return this.getRecentActivityQuery.execute(input);
   }
 
-  getUsersWithSessions(input: GetUsersWithSessionsInput) {
-    return this.getUsersWithSessionsQuery.execute(input);
+  /**
+   * Gets users with sessions, enriched with Clerk user info.
+   */
+  async getUsersWithSessions(input: GetUsersWithSessionsInput) {
+    const users = await this.getUsersWithSessionsQuery.execute(input);
+    return enrichWithClerkUserInfo(this.clerk, users);
   }
 
-  getTokensPerUser(input: GetTokensPerUserInput) {
-    return this.getTokensPerUserQuery.execute(input);
+  /**
+   * Gets token usage per user, enriched with Clerk user info.
+   */
+  async getTokensPerUser(input: GetTokensPerUserInput) {
+    const data = await this.getTokensPerUserQuery.execute(input);
+    return enrichWithClerkUserInfo(this.clerk, data);
   }
 
   getSessionDetail(input: GetSessionDetailInput) {
     return this.getSessionDetailQuery.execute(input);
   }
 
-  getWebSearchCalls(input: GetWebSearchCallsInput) {
-    return this.getWebSearchCallsQuery.execute(input);
+  /**
+   * Gets web search calls, enriched with Clerk user info.
+   */
+  async getWebSearchCalls(input: GetWebSearchCallsInput) {
+    const data = await this.getWebSearchCallsQuery.execute(input);
+    return enrichWithClerkUserInfo(this.clerk, data);
   }
 }

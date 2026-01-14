@@ -10,6 +10,7 @@ import { tasksRouter } from './tasks';
 import { cacheRouter } from './cache';
 import { clientToolsRouter } from './client-tools';
 import { skillsRouter } from './skills';
+import { activityRouter } from './activity';
 
 export const appRouter = router({
   members: membersRouter,
@@ -23,6 +24,7 @@ export const appRouter = router({
   cache: cacheRouter,
   clientTools: clientToolsRouter,
   skills: skillsRouter,
+  activity: activityRouter,
 });
 
 export type AppRouter = typeof appRouter;
