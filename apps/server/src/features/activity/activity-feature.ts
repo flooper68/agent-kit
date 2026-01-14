@@ -6,10 +6,12 @@ import type { RecordHeartbeatInput } from './commands';
 import {
   GetActivitySessionsQuery,
   GetActivitySessionStatsQuery,
+  GetSessionsTimelineQuery,
 } from './queries';
 import type {
   GetActivitySessionsInput,
   GetActivitySessionStatsInput,
+  GetSessionsTimelineInput,
 } from './queries';
 
 /**
@@ -20,12 +22,14 @@ export class ActivityFeature {
   private recordHeartbeatCommand: RecordHeartbeatCommand;
   private getActivitySessionsQuery: GetActivitySessionsQuery;
   private getActivitySessionStatsQuery: GetActivitySessionStatsQuery;
+  private getSessionsTimelineQuery: GetSessionsTimelineQuery;
 
   constructor(db: typeof DbType, clerk: ClerkClient) {
     this.contextManager = new ActivityCommandContextManager(db);
     this.recordHeartbeatCommand = new RecordHeartbeatCommand();
     this.getActivitySessionsQuery = new GetActivitySessionsQuery(db, clerk);
     this.getActivitySessionStatsQuery = new GetActivitySessionStatsQuery(db);
+    this.getSessionsTimelineQuery = new GetSessionsTimelineQuery(db, clerk);
   }
 
   /**
@@ -51,5 +55,12 @@ export class ActivityFeature {
    */
   getStats(input: GetActivitySessionStatsInput) {
     return this.getActivitySessionStatsQuery.execute(input);
+  }
+
+  /**
+   * Gets sessions formatted for timeline visualization.
+   */
+  getSessionsTimeline(input: GetSessionsTimelineInput) {
+    return this.getSessionsTimelineQuery.execute(input);
   }
 }

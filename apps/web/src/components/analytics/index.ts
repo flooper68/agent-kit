@@ -22,13 +22,13 @@ export { SessionLengthChart } from './SessionLengthChart';
 export { ToolTypeDistributionChart } from './ToolTypeDistributionChart';
 export { ToolCallsPerSessionCard } from './ToolCallsPerSessionCard';
 export { ToolCallErrorsChart } from './ToolCallErrorsChart';
+export { SessionsTimelineChart } from './SessionsTimelineChart';
 
 // Tab components
 export {
   OverviewTab,
   UsersSessionsTab,
   AgentsTab,
-  ToolsTab,
   TasksTab,
-  ActivityTab,
+  SessionAuditTab,
 } from './tabs';

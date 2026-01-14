@@ -4,9 +4,8 @@ import {
   BarChart3,
   Users,
   Bot,
-  Wrench,
   ListTodo,
-  FileText,
+  ClipboardList,
 } from 'lucide-react';
 import {
   TimeRangeSelector,
@@ -14,9 +13,8 @@ import {
   OverviewTab,
   UsersSessionsTab,
   AgentsTab,
-  ToolsTab,
   TasksTab,
-  ActivityTab,
+  SessionAuditTab,
 } from '../../components/analytics';
 import type { TimeRange } from '../../components/analytics';
 import { useUrlState } from '../../hooks/useUrlState';
@@ -25,17 +23,15 @@ type AnalyticsTabValue =
   | 'overview'
   | 'users'
   | 'agents'
-  | 'tools'
   | 'tasks'
-  | 'activity';
+  | 'audit';
 
 const validTabs: AnalyticsTabValue[] = [
   'overview',
   'users',
   'agents',
-  'tools',
   'tasks',
-  'activity',
+  'audit',
 ];
 
 const validTimeRanges = ['today', 'week', 'month', 'quarter', 'year', 'all'];
@@ -50,9 +46,8 @@ const tabLabels: Record<
     icon: <Users className="h-4 w-4" />,
   },
   agents: { label: 'Agents', icon: <Bot className="h-4 w-4" /> },
-  tools: { label: 'Tools', icon: <Wrench className="h-4 w-4" /> },
   tasks: { label: 'Tasks', icon: <ListTodo className="h-4 w-4" /> },
-  activity: { label: 'Activity', icon: <FileText className="h-4 w-4" /> },
+  audit: { label: 'Session Audit', icon: <ClipboardList className="h-4 w-4" /> },
 };
 
 export function AnalyticsPage() {
@@ -138,16 +133,12 @@ export function AnalyticsPage() {
             <AgentsTab timeRange={timeRange} userId={userIdFilter} />
           </Tabs.Content>
 
-          <Tabs.Content value="tools">
-            <ToolsTab timeRange={timeRange} userId={userIdFilter} />
-          </Tabs.Content>
-
           <Tabs.Content value="tasks">
             <TasksTab timeRange={timeRange} userId={userIdFilter} />
           </Tabs.Content>
 
-          <Tabs.Content value="activity">
-            <ActivityTab userId={userIdFilter} />
+          <Tabs.Content value="audit">
+            <SessionAuditTab userId={userIdFilter} />
           </Tabs.Content>
         </Tabs>
       </div>

@@ -11,3 +11,11 @@ export type {
   GetActivitySessionStatsResult,
   ActivitySessionStats,
 } from './get-activity-session-stats';
+
+export { GetSessionsTimelineQuery } from './get-sessions-timeline';
+export type {
+  GetSessionsTimelineInput,
+  GetSessionsTimelineResult,
+  SessionTimelineUser,
+  SessionTimelineEntry,
+} from './get-sessions-timeline';
