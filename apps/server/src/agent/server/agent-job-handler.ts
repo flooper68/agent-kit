@@ -1,34 +1,40 @@
-import type { EventStreamManager, StreamEvent } from './event-stream-manager';
+import type {
+  EventStreamManager,
+  StreamEvent,
+} from '../../streams/event-stream-manager';
 import type { JobRegistryManager } from './job-registry-manager';
-import type { StreamingStateManager } from './streaming-state-manager';
-import { STREAMING_HEARTBEAT_INTERVAL_MS } from './streaming-state-manager';
+import type { StreamingStateManager } from '../../real-time/streaming-state-manager';
+import { STREAMING_HEARTBEAT_INTERVAL_MS } from '../../real-time/streaming-state-manager';
 import type { AgentJob } from './job-queue-manager';
-import type { PubSubManager, CacheInvalidationService } from '../real-time';
-import type { MessagePart } from '../db/schema/agent-session-messages';
-import type { AgentsFeature } from '../features/agents';
-import type { ArtifactsFeature } from '../features/artifacts';
-import type { ProjectsFeature } from '../features/projects';
-import type { TasksFeature } from '../features/tasks';
-import type { SkillsFeature } from '../features/skills';
-import type { AgentSpawner } from './agent-spawner';
-import { getProvider } from './providers';
-import { getToolsById } from './tools';
-import { buildSystemPrompt } from './system-prompt-builder';
-import { getModelInfo } from './model-config';
+import type { PubSubManager, CacheInvalidationService } from '../../real-time';
+import type { MessagePart } from '../../db/schema/agent-session-messages';
+import type { AgentsFeature } from '../../features/agents';
+import type { ArtifactsFeature } from '../../features/artifacts';
+import type { ProjectsFeature } from '../../features/projects';
+import type { TasksFeature } from '../../features/tasks';
+import type { SkillsFeature } from '../../features/skills';
+import type { AgentSpawner } from '../agent-spawner';
+import { getProvider } from '../providers';
+import { getToolsById } from '../tools';
+import { buildSystemPrompt } from '../prompts/system-prompt-builder';
+import { getModelInfo } from '../providers/model-config';
 import type {
   ProviderStreamEvent,
   Message,
   AssistantContentPart,
   ToolResultOutput,
   AgentDefinition,
-} from './types';
-import type { AgentError } from './errors';
-import { classifyError } from './errors';
-import { logger } from './logger';
-import { calculateCost } from '../features/agents/pricing';
-import { EventBuffer } from './event-buffer';
-import { calculateTokenBreakdown, type TokenBreakdown } from '../lib/tokenizer';
-import type { ThinkingConfig } from '../db/schema/agents';
+} from '../types';
+import type { AgentError } from '../errors';
+import { classifyError } from '../errors';
+import { logger } from '../../logger/logger';
+import { calculateCost } from '../../features/agents/pricing';
+import { EventBuffer } from '../event-buffer';
+import {
+  calculateTokenBreakdown,
+  type TokenBreakdown,
+} from '../../lib/tokenizer';
+import type { ThinkingConfig } from '../../db/schema/agents';
 
 export interface DbMessage {
   id: string;
@@ -102,7 +108,8 @@ export class AgentJobHandler {
     this.eventSequence = 0;
     this.eventBuffer = new EventBuffer();
 
-    const { sessionId, agentId, userId, orgId, content, approvalResponse } = job;
+    const { sessionId, agentId, userId, orgId, content, approvalResponse } =
+      job;
 
     let messageId: string;
 

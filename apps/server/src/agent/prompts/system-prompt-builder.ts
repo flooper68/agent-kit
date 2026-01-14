@@ -1,4 +1,4 @@
-import type { AgentsFeature } from '../features/agents';
+import type { AgentsFeature } from '../../features/agents';
 
 export interface SpawnableAgent {
   id: string;

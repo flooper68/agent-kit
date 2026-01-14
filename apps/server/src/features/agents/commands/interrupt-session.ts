@@ -1,8 +1,8 @@
-import type { EventStreamManager } from '../../../agent/event-stream-manager';
-import type { StreamingStateManager } from '../../../agent/streaming-state-manager';
-import type { JobRegistryManager } from '../../../agent/job-registry-manager';
-import type { JobQueueManager } from '../../../agent/job-queue-manager';
-import type { ExternalAgentWebSocketRegistry } from '../../../agent/external-agent-websocket-registry';
+import type { EventStreamManager } from '../../../streams/event-stream-manager';
+import type { StreamingStateManager } from '../../../real-time/streaming-state-manager';
+import type { JobRegistryManager } from '../../../agent/server/job-registry-manager';
+import type { JobQueueManager } from '../../../agent/server/job-queue-manager';
+import type { ExternalAgentWebSocketRegistry } from '../../../agent/external/external-agent-websocket-registry';
 
 export interface InterruptSessionDeps {
   eventStreamManager: EventStreamManager;

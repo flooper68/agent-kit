@@ -1,4 +1,4 @@
-import type { EventStreamManager } from '../../event-stream-manager';
+import type { EventStreamManager } from '../../../streams/event-stream-manager';
 import type { PubSubManager } from '../../../real-time';
 
 /**

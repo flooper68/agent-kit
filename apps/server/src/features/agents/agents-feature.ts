@@ -1,6 +1,6 @@
 import type { db as DbType } from '../../db';
-import type { StreamingStateManager } from '../../agent/streaming-state-manager';
-import type { SessionSummarizer } from '../../agent/session-summarizer';
+import type { StreamingStateManager } from '../../real-time/streaming-state-manager';
+import type { SessionSummarizer } from '../../agent/prompts/session-summarizer';
 import type { CacheInvalidationService } from '../../real-time';
 import { AgentsCommandContextManager } from './context';
 import {

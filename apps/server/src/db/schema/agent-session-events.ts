@@ -68,10 +68,13 @@ export const agentSessionEvents = pgTable(
     approvalId: varchar('approval_id', { length: 64 }), // AI SDK's approval ID for needsApproval flow
 
     // Provider-specific metadata (e.g., Gemini thought_signature for tool calls)
-    providerMetadata: jsonb('provider_metadata').$type<Record<string, unknown>>(),
+    providerMetadata:
+      jsonb('provider_metadata').$type<Record<string, unknown>>(),
 
     // Legacy approval fields (for backwards compatibility, will be removed)
-    approvalStatus: varchar('approval_status', { length: 16 }).$type<ApprovalStatus>(),
+    approvalStatus: varchar('approval_status', {
+      length: 16,
+    }).$type<ApprovalStatus>(),
     approvalScopes: text('approval_scopes').array(),
     approvalDenialReason: text('approval_denial_reason'),
 

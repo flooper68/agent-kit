@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import type { Tool } from '../../types';
 import type { ActionMetadata } from '../types';
 import { AgentScope } from '../../permissions/scopes';
-import type { StreamEvent } from '../../event-stream-manager';
+import type { StreamEvent } from '../../../streams/event-stream-manager';
 import type { ClientActionContext } from './types';
 import type { PubSubMessage } from '../../../real-time';
 import { getClientToolResponseChannel } from '../../../trpc/routers/client-tools';

@@ -64,7 +64,10 @@ export class GetMessagesBySessionIdQuery {
     return sessionMessages.map((m) => ({
       id: m.id,
       role: m.role,
-      parts: reconstructPartsFromEvents(eventsByMessage.get(m.id) || [], sessionApprovalMap),
+      parts: reconstructPartsFromEvents(
+        eventsByMessage.get(m.id) || [],
+        sessionApprovalMap
+      ),
     }));
   }
 }

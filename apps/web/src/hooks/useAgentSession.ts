@@ -67,7 +67,13 @@ interface UseAgentSessionReturn {
   /** Pre-calculated duration for completed sessions (stable across refreshes) */
   completedDuration: number | null;
   /** Pending tool approval if awaiting user action */
-  pendingApproval: { messageId: string; approvalId: string; toolCallId: string; toolName: string; args?: Record<string, unknown> } | null;
+  pendingApproval: {
+    messageId: string;
+    approvalId: string;
+    toolCallId: string;
+    toolName: string;
+    args?: Record<string, unknown>;
+  } | null;
   /** Handle user approval/denial of pending tool */
   handleApproval: (approved: boolean) => Promise<void>;
   /** Whether approval mutation is in progress */
@@ -475,7 +481,8 @@ export function useAgentSession(
 
             // Generate a new part ID when starting a new reasoning segment
             // This ID is used to track which part to update (handles React state timing)
-            let targetPartId = currentReasoningPartIdRef.current[event.messageId];
+            let targetPartId =
+              currentReasoningPartIdRef.current[event.messageId];
             let shouldCreatePart = false;
 
             if (needsNewPart) {
@@ -524,7 +531,8 @@ export function useAgentSession(
                       } as ReasoningPart;
                     }
                     // Part exists now, clear the creating flag
-                    creatingNewReasoningPartRef.current[event.messageId] = false;
+                    creatingNewReasoningPartRef.current[event.messageId] =
+                      false;
                   } else if (shouldCreatePart) {
                     // Only the first delta (shouldCreatePart=true) creates the new part
                     const newPart = createReasoningPart(currentReasoning);
@@ -532,7 +540,9 @@ export function useAgentSession(
                       newPart.id = targetPartId;
                     }
                     newParts.push(newPart);
-                  } else if (creatingNewReasoningPartRef.current[event.messageId]) {
+                  } else if (
+                    creatingNewReasoningPartRef.current[event.messageId]
+                  ) {
                     // We're in the middle of creating a part but state hasn't updated yet
                     // DON'T create another part - the delta that set shouldCreatePart=true will create it
                     // Just wait for state to catch up; the accumulator already has the latest content
@@ -555,12 +565,14 @@ export function useAgentSession(
                           content: currentReasoning,
                         } as ReasoningPart;
                         // Track this part for future updates
-                        currentReasoningPartIdRef.current[event.messageId] = existingPart.id;
+                        currentReasoningPartIdRef.current[event.messageId] =
+                          existingPart.id;
                       }
                     } else {
                       // No reasoning part yet, create one
                       const newPart = createReasoningPart(currentReasoning);
-                      currentReasoningPartIdRef.current[event.messageId] = newPart.id;
+                      currentReasoningPartIdRef.current[event.messageId] =
+                        newPart.id;
                       newParts.push(newPart);
                     }
                   } else {
@@ -883,7 +895,8 @@ export function useAgentSession(
 
                     if (event.approved) {
                       // Approved: transition to running state, preserve approval status
-                      const { _approvalId: _, ...restArgs } = toolPart.args || {};
+                      const { _approvalId: _, ...restArgs } =
+                        toolPart.args || {};
                       return {
                         ...part,
                         state: 'running' as const,
@@ -894,13 +907,15 @@ export function useAgentSession(
                       };
                     } else {
                       // Denied: transition to error state with denial message
-                      const { _approvalId: _, ...restArgs } = toolPart.args || {};
+                      const { _approvalId: _, ...restArgs } =
+                        toolPart.args || {};
                       return {
                         ...part,
                         state: 'error' as const,
                         args: restArgs,
                         approvalStatus: 'denied' as const,
-                        approvalDenialReason: event.denialReason || 'User denied this action',
+                        approvalDenialReason:
+                          event.denialReason || 'User denied this action',
                         approvedByUserId: event.approvedByUserId,
                         approvedAt: event.approvedAt,
                       };

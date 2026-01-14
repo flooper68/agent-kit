@@ -5,8 +5,8 @@ import { router, sessionProcedure } from '../trpc';
 import { db } from '../../db';
 import { agentSessionMessages } from '../../db/schema/agent-session-messages';
 import { agentSessionEvents } from '../../db/schema/agent-session-events';
-import type { StreamEvent } from '../../agent/event-stream-manager';
-import { logger } from '../../agent/logger';
+import type { StreamEvent } from '../../streams/event-stream-manager';
+import { logger } from '../../logger/logger';
 
 export const messagesRouter = router({
   send: sessionProcedure
@@ -128,7 +128,8 @@ export const messagesRouter = router({
       const messageId = pendingMessage.id;
 
       // Get agent info for spawning
-      const agentInfo = await ctx.agentsFeature.sessions.getAgentInfo(sessionId);
+      const agentInfo =
+        await ctx.agentsFeature.sessions.getAgentInfo(sessionId);
       if (!agentInfo) {
         throw new TRPCError({
           code: 'NOT_FOUND',

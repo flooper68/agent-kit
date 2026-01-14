@@ -1,15 +1,15 @@
 import { randomUUID } from 'crypto';
 import type { JobQueueManager } from './job-queue-manager';
-import type { EventStreamManager } from './event-stream-manager';
+import type { EventStreamManager } from '../../streams/event-stream-manager';
 import type { JobRegistryManager } from './job-registry-manager';
-import type { StreamingStateManager } from './streaming-state-manager';
-import type { PubSubManager, CacheInvalidationService } from '../real-time';
-import type { AgentsFeature } from '../features/agents';
-import type { ArtifactsFeature } from '../features/artifacts';
-import type { ProjectsFeature } from '../features/projects';
-import type { TasksFeature } from '../features/tasks';
-import type { SkillsFeature } from '../features/skills';
-import type { AgentSpawner } from './agent-spawner';
+import type { StreamingStateManager } from '../../real-time/streaming-state-manager';
+import type { PubSubManager, CacheInvalidationService } from '../../real-time';
+import type { AgentsFeature } from '../../features/agents';
+import type { ArtifactsFeature } from '../../features/artifacts';
+import type { ProjectsFeature } from '../../features/projects';
+import type { TasksFeature } from '../../features/tasks';
+import type { SkillsFeature } from '../../features/skills';
+import type { AgentSpawner } from '../agent-spawner';
 import { AgentJobHandler } from './agent-job-handler';
 
 // Maximum concurrent jobs per worker (configurable via environment variable)

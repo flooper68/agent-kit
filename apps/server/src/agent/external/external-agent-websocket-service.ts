@@ -4,8 +4,8 @@ import type { Duplex } from 'stream';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { z } from 'zod';
 import { SERVER_TOOL_NAMES } from '@agent-kit/shared';
-import { logger } from './logger';
-import { EventBuffer } from './event-buffer';
+import { logger } from '../../logger/logger';
+import { EventBuffer } from '../event-buffer';
 import {
   generateNonce,
   computeHmac,
@@ -18,18 +18,18 @@ import {
 } from '@agent-kit/auth';
 import type { ExternalAgentWebSocketRegistry } from './external-agent-websocket-registry';
 import type { ExternalAgentsConnectionManager } from './external-agents-connection-manager';
-import type { EventStreamManager } from './event-stream-manager';
-import type { StreamingStateManager } from './streaming-state-manager';
-import { STREAMING_HEARTBEAT_INTERVAL_MS } from './streaming-state-manager';
-import type { AgentsFeature } from '../features/agents';
-import type { ExternalAgent } from '../db/schema';
-import type { ArtifactsFeature } from '../features/artifacts';
-import type { ProjectsFeature } from '../features/projects';
-import type { TasksFeature } from '../features/tasks';
-import type { SkillsFeature } from '../features/skills';
-import type { PubSubManager } from '../real-time';
-import { getToolsById } from './tools';
-import type { AgentSpawner } from './agent-spawner';
+import type { EventStreamManager } from '../../streams/event-stream-manager';
+import type { StreamingStateManager } from '../../real-time/streaming-state-manager';
+import { STREAMING_HEARTBEAT_INTERVAL_MS } from '../../real-time/streaming-state-manager';
+import type { AgentsFeature } from '../../features/agents';
+import type { ExternalAgent } from '../../db/schema';
+import type { ArtifactsFeature } from '../../features/artifacts';
+import type { ProjectsFeature } from '../../features/projects';
+import type { TasksFeature } from '../../features/tasks';
+import type { SkillsFeature } from '../../features/skills';
+import type { PubSubManager } from '../../real-time';
+import { getToolsById } from '../tools';
+import type { AgentSpawner } from '../agent-spawner';
 
 // Zod schemas for validating WebSocket messages from external agents
 const AgentEventSchema = z.discriminatedUnion('type', [

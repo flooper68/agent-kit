@@ -6,8 +6,8 @@ import type {
   ProviderStreamEvent,
 } from '../types';
 import { classifyError } from '../errors';
-import { logger } from '../logger';
-import { getModelInfo, DEFAULT_THINKING_CONFIG } from '../model-config';
+import { logger } from '../../logger/logger';
+import { getModelInfo, DEFAULT_THINKING_CONFIG } from './model-config';
 
 /**
  * Default thinking budget for Anthropic models.
@@ -157,7 +157,9 @@ export class AnthropicProvider implements AgentProvider {
               toolCallId: chunk.toolCall.toolCallId,
               toolName: chunk.toolCall.toolName,
               toolArgs: (chunk.toolCall.input ?? {}) as Record<string, unknown>,
-              providerMetadata: (chunk.toolCall as { providerMetadata?: Record<string, unknown> }).providerMetadata,
+              providerMetadata: (
+                chunk.toolCall as { providerMetadata?: Record<string, unknown> }
+              ).providerMetadata,
             };
             break;
 

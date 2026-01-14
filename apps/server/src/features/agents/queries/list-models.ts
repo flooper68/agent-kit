@@ -3,7 +3,7 @@ import {
   getModelsForProviderWithPricing,
   type ModelInfoWithPricing,
   type Provider,
-} from '../../../agent/model-config';
+} from '../../../agent/providers/model-config';
 import { MODEL_PRICING } from '../pricing';
 
 export interface ListModelsInput {

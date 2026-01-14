@@ -11,7 +11,13 @@ export interface SessionData {
     id: string;
     role: 'user' | 'assistant';
     createdAt: string;
-    status?: 'pending' | 'streaming' | 'complete' | 'error' | 'interrupted' | 'awaiting_approval';
+    status?:
+      | 'pending'
+      | 'streaming'
+      | 'complete'
+      | 'error'
+      | 'interrupted'
+      | 'awaiting_approval';
     parts: Array<{
       type: string;
       content?: string;

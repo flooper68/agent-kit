@@ -11,7 +11,7 @@ import type { Tool } from '../../types';
 import type { ActionMetadata } from '../types';
 import { AgentScope } from '../../permissions/scopes';
 import type { SkillsFeature } from '../../../features/skills';
-import { logger } from '../../logger';
+import { logger } from '../../../logger/logger';
 
 export const deleteSkillMetadata: ActionMetadata = {
   id: 'deleteSkill',

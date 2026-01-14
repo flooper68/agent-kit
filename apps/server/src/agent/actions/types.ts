@@ -3,7 +3,7 @@ import type { ProjectsFeature } from '../../features/projects';
 import type { TasksFeature } from '../../features/tasks';
 import type { AgentsFeature } from '../../features/agents';
 import type { SkillsFeature } from '../../features/skills';
-import type { EventStreamManager } from '../event-stream-manager';
+import type { EventStreamManager } from '../../streams/event-stream-manager';
 import type { PubSubManager } from '../../real-time';
 import type { AgentScope } from '../permissions/scopes';
 

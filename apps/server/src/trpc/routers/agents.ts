@@ -6,7 +6,10 @@ import {
   protectedProcedureWithErrors,
 } from '../trpc';
 import { getToolsMetadata } from '../../agent/tools';
-import { getProviders, type Provider } from '../../agent/model-config';
+import {
+  getProviders,
+  type Provider,
+} from '../../agent/providers/model-config';
 import { AgentValidationError } from '../../agent/validation';
 import { ALL_SCOPES, SCOPE_METADATA } from '../../agent/permissions';
 

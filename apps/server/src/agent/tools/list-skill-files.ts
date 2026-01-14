@@ -13,7 +13,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../types';
 import type { SkillsFeature } from '../../features/skills';
-import { logger } from '../logger';
+import { logger } from '../../logger/logger';
 import { SERVER_TOOL_DEFINITIONS } from '@agent-kit/shared';
 import { getSkillWithAccess, getLineCount } from './shared/skill-access';
 

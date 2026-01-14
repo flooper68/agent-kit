@@ -179,8 +179,10 @@ export function reconstructPartsFromEvents(
 
         // Include providerMetadata (e.g., Gemini thought_signature) for reconstruction
         const args = {
-          ...(event.toolArgs as Record<string, unknown>) ?? {},
-          ...(event.providerMetadata && { _providerMetadata: event.providerMetadata }),
+          ...((event.toolArgs as Record<string, unknown>) ?? {}),
+          ...(event.providerMetadata && {
+            _providerMetadata: event.providerMetadata,
+          }),
         };
 
         parts.push({
@@ -192,7 +194,8 @@ export function reconstructPartsFromEvents(
           // Include approval info if this tool went through approval
           ...(approvalRequest && {
             approvalStatus: approvalRequest.approvalStatus ?? undefined,
-            approvalDenialReason: approvalRequest.approvalDenialReason ?? undefined,
+            approvalDenialReason:
+              approvalRequest.approvalDenialReason ?? undefined,
             approvedByUserId: approvalRequest.approvedByUserId ?? undefined,
             approvedAt: approvalRequest.approvedAt?.toISOString() ?? undefined,
           }),
@@ -227,7 +230,12 @@ export function reconstructPartsFromEvents(
         // The AI SDK needs the tool-approval-request part to be included (which requires
         // state === 'pending_approval' in agent-job-handler.ts). The actual approval
         // outcome is tracked via approvalStatus field for UI display.
-        const state: 'pending' | 'running' | 'completed' | 'error' | 'pending_approval' = 'pending_approval';
+        const state:
+          | 'pending'
+          | 'running'
+          | 'completed'
+          | 'error'
+          | 'pending_approval' = 'pending_approval';
 
         // Add a tool_invocation part
         // This matches the format expected when reconstructing the approval flow
@@ -237,9 +245,11 @@ export function reconstructPartsFromEvents(
           toolCallId: event.toolCallId ?? '',
           toolName: event.toolName ?? '',
           args: {
-            ...(event.toolArgs as Record<string, unknown>) ?? {},
+            ...((event.toolArgs as Record<string, unknown>) ?? {}),
             _approvalId: event.approvalId, // Store approvalId for later use
-            ...(event.providerMetadata && { _providerMetadata: event.providerMetadata }),
+            ...(event.providerMetadata && {
+              _providerMetadata: event.providerMetadata,
+            }),
           },
           state,
           // Include approval status if available (shows result after user responds)
