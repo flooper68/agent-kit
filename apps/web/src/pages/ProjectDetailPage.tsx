@@ -360,6 +360,13 @@ export function ProjectDetailPage() {
     { enabled: !!projectId }
   );
 
+  // Query for documents count badge
+  const documentsCountQuery = trpc.projects.listArtifacts.useQuery(
+    { projectId: projectId ?? '', limit: 1 },
+    { enabled: !!projectId }
+  );
+  const documentsCount = documentsCountQuery.data?.total ?? 0;
+
   const createTaskMutation = trpc.tasks.create.useMutation({
     onSuccess: () => {
       if (!projectId) return;
@@ -837,6 +844,11 @@ export function ProjectDetailPage() {
                 <Tabs.Trigger value="documents">
                   <FileText className="mr-1 h-4 w-4" />
                   Documents
+                  {documentsCount > 0 && (
+                    <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-muted text-muted-foreground text-xs font-medium">
+                      {documentsCount}
+                    </span>
+                  )}
                 </Tabs.Trigger>
                 <Tabs.Trigger value="kanban">
                   <LayoutGrid className="mr-1 h-4 w-4" />
