@@ -1,4 +1,11 @@
-import { MessageSquare, Users, DollarSign, Coins } from 'lucide-react';
+import {
+  MessageSquare,
+  Users,
+  DollarSign,
+  Coins,
+  FileText,
+  FolderKanban,
+} from 'lucide-react';
 import { trpc } from '../../../lib/trpc';
 import {
   StatCard,
@@ -46,6 +53,12 @@ export function OverviewTab({ timeRange, userId }: OverviewTabProps) {
     userId,
   });
 
+  const artifactsStatsQuery = trpc.artifacts.getStats.useQuery({
+    timeRange,
+  });
+
+  const projectStatsQuery = trpc.analytics.getProjectStats.useQuery();
+
   const overview = overviewQuery.data;
   const isLoadingOverview = overviewQuery.isLoading;
 
@@ -75,6 +88,22 @@ export function OverviewTab({ timeRange, userId }: OverviewTabProps) {
       value: isLoadingOverview ? '-' : formatNumber(overview?.totalTokens ?? 0),
       trend: overview?.trends.tokens,
       icon: Coins,
+    },
+    {
+      label: 'Total Artifacts',
+      value: artifactsStatsQuery.isLoading
+        ? '-'
+        : formatNumber(artifactsStatsQuery.data?.totalCount ?? 0),
+      trend: undefined,
+      icon: FileText,
+    },
+    {
+      label: 'Projects',
+      value: projectStatsQuery.isLoading
+        ? '-'
+        : formatNumber(projectStatsQuery.data?.totalProjects ?? 0),
+      trend: undefined,
+      icon: FolderKanban,
     },
   ];
 
