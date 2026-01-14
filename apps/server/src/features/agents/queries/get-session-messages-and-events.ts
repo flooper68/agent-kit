@@ -9,7 +9,13 @@ import {
 export interface SessionMessageInfo {
   id: string;
   role: 'user' | 'assistant' | 'system';
-  status: 'pending' | 'streaming' | 'complete' | 'error' | 'interrupted' | 'awaiting_approval';
+  status:
+    | 'pending'
+    | 'streaming'
+    | 'complete'
+    | 'error'
+    | 'interrupted'
+    | 'awaiting_approval';
   createdAt: string;
 }
 

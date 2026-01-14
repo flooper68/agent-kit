@@ -38,6 +38,7 @@ import {
 import { checkIsAdmin } from '../lib/auth';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useGlobalKeyboardShortcut } from '../hooks/useGlobalKeyboardShortcut';
+import { useActivityHeartbeat } from '../hooks/useActivityHeartbeat';
 import { useSession } from '../contexts/SessionContext';
 import {
   HeaderActionsProvider,
@@ -99,6 +100,9 @@ function DashboardLayoutInner() {
   const appLayoutRef = useRef<AppLayoutRef>(null);
   const isAdmin = checkIsAdmin(membership?.role);
   const currentPath = location.pathname;
+
+  // Track user activity via heartbeat
+  useActivityHeartbeat();
 
   // Save panel width to localStorage when it changes
   const handlePanelWidthChange = useCallback((width: number) => {

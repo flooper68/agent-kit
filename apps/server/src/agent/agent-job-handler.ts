@@ -102,7 +102,8 @@ export class AgentJobHandler {
     this.eventSequence = 0;
     this.eventBuffer = new EventBuffer();
 
-    const { sessionId, agentId, userId, orgId, content, approvalResponse } = job;
+    const { sessionId, agentId, userId, orgId, content, approvalResponse } =
+      job;
 
     let messageId: string;
 

@@ -318,7 +318,10 @@ export class AgentSpawner {
       });
 
       // Publish cache invalidation
-      await this.cacheInvalidation.publishSessionMessageAdded(userId, sessionId);
+      await this.cacheInvalidation.publishSessionMessageAdded(
+        userId,
+        sessionId
+      );
 
       return { sessionId, dispatched: true };
     } catch (error) {

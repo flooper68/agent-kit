@@ -1,50 +1,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import type { ClerkClient } from '@clerk/backend';
 import { router, adminProcedure } from '../trpc';
-
-const TimeRangeSchema = z.enum(['today', 'week', 'month', 'all']);
-const GranularitySchema = z.enum(['hour', 'day', 'week']);
-
-type ClerkUserInfo = {
-  email: string | null;
-  firstName: string | null;
-  lastName: string | null;
-};
-
-async function enrichWithClerkUserInfo<T extends { userId: string }>(
-  clerk: ClerkClient,
-  data: T[]
-): Promise<(T & ClerkUserInfo)[]> {
-  const userIds = data.map((d) => d.userId);
-  if (userIds.length === 0) return [];
-
-  const clerkUsers = await clerk.users.getUserList({
-    userId: userIds,
-    limit: Math.max(userIds.length, 100),
-  });
-
-  const userMap = new Map(
-    clerkUsers.data.map((u) => [
-      u.id,
-      {
-        email: u.emailAddresses[0]?.emailAddress ?? null,
-        firstName: u.firstName,
-        lastName: u.lastName,
-      },
-    ])
-  );
-
-  return data.map((d) => {
-    const info = userMap.get(d.userId);
-    return {
-      ...d,
-      email: info?.email ?? null,
-      firstName: info?.firstName ?? null,
-      lastName: info?.lastName ?? null,
-    };
-  });
-}
+import { TimeRangeSchema, GranularitySchema } from '../../features/shared';
 
 export const analyticsRouter = router({
   getOverview: adminProcedure
@@ -133,12 +90,10 @@ export const analyticsRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const users = await ctx.analyticsFeature.getUsersWithSessions({
+      return ctx.analyticsFeature.getUsersWithSessions({
         orgId: ctx.auth.orgId,
         timeRange: input.timeRange,
       });
-
-      return enrichWithClerkUserInfo(ctx.clerk, users);
     }),
 
   getTokensPerUser: adminProcedure
@@ -149,13 +104,11 @@ export const analyticsRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const data = await ctx.analyticsFeature.getTokensPerUser({
+      return ctx.analyticsFeature.getTokensPerUser({
         timeRange: input.timeRange,
         orgId: ctx.auth.orgId,
         userId: input.userId,
       });
-
-      return enrichWithClerkUserInfo(ctx.clerk, data);
     }),
 
   getSessionDetail: adminProcedure
@@ -182,13 +135,11 @@ export const analyticsRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const data = await ctx.analyticsFeature.getWebSearchCalls({
+      return ctx.analyticsFeature.getWebSearchCalls({
         timeRange: input.timeRange,
         orgId: ctx.auth.orgId,
         userId: input.userId,
       });
-
-      return enrichWithClerkUserInfo(ctx.clerk, data);
     }),
 
   // Project & Task Analytics

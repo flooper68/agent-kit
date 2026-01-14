@@ -125,7 +125,9 @@ export class OpenAIProvider implements AgentProvider {
               toolCallId: chunk.toolCall.toolCallId,
               toolName: chunk.toolCall.toolName,
               toolArgs: (chunk.toolCall.input ?? {}) as Record<string, unknown>,
-              providerMetadata: (chunk.toolCall as { providerMetadata?: Record<string, unknown> }).providerMetadata,
+              providerMetadata: (
+                chunk.toolCall as { providerMetadata?: Record<string, unknown> }
+              ).providerMetadata,
             };
             break;
 
