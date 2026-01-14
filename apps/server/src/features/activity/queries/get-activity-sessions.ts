@@ -2,6 +2,7 @@ import { sql, eq, and, gte, desc, lt } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { userActivitySessions } from '../../../db/schema';
 import type { TimeRange } from '../types';
+import { getStartDate } from '../../shared';
 
 export interface GetActivitySessionsInput {
   orgId: string;
@@ -26,20 +27,6 @@ export interface ActivitySessionItem {
 export interface GetActivitySessionsResult {
   items: ActivitySessionItem[];
   nextCursor: string | undefined;
-}
-
-function getStartDate(timeRange: TimeRange): Date | null {
-  const now = new Date();
-  switch (timeRange) {
-    case 'today':
-      return new Date(now.setHours(0, 0, 0, 0));
-    case 'week':
-      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    case 'month':
-      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    case 'all':
-      return null;
-  }
 }
 
 /**

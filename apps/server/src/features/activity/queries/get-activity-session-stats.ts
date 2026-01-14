@@ -2,6 +2,7 @@ import { sql, eq, and, gte, count } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { userActivitySessions } from '../../../db/schema';
 import type { TimeRange } from '../types';
+import { getStartDate, getDaysInRange } from '../../shared';
 
 export interface GetActivitySessionStatsInput {
   orgId: string;
@@ -20,33 +21,6 @@ export interface ActivitySessionStats {
 }
 
 export type GetActivitySessionStatsResult = ActivitySessionStats;
-
-function getStartDate(timeRange: TimeRange): Date | null {
-  const now = new Date();
-  switch (timeRange) {
-    case 'today':
-      return new Date(now.setHours(0, 0, 0, 0));
-    case 'week':
-      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    case 'month':
-      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    case 'all':
-      return null;
-  }
-}
-
-function getDaysInRange(timeRange: TimeRange): number {
-  switch (timeRange) {
-    case 'today':
-      return 1;
-    case 'week':
-      return 7;
-    case 'month':
-      return 30;
-    case 'all':
-      return 90; // Use 90 days for 'all' to get a reasonable average
-  }
-}
 
 /**
  * Retrieves aggregated statistics for activity sessions.

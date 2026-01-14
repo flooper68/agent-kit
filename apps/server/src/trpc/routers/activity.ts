@@ -1,48 +1,6 @@
 import { z } from 'zod';
-import type { ClerkClient } from '@clerk/backend';
 import { router, orgProcedure, adminProcedure } from '../trpc';
-
-const TimeRangeSchema = z.enum(['today', 'week', 'month', 'all']);
-
-type ClerkUserInfo = {
-  email: string | null;
-  firstName: string | null;
-  lastName: string | null;
-};
-
-async function enrichWithClerkUserInfo<T extends { userId: string }>(
-  clerk: ClerkClient,
-  data: T[]
-): Promise<(T & ClerkUserInfo)[]> {
-  const userIds = [...new Set(data.map((d) => d.userId))];
-  if (userIds.length === 0) return [];
-
-  const clerkUsers = await clerk.users.getUserList({
-    userId: userIds,
-    limit: Math.max(userIds.length, 100),
-  });
-
-  const userMap = new Map(
-    clerkUsers.data.map((u) => [
-      u.id,
-      {
-        email: u.emailAddresses[0]?.emailAddress ?? null,
-        firstName: u.firstName,
-        lastName: u.lastName,
-      },
-    ])
-  );
-
-  return data.map((d) => {
-    const info = userMap.get(d.userId);
-    return {
-      ...d,
-      email: info?.email ?? null,
-      firstName: info?.firstName ?? null,
-      lastName: info?.lastName ?? null,
-    };
-  });
-}
+import { TimeRangeSchema } from '../../features/shared';
 
 export const activityRouter = router({
   /**
@@ -69,24 +27,13 @@ export const activityRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const result = await ctx.activityFeature.getSessions({
+      return ctx.activityFeature.getSessions({
         orgId: ctx.auth.orgId,
         timeRange: input.timeRange,
         userId: input.userId,
         limit: input.limit,
         cursor: input.cursor,
       });
-
-      // Enrich items with user info from Clerk
-      const enrichedItems = await enrichWithClerkUserInfo(
-        ctx.clerk,
-        result.items
-      );
-
-      return {
-        items: enrichedItems,
-        nextCursor: result.nextCursor,
-      };
     }),
 
   /**

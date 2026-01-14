@@ -86,7 +86,7 @@ const agentsFeature = new AgentsFeature(db);
 const agentNameMap = new Map<string, string>();
 
 // Create analytics feature
-const analyticsFeature = new AnalyticsFeature(db, agentNameMap);
+const analyticsFeature = new AnalyticsFeature(db, agentNameMap, clerk);
 
 // Create artifacts feature
 const artifactsFeature = new ArtifactsFeature(db, agentNameMap);
@@ -101,7 +101,7 @@ const tasksFeature = new TasksFeature(db);
 const skillsFeature = new SkillsFeature(db);
 
 // Create activity feature
-const activityFeature = new ActivityFeature(db);
+const activityFeature = new ActivityFeature(db, clerk);
 
 // Will be initialized in onReady hook
 let jobQueueManager!: JobQueueManager;

@@ -1,4 +1,4 @@
-export type TimeRange = 'today' | 'week' | 'month' | 'all';
+export type { TimeRange } from '../shared';
 
 /**
  * Default inactivity threshold in minutes.
