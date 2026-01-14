@@ -18,6 +18,10 @@ export { TasksByStatusChart } from './TasksByStatusChart';
 export { TasksByPriorityChart } from './TasksByPriorityChart';
 export { ActivitySessionStats } from './ActivitySessionStats';
 export { ActivitySessionsTable } from './ActivitySessionsTable';
+export { SessionLengthChart } from './SessionLengthChart';
+export { ToolTypeDistributionChart } from './ToolTypeDistributionChart';
+export { ToolCallsPerSessionCard } from './ToolCallsPerSessionCard';
+export { ToolCallErrorsChart } from './ToolCallErrorsChart';
 
 // Tab components
 export {

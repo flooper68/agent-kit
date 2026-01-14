@@ -62,3 +62,24 @@ export type {
   GetWebSearchCallsResult,
   WebSearchCallsPerUserItem,
 } from './get-web-search-calls';
+
+export {
+  GetSessionLengthDistributionQuery,
+  GetToolCallsPerSessionQuery,
+  GetToolTypeDistributionQuery,
+  GetToolCallErrorsQuery,
+} from './get-tool-call-stats';
+export type {
+  GetSessionLengthDistributionInput,
+  GetSessionLengthDistributionResult,
+  SessionLengthBucket,
+  GetToolCallsPerSessionInput,
+  GetToolCallsPerSessionResult,
+  ToolCallsPerSessionStats,
+  GetToolTypeDistributionInput,
+  GetToolTypeDistributionResult,
+  ToolTypeDistributionItem,
+  GetToolCallErrorsInput,
+  GetToolCallErrorsResult,
+  ToolCallErrorStats,
+} from './get-tool-call-stats';

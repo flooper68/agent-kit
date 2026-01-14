@@ -5,6 +5,10 @@ import {
   UsageChart,
   CostBreakdownChart,
   ChartErrorBoundary,
+  SessionLengthChart,
+  ToolTypeDistributionChart,
+  ToolCallsPerSessionCard,
+  ToolCallErrorsChart,
 } from '..';
 import type { TimeRange } from '..';
 
@@ -42,6 +46,30 @@ export function OverviewTab({ timeRange, userId }: OverviewTabProps) {
   });
 
   const providerDistQuery = trpc.analytics.getProviderDistribution.useQuery({
+    timeRange,
+    userId,
+  });
+
+  // Tool call analytics
+  const sessionLengthQuery =
+    trpc.analytics.getSessionLengthDistribution.useQuery({
+      timeRange,
+      userId,
+    });
+
+  const toolCallsPerSessionQuery =
+    trpc.analytics.getToolCallsPerSession.useQuery({
+      timeRange,
+      userId,
+    });
+
+  const toolTypeDistributionQuery =
+    trpc.analytics.getToolTypeDistribution.useQuery({
+      timeRange,
+      userId,
+    });
+
+  const toolCallErrorsQuery = trpc.analytics.getToolCallErrors.useQuery({
     timeRange,
     userId,
   });
@@ -105,6 +133,37 @@ export function OverviewTab({ timeRange, userId }: OverviewTabProps) {
           <CostBreakdownChart
             data={providerDistQuery.data ?? []}
             isLoading={providerDistQuery.isLoading}
+          />
+        </ChartErrorBoundary>
+      </div>
+
+      {/* Tool Call Analytics */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ChartErrorBoundary chartName="Messages per Session">
+          <SessionLengthChart
+            data={sessionLengthQuery.data ?? []}
+            isLoading={sessionLengthQuery.isLoading}
+          />
+        </ChartErrorBoundary>
+        <ChartErrorBoundary chartName="Tool Type Distribution">
+          <ToolTypeDistributionChart
+            data={toolTypeDistributionQuery.data ?? []}
+            isLoading={toolTypeDistributionQuery.isLoading}
+          />
+        </ChartErrorBoundary>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ChartErrorBoundary chartName="Tool Calls per Session">
+          <ToolCallsPerSessionCard
+            data={toolCallsPerSessionQuery.data}
+            isLoading={toolCallsPerSessionQuery.isLoading}
+          />
+        </ChartErrorBoundary>
+        <ChartErrorBoundary chartName="Tool Call Errors">
+          <ToolCallErrorsChart
+            data={toolCallErrorsQuery.data}
+            isLoading={toolCallErrorsQuery.isLoading}
           />
         </ChartErrorBoundary>
       </div>
