@@ -44,15 +44,21 @@ const VIBRANT_COLORS = [
   '#fb923c', // orange
 ];
 
+const MAX_DISPLAY_NAME_LENGTH = 12;
+
+function truncateString(str: string, maxLength: number): string {
+  return str.length > maxLength ? str.slice(0, maxLength) + '...' : str;
+}
+
 function getUserDisplayName(user: SessionTimelineUser): string {
   if (user.firstName || user.lastName) {
     const name = [user.firstName, user.lastName].filter(Boolean).join(' ');
-    return name.length > 12 ? name.slice(0, 12) + '...' : name;
+    return truncateString(name, MAX_DISPLAY_NAME_LENGTH);
   }
   if (user.email) {
-    return user.email.length > 12 ? user.email.slice(0, 12) + '...' : user.email;
+    return truncateString(user.email, MAX_DISPLAY_NAME_LENGTH);
   }
-  return user.userId.length > 10 ? user.userId.slice(0, 10) + '...' : user.userId;
+  return truncateString(user.userId, MAX_DISPLAY_NAME_LENGTH);
 }
 
 function formatDuration(minutes: number): string {

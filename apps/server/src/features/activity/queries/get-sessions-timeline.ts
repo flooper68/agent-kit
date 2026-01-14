@@ -107,8 +107,8 @@ export class GetSessionsTimelineQuery {
 
     // Convert to array and limit to top 10 users by session count
     const usersList = Array.from(userSessionsMap.entries())
-      .map(([odUserId, userSessions]) => ({
-        userId: odUserId,
+      .map(([visitorUserId, userSessions]) => ({
+        userId: visitorUserId,
         sessions: userSessions.sort(
           (a, b) =>
             new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
