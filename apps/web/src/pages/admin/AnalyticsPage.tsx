@@ -143,7 +143,7 @@ export function AnalyticsPage() {
           </Tabs.Content>
 
           <Tabs.Content value="tasks">
-            <TasksTab timeRange={timeRange} />
+            <TasksTab timeRange={timeRange} userId={userIdFilter} />
           </Tabs.Content>
 
           <Tabs.Content value="activity">

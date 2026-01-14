@@ -5,9 +5,11 @@ import type { TimeRange } from '..';
 
 interface TasksTabProps {
   timeRange: TimeRange;
+  userId?: string;
 }
 
-export function TasksTab({ timeRange }: TasksTabProps) {
+export function TasksTab({ timeRange, userId: _userId }: TasksTabProps) {
+  // Note: getTaskStats and getOverTime don't support userId filtering yet
   const taskStatsQuery = trpc.analytics.getTaskStats.useQuery();
 
   const artifactsOverTimeQuery = trpc.artifacts.getOverTime.useQuery({
