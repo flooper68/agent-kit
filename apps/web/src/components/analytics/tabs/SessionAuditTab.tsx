@@ -2,11 +2,11 @@ import { useState, useCallback } from 'react';
 import { trpc } from '../../../lib/trpc';
 import { RecentActivityTable, SessionDetailModal } from '..';
 
-interface ActivityTabProps {
+interface SessionAuditTabProps {
   userId?: string;
 }
 
-export function ActivityTab({ userId }: ActivityTabProps) {
+export function SessionAuditTab({ userId }: SessionAuditTabProps) {
   // Pagination state - track cursor history for "previous" navigation
   const [cursors, setCursors] = useState<string[]>([]);
   const currentCursor = cursors[cursors.length - 1];

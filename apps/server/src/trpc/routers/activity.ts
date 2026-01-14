@@ -53,4 +53,22 @@ export const activityRouter = router({
         userId: input.userId,
       });
     }),
+
+  /**
+   * Get sessions formatted for timeline visualization.
+   */
+  getSessionsTimeline: adminProcedure
+    .input(
+      z.object({
+        timeRange: TimeRangeSchema.default('month'),
+        userId: z.string().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      return ctx.activityFeature.getSessionsTimeline({
+        orgId: ctx.auth.orgId,
+        timeRange: input.timeRange,
+        userId: input.userId,
+      });
+    }),
 });

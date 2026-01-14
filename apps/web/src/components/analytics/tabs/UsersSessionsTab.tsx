@@ -2,12 +2,8 @@ import { useState, useCallback } from 'react';
 import { trpc } from '../../../lib/trpc';
 import { ActivitySessionStats } from '../ActivitySessionStats';
 import { ActivitySessionsTable } from '../ActivitySessionsTable';
-import {
-  TokensPerUserChart,
-  WebSearchCallsChart,
-  TokensByProviderChart,
-  ChartErrorBoundary,
-} from '..';
+import { SessionsTimelineChart } from '../SessionsTimelineChart';
+import { ChartErrorBoundary } from '..';
 import type { TimeRange } from '..';
 
 interface UsersSessionsTabProps {
@@ -33,18 +29,8 @@ export function UsersSessionsTab({ timeRange, userId }: UsersSessionsTabProps) {
     cursor: currentCursor,
   });
 
-  // User analytics queries
-  const tokensPerUserQuery = trpc.analytics.getTokensPerUser.useQuery({
-    timeRange,
-    userId,
-  });
-
-  const webSearchCallsQuery = trpc.analytics.getWebSearchCalls.useQuery({
-    timeRange,
-    userId,
-  });
-
-  const providerDistQuery = trpc.analytics.getProviderDistribution.useQuery({
+  // Sessions timeline query
+  const timelineQuery = trpc.activity.getSessionsTimeline.useQuery({
     timeRange,
     userId,
   });
@@ -71,29 +57,19 @@ export function UsersSessionsTab({ timeRange, userId }: UsersSessionsTabProps) {
         isLoading={statsQuery.isLoading}
       />
 
-      {/* User Analytics Charts */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ChartErrorBoundary chartName="Tokens Per User">
-          <TokensPerUserChart
-            data={tokensPerUserQuery.data ?? []}
-            isLoading={tokensPerUserQuery.isLoading}
-          />
-        </ChartErrorBoundary>
-        <ChartErrorBoundary chartName="Web Search Calls">
-          <WebSearchCallsChart
-            data={webSearchCallsQuery.data ?? []}
-            isLoading={webSearchCallsQuery.isLoading}
-          />
-        </ChartErrorBoundary>
-      </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ChartErrorBoundary chartName="Tokens by Provider">
-          <TokensByProviderChart
-            data={providerDistQuery.data ?? []}
-            isLoading={providerDistQuery.isLoading}
-          />
-        </ChartErrorBoundary>
-      </div>
+      {/* Sessions Timeline Chart */}
+      <ChartErrorBoundary chartName="Sessions Timeline">
+        <SessionsTimelineChart
+          data={timelineQuery.data?.users ?? []}
+          timeRange={
+            timelineQuery.data?.timeRange ?? {
+              start: new Date().toISOString(),
+              end: new Date().toISOString(),
+            }
+          }
+          isLoading={timelineQuery.isLoading}
+        />
+      </ChartErrorBoundary>
 
       {/* Activity Sessions Table */}
       <ActivitySessionsTable
