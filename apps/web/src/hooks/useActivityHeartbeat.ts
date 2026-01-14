@@ -53,5 +53,6 @@ export function useActivityHeartbeat() {
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [heartbeatMutation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mutate is stable, heartbeatMutation object is not
+  }, []);
 }
