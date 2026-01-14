@@ -6,8 +6,8 @@ import type {
   ProviderStreamEvent,
 } from '../types';
 import { classifyError } from '../errors';
-import { logger } from '../logger';
-import { getModelInfo } from '../model-config';
+import { logger } from '../../logger/logger';
+import { getModelInfo } from './model-config';
 
 export class OpenAIProvider implements AgentProvider {
   id = 'openai';

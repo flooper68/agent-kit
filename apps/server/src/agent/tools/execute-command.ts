@@ -16,7 +16,7 @@ import type { Tool } from '../types';
 import type { ExecuteSkillResult, ParsedCommand } from '../skills/types';
 import { getActionsById } from '../actions';
 import type { ToolsContext } from './types';
-import { logger } from '../logger';
+import { logger } from '../../logger/logger';
 import { SERVER_TOOL_DEFINITIONS, type ToolName } from '@agent-kit/shared';
 import { checkActionPermission, createPermissionError } from '../permissions';
 import { checkCommandRequiresApproval } from './approvals';

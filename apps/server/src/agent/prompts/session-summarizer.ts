@@ -1,7 +1,7 @@
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import type { MessageWithParts } from '../features/agents/queries';
-import { logger } from './logger';
+import type { MessageWithParts } from '../../features/agents/queries';
+import { logger } from '../../logger/logger';
 
 // Message count thresholds that trigger summarization
 // Note: messageCount includes both user and assistant messages (2 per exchange)

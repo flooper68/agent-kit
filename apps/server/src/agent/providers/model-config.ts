@@ -3,8 +3,11 @@
  * Defines available providers, models, and their capabilities.
  */
 
-import type { ThinkingConfig } from '../db/schema/agents';
-import { MODEL_PRICING, type ModelPricing } from '../features/agents/pricing';
+import type { ThinkingConfig } from '../../db/schema/agents';
+import {
+  MODEL_PRICING,
+  type ModelPricing,
+} from '../../features/agents/pricing';
 
 export const PROVIDERS = ['anthropic', 'openai', 'gemini'] as const;
 export type Provider = (typeof PROVIDERS)[number];

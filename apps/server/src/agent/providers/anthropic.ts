@@ -6,8 +6,8 @@ import type {
   ProviderStreamEvent,
 } from '../types';
 import { classifyError } from '../errors';
-import { logger } from '../logger';
-import { getModelInfo, DEFAULT_THINKING_CONFIG } from '../model-config';
+import { logger } from '../../logger/logger';
+import { getModelInfo, DEFAULT_THINKING_CONFIG } from './model-config';
 
 /**
  * Default thinking budget for Anthropic models.

@@ -1,6 +1,6 @@
 import type Redis from 'ioredis';
-import type { PubSubManager } from '../real-time';
-import { logger } from './logger';
+import type { PubSubManager } from '../../real-time';
+import { logger } from '../../logger/logger';
 
 /**
  * Interface for listing agents (dependency injection)

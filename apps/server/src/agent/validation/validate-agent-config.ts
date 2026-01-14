@@ -7,7 +7,7 @@ import {
   getModelInfo,
   type Provider,
   type ThinkingLevel,
-} from '../model-config';
+} from '../providers/model-config';
 import { listToolIds } from '../tools';
 import type { ThinkingConfig } from '../../db/schema/agents';
 import type { ValidationResult, ValidationFieldError } from './types';

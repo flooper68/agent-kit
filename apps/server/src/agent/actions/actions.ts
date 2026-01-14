@@ -13,7 +13,7 @@
 
 import type { Tool } from '../types';
 import type { ActionsContext } from './types';
-import { logger } from '../logger';
+import { logger } from '../../logger/logger';
 import { AgentScope } from '../permissions/scopes';
 
 // Static actions (no context needed)

@@ -6,12 +6,12 @@ import type {
   ProviderStreamEvent,
 } from '../types';
 import { classifyError } from '../errors';
-import { logger } from '../logger';
+import { logger } from '../../logger/logger';
 import {
   getModelInfo,
   DEFAULT_THINKING_CONFIG,
   type ThinkingLevel,
-} from '../model-config';
+} from './model-config';
 
 /**
  * Default thinking level for Gemini 3 models.

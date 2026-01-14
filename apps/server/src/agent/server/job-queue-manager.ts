@@ -1,7 +1,7 @@
 import type Redis from 'ioredis';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
-import { logger } from './logger';
+import { logger } from '../../logger/logger';
 
 const log = logger.child({ module: 'job-queue-manager' });
 

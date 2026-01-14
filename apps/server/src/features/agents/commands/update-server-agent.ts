@@ -6,7 +6,7 @@ import {
   type ServerAgent,
   type ThinkingConfig,
 } from '../../../db/schema';
-import { type Provider } from '../../../agent/model-config';
+import { type Provider } from '../../../agent/providers/model-config';
 import {
   validateAgentConfiguration,
   AgentValidationError,

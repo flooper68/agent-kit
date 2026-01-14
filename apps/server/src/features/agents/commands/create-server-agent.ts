@@ -8,7 +8,7 @@ import {
 import {
   type Provider,
   getDefaultModelForProvider,
-} from '../../../agent/model-config';
+} from '../../../agent/providers/model-config';
 import {
   validateAgentConfiguration,
   AgentValidationError,

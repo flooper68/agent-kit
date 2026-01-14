@@ -1,6 +1,6 @@
 import type Redis from 'ioredis';
-import type { CacheInvalidationService } from '../real-time/cache-invalidation-service';
-import { logger } from './logger';
+import type { CacheInvalidationService } from './cache-invalidation-service';
+import { logger } from '../logger/logger';
 
 const log = logger.child({ module: 'streaming-state-manager' });
 

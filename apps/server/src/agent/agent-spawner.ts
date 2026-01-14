@@ -1,13 +1,16 @@
 import type { AgentsFeature } from '../features/agents';
-import type { JobQueueManager } from './job-queue-manager';
-import type { EventStreamManager, StreamEvent } from './event-stream-manager';
-import type { StreamingStateManager } from './streaming-state-manager';
-import type { ExternalAgentWebSocketRegistry } from './external-agent-websocket-registry';
-import type { JobRegistryManager } from './job-registry-manager';
+import type { JobQueueManager } from './server/job-queue-manager';
+import type {
+  EventStreamManager,
+  StreamEvent,
+} from '../streams/event-stream-manager';
+import type { StreamingStateManager } from '../real-time/streaming-state-manager';
+import type { ExternalAgentWebSocketRegistry } from './external/external-agent-websocket-registry';
+import type { JobRegistryManager } from './server/job-registry-manager';
 import type { CacheInvalidationService } from '../real-time';
 import { SPAWN_CONFIG } from './spawn-config';
-import { logger } from './logger';
-import { buildSystemPrompt } from './system-prompt-builder';
+import { logger } from '../logger/logger';
+import { buildSystemPrompt } from './prompts/system-prompt-builder';
 
 /**
  * Input for both spawn() and spawnAndWait() methods.
@@ -158,7 +161,7 @@ export class AgentSpawner {
         toolCallId,
         spawnedSessionId: sessionId,
       } as Omit<
-        import('./event-stream-manager').StreamEvent,
+        import('../streams/event-stream-manager').StreamEvent,
         'id' | 'timestamp'
       >);
 

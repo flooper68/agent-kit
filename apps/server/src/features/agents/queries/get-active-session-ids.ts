@@ -1,4 +1,4 @@
-import type { StreamingStateManager } from '../../../agent/streaming-state-manager';
+import type { StreamingStateManager } from '../../../real-time/streaming-state-manager';
 
 export type GetActiveSessionIdsResult = Set<string>;
 
