@@ -26,8 +26,9 @@ export { ToolCallErrorsChart } from './ToolCallErrorsChart';
 // Tab components
 export {
   OverviewTab,
-  SessionsCostsTab,
+  UsersSessionsTab,
   AgentsTab,
-  UsersTab,
+  ToolsTab,
+  TasksTab,
   ActivityTab,
 } from './tabs';
