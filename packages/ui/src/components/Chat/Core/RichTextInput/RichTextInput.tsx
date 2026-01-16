@@ -60,7 +60,7 @@ export const RichTextInput = memo(
   forwardRef<RichTextInputRef, RichTextInputProps>(
     (
       {
-        value: _value,
+        value,
         chips,
         onChange,
         onSubmit,
@@ -451,6 +451,18 @@ export const RichTextInput = memo(
 
         lastChipsRef.current = chips;
       }, [chips, insertChip]);
+
+      // Sync external value clearing to DOM
+      useEffect(() => {
+        const editor = editorRef.current;
+        if (!editor) return;
+
+        // If value is empty but editor has content, clear it
+        // This handles the case when parent clears input after submission
+        if (value === '' && editor.textContent?.trim()) {
+          editor.innerHTML = '';
+        }
+      }, [value]);
 
       // Auto-focus on mount
       useEffect(() => {
