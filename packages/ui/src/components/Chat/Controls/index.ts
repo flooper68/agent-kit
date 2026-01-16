@@ -42,3 +42,9 @@ export type {
   SessionResourcesButtonProps,
   SessionResourcesCounts,
 } from './SessionResourcesButton';
+
+export { CommandAutocomplete } from './CommandAutocomplete';
+export type {
+  CommandAutocompleteProps,
+  SlashCommandOption,
+} from './CommandAutocomplete';

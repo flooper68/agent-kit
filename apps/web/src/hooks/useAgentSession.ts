@@ -203,6 +203,10 @@ export function useAgentSession(
   const lastStreamIdRef = useRef<string | undefined>(undefined);
   // Track message IDs loaded from DB to skip historical terminal events during replay
   const loadedMessageIdsRef = useRef<Set<string>>(new Set());
+  // Queue client tool requests to execute after message completes (avoids replay side effects)
+  const pendingClientToolRequestsRef = useRef<
+    Map<string, ClientToolRequest[]>
+  >(new Map());
 
   // Sync streaming status to SessionContext for chat history/command palette
   // This eliminates race conditions with pub/sub event propagation
@@ -251,6 +255,7 @@ export function useAgentSession(
     toolNamesByCallIdRef.current = {};
     lastStreamIdRef.current = undefined;
     loadedMessageIdsRef.current = new Set();
+    pendingClientToolRequestsRef.current = new Map();
     setStreamingStartTime(null);
   }, [sessionId]);
 
@@ -267,6 +272,15 @@ export function useAgentSession(
       console.log('[AgentSession] Session loaded:', sessionQuery.data);
     }
   }, [sessionQuery.data]);
+
+  // Populate loadedMessageIdsRef with existing message IDs from session data
+  // This allows us to skip historical events during replay (e.g., client_tool_request)
+  useEffect(() => {
+    if (sessionQuery.data?.messages) {
+      const messageIds = sessionQuery.data.messages.map((m) => m.id);
+      loadedMessageIdsRef.current = new Set(messageIds);
+    }
+  }, [sessionQuery.data?.messages]);
 
   const setMessageListRef = useCallback((node: HTMLDivElement | null) => {
     if (!node) return;
@@ -313,7 +327,8 @@ export function useAgentSession(
       replayHistory: true,
     },
     {
-      enabled: !!sessionId,
+      // Wait for session data to load so loadedMessageIdsRef is populated before replay
+      enabled: !!sessionId && sessionQuery.isSuccess,
       onData: (event: StreamEvent) => {
         console.log('[AgentSession] Event:', event.type, event);
 
@@ -730,10 +745,25 @@ export function useAgentSession(
             }
             break;
 
-          case 'message_complete':
+          case 'message_complete': {
+            // Process queued client tool requests for this message
+            // Only execute for live messages (not replayed from history)
+            const isHistoricalMessage = loadedMessageIdsRef.current.has(
+              event.messageId
+            );
+            if (!isHistoricalMessage) {
+              const pendingRequests =
+                pendingClientToolRequestsRef.current.get(event.messageId) || [];
+              for (const request of pendingRequests) {
+                onClientToolRequest?.(request);
+              }
+            }
+            // Clean up queued requests for this message
+            pendingClientToolRequestsRef.current.delete(event.messageId);
+
             // Skip historical terminal events for messages loaded from DB
             // This prevents history replay from resetting streaming status
-            if (loadedMessageIdsRef.current.has(event.messageId)) {
+            if (isHistoricalMessage) {
               break;
             }
             setStatus('ready');
@@ -753,6 +783,7 @@ export function useAgentSession(
             // Let the session query refresh provide the accurate value (contextWindowUsage
             // calculated from breakdown total).
             break;
+          }
 
           case 'error': {
             // Skip historical terminal events for messages loaded from DB
@@ -789,15 +820,21 @@ export function useAgentSession(
             );
             break;
 
-          case 'client_tool_request':
-            // Handle client-side tool request from agent
-            onClientToolRequest?.({
+          case 'client_tool_request': {
+            // Queue client tool requests to execute after message completes
+            // This prevents replayed historical events from triggering side effects
+            const request: ClientToolRequest = {
               toolName: event.toolName,
               requestId: event.requestId,
               params: event.params,
               requiresResponse: event.requiresResponse,
-            });
+            };
+            const pending =
+              pendingClientToolRequestsRef.current.get(event.messageId) || [];
+            pending.push(request);
+            pendingClientToolRequestsRef.current.set(event.messageId, pending);
             break;
+          }
 
           case 'spawn_session_created':
             // Update the spawnAgent tool invocation part with the spawned sessionId

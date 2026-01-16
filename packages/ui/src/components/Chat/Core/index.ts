@@ -17,4 +17,18 @@ export type {
   ChatInputProps,
   ChatInputTextareaProps,
   ChatInputActionsProps,
+  ChatInputRichTextareaProps,
 } from './ChatInput';
+
+export { RichTextInput } from './RichTextInput';
+export type {
+  RichTextInputProps,
+  RichTextInputRef,
+  SlashCommandChip,
+} from './RichTextInput';
+
+export { ChipInlineDisplay, ChipAwareText } from './ChipDisplay';
+export type {
+  ChipInlineDisplayProps,
+  ChipAwareTextProps,
+} from './ChipDisplay';

@@ -3,4 +3,6 @@ export type {
   ChatInputProps,
   ChatInputTextareaProps,
   ChatInputActionsProps,
+  ChatInputRichTextareaProps,
+  SlashCommandChip,
 } from './ChatInput';
