@@ -2,6 +2,7 @@ import { useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import type { ClientToolRequest } from './useAgentSession';
 import { trpc } from '../lib/trpc';
+import { isValidRoute } from '../router/validation';
 
 /**
  * Options for the useClientToolCommands hook.
@@ -106,20 +107,24 @@ export function useClientToolCommands({
             return;
           }
 
-          // Strict validation: must be a relative app path (defense in depth)
-          const isValidPath =
+          // Security validation: must be a relative app path (defense in depth)
+          const isSecurePath =
             path.startsWith('/') &&
             !path.startsWith('//') &&
             !path.startsWith('/\\') &&
             !path.includes('://');
 
-          if (isValidPath) {
+          // Route validation: must match a known route
+          const isKnownRoute = isValidRoute(path);
+
+          if (isSecurePath && isKnownRoute) {
             console.log('[ClientToolCommands] Navigating to:', path);
             navigate(path);
           } else {
             console.warn(
-              '[ClientToolCommands] Invalid or suspicious navigation path:',
-              path
+              '[ClientToolCommands] Invalid or unknown navigation path:',
+              path,
+              { isSecurePath, isKnownRoute }
             );
           }
           break;
