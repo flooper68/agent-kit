@@ -23,7 +23,13 @@ export function createSetAgentEnabledTool(
     description:
       'Enable or disable an agent. Disabled agents will not appear in the agent selector and cannot be used for new sessions.',
     inputSchema: z.object({
-      agentId: z.string().uuid().describe('The unique ID of the agent'),
+      agentKey: z
+        .string()
+        .min(1)
+        .max(64)
+        .describe(
+          'The unique key/slug of the agent (e.g., "main-assistant")'
+        ),
       agentType: z
         .enum(['external', 'server'])
         .describe(
@@ -34,15 +40,30 @@ export function createSetAgentEnabledTool(
         .describe('Set to true to enable the agent, false to disable'),
     }),
     execute: async ({
-      agentId,
+      agentKey,
       agentType,
       enabled,
     }: {
-      agentId: string;
+      agentKey: string;
       agentType: 'external' | 'server';
       enabled: boolean;
     }) => {
       try {
+        // Look up agent by key to get the ID
+        const agentResult = await context.agentsFeature.customAgents.getByKey(
+          agentKey,
+          context.userId
+        );
+
+        if (!agentResult || agentResult.type !== agentType) {
+          return {
+            success: false,
+            error: `${agentType} agent not found: ${agentKey}`,
+          };
+        }
+
+        const agentId = agentResult.agent.id;
+
         const agent = await context.agentsFeature.customAgents.setDisabled(
           agentId,
           context.userId,
@@ -53,7 +74,7 @@ export function createSetAgentEnabledTool(
         if (!agent) {
           return {
             success: false,
-            error: `Agent with ID ${agentId} not found`,
+            error: `Agent not found: ${agentKey}`,
           };
         }
 

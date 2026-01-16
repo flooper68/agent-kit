@@ -23,7 +23,13 @@ export function createToggleAgentFavoriteTool(
     description:
       'Set an agent as a favorite or remove it from favorites. Favorite agents appear at the top of the agent selector.',
     inputSchema: z.object({
-      agentId: z.string().uuid().describe('The unique ID of the agent'),
+      agentKey: z
+        .string()
+        .min(1)
+        .max(64)
+        .describe(
+          'The unique key/slug of the agent (e.g., "main-assistant")'
+        ),
       agentType: z
         .enum(['external', 'server'])
         .describe(
@@ -36,15 +42,30 @@ export function createToggleAgentFavoriteTool(
         ),
     }),
     execute: async ({
-      agentId,
+      agentKey,
       agentType,
       isFavorite,
     }: {
-      agentId: string;
+      agentKey: string;
       agentType: 'external' | 'server';
       isFavorite: boolean;
     }) => {
       try {
+        // Look up agent by key to get the ID
+        const agentResult = await context.agentsFeature.customAgents.getByKey(
+          agentKey,
+          context.userId
+        );
+
+        if (!agentResult || agentResult.type !== agentType) {
+          return {
+            success: false,
+            error: `${agentType} agent not found: ${agentKey}`,
+          };
+        }
+
+        const agentId = agentResult.agent.id;
+
         const agent = await context.agentsFeature.customAgents.toggleFavorite(
           agentId,
           context.userId,
@@ -55,7 +76,7 @@ export function createToggleAgentFavoriteTool(
         if (!agent) {
           return {
             success: false,
-            error: `Agent with ID ${agentId} not found`,
+            error: `Agent not found: ${agentKey}`,
           };
         }
 
