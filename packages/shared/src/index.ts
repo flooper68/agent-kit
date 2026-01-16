@@ -73,3 +73,7 @@ export { SPAWN_DEFAULTS } from './spawn-config';
 
 // Agent permission scopes
 export { AgentScope, ALL_SCOPES, DEFAULT_AGENT_SCOPES } from './scopes';
+
+// Route validation
+export { VALID_ROUTES, isValidRoute, validateRoute } from './routes';
+export type { RouteDefinition, ValidationResult } from './routes';

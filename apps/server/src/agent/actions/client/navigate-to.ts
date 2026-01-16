@@ -6,6 +6,7 @@ import type { ActionMetadata } from '../types';
 import { AgentScope } from '../../permissions/scopes';
 import type { StreamEvent } from '../../../streams/event-stream-manager';
 import type { ClientActionContext } from './types';
+import { isValidRoute } from '@agent-kit/shared';
 
 export const navigateToMetadata: ActionMetadata = {
   id: 'navigateTo',
@@ -43,6 +44,14 @@ export function createNavigateToTool(context: ClientActionContext): Tool {
         ),
     }),
     execute: async ({ path }: { path: string }) => {
+      // Validate route before publishing
+      if (!isValidRoute(path)) {
+        return {
+          success: false,
+          error: `Invalid route: "${path}". Path does not match any known application route.`,
+        };
+      }
+
       const requestId = randomUUID();
 
       try {
