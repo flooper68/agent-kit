@@ -9,12 +9,21 @@ import {
 } from 'react';
 import { cn } from '../../../../lib/utils';
 import { Textarea } from '../../../Textarea';
+import {
+  RichTextInput,
+  type RichTextInputRef,
+  type SlashCommandChip,
+} from '../RichTextInput';
 
 interface ChatInputContextValue {
   value: string;
   setValue: (value: string) => void;
+  chips: SlashCommandChip[];
+  setChips: (chips: SlashCommandChip[]) => void;
   isSubmitting: boolean;
   canSubmit: boolean;
+  /** Direct submit with explicit values (bypasses state) */
+  submitWithValues: (text: string, chips: SlashCommandChip[]) => void;
 }
 
 const ChatInputContext = createContext<ChatInputContextValue | undefined>(
@@ -33,7 +42,9 @@ export interface ChatInputProps
   extends Omit<React.HTMLAttributes<HTMLFormElement>, 'onSubmit'> {
   value?: string;
   onValueChange?: (value: string) => void;
-  onSubmit?: (value: string) => void;
+  chips?: SlashCommandChip[];
+  onChipsChange?: (chips: SlashCommandChip[]) => void;
+  onSubmit?: (value: string, chips?: SlashCommandChip[]) => void;
   isSubmitting?: boolean;
   placeholder?: string;
 }
@@ -44,6 +55,8 @@ const ChatInputRoot = memo(
       {
         value: controlledValue,
         onValueChange,
+        chips: controlledChips,
+        onChipsChange,
         onSubmit,
         isSubmitting = false,
         className,
@@ -53,8 +66,13 @@ const ChatInputRoot = memo(
       ref
     ) => {
       const [uncontrolledValue, setUncontrolledValue] = useState('');
+      const [uncontrolledChips, setUncontrolledChips] = useState<
+        SlashCommandChip[]
+      >([]);
       const value = controlledValue ?? uncontrolledValue;
-      const canSubmit = value.trim().length > 0 && !isSubmitting;
+      const chips = controlledChips ?? uncontrolledChips;
+      const canSubmit =
+        (value.trim().length > 0 || chips.length > 0) && !isSubmitting;
 
       const setValue = useCallback(
         (newValue: string) => {
@@ -64,21 +82,59 @@ const ChatInputRoot = memo(
         [onValueChange]
       );
 
+      const setChips = useCallback(
+        (newChips: SlashCommandChip[]) => {
+          setUncontrolledChips(newChips);
+          onChipsChange?.(newChips);
+        },
+        [onChipsChange]
+      );
+
       const handleSubmit = useCallback(
         (e: React.FormEvent) => {
           e.preventDefault();
           if (canSubmit) {
-            onSubmit?.(value);
+            onSubmit?.(value, chips.length > 0 ? chips : undefined);
             setValue('');
+            setChips([]);
           }
         },
-        [canSubmit, onSubmit, value, setValue]
+        [canSubmit, onSubmit, value, chips, setValue, setChips]
+      );
+
+      // Direct submit with explicit values (for RichTextarea to bypass state race conditions)
+      const submitWithValues = useCallback(
+        (text: string, submitChips: SlashCommandChip[]) => {
+          const hasContent = text.trim().length > 0 || submitChips.length > 0;
+          if (hasContent && !isSubmitting) {
+            onSubmit?.(text, submitChips.length > 0 ? submitChips : undefined);
+            setValue('');
+            setChips([]);
+          }
+        },
+        [isSubmitting, onSubmit, setValue, setChips]
       );
 
       // Memoize context value to prevent unnecessary re-renders
       const contextValue = useMemo(
-        () => ({ value, setValue, isSubmitting, canSubmit }),
-        [value, setValue, isSubmitting, canSubmit]
+        () => ({
+          value,
+          setValue,
+          chips,
+          setChips,
+          isSubmitting,
+          canSubmit,
+          submitWithValues,
+        }),
+        [
+          value,
+          setValue,
+          chips,
+          setChips,
+          isSubmitting,
+          canSubmit,
+          submitWithValues,
+        ]
       );
 
       return (
@@ -174,10 +230,66 @@ const ChatInputActions = memo(
 
 ChatInputActions.displayName = 'ChatInputActions';
 
+// RichTextarea subcomponent (for inline chips support)
+export interface ChatInputRichTextareaProps {
+  placeholder?: string;
+  autoFocus?: boolean;
+  disabled?: boolean;
+  className?: string;
+}
+
+const ChatInputRichTextarea = memo(
+  forwardRef<RichTextInputRef, ChatInputRichTextareaProps>(
+    ({ placeholder, autoFocus, disabled, className }, ref) => {
+      const {
+        value,
+        setValue,
+        chips,
+        setChips,
+        isSubmitting,
+        submitWithValues,
+      } = useChatInput();
+
+      const handleChange = useCallback(
+        (newValue: string, newChips: SlashCommandChip[]) => {
+          setValue(newValue);
+          setChips(newChips);
+        },
+        [setValue, setChips]
+      );
+
+      const handleSubmit = useCallback(
+        (text: string, submittedChips: SlashCommandChip[]) => {
+          // Use submitWithValues to bypass state race conditions
+          submitWithValues(text, submittedChips);
+        },
+        [submitWithValues]
+      );
+
+      return (
+        <RichTextInput
+          ref={ref}
+          value={value}
+          chips={chips}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+          placeholder={placeholder}
+          disabled={disabled || isSubmitting}
+          autoFocus={autoFocus}
+          className={cn('border-0 shadow-none focus-visible:ring-0', className)}
+        />
+      );
+    }
+  )
+);
+
+ChatInputRichTextarea.displayName = 'ChatInputRichTextarea';
+
 export const ChatInput = Object.assign(ChatInputRoot, {
   Textarea: ChatInputTextarea,
+  RichTextarea: ChatInputRichTextarea,
   Actions: ChatInputActions,
 });
 
 export { useChatInput };
-export type { ChatInputTextareaProps, ChatInputActionsProps };
+export type { ChatInputTextareaProps, ChatInputActionsProps, SlashCommandChip };

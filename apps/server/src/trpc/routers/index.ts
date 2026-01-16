@@ -11,6 +11,7 @@ import { cacheRouter } from './cache';
 import { clientToolsRouter } from './client-tools';
 import { skillsRouter } from './skills';
 import { activityRouter } from './activity';
+import { slashCommandsRouter } from './slash-commands';
 
 export const appRouter = router({
   members: membersRouter,
@@ -25,6 +26,7 @@ export const appRouter = router({
   clientTools: clientToolsRouter,
   skills: skillsRouter,
   activity: activityRouter,
+  slashCommands: slashCommandsRouter,
 });
 
 export type AppRouter = typeof appRouter;

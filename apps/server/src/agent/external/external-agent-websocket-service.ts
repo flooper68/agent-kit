@@ -28,7 +28,7 @@ import type { ProjectsFeature } from '../../features/projects';
 import type { TasksFeature } from '../../features/tasks';
 import type { SkillsFeature } from '../../features/skills';
 import type { PubSubManager } from '../../real-time';
-import { getToolsById } from '../tools';
+import { getToolsById, getActionsById, TOOL_IDS } from '../tools';
 import type { AgentSpawner } from '../agent-spawner';
 
 // Zod schemas for validating WebSocket messages from external agents
@@ -1044,8 +1044,11 @@ export class ExternalAgentWebSocketService {
         parentAgentKey: agent.key,
       };
 
-      // Get the tool implementation
-      const tools = getToolsById([tool], toolContext);
+      // Get the tool implementation (check if it's a basic tool or an action)
+      const isBasicTool = (TOOL_IDS as readonly string[]).includes(tool);
+      const tools = isBasicTool
+        ? getToolsById([tool], toolContext)
+        : getActionsById([tool], toolContext);
       const toolImpl = tools[tool];
 
       if (!toolImpl) {

@@ -8,7 +8,7 @@ import {
   type Provider,
   type ThinkingLevel,
 } from '../providers/model-config';
-import { listToolIds } from '../tools';
+import { listToolIds, listActionIds } from '../tools';
 import type { ThinkingConfig } from '../../db/schema/agents';
 import type { ValidationResult, ValidationFieldError } from './types';
 
@@ -53,9 +53,9 @@ export function validateAgentConfiguration(
     });
   }
 
-  // 3. Validate tools
+  // 3. Validate tools (includes both tools and actions)
   if (config.tools && config.tools.length > 0) {
-    const validToolIds = listToolIds();
+    const validToolIds = [...listToolIds(), ...listActionIds()];
     const invalidTools = config.tools.filter((t) => !validToolIds.includes(t));
     if (invalidTools.length > 0) {
       errors.push({

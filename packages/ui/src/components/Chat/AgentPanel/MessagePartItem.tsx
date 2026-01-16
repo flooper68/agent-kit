@@ -10,6 +10,8 @@ import type {
   AgentType,
 } from '../../../types/chat';
 import { MarkdownRenderer } from '../CodeDisplay/MarkdownRenderer';
+import { ChipAwareText } from '../Core/ChipDisplay';
+import { hasChipMarkers } from '../utils/slash-commands';
 import { ReasoningDisplay } from '../AIFeatures/ReasoningDisplay';
 import { ToolBadge } from '../ToolDisplay/ToolBadge';
 import { SubAgentCard } from '../ToolDisplay/SubAgentCard';
@@ -157,6 +159,10 @@ export const MessagePartItem = memo(function MessagePartItem({
   switch (part.type) {
     case 'text': {
       const textPart = part as TextPart;
+      // Use ChipAwareText for user messages that may contain chip markers
+      if (message.role === 'user' && hasChipMarkers(textPart.content)) {
+        return <ChipAwareText content={textPart.content} />;
+      }
       return <MarkdownRenderer content={textPart.content} />;
     }
     case 'reasoning': {

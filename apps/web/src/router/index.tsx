@@ -108,6 +108,11 @@ const SkillFormPage = lazy(() =>
     default: m.SkillFormPage,
   }))
 );
+const SlashCommandsPage = lazy(() =>
+  import('../pages/SlashCommandsPage').then((m) => ({
+    default: m.SlashCommandsPage,
+  }))
+);
 const NotFoundPage = lazy(() =>
   import('../pages/NotFoundPage').then((m) => ({
     default: m.NotFoundPage,
@@ -311,6 +316,14 @@ const router = createBrowserRouter([
                     element: (
                       <Suspense fallback={<AgentFormPageSkeleton />}>
                         <SkillFormPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'commands',
+                    element: (
+                      <Suspense fallback={<ArtifactsPageSkeleton />}>
+                        <SlashCommandsPage />
                       </Suspense>
                     ),
                   },

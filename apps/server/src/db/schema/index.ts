@@ -9,4 +9,5 @@ export * from './project-artifacts';
 export * from './agents';
 export * from './skills';
 export * from './user-activity-sessions';
+export * from './slash-commands';
 export * from './relations';

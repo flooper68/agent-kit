@@ -15,7 +15,7 @@ import type { TasksFeature } from '../../features/tasks';
 import type { SkillsFeature } from '../../features/skills';
 import type { AgentSpawner } from '../agent-spawner';
 import { getProvider } from '../providers';
-import { getToolsById } from '../tools';
+import { getToolsById, getActionsById, TOOL_IDS } from '../tools';
 import { buildSystemPrompt } from '../prompts/system-prompt-builder';
 import { getModelInfo } from '../providers/model-config';
 import type {
@@ -351,7 +351,18 @@ export class AgentJobHandler {
         allowedToolIds: agent.tools, // Tool access control for executeCommand
         agentScopes, // Permission scopes for action access control
       };
-      const tools = getToolsById(agent.tools, toolContext);
+      // Split agent.tools into basic tools and actions
+      const toolIds = agent.tools.filter((id) =>
+        (TOOL_IDS as readonly string[]).includes(id)
+      );
+      const actionIds = agent.tools.filter(
+        (id) => !(TOOL_IDS as readonly string[]).includes(id)
+      );
+
+      // Get tools and actions separately, then merge
+      const basicTools = getToolsById(toolIds, toolContext);
+      const actions = getActionsById(actionIds, toolContext);
+      const tools = { ...basicTools, ...actions };
 
       // Publish message start event
       await this.eventStreamManager.publish(sessionId, {

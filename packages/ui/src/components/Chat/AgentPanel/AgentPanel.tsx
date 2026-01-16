@@ -11,7 +11,8 @@ import { cn } from '../../../lib/utils';
 import { IconButton } from '../../IconButton';
 import { ChatContainer } from '../Core/ChatContainer';
 import { MessageList } from '../Core/MessageList';
-import { ChatInput } from '../Core/ChatInput';
+import { ChatInput, type SlashCommandChip } from '../Core/ChatInput';
+import type { RichTextInputRef } from '../Core/RichTextInput';
 import { EmptyState } from '../States/EmptyState';
 import { LoadingState } from '../States/LoadingState';
 import { ErrorBanner } from '../Banners/ErrorBanner';
@@ -24,6 +25,7 @@ import { AgentInfoBadge } from '../Controls/AgentInfoBadge';
 import { MessageListItem } from './MessageItem';
 import { InputActions } from './InputActions';
 import { CompactAgentCard } from './CompactAgentCard';
+import { expandChipsInMessage } from '../utils/slash-commands';
 import type { AgentPanelProps, AgentPanelRef } from './types';
 
 /**
@@ -71,6 +73,12 @@ export const AgentPanel = memo(
         elapsedLabel,
         scrollContainerRef: scrollContainerRefProp,
         inputRef: inputRefProp,
+        enableRichTextInput = false,
+        richTextInputRef: richTextInputRefProp,
+        chips,
+        onChipsChange,
+        value,
+        onValueChange,
         onOpenSubAgentDialog,
         inputDisabled = false,
         renderSubAgentCard,
@@ -87,6 +95,7 @@ export const AgentPanel = memo(
       ref
     ) => {
       const internalInputRef = useRef<HTMLTextAreaElement>(null);
+      const internalRichInputRef = useRef<RichTextInputRef>(null);
       const internalScrollRef = useRef<HTMLDivElement>(null);
 
       // Combine internal refs with external callback refs
@@ -98,6 +107,16 @@ export const AgentPanel = memo(
           inputRefProp?.(node);
         },
         [inputRefProp]
+      );
+
+      const setRichInputRef = useCallback(
+        (node: RichTextInputRef | null) => {
+          (
+            internalRichInputRef as React.MutableRefObject<RichTextInputRef | null>
+          ).current = node;
+          richTextInputRefProp?.(node);
+        },
+        [richTextInputRefProp]
       );
 
       const setScrollRef = useCallback(
@@ -115,11 +134,15 @@ export const AgentPanel = memo(
         ref,
         () => ({
           focusInput: () => {
-            internalInputRef.current?.focus();
+            if (enableRichTextInput) {
+              internalRichInputRef.current?.focus();
+            } else {
+              internalInputRef.current?.focus();
+            }
           },
           getScrollContainer: () => internalScrollRef.current,
         }),
-        []
+        [enableRichTextInput]
       );
 
       // Derived state (memoized)
@@ -164,9 +187,16 @@ export const AgentPanel = memo(
 
       // Handle form submission (memoized)
       const handleSubmit = useCallback(
-        (value: string) => {
-          if (value.trim() && !isSubmitting) {
-            onSend(value.trim());
+        (value: string, submittedChips?: SlashCommandChip[]) => {
+          const hasContent =
+            value.trim() || (submittedChips && submittedChips.length > 0);
+          if (hasContent && !isSubmitting) {
+            // Expand chips into the message if present
+            const finalMessage = expandChipsInMessage(
+              value,
+              submittedChips ?? []
+            );
+            onSend(finalMessage);
           }
         },
         [isSubmitting, onSend]
@@ -206,12 +236,31 @@ export const AgentPanel = memo(
               onRecentChatClick={onRecentChatClick}
               onRecentChatDelete={onRecentChatDelete}
               inputElement={
-                <ChatInput isSubmitting={isSubmitting} onSubmit={handleSubmit}>
-                  <ChatInput.Textarea
-                    ref={setInputRef}
-                    placeholder={inputPlaceholder}
-                    autoFocus
-                  />
+                <ChatInput
+                  isSubmitting={isSubmitting}
+                  onSubmit={handleSubmit}
+                  value={enableRichTextInput ? value : undefined}
+                  onValueChange={
+                    enableRichTextInput ? onValueChange : undefined
+                  }
+                  chips={enableRichTextInput ? chips : undefined}
+                  onChipsChange={
+                    enableRichTextInput ? onChipsChange : undefined
+                  }
+                >
+                  {enableRichTextInput ? (
+                    <ChatInput.RichTextarea
+                      ref={setRichInputRef}
+                      placeholder={inputPlaceholder}
+                      autoFocus
+                    />
+                  ) : (
+                    <ChatInput.Textarea
+                      ref={setInputRef}
+                      placeholder={inputPlaceholder}
+                      autoFocus
+                    />
+                  )}
                   <ChatInput.Actions>
                     <InputActions
                       enableAttachments={enableAttachments}
@@ -300,15 +349,30 @@ export const AgentPanel = memo(
               <ChatInput
                 isSubmitting={isSubmitting || inputDisabled}
                 onSubmit={handleSubmit}
+                value={enableRichTextInput ? value : undefined}
+                onValueChange={enableRichTextInput ? onValueChange : undefined}
+                chips={enableRichTextInput ? chips : undefined}
+                onChipsChange={enableRichTextInput ? onChipsChange : undefined}
               >
-                <ChatInput.Textarea
-                  ref={setInputRef}
-                  placeholder={
-                    inputDisabled ? 'Read-only view' : inputPlaceholder
-                  }
-                  autoFocus={!inputDisabled}
-                  disabled={inputDisabled}
-                />
+                {enableRichTextInput ? (
+                  <ChatInput.RichTextarea
+                    ref={setRichInputRef}
+                    placeholder={
+                      inputDisabled ? 'Read-only view' : inputPlaceholder
+                    }
+                    autoFocus={!inputDisabled}
+                    disabled={inputDisabled}
+                  />
+                ) : (
+                  <ChatInput.Textarea
+                    ref={setInputRef}
+                    placeholder={
+                      inputDisabled ? 'Read-only view' : inputPlaceholder
+                    }
+                    autoFocus={!inputDisabled}
+                    disabled={inputDisabled}
+                  />
+                )}
                 <ChatInput.Actions>
                   {inputDisabled ? (
                     // Show agent info, inspect, running time, and context in read-only mode

@@ -11,6 +11,8 @@ import type {
   ToolResultPart,
 } from '../../../types/chat';
 import type { SessionResourcesCounts } from '../Controls/SessionResourcesButton';
+import type { SlashCommandChip } from '../Core/ChatInput';
+import type { RichTextInputRef } from '../Core/RichTextInput';
 
 /**
  * Props passed to the renderSubAgentCard render function
@@ -220,6 +222,27 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
 
   /** Callback when input ref changes (for external focus control) */
   inputRef?: (node: HTMLTextAreaElement | null) => void;
+
+  /**
+   * Enable rich text input with inline chip support.
+   * When enabled, uses RichTextarea instead of Textarea.
+   */
+  enableRichTextInput?: boolean;
+
+  /** Callback when rich text input ref changes (for external focus/insertChip control) */
+  richTextInputRef?: (ref: RichTextInputRef | null) => void;
+
+  /** Current slash command chips (for rich text input) */
+  chips?: SlashCommandChip[];
+
+  /** Callback when chips change (for rich text input) */
+  onChipsChange?: (chips: SlashCommandChip[]) => void;
+
+  /** Controlled input value (for rich text input) */
+  value?: string;
+
+  /** Callback when input value changes (for rich text input) */
+  onValueChange?: (value: string) => void;
 
   /** Whether the input is disabled (read-only mode for sub-agent views) */
   inputDisabled?: boolean;

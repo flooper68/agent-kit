@@ -5,6 +5,7 @@ import {
   ApprovalPanel,
   ConnectionSnackbar,
   SubAgentFullViewDialog,
+  CommandAutocomplete,
   getExecuteCommandDisplayInfo,
   getBaseToolName,
   formatToolName,
@@ -26,6 +27,7 @@ import { useSession } from '../contexts/SessionContext';
 import { useSubAgentDialog } from '../hooks/useSubAgentDialog';
 import { useSubAgentStreaming } from '../hooks/useSubAgentStreaming';
 import { useElapsedTime } from '../hooks/useElapsedTime';
+import { useSlashCommands } from '../hooks/useSlashCommands';
 import { SessionDetailModal } from './analytics/SessionDetailModal';
 import { SessionResourcesDialog } from './SessionResourcesDialog';
 import { SubAgentCardConnected } from './SubAgentCardConnected';
@@ -79,7 +81,6 @@ export function AppAgentPanel({
   className,
 }: AppAgentPanelProps) {
   const { sessionId, setSessionId, clearSession } = useSession();
-  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const { user } = useUser();
   const [selectedAgent, setSelectedAgent] = useState<AgentType | null>(null);
 
@@ -93,6 +94,9 @@ export function AppAgentPanel({
 
   // State for session resources dialog
   const [isResourcesDialogOpen, setIsResourcesDialogOpen] = useState(false);
+
+  // Slash command state and handlers (extracted to hook)
+  const slashCommands = useSlashCommands();
 
   // Sub-agent dialog management
   const subAgentDialog = useSubAgentDialog(agents);
@@ -260,15 +264,15 @@ export function AppAgentPanel({
 
   // Focus input when pendingInputFocus is set (e.g., after agent selection from command palette)
   useEffect(() => {
-    if (pendingInputFocus && inputRef.current) {
+    if (pendingInputFocus && slashCommands.richTextInputRef.current) {
       // Small delay to ensure panel is rendered/expanded
       const timeoutId = setTimeout(() => {
-        inputRef.current?.focus();
+        slashCommands.richTextInputRef.current?.focus();
         onInputFocused?.();
       }, 100);
       return () => clearTimeout(timeoutId);
     }
-  }, [pendingInputFocus, onInputFocused]);
+  }, [pendingInputFocus, onInputFocused, slashCommands.richTextInputRef]);
 
   // Create avatars config from logged-in user
   const avatars = useMemo(
@@ -324,6 +328,12 @@ export function AppAgentPanel({
 
   const handleSend = useCallback(
     async (message: string) => {
+      // Message already has chips expanded by AgentPanel
+      const finalMessage = message;
+
+      // Clear input value and chips state
+      slashCommands.clearInput();
+
       let currentSessionId = sessionId;
 
       // If no session yet, create one with the selected agent (or first agent as fallback)
@@ -361,7 +371,7 @@ export function AppAgentPanel({
 
       if (currentSessionId) {
         // Pass sessionId explicitly in case state hasn't updated yet
-        await sendMessage(message, currentSessionId);
+        await sendMessage(finalMessage, currentSessionId);
       }
     },
     [
@@ -371,6 +381,7 @@ export function AppAgentPanel({
       createSessionMutation,
       sendMessage,
       setSessionId,
+      slashCommands,
     ]
   );
 
@@ -450,18 +461,16 @@ export function AppAgentPanel({
       description: 'Move cursor to the chat input field',
       icon: <MessageSquareText className="h-4 w-4" />,
       keywords: ['focus', 'input', 'chat', 'type', 'message'],
-      onSelect: () => {},
-      getFocusTarget: () => inputRef.current,
+      onSelect: () => {
+        slashCommands.richTextInputRef.current?.focus();
+      },
+      getFocusTarget: () =>
+        slashCommands.richTextInputRef.current?.getElement() ?? null,
     }),
-    []
+    [slashCommands.richTextInputRef]
   );
 
   useRegisterCommand(focusInputCommand);
-
-  // Callback ref for input
-  const handleInputRef = useCallback((node: HTMLTextAreaElement | null) => {
-    inputRef.current = node;
-  }, []);
 
   // Get display name for approval banner, parsing executeCommand to show inner action
   const getApprovalDisplayName = useCallback(
@@ -517,7 +526,12 @@ export function AppAgentPanel({
       <AgentPanel
         className={className}
         scrollContainerRef={setMessageListRef}
-        inputRef={handleInputRef}
+        enableRichTextInput
+        richTextInputRef={slashCommands.handleRichTextInputRef}
+        value={slashCommands.inputValue}
+        onValueChange={slashCommands.handleInputValueChange}
+        chips={slashCommands.chips}
+        onChipsChange={slashCommands.handleChipsChange}
         messages={messages}
         status={status}
         avatars={avatars}
@@ -582,6 +596,16 @@ export function AppAgentPanel({
         onOpenSubAgentDialog={subAgentDialog.navigateTo}
         renderSubAgentCard={renderSubAgentCard}
         avatars={subAgentAvatars}
+      />
+      {/* Slash command autocomplete - anchored to the rich text input element */}
+      <CommandAutocomplete
+        value={slashCommands.inputValue}
+        anchorRef={slashCommands.autocompleteAnchorRef}
+        commands={slashCommands.slashCommands}
+        isLoading={slashCommands.isLoadingCommands}
+        open={slashCommands.shouldShowAutocomplete}
+        onSelect={slashCommands.handleSlashCommandSelect}
+        onClose={slashCommands.handleAutocompleteClose}
       />
     </div>
   );
