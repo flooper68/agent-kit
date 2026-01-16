@@ -1,5 +1,10 @@
 import { Suspense, lazy } from 'react';
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
+
+// Re-export route validation utilities
+export { VALID_ROUTES } from './routes';
+export { isValidRoute, validateRoute } from './validation';
+export { useValidatedNavigate } from './hooks/useValidatedNavigate';
 import { ClerkProvider } from '../providers/ClerkProvider';
 import { TRPCProvider } from '../providers/TRPCProvider';
 import { SessionProvider } from '../contexts/SessionContext';
