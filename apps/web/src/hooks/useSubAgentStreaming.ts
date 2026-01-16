@@ -1,6 +1,5 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { trpc } from '../lib/trpc';
-import { calculateCompletedDuration } from '../lib/time-utils';
 import type {
   TaskMessage,
   TextPart,
@@ -107,6 +106,10 @@ export function useSubAgentStreaming(
   const [streamingStartTime, setStreamingStartTime] = useState<number | null>(
     null
   );
+  const [actualDuration, setActualDuration] = useState<number | null>(null);
+
+  // Track start timestamp for duration calculation
+  const messageStartTimestampRef = useRef<string | null>(null);
 
   // Track accumulated text for streaming
   const accumulatedTextRef = useRef<Record<string, string>>({});
@@ -127,6 +130,8 @@ export function useSubAgentStreaming(
     setLatestAction(undefined);
     setTodos([]);
     setStreamingStartTime(null);
+    setActualDuration(null);
+    messageStartTimestampRef.current = null;
     accumulatedTextRef.current = {};
     accumulatedReasoningRef.current = {};
     needsNewTextPartRef.current = {};
@@ -136,6 +141,7 @@ export function useSubAgentStreaming(
 
     // Cleanup on unmount to prevent memory leaks
     return () => {
+      messageStartTimestampRef.current = null;
       accumulatedTextRef.current = {};
       accumulatedReasoningRef.current = {};
       needsNewTextPartRef.current = {};
@@ -170,6 +176,8 @@ export function useSubAgentStreaming(
       case 'message_start':
         setIsStreaming(true);
         setStatus('active');
+        // Track event timestamp for duration calculation
+        messageStartTimestampRef.current = event.timestamp ?? null;
         // Use event timestamp for accurate timing (especially during replay)
         if (event.timestamp) {
           setStreamingStartTime(new Date(event.timestamp).getTime());
@@ -427,6 +435,14 @@ export function useSubAgentStreaming(
         break;
 
       case 'message_complete':
+        // Calculate actual duration from event timestamps
+        if (messageStartTimestampRef.current && event.timestamp) {
+          const startMs = new Date(messageStartTimestampRef.current).getTime();
+          const endMs = new Date(event.timestamp).getTime();
+          const duration = Math.max(1, Math.floor((endMs - startMs) / 1000));
+          setActualDuration(duration);
+        }
+        messageStartTimestampRef.current = null;
         setIsStreaming(false);
         setStatus('complete');
         setLatestAction(undefined);
@@ -439,6 +455,14 @@ export function useSubAgentStreaming(
         break;
 
       case 'error':
+        // Calculate duration on error too
+        if (messageStartTimestampRef.current && event.timestamp) {
+          const startMs = new Date(messageStartTimestampRef.current).getTime();
+          const endMs = new Date(event.timestamp).getTime();
+          const duration = Math.max(1, Math.floor((endMs - startMs) / 1000));
+          setActualDuration(duration);
+        }
+        messageStartTimestampRef.current = null;
         setIsStreaming(false);
         setStatus('error');
         setLatestAction(undefined);
@@ -446,6 +470,14 @@ export function useSubAgentStreaming(
         break;
 
       case 'interrupted':
+        // Calculate duration on interrupt too
+        if (messageStartTimestampRef.current && event.timestamp) {
+          const startMs = new Date(messageStartTimestampRef.current).getTime();
+          const endMs = new Date(event.timestamp).getTime();
+          const duration = Math.max(1, Math.floor((endMs - startMs) / 1000));
+          setActualDuration(duration);
+        }
+        messageStartTimestampRef.current = null;
         setIsStreaming(false);
         setStatus('complete');
         setLatestAction(undefined);
@@ -531,12 +563,6 @@ export function useSubAgentStreaming(
     }
   );
 
-  // Calculate completed duration from messages (stable across page refreshes)
-  const completedDuration = useMemo(
-    () => calculateCompletedDuration(messages, status === 'complete'),
-    [status, messages]
-  );
-
   return {
     messages,
     isStreaming,
@@ -544,6 +570,6 @@ export function useSubAgentStreaming(
     latestAction,
     todos,
     streamingStartTime,
-    completedDuration,
+    completedDuration: actualDuration,
   };
 }
