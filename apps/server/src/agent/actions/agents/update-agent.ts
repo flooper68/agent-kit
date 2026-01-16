@@ -33,7 +33,13 @@ export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
     description:
       "Update an agent's configuration. For server agents, you can update name, description, model settings, tools, and system prompt. For external agents, you can update name, description, and isFavorite.",
     inputSchema: z.object({
-      agentId: z.string().uuid().describe('The unique ID of the agent'),
+      agentKey: z
+        .string()
+        .min(1)
+        .max(64)
+        .describe(
+          'The unique key/slug of the agent (e.g., "main-assistant")'
+        ),
       agentType: z
         .enum(['server', 'external'])
         .describe('The type of agent being updated'),
@@ -84,11 +90,11 @@ export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
       }),
     }),
     execute: async ({
-      agentId,
+      agentKey,
       agentType,
       updates,
     }: {
-      agentId: string;
+      agentKey: string;
       agentType: 'server' | 'external';
       updates: {
         key?: string;
@@ -104,6 +110,20 @@ export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
         isFavorite?: boolean;
       };
     }) => {
+      // Look up agent by key to get the full agent object
+      const agentResult = await context.agentsFeature.customAgents.getByKey(
+        agentKey,
+        context.userId
+      );
+
+      if (!agentResult || agentResult.type !== agentType) {
+        return {
+          success: false,
+          error: `${agentType} agent not found: ${agentKey}`,
+        };
+      }
+
+      const agentId = agentResult.agent.id;
       // Filter out undefined values
       const cleanedUpdates: typeof updates = {};
       for (const [key, value] of Object.entries(updates)) {
@@ -160,7 +180,7 @@ export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
           if (!agent) {
             return {
               success: false,
-              error: `External agent with ID ${agentId} not found`,
+              error: `External agent not found: ${agentKey}`,
             };
           }
 
@@ -197,7 +217,7 @@ export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
         if (!agent) {
           return {
             success: false,
-            error: `Server agent with ID ${agentId} not found`,
+            error: `Server agent not found: ${agentKey}`,
           };
         }
 

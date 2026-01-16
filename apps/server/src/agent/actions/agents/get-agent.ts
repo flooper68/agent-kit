@@ -20,7 +20,13 @@ export function createGetAgentTool(context: GetAgentContext): Tool {
     description:
       'Get detailed information about a specific agent by ID. Returns full agent configuration including tools and settings.',
     inputSchema: z.object({
-      agentId: z.string().uuid().describe('The unique ID of the agent'),
+      agentKey: z
+        .string()
+        .min(1)
+        .max(64)
+        .describe(
+          'The unique key/slug of the agent (e.g., "main-assistant")'
+        ),
       agentType: z
         .enum(['external', 'server'])
         .describe(
@@ -28,24 +34,27 @@ export function createGetAgentTool(context: GetAgentContext): Tool {
         ),
     }),
     execute: async ({
-      agentId,
+      agentKey,
       agentType,
     }: {
-      agentId: string;
+      agentKey: string;
       agentType: 'external' | 'server';
     }) => {
-      const result = await context.agentsFeature.customAgents.list(
+      // Look up agent by key
+      const agentResult = await context.agentsFeature.customAgents.getByKey(
+        agentKey,
         context.userId
       );
 
-      if (agentType === 'external') {
-        const agent = result.external.find((a) => a.id === agentId);
-        if (!agent) {
-          return {
-            success: false,
-            error: `External agent with ID ${agentId} not found`,
-          };
-        }
+      if (!agentResult || agentResult.type !== agentType) {
+        return {
+          success: false,
+          error: `${agentType} agent not found: ${agentKey}`,
+        };
+      }
+
+      if (agentResult.type === 'external') {
+        const agent = agentResult.agent;
         return {
           success: true,
           agent: {
@@ -63,14 +72,8 @@ export function createGetAgentTool(context: GetAgentContext): Tool {
         };
       }
 
-      // Server agent
-      const agent = result.server.find((a) => a.id === agentId);
-      if (!agent) {
-        return {
-          success: false,
-          error: `Server agent with ID ${agentId} not found`,
-        };
-      }
+      // Server agent (agentResult.type === 'server')
+      const agent = agentResult.agent;
       return {
         success: true,
         agent: {
