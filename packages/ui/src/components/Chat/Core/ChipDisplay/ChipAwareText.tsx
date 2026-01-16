@@ -1,5 +1,8 @@
 import { memo, useMemo } from 'react';
-import { parseMessageWithChips, hasChipMarkers } from '../../utils/slash-commands';
+import {
+  parseMessageWithChips,
+  hasChipMarkers,
+} from '../../utils/slash-commands';
 import { ChipInlineDisplay } from './ChipInlineDisplay';
 import { MarkdownRenderer } from '../../CodeDisplay/MarkdownRenderer';
 
@@ -69,10 +72,7 @@ export const ChipAwareText = memo(function ChipAwareText({
 
         if (renderMarkdown) {
           return (
-            <MarkdownRenderer
-              key={`text-${index}`}
-              content={textContent}
-            />
+            <MarkdownRenderer key={`text-${index}`} content={textContent} />
           );
         }
 

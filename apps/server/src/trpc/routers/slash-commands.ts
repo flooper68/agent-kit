@@ -113,22 +113,32 @@ export const slashCommandsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const updated = await ctx.slashCommandsFeature.update({
-        id: input.id,
-        userId: ctx.auth.userId,
-        orgId: ctx.auth.orgId,
-        key: input.key,
-        name: input.name,
-        description: input.description,
-        prompt: input.prompt,
-      });
-      if (!updated) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Slash command not found',
+      try {
+        const updated = await ctx.slashCommandsFeature.update({
+          id: input.id,
+          userId: ctx.auth.userId,
+          orgId: ctx.auth.orgId,
+          key: input.key,
+          name: input.name,
+          description: input.description,
+          prompt: input.prompt,
         });
+        if (!updated) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Slash command not found',
+          });
+        }
+        return updated;
+      } catch (error) {
+        if (error instanceof DuplicateKeyError) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: error.message,
+          });
+        }
+        throw error;
       }
-      return updated;
     }),
 
   // Delete slash command

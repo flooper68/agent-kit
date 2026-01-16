@@ -65,6 +65,8 @@ export function useSlashCommands(
 
   // Rich text input ref
   const richTextInputRef = useRef<RichTextInputRef | null>(null);
+  // Track previous input value to detect changes
+  const prevInputRef = useRef(initialValue);
 
   // Input state
   const [inputValue, setInputValue] = useState(initialValue);
@@ -76,15 +78,19 @@ export function useSlashCommands(
 
   // Reset autocomplete hidden state when input changes (user starts typing again)
   useEffect(() => {
-    if (autocompleteHidden) {
+    if (inputValue !== prevInputRef.current) {
       setAutocompleteHidden(false);
+      prevInputRef.current = inputValue;
     }
-  }, [inputValue]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [inputValue]);
 
   // Query for slash commands (for autocomplete)
   const slashCommandsQuery = trpc.slashCommands.search.useQuery(
     { query: slashCommandContext.searchQuery, limit: 10 },
-    { enabled: slashCommandContext.shouldShowAutocomplete && !autocompleteHidden }
+    {
+      enabled:
+        slashCommandContext.shouldShowAutocomplete && !autocompleteHidden,
+    }
   );
 
   // Map server slash commands to UI format

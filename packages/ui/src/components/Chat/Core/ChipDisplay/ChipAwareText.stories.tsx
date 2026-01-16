@@ -57,17 +57,9 @@ Here is the second paragraph with more details.`,
 
 export const MultipleChips: Story = {
   args: {
-    content: `${createChip(
-      'summarize',
-      'Summarize',
-      'Please summarize:'
-    )}
+    content: `${createChip('summarize', 'Summarize', 'Please summarize:')}
 
-${createChip(
-      'translate',
-      'Translate',
-      'Then translate to Spanish:'
-    )}
+${createChip('translate', 'Translate', 'Then translate to Spanish:')}
 
 Please process this document accordingly.`,
   },
@@ -77,11 +69,7 @@ export const ChipInMiddleOfText: Story = {
   args: {
     content: `Can you help me with this task?
 
-${createChip(
-      'code-review',
-      'Code Review',
-      'Please review this code:'
-    )}
+${createChip('code-review', 'Code Review', 'Please review this code:')}
 
 \`\`\`typescript
 function hello() {
@@ -95,11 +83,7 @@ Let me know if there are any issues.`,
 
 export const WithMarkdown: Story = {
   args: {
-    content: `${createChip(
-      'explain',
-      'Explain',
-      'Please explain in detail:'
-    )}
+    content: `${createChip('explain', 'Explain', 'Please explain in detail:')}
 
 ## The Topic
 
@@ -117,11 +101,7 @@ Please make sure to cover **all** the points.`,
 
 export const NoMarkdown: Story = {
   args: {
-    content: `${createChip(
-      'summarize',
-      'Summarize',
-      'Please summarize:'
-    )}
+    content: `${createChip('summarize', 'Summarize', 'Please summarize:')}
 
 This is plain text without markdown rendering.`,
     renderMarkdown: false,
@@ -132,27 +112,15 @@ export const ComplexMessage: Story = {
   args: {
     content: `Hello! I need your help with a few things today.
 
-${createChip(
-      'summarize',
-      'Summarize',
-      'First, summarize this article:'
-    )}
+${createChip('summarize', 'Summarize', 'First, summarize this article:')}
 
 The article discusses the latest advances in machine learning and their applications in healthcare. It covers topics like diagnosis assistance, drug discovery, and patient monitoring.
 
-${createChip(
-      'translate',
-      'Translate',
-      'Then translate the summary to French:'
-    )}
+${createChip('translate', 'Translate', 'Then translate the summary to French:')}
 
 After that, I'd like you to also:
 
-${createChip(
-      'proofread',
-      'Proofread',
-      'Finally, proofread my response:'
-    )}
+${createChip('proofread', 'Proofread', 'Finally, proofread my response:')}
 
 Thanks for your help!`,
   },

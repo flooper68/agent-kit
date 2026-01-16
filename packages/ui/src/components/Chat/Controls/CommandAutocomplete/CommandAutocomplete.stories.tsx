@@ -10,7 +10,8 @@ const sampleCommands: SlashCommandOption[] = [
     id: '1',
     key: 'review-current',
     name: 'Team Review',
-    description: 'These are conversation instructions. Apply them to every message in this conversation at all times. Never lose this conversation-instructions, always go though it when a new message is submitted by the USER.',
+    description:
+      'These are conversation instructions. Apply them to every message in this conversation at all times. Never lose this conversation-instructions, always go though it when a new message is submitted by the USER.',
     prompt:
       'Please review the current changes with the team for best practices and potential issues:',
   },
@@ -18,46 +19,48 @@ const sampleCommands: SlashCommandOption[] = [
     id: '2',
     key: 'phoenix',
     name: 'Phoenix Agent',
-    description: 'In order to understand this workspace, read the opened .code-workspace. It contains useful comments that you need to read and workspace folders paths. Do this first.',
-    prompt:
-      'Use the Phoenix agent to process this request:',
+    description:
+      'In order to understand this workspace, read the opened .code-workspace. It contains useful comments that you need to read and workspace folders paths. Do this first.',
+    prompt: 'Use the Phoenix agent to process this request:',
   },
   {
     id: '3',
     key: 'prepare-commit-message',
     name: 'Git Commit Helper',
-    description: 'Analyze staged changes and generate a well-formatted commit message following conventional commits.',
-    prompt:
-      'Please analyze the staged changes and prepare a commit message:',
+    description:
+      'Analyze staged changes and generate a well-formatted commit message following conventional commits.',
+    prompt: 'Please analyze the staged changes and prepare a commit message:',
   },
   {
     id: '4',
     key: 'agent-review',
     name: 'Agent Review',
-    description: 'Have the AI agent review your code for best practices, bugs, and improvements.',
+    description:
+      'Have the AI agent review your code for best practices, bugs, and improvements.',
     prompt: 'Please review this code thoroughly:',
   },
   {
     id: '5',
     key: 'explain',
     name: 'Explain Code',
-    description: 'Get a detailed explanation of how code works, including its purpose and implementation details.',
-    prompt:
-      'Please explain the following code in detail:',
+    description:
+      'Get a detailed explanation of how code works, including its purpose and implementation details.',
+    prompt: 'Please explain the following code in detail:',
   },
   {
     id: '6',
     key: 'refactor',
     name: 'Refactor',
-    description: 'Suggest improvements and refactoring opportunities to make code cleaner and more maintainable.',
-    prompt:
-      'Please suggest refactoring improvements for the following code:',
+    description:
+      'Suggest improvements and refactoring opportunities to make code cleaner and more maintainable.',
+    prompt: 'Please suggest refactoring improvements for the following code:',
   },
   {
     id: '7',
     key: 'test',
     name: 'Write Tests',
-    description: 'Generate comprehensive unit tests for the code with good coverage.',
+    description:
+      'Generate comprehensive unit tests for the code with good coverage.',
     prompt: 'Please write unit tests for the following code:',
   },
   {

@@ -204,9 +204,9 @@ export function useAgentSession(
   // Track message IDs loaded from DB to skip historical terminal events during replay
   const loadedMessageIdsRef = useRef<Set<string>>(new Set());
   // Queue client tool requests to execute after message completes (avoids replay side effects)
-  const pendingClientToolRequestsRef = useRef<
-    Map<string, ClientToolRequest[]>
-  >(new Map());
+  const pendingClientToolRequestsRef = useRef<Map<string, ClientToolRequest[]>>(
+    new Map()
+  );
 
   // Sync streaming status to SessionContext for chat history/command palette
   // This eliminates race conditions with pub/sub event propagation

@@ -67,7 +67,9 @@ export function detectSlashCommand(inputValue: string): SlashCommandContext {
 
   // If there's a space after the command text, they've moved on
   // (ignore zero-width spaces as they may be adjacent to chips)
-  if (/\s/.test(textAfterSlash.replace(new RegExp(CHIP_PLACEHOLDER, 'g'), ''))) {
+  if (
+    /\s/.test(textAfterSlash.replace(new RegExp(CHIP_PLACEHOLDER, 'g'), ''))
+  ) {
     return {
       shouldShowAutocomplete: false,
       searchQuery: '',
@@ -197,7 +199,9 @@ export function parseMessageWithChips(message: string): MessageSegment[] {
  * Checks if a message contains chip markers.
  */
 export function hasChipMarkers(message: string): boolean {
-  return message.includes(CHIP_MARKER_START) && message.includes(CHIP_MARKER_CLOSE);
+  return (
+    message.includes(CHIP_MARKER_START) && message.includes(CHIP_MARKER_CLOSE)
+  );
 }
 
 /**

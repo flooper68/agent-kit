@@ -56,7 +56,8 @@ export const CodeReviewCommand: Story = {
   args: {
     commandKey: 'code-review',
     name: 'Code Review',
-    prompt: 'Please review this code for best practices, bugs, and improvements:',
+    prompt:
+      'Please review this code for best practices, bugs, and improvements:',
   },
 };
 

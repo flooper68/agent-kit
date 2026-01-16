@@ -171,7 +171,12 @@ export const CommandAutocomplete = memo(
                 maxWidth: 280,
               }}
             >
-              <div ref={listRef} className="max-h-64 overflow-y-auto py-1">
+              <div
+                ref={listRef}
+                className="max-h-64 overflow-y-auto py-1"
+                role="listbox"
+                aria-label="Slash commands"
+              >
                 {isLoading ? (
                   <div className="px-3 py-2 text-sm text-muted-foreground">
                     Loading commands...
@@ -187,6 +192,8 @@ export const CommandAutocomplete = memo(
                     <button
                       key={command.id}
                       type="button"
+                      role="option"
+                      aria-selected={index === selectedIndex}
                       className={cn(
                         'w-full px-3 py-1.5 text-left text-sm transition-colors flex items-center gap-2',
                         index === selectedIndex
@@ -206,30 +213,31 @@ export const CommandAutocomplete = memo(
             </div>
 
             {/* Detail panel (right) - shows title, description, and prompt */}
-            {selectedCommand && (selectedCommand.name || selectedCommand.description || selectedCommand.prompt) && (
-              <div
-                className="rounded-md border bg-popover shadow-md p-3 w-72 max-h-80 overflow-y-auto self-end"
-              >
-                <div className="text-sm font-medium text-foreground mb-1">
-                  {selectedCommand.name}
+            {selectedCommand &&
+              (selectedCommand.name ||
+                selectedCommand.description ||
+                selectedCommand.prompt) && (
+                <div className="rounded-md border bg-popover shadow-md p-3 w-72 max-h-80 overflow-y-auto self-end">
+                  <div className="text-sm font-medium text-foreground mb-1">
+                    {selectedCommand.name}
+                  </div>
+                  {selectedCommand.description && (
+                    <div className="text-xs text-muted-foreground leading-relaxed">
+                      {selectedCommand.description}
+                    </div>
+                  )}
+                  {selectedCommand.prompt && (
+                    <div className="mt-3 pt-3 border-t">
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground/70 mb-1">
+                        Prompt
+                      </div>
+                      <div className="text-[11px] text-muted-foreground/90 leading-relaxed font-mono">
+                        {selectedCommand.prompt}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {selectedCommand.description && (
-                  <div className="text-xs text-muted-foreground leading-relaxed">
-                    {selectedCommand.description}
-                  </div>
-                )}
-                {selectedCommand.prompt && (
-                  <div className="mt-3 pt-3 border-t">
-                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground/70 mb-1">
-                      Prompt
-                    </div>
-                    <div className="text-[11px] text-muted-foreground/90 leading-relaxed font-mono">
-                      {selectedCommand.prompt}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+              )}
           </div>
         </>,
         document.body

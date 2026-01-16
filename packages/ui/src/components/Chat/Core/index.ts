@@ -28,7 +28,4 @@ export type {
 } from './RichTextInput';
 
 export { ChipInlineDisplay, ChipAwareText } from './ChipDisplay';
-export type {
-  ChipInlineDisplayProps,
-  ChipAwareTextProps,
-} from './ChipDisplay';
+export type { ChipInlineDisplayProps, ChipAwareTextProps } from './ChipDisplay';

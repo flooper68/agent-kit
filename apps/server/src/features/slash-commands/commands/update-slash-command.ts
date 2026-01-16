@@ -1,6 +1,7 @@
 import { eq, and } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { slashCommands, type SlashCommand } from '../../../db/schema';
+import { DuplicateKeyError } from './create-slash-command';
 
 export interface UpdateSlashCommandInput {
   id: string;
@@ -51,18 +52,29 @@ export class UpdateSlashCommandCommand {
       updates.prompt = input.prompt;
     }
 
-    const [command] = await this.db
-      .update(slashCommands)
-      .set(updates)
-      .where(
-        and(
-          eq(slashCommands.id, input.id),
-          eq(slashCommands.userId, input.userId),
-          eq(slashCommands.orgId, input.orgId)
+    try {
+      const [command] = await this.db
+        .update(slashCommands)
+        .set(updates)
+        .where(
+          and(
+            eq(slashCommands.id, input.id),
+            eq(slashCommands.userId, input.userId),
+            eq(slashCommands.orgId, input.orgId)
+          )
         )
-      )
-      .returning();
+        .returning();
 
-    return command;
+      return command;
+    } catch (error) {
+      // Handle unique constraint violation (duplicate key)
+      if (
+        error instanceof Error &&
+        error.message.includes('slash_commands_org_user_key_idx')
+      ) {
+        throw new DuplicateKeyError(updates.key ?? input.key ?? '');
+      }
+      throw error;
+    }
   }
 }

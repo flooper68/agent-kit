@@ -1,8 +1,5 @@
 import { useMemo } from 'react';
-import {
-  detectSlashCommand,
-  type SlashCommandContext,
-} from '@agent-kit/ui';
+import { detectSlashCommand, type SlashCommandContext } from '@agent-kit/ui';
 
 // Re-export the type for consumers
 export type { SlashCommandContext };

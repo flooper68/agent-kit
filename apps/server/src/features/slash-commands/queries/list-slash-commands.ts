@@ -1,4 +1,4 @@
-import { eq, desc, lt, and, or, ilike, type SQL } from 'drizzle-orm';
+import { eq, desc, lt, and, or, ilike, type SQL, sql } from 'drizzle-orm';
 import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
 import { slashCommands } from '../../../db/schema';
@@ -40,9 +40,10 @@ export class ListSlashCommandsQuery {
 
     // If cursor is provided, get the cursor command's createdAt for filtering
     let cursorDate: Date | undefined;
+    let cursorId: string | undefined;
     if (cursor) {
       const cursorCommand = await this.db
-        .select({ createdAt: slashCommands.createdAt })
+        .select({ createdAt: slashCommands.createdAt, id: slashCommands.id })
         .from(slashCommands)
         .where(eq(slashCommands.id, cursor))
         .limit(1);
@@ -52,6 +53,7 @@ export class ListSlashCommandsQuery {
       }
 
       cursorDate = cursorCommand[0]?.createdAt;
+      cursorId = cursorCommand[0]?.id;
     }
 
     // Build the where conditions
@@ -60,8 +62,17 @@ export class ListSlashCommandsQuery {
       eq(slashCommands.userId, userId),
     ];
 
-    if (cursorDate) {
-      conditions.push(lt(slashCommands.createdAt, cursorDate));
+    // Use compound cursor for stable pagination (handles same-timestamp edge case)
+    if (cursorDate && cursorId) {
+      conditions.push(
+        or(
+          lt(slashCommands.createdAt, cursorDate),
+          and(
+            eq(slashCommands.createdAt, cursorDate),
+            sql`${slashCommands.id} < ${cursorId}`
+          )!
+        )!
+      );
     }
 
     // Add search filter if provided
@@ -76,7 +87,7 @@ export class ListSlashCommandsQuery {
       );
     }
 
-    // Get commands
+    // Get commands with stable ordering (createdAt desc, id desc)
     const results = await this.db
       .select({
         id: slashCommands.id,
@@ -89,7 +100,7 @@ export class ListSlashCommandsQuery {
       })
       .from(slashCommands)
       .where(and(...conditions))
-      .orderBy(desc(slashCommands.createdAt))
+      .orderBy(desc(slashCommands.createdAt), desc(slashCommands.id))
       .limit(limit + 1);
 
     // Determine if there are more results

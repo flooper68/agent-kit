@@ -147,10 +147,10 @@ What is quantum computing and how does it differ from classical computing?`}
       <Message role="assistant">
         <Message.Avatar fallback="AI" />
         <Message.Bubble>
-          Quantum computing uses quantum bits (qubits) that can exist in multiple
-          states simultaneously, unlike classical bits that are either 0 or 1.
-          This allows quantum computers to process many possibilities at once,
-          making them powerful for specific problems like cryptography and
+          Quantum computing uses quantum bits (qubits) that can exist in
+          multiple states simultaneously, unlike classical bits that are either
+          0 or 1. This allows quantum computers to process many possibilities at
+          once, making them powerful for specific problems like cryptography and
           optimization.
         </Message.Bubble>
       </Message>

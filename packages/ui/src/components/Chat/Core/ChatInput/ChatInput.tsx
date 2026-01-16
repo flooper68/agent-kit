@@ -126,7 +126,15 @@ const ChatInputRoot = memo(
           canSubmit,
           submitWithValues,
         }),
-        [value, setValue, chips, setChips, isSubmitting, canSubmit, submitWithValues]
+        [
+          value,
+          setValue,
+          chips,
+          setChips,
+          isSubmitting,
+          canSubmit,
+          submitWithValues,
+        ]
       );
 
       return (
@@ -233,8 +241,14 @@ export interface ChatInputRichTextareaProps {
 const ChatInputRichTextarea = memo(
   forwardRef<RichTextInputRef, ChatInputRichTextareaProps>(
     ({ placeholder, autoFocus, disabled, className }, ref) => {
-      const { value, setValue, chips, setChips, isSubmitting, submitWithValues } =
-        useChatInput();
+      const {
+        value,
+        setValue,
+        chips,
+        setChips,
+        isSubmitting,
+        submitWithValues,
+      } = useChatInput();
 
       const handleChange = useCallback(
         (newValue: string, newChips: SlashCommandChip[]) => {

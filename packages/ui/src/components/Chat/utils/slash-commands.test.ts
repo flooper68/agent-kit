@@ -129,10 +129,7 @@ describe('expandChipsInMessage', () => {
     });
 
     it('removes chip placeholders', () => {
-      const result = expandChipsInMessage(
-        `hello${CHIP_PLACEHOLDER}world`,
-        []
-      );
+      const result = expandChipsInMessage(`hello${CHIP_PLACEHOLDER}world`, []);
       expect(result).toBe('helloworld');
     });
 
@@ -302,7 +299,9 @@ describe('wrapChipPrompt', () => {
   it('wraps chip prompt with markers', () => {
     const chip = createChip('summarize', 'Summarize', 'Please summarize:');
     const result = wrapChipPrompt(chip);
-    expect(result).toBe('««CHIP:summarize:Summarize»»Please summarize:««/CHIP»»');
+    expect(result).toBe(
+      '««CHIP:summarize:Summarize»»Please summarize:««/CHIP»»'
+    );
   });
 
   it('handles empty prompt', () => {
@@ -312,7 +311,11 @@ describe('wrapChipPrompt', () => {
   });
 
   it('handles multi-line prompt', () => {
-    const chip = createChip('explain', 'Explain', 'Please explain:\n- Point 1\n- Point 2');
+    const chip = createChip(
+      'explain',
+      'Explain',
+      'Please explain:\n- Point 1\n- Point 2'
+    );
     const result = wrapChipPrompt(chip);
     expect(result).toContain('Please explain:\n- Point 1\n- Point 2');
     expect(result).toContain(CHIP_MARKER_START);
@@ -339,7 +342,8 @@ describe('hasChipMarkers', () => {
   });
 
   it('returns true for multiple chip markers', () => {
-    const message = '««CHIP:a:A»»prompt1««/CHIP»» text ««CHIP:b:B»»prompt2««/CHIP»»';
+    const message =
+      '««CHIP:a:A»»prompt1««/CHIP»» text ««CHIP:b:B»»prompt2««/CHIP»»';
     expect(hasChipMarkers(message)).toBe(true);
   });
 });
@@ -369,7 +373,8 @@ describe('parseMessageWithChips', () => {
   });
 
   it('parses chip with text after', () => {
-    const message = '««CHIP:summarize:Summarize»»Please summarize:««/CHIP»»\n\nThis is the content.';
+    const message =
+      '««CHIP:summarize:Summarize»»Please summarize:««/CHIP»»\n\nThis is the content.';
     const result = parseMessageWithChips(message);
     expect(result).toHaveLength(2);
     expect(result[0]).toEqual({
@@ -385,7 +390,8 @@ describe('parseMessageWithChips', () => {
   });
 
   it('parses text before chip', () => {
-    const message = 'Hello ««CHIP:summarize:Summarize»»Please summarize:««/CHIP»»';
+    const message =
+      'Hello ««CHIP:summarize:Summarize»»Please summarize:««/CHIP»»';
     const result = parseMessageWithChips(message);
     expect(result).toHaveLength(2);
     expect(result[0]).toEqual({ type: 'text', content: 'Hello ' });
@@ -398,7 +404,8 @@ describe('parseMessageWithChips', () => {
   });
 
   it('parses multiple chips', () => {
-    const message = '««CHIP:summarize:Summarize»»Summarize:««/CHIP»»\n\n««CHIP:translate:Translate»»Translate:««/CHIP»»';
+    const message =
+      '««CHIP:summarize:Summarize»»Summarize:««/CHIP»»\n\n««CHIP:translate:Translate»»Translate:««/CHIP»»';
     const result = parseMessageWithChips(message);
     expect(result).toHaveLength(3);
     expect(result[0]).toEqual({
@@ -417,12 +424,23 @@ describe('parseMessageWithChips', () => {
   });
 
   it('parses chips with text between and after', () => {
-    const message = '««CHIP:a:A»»prompt1««/CHIP»» middle text ««CHIP:b:B»»prompt2««/CHIP»» end text';
+    const message =
+      '««CHIP:a:A»»prompt1««/CHIP»» middle text ««CHIP:b:B»»prompt2««/CHIP»» end text';
     const result = parseMessageWithChips(message);
     expect(result).toHaveLength(4);
-    expect(result[0]).toEqual({ type: 'chip', key: 'a', name: 'A', prompt: 'prompt1' });
+    expect(result[0]).toEqual({
+      type: 'chip',
+      key: 'a',
+      name: 'A',
+      prompt: 'prompt1',
+    });
     expect(result[1]).toEqual({ type: 'text', content: ' middle text ' });
-    expect(result[2]).toEqual({ type: 'chip', key: 'b', name: 'B', prompt: 'prompt2' });
+    expect(result[2]).toEqual({
+      type: 'chip',
+      key: 'b',
+      name: 'B',
+      prompt: 'prompt2',
+    });
     expect(result[3]).toEqual({ type: 'text', content: ' end text' });
   });
 
@@ -439,7 +457,8 @@ describe('parseMessageWithChips', () => {
   });
 
   it('handles chip with multi-line prompt', () => {
-    const message = '««CHIP:explain:Explain»»Please explain:\n- Point 1\n- Point 2««/CHIP»»';
+    const message =
+      '««CHIP:explain:Explain»»Please explain:\n- Point 1\n- Point 2««/CHIP»»';
     const result = parseMessageWithChips(message);
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
@@ -464,8 +483,12 @@ const x = 1;
     expect(result).toHaveLength(2);
     expect(result[0]?.type).toBe('chip');
     expect(result[1]?.type).toBe('text');
-    expect(result[1]?.type === 'text' && result[1].content).toContain('## Content');
-    expect(result[1]?.type === 'text' && result[1].content).toContain('```javascript');
+    expect(result[1]?.type === 'text' && result[1].content).toContain(
+      '## Content'
+    );
+    expect(result[1]?.type === 'text' && result[1].content).toContain(
+      '```javascript'
+    );
   });
 });
 
@@ -482,7 +505,11 @@ describe('roundtrip: wrapChipPrompt and parseMessageWithChips', () => {
   });
 
   it('can roundtrip a single chip', () => {
-    const chip = createChip('summarize', 'Summarize', 'Please summarize the following:');
+    const chip = createChip(
+      'summarize',
+      'Summarize',
+      'Please summarize the following:'
+    );
     const wrapped = wrapChipPrompt(chip);
     const parsed = parseMessageWithChips(wrapped);
 
@@ -502,10 +529,23 @@ describe('roundtrip: wrapChipPrompt and parseMessageWithChips', () => {
     const parsed = parseMessageWithChips(wrapped);
 
     expect(parsed).toHaveLength(4);
-    expect(parsed[0]).toEqual({ type: 'chip', key: 'summarize', name: 'Summarize', prompt: 'Summarize:' });
+    expect(parsed[0]).toEqual({
+      type: 'chip',
+      key: 'summarize',
+      name: 'Summarize',
+      prompt: 'Summarize:',
+    });
     expect(parsed[1]).toEqual({ type: 'text', content: '\n\n' });
-    expect(parsed[2]).toEqual({ type: 'chip', key: 'translate', name: 'Translate', prompt: 'Translate to Spanish:' });
-    expect(parsed[3]).toEqual({ type: 'text', content: '\n\nThe content to process.' });
+    expect(parsed[2]).toEqual({
+      type: 'chip',
+      key: 'translate',
+      name: 'Translate',
+      prompt: 'Translate to Spanish:',
+    });
+    expect(parsed[3]).toEqual({
+      type: 'text',
+      content: '\n\nThe content to process.',
+    });
   });
 });
 
@@ -522,13 +562,15 @@ describe('stripChipMarkers', () => {
   });
 
   it('strips markers from complex message', () => {
-    const message = '««CHIP:summarize:Summarize»»Please summarize:««/CHIP»»\n\nThe content here.';
+    const message =
+      '««CHIP:summarize:Summarize»»Please summarize:««/CHIP»»\n\nThe content here.';
     const result = stripChipMarkers(message);
     expect(result).toBe('Please summarize:\n\nThe content here.');
   });
 
   it('strips multiple markers', () => {
-    const message = '««CHIP:a:A»»prompt1««/CHIP»» text ««CHIP:b:B»»prompt2««/CHIP»»';
+    const message =
+      '««CHIP:a:A»»prompt1««/CHIP»» text ««CHIP:b:B»»prompt2««/CHIP»»';
     const result = stripChipMarkers(message);
     expect(result).toBe('prompt1 text prompt2');
   });

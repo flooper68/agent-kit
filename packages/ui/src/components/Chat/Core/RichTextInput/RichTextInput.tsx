@@ -40,7 +40,10 @@ export interface RichTextInputRef {
   focus: () => void;
   insertChip: (chip: SlashCommandChip) => void;
   /** Insert chip replacing the slash command text (deletes chars before cursor) */
-  insertChipReplacingText: (chip: SlashCommandChip, charsToDelete: number) => void;
+  insertChipReplacingText: (
+    chip: SlashCommandChip,
+    charsToDelete: number
+  ) => void;
   getElement: () => HTMLDivElement | null;
 }
 
@@ -109,7 +112,11 @@ export const RichTextInput = memo(
               text += '\u200B'; // Zero-width space as placeholder
             } else if (element.tagName === 'BR') {
               text += '\n';
-            } else if (element.tagName === 'DIV' && text.length > 0 && !text.endsWith('\n')) {
+            } else if (
+              element.tagName === 'DIV' &&
+              text.length > 0 &&
+              !text.endsWith('\n')
+            ) {
               // Div elements in contenteditable typically represent new lines
               text += '\n';
               element.childNodes.forEach(processNode);
@@ -148,8 +155,35 @@ export const RichTextInput = memo(
           const removeBtn = document.createElement('button');
           removeBtn.type = 'button';
           removeBtn.className = 'hover:bg-primary/20 rounded-full p-0.5 ml-0.5';
-          removeBtn.innerHTML =
-            '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+
+          // Create SVG programmatically to avoid innerHTML XSS risk
+          const svg = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'svg'
+          );
+          svg.setAttribute('width', '12');
+          svg.setAttribute('height', '12');
+          svg.setAttribute('viewBox', '0 0 24 24');
+          svg.setAttribute('fill', 'none');
+          svg.setAttribute('stroke', 'currentColor');
+          svg.setAttribute('stroke-width', '2');
+          svg.setAttribute('stroke-linecap', 'round');
+          svg.setAttribute('stroke-linejoin', 'round');
+
+          const path1 = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'path'
+          );
+          path1.setAttribute('d', 'M18 6 6 18');
+          const path2 = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'path'
+          );
+          path2.setAttribute('d', 'm6 6 12 12');
+
+          svg.appendChild(path1);
+          svg.appendChild(path2);
+          removeBtn.appendChild(svg);
           removeBtn.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -295,7 +329,10 @@ export const RichTextInput = memo(
                 if (container.nodeType === Node.TEXT_NODE && offset === 0) {
                   // At start of text node, check previous sibling
                   const prev = container.previousSibling;
-                  if (prev instanceof HTMLElement && prev.hasAttribute(CHIP_DATA_ATTR)) {
+                  if (
+                    prev instanceof HTMLElement &&
+                    prev.hasAttribute(CHIP_DATA_ATTR)
+                  ) {
                     e.preventDefault();
                     prev.remove();
                     handleInput();
@@ -303,8 +340,13 @@ export const RichTextInput = memo(
                   }
                 } else if (container.nodeType === Node.ELEMENT_NODE) {
                   // In element, check child at offset - 1
-                  const prevChild = (container as Element).childNodes[offset - 1];
-                  if (prevChild instanceof HTMLElement && prevChild.hasAttribute(CHIP_DATA_ATTR)) {
+                  const prevChild = (container as Element).childNodes[
+                    offset - 1
+                  ];
+                  if (
+                    prevChild instanceof HTMLElement &&
+                    prevChild.hasAttribute(CHIP_DATA_ATTR)
+                  ) {
                     e.preventDefault();
                     prevChild.remove();
                     handleInput();
@@ -318,12 +360,27 @@ export const RichTextInput = memo(
         [parseContent, onSubmit, handleInput]
       );
 
-      // Handle paste - strip formatting
-      const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        const text = e.clipboardData.getData('text/plain');
-        document.execCommand('insertText', false, text);
-      }, []);
+      // Handle paste - strip formatting and insert plain text using Selection API
+      const handlePaste = useCallback(
+        (e: React.ClipboardEvent<HTMLDivElement>) => {
+          e.preventDefault();
+          const text = e.clipboardData.getData('text/plain');
+
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            const textNode = document.createTextNode(text);
+            range.insertNode(textNode);
+            range.setStartAfter(textNode);
+            range.setEndAfter(textNode);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            handleInput();
+          }
+        },
+        [handleInput]
+      );
 
       // Handle composition (for IME input)
       const handleCompositionStart = useCallback(() => {
@@ -347,7 +404,11 @@ export const RichTextInput = memo(
 
         adjustHeight();
         const observer = new MutationObserver(adjustHeight);
-        observer.observe(editor, { childList: true, subtree: true, characterData: true });
+        observer.observe(editor, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+        });
 
         return () => observer.disconnect();
       }, [maxHeight]);

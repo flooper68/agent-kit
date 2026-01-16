@@ -240,9 +240,13 @@ export const AgentPanel = memo(
                   isSubmitting={isSubmitting}
                   onSubmit={handleSubmit}
                   value={enableRichTextInput ? value : undefined}
-                  onValueChange={enableRichTextInput ? onValueChange : undefined}
+                  onValueChange={
+                    enableRichTextInput ? onValueChange : undefined
+                  }
                   chips={enableRichTextInput ? chips : undefined}
-                  onChipsChange={enableRichTextInput ? onChipsChange : undefined}
+                  onChipsChange={
+                    enableRichTextInput ? onChipsChange : undefined
+                  }
                 >
                   {enableRichTextInput ? (
                     <ChatInput.RichTextarea

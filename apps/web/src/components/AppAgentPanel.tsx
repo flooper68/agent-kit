@@ -374,7 +374,15 @@ export function AppAgentPanel({
         await sendMessage(finalMessage, currentSessionId);
       }
     },
-    [sessionId, selectedAgent, agents, createSessionMutation, sendMessage, setSessionId, slashCommands]
+    [
+      sessionId,
+      selectedAgent,
+      agents,
+      createSessionMutation,
+      sendMessage,
+      setSessionId,
+      slashCommands,
+    ]
   );
 
   const handleInterrupt = useCallback(() => {

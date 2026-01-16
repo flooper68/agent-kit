@@ -398,9 +398,14 @@ export function SlashCommandsPage() {
               <Textarea
                 placeholder="Brief description of what this command does"
                 value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
+                onChange={(e) =>
+                  setFormDescription(e.target.value.slice(0, 500))
+                }
                 rows={2}
               />
+              <Text className="text-xs text-muted-foreground text-right">
+                {formDescription.length}/500
+              </Text>
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">
