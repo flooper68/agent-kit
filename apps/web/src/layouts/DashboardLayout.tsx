@@ -550,6 +550,7 @@ function DashboardLayoutInner() {
         panelToggleDisabled={isHomePage}
         assistantPanel={
           <AppAgentPanel
+            key={sessionId || 'new'}
             agents={agents}
             selectedAgentId={selectedAgentId}
             onAgentSelect={handleAgentSelectFromPalette}

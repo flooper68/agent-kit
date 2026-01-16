@@ -16,7 +16,7 @@ export function DashboardPage() {
     limit: 3,
   });
   const agentsQuery = trpc.agents.list.useQuery();
-  const { setSessionId, clearSession } = useSession();
+  const { sessionId, setSessionId, clearSession } = useSession();
   const {
     selectedAgentId,
     setSelectedAgentId,
@@ -94,6 +94,7 @@ export function DashboardPage() {
   return (
     <div className="h-full">
       <AppAgentPanel
+        key={sessionId || 'new'}
         agents={agents}
         selectedAgentId={selectedAgentId}
         onAgentSelect={handleAgentSelect}
