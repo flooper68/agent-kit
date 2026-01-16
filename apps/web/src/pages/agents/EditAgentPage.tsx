@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { TRPCClientError } from '@trpc/client';
 import { Button, Input, Text, Textarea, Tabs, useToast } from '@agent-kit/ui';
@@ -86,12 +86,23 @@ export function EditAgentPage() {
   );
   const [externalScopes, setExternalScopes] = useState<string[]>([]);
 
+  // Track whether form has been initialized from server data to prevent
+  // race conditions where server refetch overwrites local changes
+  const isServerFormInitializedRef = useRef(false);
+  const isExternalFormInitializedRef = useRef(false);
+
   const utils = trpc.useUtils();
 
   // Clear header actions on mount
   useEffect(() => {
     clearActions();
   }, [clearActions]);
+
+  // Reset initialization refs when agent ID changes to allow re-initialization
+  useEffect(() => {
+    isServerFormInitializedRef.current = false;
+    isExternalFormInitializedRef.current = false;
+  }, [id]);
 
   // Fetch the agent
   const agentQuery = trpc.agents.getCustom.useQuery(
@@ -285,7 +296,8 @@ export function EditAgentPage() {
     ),
   });
 
-  // Initialize form data when agent loads
+  // Initialize form data when agent loads (only on initial load, not refetches)
+  // This prevents race conditions where server data overwrites local changes
   useEffect(() => {
     if (agentQuery.data) {
       // API returns allowedSubagents as { serverAgentIds, externalAgentIds }
@@ -296,50 +308,59 @@ export function EditAgentPage() {
 
       // Check if it's a server agent using 'provider' in data for proper type narrowing
       if ('provider' in agentQuery.data) {
-        const data = agentQuery.data;
-        const formData: AgentFormData = {
-          key: data.key,
-          name: data.name,
-          description: data.description ?? '',
-          provider:
-            (data.provider as 'anthropic' | 'openai' | 'gemini') ?? 'anthropic',
-          model: data.model ?? DEFAULT_AGENT_FORM_DATA.model,
-          systemPrompt:
-            data.systemPrompt ?? DEFAULT_AGENT_FORM_DATA.systemPrompt,
-          tools: data.tools ?? [],
-          temperature: data.temperature,
-          maxOutputTokens: data.maxOutputTokens,
-          maxContextTokens: data.maxContextTokens ?? null,
-          thinkingConfig:
-            data.thinkingConfig as AgentFormData['thinkingConfig'],
-          isFavorite: data.isFavorite ?? false,
-          allowedSubagents,
-          allowedSkillIds,
-          scopes: data.scopes ?? [],
-        };
-        setServerFormData(formData);
-        serverAutosave.lastSavedDataRef.current = formData;
+        // Only initialize server form once to prevent race conditions
+        if (!isServerFormInitializedRef.current) {
+          const data = agentQuery.data;
+          const formData: AgentFormData = {
+            key: data.key,
+            name: data.name,
+            description: data.description ?? '',
+            provider:
+              (data.provider as 'anthropic' | 'openai' | 'gemini') ??
+              'anthropic',
+            model: data.model ?? DEFAULT_AGENT_FORM_DATA.model,
+            systemPrompt:
+              data.systemPrompt ?? DEFAULT_AGENT_FORM_DATA.systemPrompt,
+            tools: data.tools ?? [],
+            temperature: data.temperature,
+            maxOutputTokens: data.maxOutputTokens,
+            maxContextTokens: data.maxContextTokens ?? null,
+            thinkingConfig:
+              data.thinkingConfig as AgentFormData['thinkingConfig'],
+            isFavorite: data.isFavorite ?? false,
+            allowedSubagents,
+            allowedSkillIds,
+            scopes: data.scopes ?? [],
+          };
+          setServerFormData(formData);
+          serverAutosave.lastSavedDataRef.current = formData;
+          isServerFormInitializedRef.current = true;
+        }
       } else {
-        // External agent - includes allowedTools and scopes
-        const allowedTools: string[] = agentQuery.data.allowedTools ?? [];
-        const scopes: string[] = agentQuery.data.scopes ?? [];
-        const externalData: ExternalFormData = {
-          key: agentQuery.data.key,
-          name: agentQuery.data.name,
-          description: agentQuery.data.description ?? '',
-          allowedSubagents,
-          allowedSkillIds,
-          allowedTools,
-          scopes,
-        };
-        setExternalKey(externalData.key);
-        setExternalName(externalData.name);
-        setExternalDescription(externalData.description);
-        setExternalAllowedSubagents(externalData.allowedSubagents);
-        setExternalAllowedSkillIds(externalData.allowedSkillIds);
-        setExternalAllowedTools(externalData.allowedTools);
-        setExternalScopes(externalData.scopes);
-        externalAutosave.lastSavedDataRef.current = externalData;
+        // Only initialize external form once to prevent race conditions
+        if (!isExternalFormInitializedRef.current) {
+          // External agent - includes allowedTools and scopes
+          const allowedTools: string[] = agentQuery.data.allowedTools ?? [];
+          const scopes: string[] = agentQuery.data.scopes ?? [];
+          const externalData: ExternalFormData = {
+            key: agentQuery.data.key,
+            name: agentQuery.data.name,
+            description: agentQuery.data.description ?? '',
+            allowedSubagents,
+            allowedSkillIds,
+            allowedTools,
+            scopes,
+          };
+          setExternalKey(externalData.key);
+          setExternalName(externalData.name);
+          setExternalDescription(externalData.description);
+          setExternalAllowedSubagents(externalData.allowedSubagents);
+          setExternalAllowedSkillIds(externalData.allowedSkillIds);
+          setExternalAllowedTools(externalData.allowedTools);
+          setExternalScopes(externalData.scopes);
+          externalAutosave.lastSavedDataRef.current = externalData;
+          isExternalFormInitializedRef.current = true;
+        }
       }
     }
   }, [
