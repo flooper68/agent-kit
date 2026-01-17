@@ -41,7 +41,16 @@ export interface CommandAutocompleteProps {
 export const CommandAutocomplete = memo(
   forwardRef<HTMLDivElement, CommandAutocompleteProps>(
     (
-      { value, cursorPosition, anchorRef, commands, isLoading, onSelect, onClose, open },
+      {
+        value,
+        cursorPosition,
+        anchorRef,
+        commands,
+        isLoading,
+        onSelect,
+        onClose,
+        open,
+      },
       ref
     ) => {
       const [selectedIndex, setSelectedIndex] = useState(0);
@@ -54,9 +63,8 @@ export const CommandAutocomplete = memo(
 
       // Extract search query from input (text after last "/" up to cursor)
       const searchQuery = useMemo(() => {
-        const textUpToCursor = cursorPosition !== undefined
-          ? value.slice(0, cursorPosition)
-          : value;
+        const textUpToCursor =
+          cursorPosition !== undefined ? value.slice(0, cursorPosition) : value;
         const lastSlashIndex = textUpToCursor.lastIndexOf('/');
         if (lastSlashIndex === -1) return '';
         return textUpToCursor.slice(lastSlashIndex + 1).toLowerCase();

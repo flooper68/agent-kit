@@ -203,7 +203,13 @@ export function expandChipsInMessage(
  */
 export type MessageSegment =
   | { type: 'text'; content: string }
-  | { type: 'chip'; key: string; name: string; description?: string; prompt: string };
+  | {
+      type: 'chip';
+      key: string;
+      name: string;
+      description?: string;
+      prompt: string;
+    };
 
 /**
  * Parses a message string and extracts chip markers into segments.
@@ -234,7 +240,11 @@ export function parseMessageWithChips(message: string): MessageSegment[] {
 
     // Extract attributes (already escaped in the XML)
     const [, keyAttr, nameAttr, descAttr, prompt] = match;
-    if (keyAttr !== undefined && nameAttr !== undefined && prompt !== undefined) {
+    if (
+      keyAttr !== undefined &&
+      nameAttr !== undefined &&
+      prompt !== undefined
+    ) {
       const key = unescapeXmlAttr(keyAttr);
       const name = unescapeXmlAttr(nameAttr);
       const description = descAttr ? unescapeXmlAttr(descAttr) : undefined;

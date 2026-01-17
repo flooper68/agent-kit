@@ -20,11 +20,13 @@ Use this skill to research topics on the web by searching and extracting content
 ## Workflow
 
 1. **Search**: Use `webSearch` to find relevant sources
+
    ```
    webSearch --query "your search terms"
    ```
 
 2. **Extract**: Use `extractContent` to read full articles
+
    ```
    extractContent --url "https://example.com/article"
    ```

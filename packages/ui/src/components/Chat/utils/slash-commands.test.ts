@@ -350,9 +350,7 @@ describe('expandChipsInMessage', () => {
     });
 
     it('handles out of bounds position gracefully', () => {
-      const chips = [
-        createChipWithPosition('1', 'test', 'test prompt', 1000),
-      ];
+      const chips = [createChipWithPosition('1', 'test', 'test prompt', 1000)];
       const text = `Hello${CHIP_PLACEHOLDER}`;
       const result = expandChipsInMessage(text, chips);
       expect(result).toBe('Hello'); // Chip skipped due to invalid position
@@ -462,7 +460,12 @@ describe('wrapChipPrompt', () => {
   });
 
   it('includes description attribute when present', () => {
-    const chip = createChip('code-review', 'Code Review', 'Review this code:', 'Performs code review');
+    const chip = createChip(
+      'code-review',
+      'Code Review',
+      'Review this code:',
+      'Performs code review'
+    );
     const result = wrapChipPrompt(chip);
     expect(result).toBe(
       '<user-command key="code-review" name="Code Review" description="Performs code review">Review this code:</user-command>'
@@ -472,7 +475,9 @@ describe('wrapChipPrompt', () => {
   it('handles empty prompt', () => {
     const chip = createChip('quick', 'Quick', '');
     const result = wrapChipPrompt(chip);
-    expect(result).toBe('<user-command key="quick" name="Quick"></user-command>');
+    expect(result).toBe(
+      '<user-command key="quick" name="Quick"></user-command>'
+    );
   });
 
   it('handles multi-line prompt', () => {
@@ -496,7 +501,12 @@ describe('wrapChipPrompt', () => {
   });
 
   it('escapes special characters in description', () => {
-    const chip = createChip('test', 'Test', 'prompt', 'Has <special> chars & "quotes"');
+    const chip = createChip(
+      'test',
+      'Test',
+      'prompt',
+      'Has <special> chars & "quotes"'
+    );
     const result = wrapChipPrompt(chip);
     expect(result).toBe(
       '<user-command key="test" name="Test" description="Has &lt;special&gt; chars &amp; &quot;quotes&quot;">prompt</user-command>'
@@ -506,7 +516,8 @@ describe('wrapChipPrompt', () => {
 
 describe('hasChipMarkers', () => {
   it('returns true for message with chip markers', () => {
-    const message = '<user-command key="summarize" name="Summarize">Please summarize:</user-command>';
+    const message =
+      '<user-command key="summarize" name="Summarize">Please summarize:</user-command>';
     expect(hasChipMarkers(message)).toBe(true);
   });
 
@@ -542,7 +553,8 @@ describe('parseMessageWithChips', () => {
   });
 
   it('parses single chip marker', () => {
-    const message = '<user-command key="summarize" name="Summarize">Please summarize:</user-command>';
+    const message =
+      '<user-command key="summarize" name="Summarize">Please summarize:</user-command>';
     const result = parseMessageWithChips(message);
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
@@ -554,7 +566,8 @@ describe('parseMessageWithChips', () => {
   });
 
   it('parses chip with description attribute', () => {
-    const message = '<user-command key="review" name="Code Review" description="Reviews code quality">Review this:</user-command>';
+    const message =
+      '<user-command key="review" name="Code Review" description="Reviews code quality">Review this:</user-command>';
     const result = parseMessageWithChips(message);
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
@@ -686,7 +699,8 @@ const x = 1;
   });
 
   it('unescapes XML entities in attributes', () => {
-    const message = '<user-command key="test&amp;key" name="Test &quot;Name&quot;" description="Has &lt;special&gt; chars">prompt</user-command>';
+    const message =
+      '<user-command key="test&amp;key" name="Test &quot;Name&quot;" description="Has &lt;special&gt; chars">prompt</user-command>';
     const result = parseMessageWithChips(message);
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
@@ -805,7 +819,8 @@ describe('stripChipMarkers', () => {
   });
 
   it('strips markers and keeps prompt', () => {
-    const message = '<user-command key="summarize" name="Summarize">Please summarize:</user-command>';
+    const message =
+      '<user-command key="summarize" name="Summarize">Please summarize:</user-command>';
     const result = stripChipMarkers(message);
     expect(result).toBe('Please summarize:');
   });
@@ -825,25 +840,29 @@ describe('stripChipMarkers', () => {
   });
 
   it('handles empty prompt', () => {
-    const message = '<user-command key="quick" name="Quick"></user-command> do this';
+    const message =
+      '<user-command key="quick" name="Quick"></user-command> do this';
     const result = stripChipMarkers(message);
     expect(result).toBe(' do this');
   });
 
   it('handles markers with text before and after', () => {
-    const message = 'Before <user-command key="test" name="Test">the prompt</user-command> after';
+    const message =
+      'Before <user-command key="test" name="Test">the prompt</user-command> after';
     const result = stripChipMarkers(message);
     expect(result).toBe('Before the prompt after');
   });
 
   it('preserves newlines in prompts', () => {
-    const message = '<user-command key="explain" name="Explain">Line 1\nLine 2\nLine 3</user-command>';
+    const message =
+      '<user-command key="explain" name="Explain">Line 1\nLine 2\nLine 3</user-command>';
     const result = stripChipMarkers(message);
     expect(result).toBe('Line 1\nLine 2\nLine 3');
   });
 
   it('strips markers with description attribute', () => {
-    const message = '<user-command key="review" name="Review" description="Code review">Review this code:</user-command>';
+    const message =
+      '<user-command key="review" name="Review" description="Code review">Review this code:</user-command>';
     const result = stripChipMarkers(message);
     expect(result).toBe('Review this code:');
   });

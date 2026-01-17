@@ -33,11 +33,11 @@ All Agent Kit server tools are available via the `mcp__agent-kit-server__*` patt
 
 ## Environment Variables
 
-| Variable                            | Required | Default               | Description              |
-| ----------------------------------- | -------- | --------------------- | ------------------------ |
-| `CLAUDE_ASSISTANT_OPUS_AGENT_API_KEY` | **Yes**  | -                     | Secret API key           |
-| `SERVER_URL`                        | No       | `ws://localhost:3001` | WebSocket server URL     |
-| `CLAUDE_ASSISTANT_OPUS_AGENT_ID`    | No       | -                     | Agent ID for logging     |
+| Variable                              | Required | Default               | Description          |
+| ------------------------------------- | -------- | --------------------- | -------------------- |
+| `CLAUDE_ASSISTANT_OPUS_AGENT_API_KEY` | **Yes**  | -                     | Secret API key       |
+| `SERVER_URL`                          | No       | `ws://localhost:3001` | WebSocket server URL |
+| `CLAUDE_ASSISTANT_OPUS_AGENT_ID`      | No       | -                     | Agent ID for logging |
 
 ## Running
 

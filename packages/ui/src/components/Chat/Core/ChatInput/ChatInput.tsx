@@ -241,7 +241,10 @@ export interface ChatInputRichTextareaProps {
 
 const ChatInputRichTextarea = memo(
   forwardRef<RichTextInputRef, ChatInputRichTextareaProps>(
-    ({ placeholder, autoFocus, disabled, className, onCursorPositionChange }, ref) => {
+    (
+      { placeholder, autoFocus, disabled, className, onCursorPositionChange },
+      ref
+    ) => {
       const {
         value,
         setValue,

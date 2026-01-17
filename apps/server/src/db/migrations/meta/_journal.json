@@ -393,6 +393,13 @@
       "when": 1767900000039,
       "tag": "0055_update_document_management_skill_docs",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1767900000040,
+      "tag": "0056_update_all_system_skills",
+      "breakpoints": true
     }
   ]
 }

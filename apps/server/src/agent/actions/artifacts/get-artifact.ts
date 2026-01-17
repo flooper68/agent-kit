@@ -37,9 +37,10 @@ export function createGetArtifactTool(context: GetArtifactContext): Tool {
         .number()
         .int()
         .min(1)
+        .max(10000)
         .optional()
         .describe(
-          'Maximum number of lines to return. Omit to return all content.'
+          'Maximum number of lines to return (max 10000). Omit to return all content.'
         ),
     }),
     execute: async ({
@@ -115,7 +116,7 @@ export function createGetArtifactTool(context: GetArtifactContext): Tool {
           totalLines,
           truncated,
           startLine: startLine ?? 1,
-          linesReturned: content.split('\n').length,
+          linesReturned: content === '' ? 0 : content.split('\n').length,
           summary: artifact.summary,
           projects: artifact.projects,
           tasks: artifact.tasks,
@@ -123,7 +124,8 @@ export function createGetArtifactTool(context: GetArtifactContext): Tool {
           updatedAt: artifact.updatedAt,
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
+        const message =
+          error instanceof Error ? error.message : 'Unknown error';
         return {
           found: false,
           error: `Failed to retrieve artifact: ${message}`,

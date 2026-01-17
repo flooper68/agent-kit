@@ -63,7 +63,8 @@ export const TitleAndDescription: Story = {
   args: {
     commandKey: 'translate',
     title: 'Translate',
-    description: 'Translate text between languages using AI-powered translation',
+    description:
+      'Translate text between languages using AI-powered translation',
   },
 };
 

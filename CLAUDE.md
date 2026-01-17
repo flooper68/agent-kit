@@ -64,6 +64,7 @@ bun run --cwd packages/ui build
 - **ESLint** for linting (TypeScript + React rules)
 - Unused vars prefixed with `_` are allowed
 - React: no need to import React for JSX
+- When creating a migration, there always needs to be a journal file, it is using drizzle orm
 
 ## Git Workflow
 

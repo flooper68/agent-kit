@@ -25,8 +25,14 @@ export function createSearchArtifactsTool(
     inputSchema: z.object({
       query: z
         .string()
+        .min(1, 'Search query is required')
+        .max(500, 'Search query is too long')
+        .refine(
+          (val) => val.trim().length > 0,
+          'Search query cannot be only whitespace'
+        )
         .describe(
-          'Search query to match against document titles and summaries. Use empty string to list recent documents.'
+          'Search query to match against document titles and summaries.'
         ),
       limit: z
         .number()

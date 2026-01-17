@@ -9,12 +9,12 @@
 
 ## Query Examples
 
-| Goal | Query |
-|------|-------|
-| Recent docs | "Next.js 14 documentation 2024" |
+| Goal           | Query                                            |
+| -------------- | ------------------------------------------------ |
+| Recent docs    | "Next.js 14 documentation 2024"                  |
 | Specific error | "TypeError cannot read property undefined React" |
-| Comparisons | "PostgreSQL vs MySQL performance 2024" |
-| Tutorials | "how to implement OAuth2 Node.js tutorial" |
+| Comparisons    | "PostgreSQL vs MySQL performance 2024"           |
+| Tutorials      | "how to implement OAuth2 Node.js tutorial"       |
 
 ## When to Use Each Tool
 

@@ -13,7 +13,7 @@ const ALLOWED_TOOLS = [
 
   'WebSearch',
   'WebFetch',
-  
+
   'TodoRead',
   'TodoWrite',
 ];

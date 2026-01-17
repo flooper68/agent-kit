@@ -37,13 +37,7 @@ export function createListArtifactsTool(context: ListArtifactsContext): Tool {
         .default(0)
         .describe('Number of artifacts to skip (for pagination)'),
     }),
-    execute: async ({
-      limit,
-      offset,
-    }: {
-      limit?: number;
-      offset?: number;
-    }) => {
+    execute: async ({ limit, offset }: { limit?: number; offset?: number }) => {
       try {
         const effectiveLimit = limit ?? 20;
         const effectiveOffset = offset ?? 0;
@@ -77,7 +71,8 @@ export function createListArtifactsTool(context: ListArtifactsContext): Tool {
         // Determine hasMore: either we have a nextCursor from the query,
         // or we fetched more items than we're returning
         const hasMore =
-          !!result.nextCursor || result.items.length > effectiveOffset + effectiveLimit;
+          !!result.nextCursor ||
+          result.items.length > effectiveOffset + effectiveLimit;
 
         return {
           artifacts: slicedItems.map((a) => ({

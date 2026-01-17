@@ -5,6 +5,7 @@ Using projects and tasks with other features.
 ## With Documents (Artifacts)
 
 ### Attach Documents to Projects
+
 Link documents directly to a project for project-level reference materials.
 
 ```
@@ -20,6 +21,7 @@ attachArtifactToProject --projectId "project-uuid" --artifactId "artifact-uuid"
 ```
 
 ### Attach Documents to Tasks
+
 Link documents to specific tasks for task-level context.
 
 ```
@@ -36,15 +38,16 @@ attachArtifactToTask --taskId "impl-task-uuid" --artifactId "artifact-uuid"
 
 ### Project vs Task Attachments
 
-| Use Project Attachment | Use Task Attachment |
-|------------------------|---------------------|
-| Project charter/overview | Task-specific specs |
-| Overall requirements doc | Implementation details |
-| Team agreements | Bug reproduction steps |
-| Architecture diagrams | Code review notes |
+| Use Project Attachment       | Use Task Attachment    |
+| ---------------------------- | ---------------------- |
+| Project charter/overview     | Task-specific specs    |
+| Overall requirements doc     | Implementation details |
+| Team agreements              | Bug reproduction steps |
+| Architecture diagrams        | Code review notes      |
 | Meeting notes (project-wide) | Task research findings |
 
 ### Attach Research to Projects
+
 ```
 # Research document from web research
 writeArtifact
@@ -60,6 +63,7 @@ attachArtifactToTask --taskId "decision-task-uuid" --artifactId "research-uuid"
 ```
 
 ### Attach Meeting Notes
+
 ```
 # Meeting notes document
 writeArtifact
@@ -76,6 +80,7 @@ attachArtifactToTask --taskId "task-from-meeting-2" --artifactId "meeting-uuid"
 ```
 
 ### View Attached Documents
+
 ```
 # Get project details shows attached artifacts
 getProject --projectId "uuid"
@@ -90,6 +95,7 @@ getArtifact --artifactId "attached-artifact-id"
 ```
 
 ### Remove Attachments
+
 ```
 # Remove from project
 detachArtifactFromProject --projectId "project-uuid" --artifactId "artifact-uuid"
@@ -101,6 +107,7 @@ detachArtifactFromTask --taskId "task-uuid" --artifactId "artifact-uuid"
 ## With Agents
 
 ### Delegate Task Research
+
 ```
 # Have research agent investigate for a task
 spawnAgent
@@ -114,6 +121,7 @@ attachArtifactToTask --taskId "task-uuid" --artifactId "research-artifact-uuid"
 ```
 
 ### Project Status Reports
+
 ```
 # Agent generates status report
 getProject --projectId "uuid"
@@ -130,6 +138,7 @@ attachArtifactToProject --projectId "uuid" --artifactId "report-uuid"
 ## Workflow Patterns
 
 ### Feature Development Flow
+
 ```
 # 1. Create project
 createProject --title "Feature: User Dashboard" --summary "New user dashboard"
@@ -160,6 +169,7 @@ moveTask --taskId "req-task" --status "done"
 ```
 
 ### Bug Tracking Flow
+
 ```
 # 1. Create bug task
 createTask
@@ -182,6 +192,7 @@ moveTask --taskId "bug-task" --status "review"
 ```
 
 ### Research-Driven Development
+
 ```
 # 1. Create research task
 createTask --projectId "uuid" --title "Research: State management options"
@@ -207,6 +218,7 @@ attachArtifactToTask --taskId "decision-task" --artifactId "research-uuid"
 ## Navigation Integration
 
 ### Navigate to Project
+
 ```
 # Direct user to project board
 navigateToProjectBoard --projectId "uuid"
@@ -216,6 +228,7 @@ navigateTo --path "/app/projects/[project-uuid]"
 ```
 
 ### Current Context
+
 ```
 # Check what project user is viewing
 getCurrentUIState

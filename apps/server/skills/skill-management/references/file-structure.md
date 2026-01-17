@@ -21,6 +21,7 @@ my-skill/
 ### SKILL.md (Required)
 
 The main entry point. Contains:
+
 - YAML frontmatter (name, description, allowed-tools)
 - Overview of the skill
 - Available tools list
@@ -30,6 +31,7 @@ The main entry point. Contains:
 ### references/ Directory
 
 Additional documentation loaded on-demand:
+
 - Deep-dive guides
 - Extended examples
 - Troubleshooting guides
@@ -39,6 +41,7 @@ Additional documentation loaded on-demand:
 ### assets/ Directory
 
 Non-documentation files:
+
 - JSON/YAML templates
 - Configuration examples
 - Schema definitions
@@ -48,27 +51,28 @@ Non-documentation files:
 
 Skills use a three-tier loading system:
 
-| Tier | Content | When Loaded |
-|------|---------|-------------|
-| 1. Metadata | name, description, allowed-tools | Always (at startup) |
-| 2. SKILL.md body | Full documentation | When skill activates |
-| 3. Reference files | Additional docs | On-demand (explicit read) |
+| Tier               | Content                          | When Loaded               |
+| ------------------ | -------------------------------- | ------------------------- |
+| 1. Metadata        | name, description, allowed-tools | Always (at startup)       |
+| 2. SKILL.md body   | Full documentation               | When skill activates      |
+| 3. Reference files | Additional docs                  | On-demand (explicit read) |
 
 **Principle:** Keep SKILL.md focused. Move detailed content to references.
 
 ## File Naming Conventions
 
-| Type | Convention | Examples |
-|------|------------|----------|
-| Main doc | SKILL.md (uppercase) | `SKILL.md` |
+| Type       | Convention                | Examples         |
+| ---------- | ------------------------- | ---------------- |
+| Main doc   | SKILL.md (uppercase)      | `SKILL.md`       |
 | References | lowercase-with-hyphens.md | `error-codes.md` |
-| Assets | lowercase with extension | `template.json` |
+| Assets     | lowercase with extension  | `template.json`  |
 
 ## Maximum Files
 
 Skills can have 1-20 files total across all directories.
 
 Recommended distribution:
+
 - 1 SKILL.md
 - 3-5 reference files
 - 2-3 asset files
@@ -83,6 +87,7 @@ Always link reference files from SKILL.md:
 ## Reference Documentation
 
 For more details, see:
+
 - `references/authentication.md` - How to authenticate
 - `references/error-codes.md` - Error code reference
 - `assets/request-template.json` - Example request body

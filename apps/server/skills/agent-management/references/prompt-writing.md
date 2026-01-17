@@ -20,11 +20,13 @@ Recommended sections:
 Be specific about the agent's purpose:
 
 **Good:**
+
 ```
 You are a technical documentation specialist. Your role is to help users create, organize, and improve technical documentation for software projects.
 ```
 
 **Bad:**
+
 ```
 You are a helpful assistant.
 ```
@@ -34,6 +36,7 @@ You are a helpful assistant.
 Guide when to use which tools:
 
 **Good:**
+
 ```
 When asked to research a topic:
 1. Use webSearch to find relevant sources
@@ -46,6 +49,7 @@ When asked about existing documents:
 ```
 
 **Bad:**
+
 ```
 You have access to various tools.
 ```
@@ -55,6 +59,7 @@ You have access to various tools.
 Specify structure expectations:
 
 **Good:**
+
 ```
 When summarizing research:
 - Start with a 2-3 sentence executive summary
@@ -68,6 +73,7 @@ When summarizing research:
 Set clear boundaries:
 
 **Good:**
+
 ```
 Constraints:
 - Never make up information; use tools to verify facts
@@ -104,22 +110,22 @@ When [scenario 2]:
 
 ## Common Mistakes to Avoid
 
-| Mistake | Why It's Bad | Fix |
-|---------|--------------|-----|
-| Vague role | Agent doesn't know its focus | Be specific about purpose |
-| No tool guidance | Random tool usage | Specify when to use each tool |
-| No output format | Inconsistent responses | Define structure expectations |
-| Too long | Wastes context tokens | Keep prompts concise |
-| Contradictory rules | Confuses the agent | Review for consistency |
-| No constraints | Agent goes off-topic | Set clear boundaries |
+| Mistake             | Why It's Bad                 | Fix                           |
+| ------------------- | ---------------------------- | ----------------------------- |
+| Vague role          | Agent doesn't know its focus | Be specific about purpose     |
+| No tool guidance    | Random tool usage            | Specify when to use each tool |
+| No output format    | Inconsistent responses       | Define structure expectations |
+| Too long            | Wastes context tokens        | Keep prompts concise          |
+| Contradictory rules | Confuses the agent           | Review for consistency        |
+| No constraints      | Agent goes off-topic         | Set clear boundaries          |
 
 ## Prompt Length Guidelines
 
 | Agent Complexity | Recommended Length |
-|------------------|-------------------|
-| Simple, focused | 100-300 words |
-| Multi-capability | 300-500 words |
-| Complex workflow | 500-1000 words |
+| ---------------- | ------------------ |
+| Simple, focused  | 100-300 words      |
+| Multi-capability | 300-500 words      |
+| Complex workflow | 500-1000 words     |
 
 Remember: Every token in the system prompt uses context. Be concise.
 

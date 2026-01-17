@@ -68,14 +68,14 @@ All tasks produce a **concise** structured artifact. Before writing artifacts, t
 
 ## Environment Variables
 
-| Variable                                | Required | Default               | Description                      |
-| --------------------------------------- | -------- | --------------------- | -------------------------------- |
-| `CODEBASE_RESEARCHER_AGENT_API_KEY`     | **Yes**  | -                     | Secret API key                   |
-| `CODEBASE_RESEARCHER_GIT_REPOSITORY_URL`| **Yes**  | -                     | Git repository URL to clone      |
-| `CODEBASE_RESEARCHER_GIT_BRANCH`        | No       | default branch        | Branch to checkout after cloning |
-| `SERVER_URL`                            | No       | `ws://localhost:3001` | WebSocket server URL             |
-| `CODEBASE_RESEARCHER_WORKING_DIRECTORY` | No       | `/workspace`          | Base directory for file ops      |
-| `CODEBASE_RESEARCHER_AGENT_ID`          | No       | -                     | Agent ID for logging             |
+| Variable                                 | Required | Default               | Description                      |
+| ---------------------------------------- | -------- | --------------------- | -------------------------------- |
+| `CODEBASE_RESEARCHER_AGENT_API_KEY`      | **Yes**  | -                     | Secret API key                   |
+| `CODEBASE_RESEARCHER_GIT_REPOSITORY_URL` | **Yes**  | -                     | Git repository URL to clone      |
+| `CODEBASE_RESEARCHER_GIT_BRANCH`         | No       | default branch        | Branch to checkout after cloning |
+| `SERVER_URL`                             | No       | `ws://localhost:3001` | WebSocket server URL             |
+| `CODEBASE_RESEARCHER_WORKING_DIRECTORY`  | No       | `/workspace`          | Base directory for file ops      |
+| `CODEBASE_RESEARCHER_AGENT_ID`           | No       | -                     | Agent ID for logging             |
 
 ## Running
 
