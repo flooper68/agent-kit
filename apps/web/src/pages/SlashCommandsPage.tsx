@@ -8,7 +8,6 @@ import {
   Button,
   Input,
   Dialog,
-  Textarea,
   IconButton,
   DropdownMenu,
 } from '@agent-kit/ui';
@@ -33,18 +32,10 @@ export function SlashCommandsPage() {
   });
 
   // Dialog states
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     name: string;
   } | null>(null);
-
-  // Form state
-  const [formKey, setFormKey] = useState('');
-  const [formName, setFormName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formPrompt, setFormPrompt] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
 
   const currentCursor = cursors[cursors.length - 1];
   const utils = trpc.useUtils();
@@ -60,14 +51,11 @@ export function SlashCommandsPage() {
         id: 'create-command',
         label: 'New Command',
         icon: <Plus className="h-4 w-4" />,
-        onClick: () => {
-          resetForm();
-          setIsCreateDialogOpen(true);
-        },
+        onClick: () => navigate('/app/commands/new'),
       },
     ]);
     return () => clearActions();
-  }, [setActions, clearActions]);
+  }, [setActions, clearActions, navigate]);
 
   // Reset pagination on search
   useEffect(() => {
@@ -80,56 +68,12 @@ export function SlashCommandsPage() {
     search: debouncedSearch || undefined,
   });
 
-  const createMutation = trpc.slashCommands.create.useMutation({
-    onSuccess: () => {
-      setIsCreateDialogOpen(false);
-      resetForm();
-      utils.slashCommands.list.invalidate();
-    },
-    onError: (error) => {
-      if (error.message.includes('unique')) {
-        setFormError('A command with this key already exists');
-      } else {
-        setFormError(error.message);
-      }
-    },
-  });
-
   const deleteMutation = trpc.slashCommands.delete.useMutation({
     onSuccess: () => {
       queueMicrotask(() => setDeleteTarget(null));
       utils.slashCommands.list.invalidate();
     },
   });
-
-  const resetForm = () => {
-    setFormKey('');
-    setFormName('');
-    setFormDescription('');
-    setFormPrompt('');
-    setFormError(null);
-  };
-
-  const handleEdit = (commandId: string) => {
-    navigate(`/app/commands/${commandId}/edit`);
-  };
-
-  const handleSubmit = () => {
-    setFormError(null);
-
-    // Validate key format
-    if (!/^[a-z0-9-]+$/.test(formKey)) {
-      setFormError('Key must be lowercase letters, numbers, and hyphens only');
-      return;
-    }
-
-    createMutation.mutate({
-      key: formKey,
-      name: formName,
-      description: formDescription || undefined,
-      prompt: formPrompt,
-    });
-  };
 
   const handleNextPage = useCallback(() => {
     if (commandsQuery.data?.nextCursor) {
@@ -148,8 +92,6 @@ export function SlashCommandsPage() {
       year: 'numeric',
     }).format(new Date(date));
   };
-
-  const isFormValid = formKey.trim() && formName.trim() && formPrompt.trim();
 
   return (
     <div className="h-full overflow-auto p-6">
@@ -204,12 +146,7 @@ export function SlashCommandsPage() {
                     <Text className="mb-4 text-sm text-muted-foreground">
                       Create your first slash command to get started
                     </Text>
-                    <Button
-                      onClick={() => {
-                        resetForm();
-                        setIsCreateDialogOpen(true);
-                      }}
-                    >
+                    <Button onClick={() => navigate('/app/commands/new')}>
                       <Plus className="mr-1 h-4 w-4" />
                       Create Command
                     </Button>
@@ -219,7 +156,11 @@ export function SlashCommandsPage() {
             ) : (
               <DataList>
                 {commandsQuery.data.items.map((command) => (
-                  <DataList.Item key={command.id}>
+                  <DataList.Item
+                    key={command.id}
+                    className="cursor-pointer transition-colors hover:bg-muted/50"
+                    onClick={() => navigate(`/app/commands/${command.id}/edit`)}
+                  >
                     <DataList.Cell shrink>
                       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
                         <Slash className="h-4 w-4" />
@@ -248,36 +189,40 @@ export function SlashCommandsPage() {
                       </Text>
                     </DataList.Cell>
                     <DataList.Cell shrink>
-                      <DropdownMenu>
-                        <DropdownMenu.Trigger asChild>
-                          <IconButton
-                            variant="ghost"
-                            size="sm"
-                            icon={<MoreHorizontal className="h-4 w-4" />}
-                            label="Actions"
-                          />
-                        </DropdownMenu.Trigger>
-                        <DropdownMenu.Content align="end">
-                          <DropdownMenu.Item
-                            onSelect={() => handleEdit(command.id)}
-                          >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenu.Item>
-                          <DropdownMenu.Item
-                            onSelect={() =>
-                              setDeleteTarget({
-                                id: command.id,
-                                name: command.name,
-                              })
-                            }
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenu.Item>
-                        </DropdownMenu.Content>
-                      </DropdownMenu>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenu.Trigger asChild>
+                            <IconButton
+                              variant="ghost"
+                              size="sm"
+                              icon={<MoreHorizontal className="h-4 w-4" />}
+                              label="Actions"
+                            />
+                          </DropdownMenu.Trigger>
+                          <DropdownMenu.Content align="end">
+                            <DropdownMenu.Item
+                              onSelect={() =>
+                                navigate(`/app/commands/${command.id}/edit`)
+                              }
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item
+                              onSelect={() =>
+                                setDeleteTarget({
+                                  id: command.id,
+                                  name: command.name,
+                                })
+                              }
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenu.Item>
+                          </DropdownMenu.Content>
+                        </DropdownMenu>
+                      </div>
                     </DataList.Cell>
                   </DataList.Item>
                 ))}
@@ -299,98 +244,6 @@ export function SlashCommandsPage() {
           </>
         )}
       </div>
-
-      {/* Create Dialog */}
-      <Dialog
-        open={isCreateDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsCreateDialogOpen(false);
-            resetForm();
-          }
-        }}
-      >
-        <Dialog.Content size="2xl">
-          <Dialog.Header>
-            <Dialog.Title>Create New Command</Dialog.Title>
-            <Dialog.Description>
-              Create a custom slash command to quickly insert prompts.
-            </Dialog.Description>
-          </Dialog.Header>
-          <div className="space-y-4 py-4">
-            {formError && (
-              <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {formError}
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Key"
-                placeholder="e.g., review"
-                value={formKey}
-                onChange={(e) => {
-                  setFormKey(e.target.value.toLowerCase().replace(/\s/g, '-'));
-                  setFormError(null);
-                }}
-                error={
-                  formKey && !/^[a-z0-9-]*$/.test(formKey)
-                    ? 'Lowercase letters, numbers, and hyphens only'
-                    : undefined
-                }
-              />
-              <Input
-                label="Name"
-                placeholder="e.g., Code Review"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">
-                Description (optional)
-              </label>
-              <Textarea
-                placeholder="Brief description of what this command does"
-                value={formDescription}
-                onChange={(e) =>
-                  setFormDescription(e.target.value.slice(0, 500))
-                }
-                rows={2}
-              />
-              <Text className="text-xs text-muted-foreground text-right">
-                {formDescription.length}/500
-              </Text>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">
-                Prompt
-              </label>
-              <Textarea
-                placeholder="The prompt that will be inserted when using this command..."
-                value={formPrompt}
-                onChange={(e) => setFormPrompt(e.target.value)}
-                rows={6}
-              />
-              <Text className="text-xs text-muted-foreground">
-                This prompt will be expanded when you use /
-                {formKey || 'command'} in the chat input
-              </Text>
-            </div>
-          </div>
-          <Dialog.Footer>
-            <Dialog.Close asChild>
-              <Button variant="outline">Cancel</Button>
-            </Dialog.Close>
-            <Button
-              onClick={handleSubmit}
-              isLoading={createMutation.isPending}
-              disabled={!isFormValid}
-            >
-              Create Command
-            </Button>
-          </Dialog.Footer>
-        </Dialog.Content>
-      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog
