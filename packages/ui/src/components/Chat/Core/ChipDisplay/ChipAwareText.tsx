@@ -5,6 +5,7 @@ import {
 } from '../../utils/slash-commands';
 import { ChipInlineDisplay } from './ChipInlineDisplay';
 import { MarkdownRenderer } from '../../CodeDisplay/MarkdownRenderer';
+import { cn } from '../../../../lib/utils';
 
 export interface ChipAwareTextProps {
   /** The message content that may contain chip markers */
@@ -21,7 +22,7 @@ export interface ChipAwareTextProps {
  * Parses chip markers from the content and renders them as inline chip
  * components, with the remaining text rendered normally or as markdown.
  *
- * Marker format: ««CHIP:key:name»»prompt text««/CHIP»»
+ * Marker format: <user-command key="..." name="..." description="...">prompt text</user-command>
  */
 export const ChipAwareText = memo(function ChipAwareText({
   content,
@@ -43,42 +44,43 @@ export const ChipAwareText = memo(function ChipAwareText({
     return <span className={className}>{content}</span>;
   }
 
-  // Render segments with chips
+  // Render segments with chips inline
   return (
-    <div className={className}>
+    <span className={cn('inline', className)}>
       {segments.map((segment, index) => {
         if (segment.type === 'chip') {
           return (
             <ChipInlineDisplay
               key={`chip-${index}`}
               commandKey={segment.key}
-              name={segment.name}
+              title={segment.name}
+              description={segment.description}
               prompt={segment.prompt}
             />
           );
         }
 
-        // Text segment - render as markdown or plain text
+        // Text segment - render as inline span to maintain flow with chips
         const textContent = segment.content;
 
-        // Skip empty or whitespace-only segments between chips
+        // Handle whitespace-only segments
         if (!textContent.trim()) {
           // Preserve line breaks
           if (textContent.includes('\n')) {
             return <br key={`br-${index}`} />;
           }
+          // Preserve single space for word separation
+          if (textContent.includes(' ')) {
+            return <span key={`space-${index}`}> </span>;
+          }
           return null;
         }
 
-        if (renderMarkdown) {
-          return (
-            <MarkdownRenderer key={`text-${index}`} content={textContent} />
-          );
-        }
-
+        // Always render as span when chips are present to maintain inline flow
+        // (MarkdownRenderer wraps in block-level divs which breaks inline layout)
         return <span key={`text-${index}`}>{textContent}</span>;
       })}
-    </div>
+    </span>
   );
 });
 

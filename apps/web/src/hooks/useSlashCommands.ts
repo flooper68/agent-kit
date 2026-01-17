@@ -80,7 +80,6 @@ export function useSlashCommands(
 
   // Debounce cursor position updates to reduce flickering
   const cursorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingCursorRef = useRef(0);
 
   // Slash command detection (now cursor-aware)
   const slashCommandContext = useSlashCommandDetection(inputValue, cursorPosition);
@@ -144,16 +143,15 @@ export function useSlashCommands(
 
   // Handle cursor position change (from RichTextInput) - debounced to reduce flickering
   const handleCursorPositionChange = useCallback((position: number) => {
-    pendingCursorRef.current = position;
-
     // Clear any pending debounce
     if (cursorDebounceRef.current) {
       clearTimeout(cursorDebounceRef.current);
     }
 
     // Debounce the state update (50ms is fast enough to feel responsive but reduces flicker)
+    // Capture position in closure to avoid stale ref issues
     cursorDebounceRef.current = setTimeout(() => {
-      setCursorPosition(pendingCursorRef.current);
+      setCursorPosition(position);
       cursorDebounceRef.current = null;
     }, 50);
   }, []);

@@ -386,6 +386,13 @@
       "when": 1767900000038,
       "tag": "0054_add_slash_commands",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1767900000039,
+      "tag": "0055_update_document_management_skill_docs",
+      "breakpoints": true
     }
   ]
 }

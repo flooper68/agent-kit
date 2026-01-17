@@ -3,7 +3,7 @@
  *
  * Organized by category:
  * - Static (utility): getTime, webSearch, extractContent, fetch
- * - Artifact: writeArtifact, searchArtifacts, getArtifact, updateArtifact
+ * - Artifact: writeArtifact, searchArtifacts, getArtifact, updateArtifact, listArtifacts
  * - Project: listProjects, searchProjects, getProject, createProject, updateProject, deleteProject, attachArtifactToProject, detachArtifactFromProject, listProjectArtifacts
  * - Task: listTasks, searchTasks, getTask, createTask, updateTask, deleteTask, moveTask, reorderTask, attachArtifactToTask, detachArtifactFromTask
  * - Client: navigateTo, getCurrentUIState
@@ -46,6 +46,10 @@ import {
   createPatchArtifactTool,
   patchArtifactMetadata,
 } from './artifacts/patch-artifact';
+import {
+  createListArtifactsTool,
+  listArtifactsMetadata,
+} from './artifacts/list-artifacts';
 import type { ActionMetadata } from './types';
 
 // Project actions
@@ -174,6 +178,7 @@ export const ACTION_METADATA: Record<string, ActionMetadata> = {
   [searchArtifactsMetadata.id]: searchArtifactsMetadata,
   [updateArtifactMetadata.id]: updateArtifactMetadata,
   [patchArtifactMetadata.id]: patchArtifactMetadata,
+  [listArtifactsMetadata.id]: listArtifactsMetadata,
 
   // Project actions
   [listProjectsMetadata.id]: listProjectsMetadata,
@@ -238,6 +243,13 @@ export function getActionNeedsApproval(actionId: string): boolean {
 }
 
 /**
+ * Check if an action exists in the action registry.
+ */
+export function actionExists(actionId: string): boolean {
+  return actionId in ACTION_METADATA;
+}
+
+/**
  * Static actions (no context needed)
  */
 export const STATIC_ACTIONS: Record<string, Tool> = {
@@ -257,6 +269,7 @@ export const ACTION_IDS = [
   'getArtifact',
   'updateArtifact',
   'patchArtifact',
+  'listArtifacts',
   // Project actions
   'listProjects',
   'searchProjects',
@@ -338,6 +351,9 @@ export function getActionsById(
           break;
         case 'patchArtifact':
           result[id] = createPatchArtifactTool(context);
+          break;
+        case 'listArtifacts':
+          result[id] = createListArtifactsTool(context);
           break;
         // Project actions
         case 'listProjects':

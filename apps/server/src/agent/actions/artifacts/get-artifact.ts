@@ -75,6 +75,19 @@ export function createGetArtifactTool(context: GetArtifactContext): Tool {
           // Convert 1-indexed startLine to 0-indexed for slice
           const startIndex = startLine !== undefined ? startLine - 1 : 0;
 
+          // Validate startLine is positive (Zod validates min(1), but defensive check)
+          if (startIndex < 0) {
+            return {
+              found: true,
+              id: artifact.id,
+              title: artifact.title,
+              error: `startLine must be positive, got ${startLine}`,
+              totalLines,
+              content: '',
+              summary: artifact.summary,
+            };
+          }
+
           // Validate startLine is within document bounds
           if (startIndex >= lines.length) {
             return {
