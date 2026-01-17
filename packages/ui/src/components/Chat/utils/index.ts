@@ -1,7 +1,8 @@
 export {
   CHIP_PLACEHOLDER,
-  CHIP_MARKER_START,
-  CHIP_MARKER_CLOSE,
+  COMMAND_TAG_NAME,
+  COMMAND_TAG_OPEN,
+  COMMAND_TAG_CLOSE,
   detectSlashCommand,
   wrapChipPrompt,
   expandChipsInMessage,

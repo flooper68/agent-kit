@@ -98,19 +98,44 @@ export function detectSlashCommand(
   };
 }
 
-/** Marker format for chip prompts in messages */
-export const CHIP_MARKER_START = '««CHIP:';
-export const CHIP_MARKER_SEPARATOR = ':';
-export const CHIP_MARKER_END_TAG = '»»';
-export const CHIP_MARKER_CLOSE = '««/CHIP»»';
+/** XML tag name for user command markers */
+export const COMMAND_TAG_NAME = 'user-command';
+export const COMMAND_TAG_OPEN = '<user-command';
+export const COMMAND_TAG_CLOSE = '</user-command>';
 
 /**
- * Wraps a chip's prompt with markers for later parsing.
+ * Escapes special characters for XML attribute values.
+ */
+function escapeXmlAttr(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/**
+ * Unescapes XML attribute values back to their original form.
+ */
+function unescapeXmlAttr(str: string): string {
+  return str
+    .replace(/&gt;/g, '>')
+    .replace(/&lt;/g, '<')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&');
+}
+
+/**
+ * Wraps a chip's prompt with XML-style markers for later parsing.
  *
- * Format: ««CHIP:key:name»»prompt text««/CHIP»»
+ * Format: <user-command key="..." name="..." description="...">prompt text</user-command>
+ * (description attribute is omitted if empty)
  */
 export function wrapChipPrompt(chip: SlashCommandChip): string {
-  return `${CHIP_MARKER_START}${chip.key}${CHIP_MARKER_SEPARATOR}${chip.name}${CHIP_MARKER_END_TAG}${chip.prompt}${CHIP_MARKER_CLOSE}`;
+  const desc = chip.description
+    ? ` description="${escapeXmlAttr(chip.description)}"`
+    : '';
+  return `<user-command key="${escapeXmlAttr(chip.key)}" name="${escapeXmlAttr(chip.name)}"${desc}>${chip.prompt}</user-command>`;
 }
 
 /**
@@ -173,20 +198,22 @@ export function expandChipsInMessage(
  */
 export type MessageSegment =
   | { type: 'text'; content: string }
-  | { type: 'chip'; key: string; name: string; prompt: string };
+  | { type: 'chip'; key: string; name: string; description?: string; prompt: string };
 
 /**
  * Parses a message string and extracts chip markers into segments.
+ *
+ * Parses XML-style format: <user-command key="..." name="..." description="...">prompt</user-command>
  *
  * @param message - The message text potentially containing chip markers
  * @returns Array of segments (text and chip)
  */
 export function parseMessageWithChips(message: string): MessageSegment[] {
   const segments: MessageSegment[] = [];
-  const regex = new RegExp(
-    `${escapeRegex(CHIP_MARKER_START)}([^:]+)${escapeRegex(CHIP_MARKER_SEPARATOR)}([^»]+)${escapeRegex(CHIP_MARKER_END_TAG)}([\\s\\S]*?)${escapeRegex(CHIP_MARKER_CLOSE)}`,
-    'g'
-  );
+  // Match XML-style user-command tags
+  // Captures: key, name, optional description, prompt content
+  const regex =
+    /<user-command\s+key="([^"]*)"\s+name="([^"]*)"(?:\s+description="([^"]*)")?\s*>([\s\S]*?)<\/user-command>/g;
 
   let lastIndex = 0;
   let match;
@@ -200,15 +227,22 @@ export function parseMessageWithChips(message: string): MessageSegment[] {
       }
     }
 
-    // Add the chip
-    const [, key, name, prompt] = match;
-    if (key && name && prompt !== undefined) {
-      segments.push({
-        type: 'chip',
-        key,
-        name,
-        prompt,
-      });
+    // Extract attributes (already escaped in the XML)
+    const [, keyAttr, nameAttr, descAttr, prompt] = match;
+    if (keyAttr !== undefined && nameAttr !== undefined && prompt !== undefined) {
+      const key = unescapeXmlAttr(keyAttr);
+      const name = unescapeXmlAttr(nameAttr);
+      const description = descAttr ? unescapeXmlAttr(descAttr) : undefined;
+
+      if (key && name) {
+        segments.push({
+          type: 'chip',
+          key,
+          name,
+          description,
+          prompt,
+        });
+      }
     }
 
     lastIndex = regex.lastIndex;
@@ -235,15 +269,8 @@ export function parseMessageWithChips(message: string): MessageSegment[] {
  */
 export function hasChipMarkers(message: string): boolean {
   return (
-    message.includes(CHIP_MARKER_START) && message.includes(CHIP_MARKER_CLOSE)
+    message.includes(COMMAND_TAG_OPEN) && message.includes(COMMAND_TAG_CLOSE)
   );
-}
-
-/**
- * Escapes special regex characters in a string.
- */
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
@@ -254,10 +281,9 @@ function escapeRegex(str: string): string {
  * @returns The message with markers stripped, showing only prompts and text
  */
 export function stripChipMarkers(message: string): string {
-  const regex = new RegExp(
-    `${escapeRegex(CHIP_MARKER_START)}[^:]+${escapeRegex(CHIP_MARKER_SEPARATOR)}[^»]+${escapeRegex(CHIP_MARKER_END_TAG)}([\\s\\S]*?)${escapeRegex(CHIP_MARKER_CLOSE)}`,
-    'g'
-  );
+  // Match XML-style user-command tags and replace with just the prompt content
+  const regex =
+    /<user-command\s+key="[^"]*"\s+name="[^"]*"(?:\s+description="[^"]*")?\s*>([\s\S]*?)<\/user-command>/g;
   return message.replace(regex, '$1');
 }
 

@@ -30,6 +30,7 @@ export function createWriteArtifactTool(context: WriteArtifactContext): Tool {
         .string()
         .min(1, 'Title is required')
         .max(255, 'Title must be 255 characters or less')
+        .refine((val) => val.trim().length > 0, 'Title cannot be only whitespace')
         .describe('The title of the document'),
       content: z
         .string()

@@ -243,6 +243,13 @@ export function getActionNeedsApproval(actionId: string): boolean {
 }
 
 /**
+ * Check if an action exists in the action registry.
+ */
+export function actionExists(actionId: string): boolean {
+  return actionId in ACTION_METADATA;
+}
+
+/**
  * Static actions (no context needed)
  */
 export const STATIC_ACTIONS: Record<string, Tool> = {

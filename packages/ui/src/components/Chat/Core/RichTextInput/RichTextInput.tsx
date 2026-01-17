@@ -12,6 +12,7 @@ export interface SlashCommandChip {
   id: string;
   key: string;
   name: string;
+  description?: string;
   prompt: string;
   position?: number; // Position in text where chip is located
 }

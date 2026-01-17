@@ -22,7 +22,7 @@ export interface ChipAwareTextProps {
  * Parses chip markers from the content and renders them as inline chip
  * components, with the remaining text rendered normally or as markdown.
  *
- * Marker format: ««CHIP:key:name»»prompt text««/CHIP»»
+ * Marker format: <user-command key="..." name="..." description="...">prompt text</user-command>
  */
 export const ChipAwareText = memo(function ChipAwareText({
   content,
@@ -53,6 +53,8 @@ export const ChipAwareText = memo(function ChipAwareText({
             <ChipInlineDisplay
               key={`chip-${index}`}
               commandKey={segment.key}
+              title={segment.name}
+              description={segment.description}
               prompt={segment.prompt}
             />
           );

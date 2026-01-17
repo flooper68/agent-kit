@@ -14,7 +14,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../types';
 import type { ExecuteSkillResult, ParsedCommand } from '../skills/types';
-import { getActionsById } from '../actions';
+import { getActionsById, actionExists } from '../actions';
 import type { ToolsContext } from './types';
 import { logger } from '../../logger/logger';
 import { SERVER_TOOL_DEFINITIONS, type ToolName } from '@agent-kit/shared';
@@ -221,6 +221,17 @@ export function createExecuteCommandTool(context: ToolsContext): Tool {
       const { tool: toolName, args } = parsed;
 
       log.info('Executing command action', { toolName, args });
+
+      // Check if action exists before checking permissions
+      if (!actionExists(toolName)) {
+        log.warn('Action does not exist', { actionName: toolName });
+        return {
+          success: false,
+          tool: toolName,
+          args,
+          error: `Action "${toolName}" does not exist.`,
+        };
+      }
 
       // Check permissions before instantiating the action
       const permCheck = checkActionPermission(toolName, context.agentScopes);

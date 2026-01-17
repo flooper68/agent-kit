@@ -249,32 +249,61 @@ const ResultDisplay = ({
   result: unknown;
   isError: boolean;
 }) => {
+  // Helper to try parsing JSON from a string
+  const tryParseJson = (str: string): unknown => {
+    const trimmed = str.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        return JSON.parse(trimmed);
+      } catch {
+        return str;
+      }
+    }
+    return str;
+  };
+
+  // Helper to format result for display
+  const formatResult = (value: unknown): string => {
+    if (typeof value === 'string') {
+      return value;
+    }
+    return JSON.stringify(value, null, 2);
+  };
+
+  const preClassName = cn(
+    'text-xs p-3 rounded-md overflow-x-auto whitespace-pre-wrap break-words',
+    isError ? 'bg-destructive/10 text-destructive' : 'bg-muted'
+  );
+
+  // Handle text content array format (common for MCP/remote agent results)
+  if (Array.isArray(result)) {
+    const textParts = result
+      .filter(
+        (item): item is { type: string; text: string } =>
+          typeof item === 'object' &&
+          item !== null &&
+          'type' in item &&
+          item.type === 'text' &&
+          'text' in item &&
+          typeof item.text === 'string'
+      )
+      .map((item) => tryParseJson(item.text));
+
+    if (textParts.length > 0) {
+      // If single text part, display it directly
+      const displayValue = textParts.length === 1 ? textParts[0] : textParts;
+      return <pre className={preClassName}>{formatResult(displayValue)}</pre>;
+    }
+  }
+
   // Handle string results
   if (typeof result === 'string') {
-    return (
-      <pre
-        className={cn(
-          'text-xs p-3 rounded-md overflow-x-auto whitespace-pre-wrap break-words',
-          isError ? 'bg-destructive/10 text-destructive' : 'bg-muted'
-        )}
-      >
-        {result}
-      </pre>
-    );
+    const parsed = tryParseJson(result);
+    return <pre className={preClassName}>{formatResult(parsed)}</pre>;
   }
 
   // Handle object/array results
-  const formatted = JSON.stringify(result, null, 2);
-  return (
-    <pre
-      className={cn(
-        'text-xs p-3 rounded-md overflow-x-auto',
-        isError ? 'bg-destructive/10 text-destructive' : 'bg-muted'
-      )}
-    >
-      {formatted}
-    </pre>
-  );
+  return <pre className={preClassName}>{JSON.stringify(result, null, 2)}</pre>;
 };
 
 export interface ToolBadgeProps
