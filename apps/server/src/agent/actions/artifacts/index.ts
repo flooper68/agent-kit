@@ -23,8 +23,3 @@ export {
   patchArtifactMetadata,
   type PatchArtifactContext,
 } from './patch-artifact';
-export {
-  createListArtifactsTool,
-  listArtifactsMetadata,
-  type ListArtifactsContext,
-} from './list-artifacts';

@@ -11,6 +11,7 @@ Create -> Plan -> Execute -> Review -> Complete/Archive
 ## Starting a New Project
 
 ### 1. Create Project
+
 ```
 createProject
   --title "[Clear Project Name]"
@@ -18,6 +19,7 @@ createProject
 ```
 
 ### 2. Initial Planning
+
 ```
 # Add high-level tasks to backlog
 createTask --projectId "uuid" --title "Define requirements" --status "todo"
@@ -29,6 +31,7 @@ createTask --projectId "uuid" --title "Launch preparation"
 ```
 
 ### 3. Prioritize
+
 ```
 # Set priorities
 updateTask --taskId "uuid" --priority "high"
@@ -38,6 +41,7 @@ updateTask --taskId "uuid" --priority "urgent"
 ## Sprint/Iteration Pattern
 
 ### Sprint Start
+
 ```
 # Review backlog
 listTasks --projectId "uuid" --status "backlog"
@@ -48,6 +52,7 @@ moveTask --taskId "uuid" --status "todo"
 ```
 
 ### Daily Work
+
 ```
 # Check what's in progress
 listTasks --projectId "uuid" --status "in_progress"
@@ -61,6 +66,7 @@ moveTask --taskId "uuid" --status "done"
 ```
 
 ### Sprint End
+
 ```
 # Review completed work
 listTasks --projectId "uuid" --status "done"
@@ -72,6 +78,7 @@ moveTask --taskId "uuid" --status "backlog"
 ## Progress Tracking
 
 ### Check Project Status
+
 ```
 # Get full project view
 getProject --projectId "uuid"
@@ -85,6 +92,7 @@ getProject --projectId "uuid"
 ```
 
 ### Calculate Progress
+
 ```
 # Total tasks = backlog + todo + in_progress + review + done
 # Progress = done / total * 100%
@@ -95,12 +103,14 @@ getProject --projectId "uuid"
 ## Project Completion
 
 ### Completion Checklist
+
 1. All tasks in `done` status
 2. No tasks in `review` (all reviewed)
 3. Update project summary with outcome
 4. Consider archiving (if feature available)
 
 ### Final Update
+
 ```
 updateProject
   --projectId "uuid"
@@ -110,6 +120,7 @@ updateProject
 ## Project Templates
 
 ### Feature Development
+
 ```
 createProject --title "Feature: [Name]" --summary "Implement [feature description]"
 createTask --projectId "uuid" --title "Requirements gathering"
@@ -122,6 +133,7 @@ createTask --projectId "uuid" --title "Deployment"
 ```
 
 ### Bug Fix Sprint
+
 ```
 createProject --title "Bug Fix: [Period]" --summary "Address reported bugs"
 # Add bugs as tasks with priority based on severity
@@ -129,6 +141,7 @@ createTask --projectId "uuid" --title "[Bug description]" --priority "urgent"
 ```
 
 ### Research Project
+
 ```
 createProject --title "Research: [Topic]" --summary "Investigate [topic] for [purpose]"
 createTask --projectId "uuid" --title "Define research questions"
@@ -141,6 +154,7 @@ createTask --projectId "uuid" --title "Report findings"
 ## Multi-Project Management
 
 ### Overview
+
 ```
 # List all projects
 listProjects
@@ -150,6 +164,7 @@ searchProjects --query "[project name]"
 ```
 
 ### Cross-Project Tasks
+
 ```
 # Search tasks across all projects
 searchTasks --query "authentication"

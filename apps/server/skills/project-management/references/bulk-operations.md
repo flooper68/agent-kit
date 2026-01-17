@@ -5,6 +5,7 @@ Patterns for managing multiple tasks efficiently.
 ## Batch Task Creation
 
 ### Creating Multiple Tasks
+
 ```
 # Create a series of related tasks
 createTask --projectId "uuid" --title "Task 1" --priority "high"
@@ -15,7 +16,9 @@ createTask --projectId "uuid" --title "Task 5" --priority "low"
 ```
 
 ### From a List
+
 When given a list of items to track:
+
 ```
 # User provides: "Track these: Login, Signup, Password Reset, Profile"
 
@@ -28,6 +31,7 @@ createTask --projectId "uuid" --title "Implement Profile"
 ## Batch Status Updates
 
 ### Sprint Completion
+
 ```
 # Move all reviewed items to done
 listTasks --projectId "uuid" --status "review"
@@ -38,6 +42,7 @@ moveTask --taskId "uuid-3" --status "done"
 ```
 
 ### Bulk Prioritization
+
 ```
 # After triage, update priorities
 updateTask --taskId "uuid-1" --priority "urgent"
@@ -48,6 +53,7 @@ updateTask --taskId "uuid-3" --priority "low"
 ## Reordering Strategies
 
 ### Prioritize Within Column
+
 ```
 # Move most important to top
 reorderTask --taskId "important-uuid" --position 0
@@ -57,6 +63,7 @@ reorderTask --taskId "second-uuid" --position 1
 ```
 
 ### Full Reorder
+
 ```
 # Reorder entire todo column by priority
 # 1. Identify desired order
@@ -69,6 +76,7 @@ reorderTask --taskId "third-uuid" --position 2
 ## Finding and Filtering
 
 ### Find All High Priority
+
 ```
 # List and filter manually
 listTasks --projectId "uuid"
@@ -76,12 +84,14 @@ listTasks --projectId "uuid"
 ```
 
 ### Search Across Projects
+
 ```
 # Find all tasks mentioning "authentication"
 searchTasks --query "authentication"
 ```
 
 ### Status-Specific Lists
+
 ```
 # What's blocked in review?
 listTasks --projectId "uuid" --status "review"
@@ -96,6 +106,7 @@ listTasks --projectId "uuid" --status "in_progress"
 ## Bulk Cleanup
 
 ### Archive Completed
+
 ```
 # List done tasks
 listTasks --projectId "uuid" --status "done"
@@ -106,6 +117,7 @@ deleteTask --taskId "old-done-uuid-2"
 ```
 
 ### Groom Backlog
+
 ```
 # Review backlog
 listTasks --projectId "uuid" --status "backlog"
@@ -143,11 +155,13 @@ reorderTask --taskId "most-important" --position 0
 ## Performance Tips
 
 ### Efficient Patterns
+
 - Use `listTasks` with `--status` filter to get specific views
 - Use `searchTasks` for cross-project queries
 - Get project overview with `getProject` for task counts
 
 ### Avoid
+
 - Repeatedly listing all tasks without filters
 - Getting full project details when only counts needed
 - Creating tasks one-by-one when batch is possible

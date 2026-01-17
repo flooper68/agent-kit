@@ -25,6 +25,7 @@ Overview of what the skill does.
 ## Common Workflows
 
 ### Workflow Name
+
 1. Step one
 2. Step two
 
@@ -37,19 +38,19 @@ Concrete usage examples.
 
 ### Required Fields
 
-| Field | Limit | Description |
-|-------|-------|-------------|
-| name | 1-64 chars | Skill identifier (lowercase, hyphens, numbers) |
+| Field       | Limit        | Description                                      |
+| ----------- | ------------ | ------------------------------------------------ |
+| name        | 1-64 chars   | Skill identifier (lowercase, hyphens, numbers)   |
 | description | 1-1024 chars | Discovery text - determines when skill activates |
 
 ### Optional Fields
 
-| Field | Description |
-|-------|-------------|
-| allowed-tools | Array of tool IDs this skill uses |
-| license | License identifier (e.g., "Apache-2.0") |
+| Field         | Description                              |
+| ------------- | ---------------------------------------- |
+| allowed-tools | Array of tool IDs this skill uses        |
+| license       | License identifier (e.g., "Apache-2.0")  |
 | compatibility | Model compatibility (e.g., "claude-3.5") |
-| metadata | Custom key-value pairs |
+| metadata      | Custom key-value pairs                   |
 
 ### Complete Example
 
@@ -65,7 +66,7 @@ license: MIT
 compatibility: claude-3.5
 metadata:
   author: data-team
-  version: "2.1"
+  version: '2.1'
 ---
 ```
 
@@ -74,17 +75,20 @@ metadata:
 The description is **critical** - it determines when your skill activates.
 
 ### Requirements
+
 - Maximum 1024 characters
 - Explain what it does AND when to use it
 - Include trigger keywords users might mention
 - Write in third person
 
 ### Good Example
+
 ```yaml
 description: Extract text and tables from PDF files, fill forms, merge documents. Use when working with PDF files or when the user mentions PDFs, forms, or document extraction.
 ```
 
 ### Bad Example
+
 ```yaml
 description: PDF utilities
 ```

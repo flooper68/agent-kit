@@ -24,15 +24,19 @@ allowed-tools:
 # My Skill
 
 ## Overview
+
 Brief purpose statement.
 
 ## Available Tools
+
 List tools and their usage.
 
 ## Workflows
+
 Step-by-step patterns.
 
 ## Examples
+
 Concrete usage examples.
 ```
 
@@ -41,17 +45,20 @@ Concrete usage examples.
 The description is **critical** - it determines when your skill activates.
 
 **Requirements:**
+
 - Max 1024 characters
 - Explain what it does AND when to use it
 - Include trigger keywords
 - Write in third person
 
 **Good:**
+
 ```
 Extract data from PDFs and fill forms. Use when working with PDF files, form filling, or document extraction.
 ```
 
 **Bad:**
+
 ```
 PDF utilities
 ```
@@ -59,6 +66,7 @@ PDF utilities
 ## File Structure
 
 Recommended layout:
+
 ```
 my-skill/
 ├── SKILL.md              # Required: Main documentation
@@ -69,23 +77,25 @@ my-skill/
 
 ## Validation Limits
 
-| Field | Limit |
-|-------|-------|
-| Key | 1-64 chars (lowercase, hyphens, numbers) |
-| Name | 1-255 chars |
-| Description | 1-1024 chars |
-| Files per skill | 1-20 |
-| File path | 1-255 chars |
-| File content | Max 500KB per file |
+| Field           | Limit                                    |
+| --------------- | ---------------------------------------- |
+| Key             | 1-64 chars (lowercase, hyphens, numbers) |
+| Name            | 1-255 chars                              |
+| Description     | 1-1024 chars                             |
+| Files per skill | 1-20                                     |
+| File path       | 1-255 chars                              |
+| File content    | Max 500KB per file                       |
 
 ## Skill Management Commands
 
 ### Create
+
 ```
 createSkill --key "api-docs" --name "API Documentation" --description "Reference for MyAPI. Use when integrating with MyAPI endpoints." --files '[{"path":"SKILL.md","content":"..."}]'
 ```
 
 ### Update
+
 ```
 updateSkill --id "uuid" --description "Better description"
 updateSkill --id "uuid" --files '[{"path":"SKILL.md","content":"new content"}]'
@@ -94,6 +104,7 @@ updateSkill --id "uuid" --files '[{"path":"SKILL.md","content":"new content"}]'
 Note: `--files` does full replacement, not merge.
 
 ### Delete
+
 ```
 deleteSkill --id "uuid"
 ```
@@ -101,12 +112,14 @@ deleteSkill --id "uuid"
 Warning: Deletion is permanent.
 
 ### List
+
 ```
 listSkills
 listSkills --filter "user" --search "api"
 ```
 
 ### View
+
 ```
 getSkill --skillKey "my-skill"
 ```

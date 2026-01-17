@@ -18,11 +18,13 @@ Skills share context with system prompts. Every token counts.
 The description determines activation. Make it count.
 
 **Include:**
+
 - What the skill does (capabilities)
 - When to use it (triggers)
 - Keywords users might mention
 
 **Example:**
+
 ```yaml
 description: Process and transform data files. Use when working with CSV, JSON, Excel files, data cleaning, transformation, or analysis tasks.
 ```
@@ -38,6 +40,7 @@ Structure content for gradual loading:
 ## Writing Effective Descriptions
 
 ### Do's
+
 - Include action verbs (create, transform, analyze)
 - List key use cases
 - Add trigger keywords
@@ -45,6 +48,7 @@ Structure content for gradual loading:
 - Keep under 1024 characters
 
 ### Don'ts
+
 - Vague descriptions ("useful utilities")
 - First person ("I help you...")
 - No trigger conditions
@@ -64,16 +68,16 @@ Keep it scannable. Use headers, lists, and tables.
 
 ## Anti-Patterns to Avoid
 
-| Pattern | Problem | Solution |
-|---------|---------|----------|
-| Windows paths | Platform-specific | Use forward slashes |
-| Too many options | Decision paralysis | Provide defaults |
-| Complex instructions | Hard to follow | Break into steps |
-| Time-sensitive info | Becomes stale | Use relative terms |
-| Deeply nested refs | Hard to navigate | Keep flat |
-| Unlisted refs | Undiscoverable | Link from SKILL.md |
-| "When to use" in body | Redundant | Put in description |
-| Repeating tool schemas | Wastes tokens | Reference tools by name |
+| Pattern                | Problem            | Solution                |
+| ---------------------- | ------------------ | ----------------------- |
+| Windows paths          | Platform-specific  | Use forward slashes     |
+| Too many options       | Decision paralysis | Provide defaults        |
+| Complex instructions   | Hard to follow     | Break into steps        |
+| Time-sensitive info    | Becomes stale      | Use relative terms      |
+| Deeply nested refs     | Hard to navigate   | Keep flat               |
+| Unlisted refs          | Undiscoverable     | Link from SKILL.md      |
+| "When to use" in body  | Redundant          | Put in description      |
+| Repeating tool schemas | Wastes tokens      | Reference tools by name |
 
 ## Skill Development Workflow
 
@@ -97,24 +101,29 @@ allowed-tools:
 ```
 
 SKILL.md body:
+
 ```markdown
 # Payments API
 
 Integrate with our payment gateway.
 
 ## Authentication
+
 Bearer token in Authorization header.
 
 ## Common Operations
 
 ### Create Payment
+
 POST /v1/payments
 Required: amount, currency, source
 
 ### List Transactions
+
 GET /v1/transactions?limit=20
 
 ## Reference Files
+
 - `references/webhooks.md` - Webhook setup
 - `references/errors.md` - Error codes
 ```

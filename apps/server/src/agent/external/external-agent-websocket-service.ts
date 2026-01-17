@@ -1073,18 +1073,33 @@ export class ExternalAgentWebSocketService {
         toolCallId: toolCallId || requestId,
       });
 
-      this.log.debug('Server tool executed successfully', {
-        agentId: agent.id,
-        tool,
-        requestId: requestId.slice(0, 8) + '...',
-      });
+      // Check if result indicates an error (ExecuteSkillResult pattern)
+      const hasResultError =
+        result !== null &&
+        typeof result === 'object' &&
+        'success' in result &&
+        (result as { success: boolean }).success === false;
+
+      if (hasResultError) {
+        this.log.debug('Server tool returned error result', {
+          agentId: agent.id,
+          tool,
+          requestId: requestId.slice(0, 8) + '...',
+        });
+      } else {
+        this.log.debug('Server tool executed successfully', {
+          agentId: agent.id,
+          tool,
+          requestId: requestId.slice(0, 8) + '...',
+        });
+      }
 
       this.sendServerToolResponse(
         agent.id,
         sessionId,
         requestId,
         result,
-        false
+        hasResultError
       );
     } catch (error) {
       const errorMessage =

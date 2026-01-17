@@ -18,6 +18,7 @@ General-purpose utilities for time and UI interaction.
 - **getCurrentUIState**: Get current page info
 
 ## Time Operations
+
 ```
 getTime
 getTime --timezone "America/New_York"
@@ -26,6 +27,7 @@ getTime --timezone "America/New_York"
 ## Navigation
 
 Navigate the user to specific pages:
+
 ```
 navigateTo --path "/app/projects"
 navigateTo --path "/app/artifacts"
@@ -35,6 +37,7 @@ navigateTo --path "/app/agents"
 ## UI State
 
 Check what page the user is currently viewing:
+
 ```
 getCurrentUIState
 ```

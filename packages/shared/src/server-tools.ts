@@ -115,9 +115,16 @@ export const searchArtifactsSchema = z.object({
     .string()
     .min(1, 'Search query is required')
     .max(500, 'Search query is too long')
-    .describe('Search query to find artifacts by title or content'),
+    .refine(
+      (val) => val === '*' || val.trim().length > 0,
+      'Search query cannot be only whitespace'
+    )
+    .describe(
+      'Search query to find artifacts by title or content. Use "*" to list all documents.'
+    ),
   limit: z
     .number()
+    .int('Limit must be an integer')
     .min(1)
     .max(50)
     .default(10)
@@ -138,8 +145,11 @@ export const getArtifactSchema = z.object({
     .number()
     .int()
     .min(1)
+    .max(10000)
     .optional()
-    .describe('Maximum number of lines to return. Omit to return all content.'),
+    .describe(
+      'Maximum number of lines to return (max 10000). Omit to return all content.'
+    ),
 });
 
 export const updateArtifactSchema = z.object({
@@ -173,6 +183,7 @@ export const patchArtifactSchema = z.object({
   endLine: z
     .number()
     .int()
+    .min(0)
     .describe(
       'The ending line number (1-indexed, inclusive). Set to startLine - 1 to insert without replacing.'
     ),
@@ -477,7 +488,7 @@ export const SERVER_TOOL_DEFINITIONS = {
   searchArtifacts: {
     name: 'searchArtifacts',
     description:
-      'Search for saved documents/artifacts by title or content. Use to find existing notes or documents.',
+      'Search for saved documents/artifacts by title or content. Use "*" to list all documents.',
     schema: searchArtifactsSchema,
     category: 'artifact' as const,
   },

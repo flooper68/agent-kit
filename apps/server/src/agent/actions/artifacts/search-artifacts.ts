@@ -21,12 +21,18 @@ export function createSearchArtifactsTool(
 ): Tool {
   return tool({
     description:
-      'Search through saved documents/notes by title and summary. Use an empty query to list recent documents. Use this when the user asks to find, look up, or list previously saved documents.',
+      'Search through saved documents/notes by title and summary. Use "*" to list all documents. Use this when the user asks to find, look up, or list previously saved documents.',
     inputSchema: z.object({
       query: z
         .string()
+        .min(1, 'Search query is required')
+        .max(500, 'Search query is too long')
+        .refine(
+          (val) => val === '*' || val.trim().length > 0,
+          'Search query cannot be only whitespace'
+        )
         .describe(
-          'Search query to match against document titles and summaries. Use empty string to list recent documents.'
+          'Search query to match against document titles and summaries. Use "*" to list all documents.'
         ),
       limit: z
         .number()
@@ -66,7 +72,7 @@ export function createSearchArtifactsTool(
           return {
             found: false,
             message:
-              query.trim() === ''
+              query === '*'
                 ? 'No documents found.'
                 : 'No documents found matching your search.',
             results: [],

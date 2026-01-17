@@ -49,7 +49,9 @@ export const ChipInlineDisplay = memo(function ChipInlineDisplay({
         content={
           <div className="max-w-xs max-h-64 overflow-y-auto text-primary-foreground">
             {title && (
-              <div className="font-semibold text-sm text-primary-foreground">{title}</div>
+              <div className="font-semibold text-sm text-primary-foreground">
+                {title}
+              </div>
             )}
             {description && (
               <div className="opacity-80 mt-1">{description}</div>
@@ -57,7 +59,8 @@ export const ChipInlineDisplay = memo(function ChipInlineDisplay({
             {prompt && (
               <div
                 className={cn(
-                  (title || description) && 'mt-2 pt-2 border-t border-current/20'
+                  (title || description) &&
+                    'mt-2 pt-2 border-t border-current/20'
                 )}
               >
                 {(title || description) && (

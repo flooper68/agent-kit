@@ -33,7 +33,7 @@ export class SearchArtifactsQuery {
     );
 
     const searchCondition =
-      query.trim() === ''
+      query === '*' || query.trim() === ''
         ? baseCondition
         : and(
             baseCondition,

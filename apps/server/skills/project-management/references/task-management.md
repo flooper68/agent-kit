@@ -5,17 +5,20 @@ Best practices for creating and managing tasks.
 ## Task Creation Best Practices
 
 ### Clear Titles
+
 Titles should describe **what** needs to be done:
 
-| Good | Bad |
-|------|-----|
-| "Implement user login form" | "Login" |
-| "Fix null pointer in checkout" | "Bug" |
-| "Write API documentation" | "Docs" |
-| "Review PR #123" | "Review" |
+| Good                           | Bad      |
+| ------------------------------ | -------- |
+| "Implement user login form"    | "Login"  |
+| "Fix null pointer in checkout" | "Bug"    |
+| "Write API documentation"      | "Docs"   |
+| "Review PR #123"               | "Review" |
 
 ### Effective Descriptions
+
 Descriptions should include:
+
 - Context/background
 - Acceptance criteria
 - Links to relevant resources
@@ -31,11 +34,11 @@ createTask
 
 ### Appropriate Granularity
 
-| Too Big | Right Size | Too Small |
-|---------|------------|----------|
-| "Build auth system" | "Implement login endpoint" | "Add semicolon" |
-| "Redesign app" | "Update header component" | "Change button color" |
-| "Fix all bugs" | "Fix cart calculation bug" | "Add console.log" |
+| Too Big             | Right Size                 | Too Small             |
+| ------------------- | -------------------------- | --------------------- |
+| "Build auth system" | "Implement login endpoint" | "Add semicolon"       |
+| "Redesign app"      | "Update header component"  | "Change button color" |
+| "Fix all bugs"      | "Fix cart calculation bug" | "Add console.log"     |
 
 **Rule of thumb:** A task should be completable in a few hours to a few days.
 
@@ -44,6 +47,7 @@ createTask
 ### Example: "Implement Authentication"
 
 Break into:
+
 ```
 createTask --projectId "uuid" --title "Design auth database schema"
 createTask --projectId "uuid" --title "Implement user registration endpoint"
@@ -55,6 +59,7 @@ createTask --projectId "uuid" --title "Document auth API"
 ```
 
 ### Decomposition Questions
+
 - Can this be done in one sitting?
 - Does this have multiple distinct steps?
 - Would someone need to context-switch during this?
@@ -63,6 +68,7 @@ createTask --projectId "uuid" --title "Document auth API"
 ## Task Updates
 
 ### When to Update
+
 - Scope changes
 - Priority changes
 - New information discovered
@@ -75,6 +81,7 @@ updateTask --taskId "uuid" --description "[existing description]\n\nBLOCKED: Wai
 ```
 
 ### Tracking Progress in Description
+
 ```
 updateTask
   --taskId "uuid"
@@ -84,7 +91,9 @@ updateTask
 ## Task Relationships
 
 ### Using Descriptions
+
 Note dependencies in task descriptions:
+
 ```
 createTask
   --projectId "uuid"
@@ -93,7 +102,9 @@ createTask
 ```
 
 ### Using Artifacts
+
 Link related documents:
+
 ```
 # Create spec
 writeArtifact --title "Feature Spec" --content "..."
@@ -106,6 +117,7 @@ attachArtifactToTask --taskId "test-task-uuid" --artifactId "spec-uuid"
 ## Common Task Types
 
 ### Feature Tasks
+
 ```
 createTask
   --projectId "uuid"
@@ -115,6 +127,7 @@ createTask
 ```
 
 ### Bug Fix Tasks
+
 ```
 createTask
   --projectId "uuid"
@@ -124,6 +137,7 @@ createTask
 ```
 
 ### Tech Debt Tasks
+
 ```
 createTask
   --projectId "uuid"
@@ -133,6 +147,7 @@ createTask
 ```
 
 ### Documentation Tasks
+
 ```
 createTask
   --projectId "uuid"
