@@ -110,7 +110,8 @@ export function createGetArtifactTool(context: GetArtifactContext): Tool {
           updatedAt: artifact.updatedAt,
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
+        const message =
+          error instanceof Error ? error.message : 'Unknown error';
         return {
           found: false,
           error: `Failed to retrieve artifact: ${message}`,

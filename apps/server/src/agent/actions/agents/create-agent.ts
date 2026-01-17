@@ -179,8 +179,8 @@ export function createCreateAgentTool(context: CreateAgentContext): Tool {
             };
           }
 
-          const result = await context.agentsFeature.customAgents.createExternal(
-            {
+          const result =
+            await context.agentsFeature.customAgents.createExternal({
               userId: context.userId,
               orgId: context.orgId,
               key,
@@ -191,8 +191,7 @@ export function createCreateAgentTool(context: CreateAgentContext): Tool {
               allowedSkillIds,
               allowedTools,
               scopes,
-            }
-          );
+            });
 
           // Note: We intentionally do NOT return the secretKey for security
           // The secret key is only available when creating via TRPC/UI

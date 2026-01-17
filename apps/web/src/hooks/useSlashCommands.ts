@@ -83,7 +83,10 @@ export function useSlashCommands(
   const pendingCursorRef = useRef(0);
 
   // Slash command detection (now cursor-aware)
-  const slashCommandContext = useSlashCommandDetection(inputValue, cursorPosition);
+  const slashCommandContext = useSlashCommandDetection(
+    inputValue,
+    cursorPosition
+  );
 
   // Cleanup debounce timeout on unmount
   useEffect(() => {

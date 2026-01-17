@@ -55,14 +55,14 @@ A local agent for implementing features, fixing bugs, refactoring code, and crea
 
 ## Environment Variables
 
-| Variable                  | Required | Default               | Description                      |
-| ------------------------- | -------- | --------------------- | -------------------------------- |
-| `CODER_AGENT_API_KEY`     | **Yes**  | -                     | Secret API key                   |
-| `CODER_GIT_REPOSITORY_URL`| **Yes**  | -                     | Git repository URL to clone      |
-| `CODER_GIT_BRANCH`        | No       | default branch        | Branch to checkout after cloning |
-| `SERVER_URL`              | No       | `ws://localhost:3001` | WebSocket server URL             |
-| `CODER_WORKING_DIRECTORY` | No       | `/workspace`          | Base directory for file ops      |
-| `CODER_AGENT_ID`          | No       | -                     | Agent ID for logging             |
+| Variable                   | Required | Default               | Description                      |
+| -------------------------- | -------- | --------------------- | -------------------------------- |
+| `CODER_AGENT_API_KEY`      | **Yes**  | -                     | Secret API key                   |
+| `CODER_GIT_REPOSITORY_URL` | **Yes**  | -                     | Git repository URL to clone      |
+| `CODER_GIT_BRANCH`         | No       | default branch        | Branch to checkout after cloning |
+| `SERVER_URL`               | No       | `ws://localhost:3001` | WebSocket server URL             |
+| `CODER_WORKING_DIRECTORY`  | No       | `/workspace`          | Base directory for file ops      |
+| `CODER_AGENT_ID`           | No       | -                     | Agent ID for logging             |
 
 ## Running
 

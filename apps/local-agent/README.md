@@ -4,13 +4,13 @@ Multi-agent system for connecting specialized agents to the Agent Kit server. Ea
 
 ## Available Agents
 
-| Agent                                                                   | Purpose                        | Tools                       |
-| ----------------------------------------------------------------------- | ------------------------------ | --------------------------- |
-| [codebase-researcher](./src/agents/codebase-researcher/README.md)       | Explore and analyze codebases  | Read, Glob, Grep, Git       |
-| [coder](./src/agents/coder/README.md)                                   | Implement features, create PRs | Read, Write, Edit, Git, gh  |
-| [web-researcher](./src/agents/web-researcher/README.md)                 | Research topics from the web   | WebFetch, WebSearch         |
-| [claude-assistant-opus](./src/agents/claude-assistant-opus/README.md)   | Planning and brainstorming     | MCP server tools, Web       |
-| [claude-assistant-sonnet](./src/agents/claude-assistant-sonnet/README.md) | Planning and brainstorming   | MCP server tools, Web       |
+| Agent                                                                     | Purpose                        | Tools                      |
+| ------------------------------------------------------------------------- | ------------------------------ | -------------------------- |
+| [codebase-researcher](./src/agents/codebase-researcher/README.md)         | Explore and analyze codebases  | Read, Glob, Grep, Git      |
+| [coder](./src/agents/coder/README.md)                                     | Implement features, create PRs | Read, Write, Edit, Git, gh |
+| [web-researcher](./src/agents/web-researcher/README.md)                   | Research topics from the web   | WebFetch, WebSearch        |
+| [claude-assistant-opus](./src/agents/claude-assistant-opus/README.md)     | Planning and brainstorming     | MCP server tools, Web      |
+| [claude-assistant-sonnet](./src/agents/claude-assistant-sonnet/README.md) | Planning and brainstorming     | MCP server tools, Web      |
 
 ## Architecture
 
@@ -47,13 +47,13 @@ bun run dev:claude-assistant-sonnet
 
 Each agent uses prefixed environment variables. See each agent's README for specific configuration:
 
-| Agent                  | API Key Variable                        | Agent ID Variable                   |
-| ---------------------- | --------------------------------------- | ----------------------------------- |
-| codebase-researcher    | `CODEBASE_RESEARCHER_AGENT_API_KEY`     | `CODEBASE_RESEARCHER_AGENT_ID`      |
-| coder                  | `CODER_AGENT_API_KEY`                   | `CODER_AGENT_ID`                    |
-| web-researcher         | `WEB_RESEARCHER_AGENT_API_KEY`          | `WEB_RESEARCHER_AGENT_ID`           |
-| claude-assistant-opus  | `CLAUDE_ASSISTANT_OPUS_AGENT_API_KEY`   | `CLAUDE_ASSISTANT_OPUS_AGENT_ID`    |
-| claude-assistant-sonnet| `CLAUDE_ASSISTANT_SONNET_AGENT_API_KEY` | `CLAUDE_ASSISTANT_SONNET_AGENT_ID`  |
+| Agent                   | API Key Variable                        | Agent ID Variable                  |
+| ----------------------- | --------------------------------------- | ---------------------------------- |
+| codebase-researcher     | `CODEBASE_RESEARCHER_AGENT_API_KEY`     | `CODEBASE_RESEARCHER_AGENT_ID`     |
+| coder                   | `CODER_AGENT_API_KEY`                   | `CODER_AGENT_ID`                   |
+| web-researcher          | `WEB_RESEARCHER_AGENT_API_KEY`          | `WEB_RESEARCHER_AGENT_ID`          |
+| claude-assistant-opus   | `CLAUDE_ASSISTANT_OPUS_AGENT_API_KEY`   | `CLAUDE_ASSISTANT_OPUS_AGENT_ID`   |
+| claude-assistant-sonnet | `CLAUDE_ASSISTANT_SONNET_AGENT_API_KEY` | `CLAUDE_ASSISTANT_SONNET_AGENT_ID` |
 
 Common variable: `SERVER_URL` (default: `ws://localhost:3001`)
 
@@ -106,11 +106,11 @@ docker compose up
 
 The Docker setup requires these files on your host machine:
 
-| File                          | Purpose                                                   |
-| ----------------------------- | --------------------------------------------------------- |
-| `~/.claude/.credentials.json` | Claude OAuth authentication                               |
-| `~/.gitconfig`                | Git configuration (codebase-researcher, coder)            |
-| `~/.config/gh/`               | GitHub CLI authentication (codebase-researcher, coder)    |
+| File                          | Purpose                                                |
+| ----------------------------- | ------------------------------------------------------ |
+| `~/.claude/.credentials.json` | Claude OAuth authentication                            |
+| `~/.gitconfig`                | Git configuration (codebase-researcher, coder)         |
+| `~/.config/gh/`               | GitHub CLI authentication (codebase-researcher, coder) |
 
 To set up Claude credentials, run `claude` locally and complete OAuth login.
 
@@ -163,11 +163,11 @@ CLAUDE_ASSISTANT_SONNET_AGENT_ID=claude-assistant-sonnet
 
 ### Volume Mounts
 
-| Container                    | Mount                         | Purpose           |
-| ---------------------------- | ----------------------------- | ----------------- |
-| All agents                   | `~/.claude/.credentials.json` | Claude OAuth      |
-| codebase-researcher, coder   | `~/.gitconfig`                | Git config        |
-| codebase-researcher, coder   | `~/.config/gh/`               | GitHub CLI auth   |
+| Container                  | Mount                         | Purpose         |
+| -------------------------- | ----------------------------- | --------------- |
+| All agents                 | `~/.claude/.credentials.json` | Claude OAuth    |
+| codebase-researcher, coder | `~/.gitconfig`                | Git config      |
+| codebase-researcher, coder | `~/.config/gh/`               | GitHub CLI auth |
 
 ### Resource Limits
 
