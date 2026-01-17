@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Heading,
   Text,
@@ -23,17 +24,8 @@ import { trpc } from '../lib/trpc';
 import { useHeaderActions } from '../contexts/HeaderActionsContext';
 import { useUrlState } from '../hooks/useUrlState';
 
-interface SlashCommand {
-  id: string;
-  key: string;
-  name: string;
-  description: string | null;
-  prompt: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export function SlashCommandsPage() {
+  const navigate = useNavigate();
   const { setActions, clearActions } = useHeaderActions();
   const [cursors, setCursors] = useState<string[]>([]);
   const [searchQuery, setSearchQuery, debouncedSearch] = useUrlState('search', {
@@ -42,9 +34,6 @@ export function SlashCommandsPage() {
 
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingCommand, setEditingCommand] = useState<SlashCommand | null>(
-    null
-  );
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     name: string;
@@ -106,21 +95,6 @@ export function SlashCommandsPage() {
     },
   });
 
-  const updateMutation = trpc.slashCommands.update.useMutation({
-    onSuccess: () => {
-      setEditingCommand(null);
-      resetForm();
-      utils.slashCommands.list.invalidate();
-    },
-    onError: (error) => {
-      if (error.message.includes('unique')) {
-        setFormError('A command with this key already exists');
-      } else {
-        setFormError(error.message);
-      }
-    },
-  });
-
   const deleteMutation = trpc.slashCommands.delete.useMutation({
     onSuccess: () => {
       queueMicrotask(() => setDeleteTarget(null));
@@ -136,13 +110,8 @@ export function SlashCommandsPage() {
     setFormError(null);
   };
 
-  const handleEdit = (command: SlashCommand) => {
-    setEditingCommand(command);
-    setFormKey(command.key);
-    setFormName(command.name);
-    setFormDescription(command.description || '');
-    setFormPrompt(command.prompt);
-    setFormError(null);
+  const handleEdit = (commandId: string) => {
+    navigate(`/app/commands/${commandId}/edit`);
   };
 
   const handleSubmit = () => {
@@ -154,22 +123,12 @@ export function SlashCommandsPage() {
       return;
     }
 
-    if (editingCommand) {
-      updateMutation.mutate({
-        id: editingCommand.id,
-        key: formKey,
-        name: formName,
-        description: formDescription || undefined,
-        prompt: formPrompt,
-      });
-    } else {
-      createMutation.mutate({
-        key: formKey,
-        name: formName,
-        description: formDescription || undefined,
-        prompt: formPrompt,
-      });
-    }
+    createMutation.mutate({
+      key: formKey,
+      name: formName,
+      description: formDescription || undefined,
+      prompt: formPrompt,
+    });
   };
 
   const handleNextPage = useCallback(() => {
@@ -300,7 +259,7 @@ export function SlashCommandsPage() {
                         </DropdownMenu.Trigger>
                         <DropdownMenu.Content align="end">
                           <DropdownMenu.Item
-                            onSelect={() => handleEdit(command)}
+                            onSelect={() => handleEdit(command.id)}
                           >
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit
@@ -341,26 +300,21 @@ export function SlashCommandsPage() {
         )}
       </div>
 
-      {/* Create/Edit Dialog */}
+      {/* Create Dialog */}
       <Dialog
-        open={isCreateDialogOpen || !!editingCommand}
+        open={isCreateDialogOpen}
         onOpenChange={(open) => {
           if (!open) {
             setIsCreateDialogOpen(false);
-            setEditingCommand(null);
             resetForm();
           }
         }}
       >
         <Dialog.Content size="2xl">
           <Dialog.Header>
-            <Dialog.Title>
-              {editingCommand ? 'Edit Command' : 'Create New Command'}
-            </Dialog.Title>
+            <Dialog.Title>Create New Command</Dialog.Title>
             <Dialog.Description>
-              {editingCommand
-                ? 'Update your slash command settings and prompt.'
-                : 'Create a custom slash command to quickly insert prompts.'}
+              Create a custom slash command to quickly insert prompts.
             </Dialog.Description>
           </Dialog.Header>
           <div className="space-y-4 py-4">
@@ -429,10 +383,10 @@ export function SlashCommandsPage() {
             </Dialog.Close>
             <Button
               onClick={handleSubmit}
-              isLoading={createMutation.isPending || updateMutation.isPending}
+              isLoading={createMutation.isPending}
               disabled={!isFormValid}
             >
-              {editingCommand ? 'Save Changes' : 'Create Command'}
+              Create Command
             </Button>
           </Dialog.Footer>
         </Dialog.Content>

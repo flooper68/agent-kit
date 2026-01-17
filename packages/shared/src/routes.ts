@@ -40,6 +40,7 @@ export const VALID_ROUTES: readonly RouteDefinition[] = [
   { path: '/app/skills/:id' },
   { path: '/app/skills/:id/edit' },
   { path: '/app/commands' },
+  { path: '/app/commands/:id/edit' },
   { path: '/app/users' },
   { path: '/app/analytics' },
 ] as const;

@@ -60,13 +60,21 @@ export interface DropdownMenuItemProps
 const DropdownMenuItem = forwardRef<
   React.ComponentRef<typeof DropdownMenuPrimitive.Item>,
   DropdownMenuItemProps
->(({ className, variant = 'default', onClick, ...props }, ref) => {
+>(({ className, variant = 'default', onClick, onSelect, ...props }, ref) => {
   // Wrap onClick to delay execution, allowing the dropdown to fully close
   // before any action (like opening a dialog) is triggered.
   // This prevents pointer-events conflicts with Radix UI's dismissable layer.
   const handleClick = onClick
     ? (e: React.MouseEvent<HTMLDivElement>) => {
         setTimeout(() => onClick(e), 0);
+      }
+    : undefined;
+
+  // Wrap onSelect similarly to prevent the same pointer-events conflicts.
+  // Radix uses onSelect as the primary event handler for menu items.
+  const handleSelect = onSelect
+    ? (e: Event) => {
+        setTimeout(() => onSelect(e), 0);
       }
     : undefined;
 
@@ -81,6 +89,7 @@ const DropdownMenuItem = forwardRef<
         className
       )}
       onClick={handleClick}
+      onSelect={handleSelect}
       {...props}
     />
   );
