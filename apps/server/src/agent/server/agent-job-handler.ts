@@ -13,6 +13,7 @@ import type { ArtifactsFeature } from '../../features/artifacts';
 import type { ProjectsFeature } from '../../features/projects';
 import type { TasksFeature } from '../../features/tasks';
 import type { SkillsFeature } from '../../features/skills';
+import type { SlashCommandsFeature } from '../../features/slash-commands';
 import type { AgentSpawner } from '../agent-spawner';
 import { getProvider } from '../providers';
 import { getToolsById, getActionsById, TOOL_IDS } from '../tools';
@@ -66,6 +67,7 @@ export class AgentJobHandler {
   private cacheInvalidation: CacheInvalidationService;
   private projectsFeature?: ProjectsFeature;
   private tasksFeature?: TasksFeature;
+  private slashCommandsFeature?: SlashCommandsFeature;
   private workerId: string;
   private eventSequence = 0;
   private eventBuffer = new EventBuffer();
@@ -83,7 +85,8 @@ export class AgentJobHandler {
     cacheInvalidation: CacheInvalidationService,
     workerId: string,
     projectsFeature?: ProjectsFeature,
-    tasksFeature?: TasksFeature
+    tasksFeature?: TasksFeature,
+    slashCommandsFeature?: SlashCommandsFeature
   ) {
     this.eventStreamManager = eventStreamManager;
     this.jobRegistryManager = jobRegistryManager;
@@ -97,6 +100,7 @@ export class AgentJobHandler {
     this.workerId = workerId;
     this.projectsFeature = projectsFeature;
     this.tasksFeature = tasksFeature;
+    this.slashCommandsFeature = slashCommandsFeature;
     this.log = logger.child({ workerId });
   }
 
@@ -342,6 +346,7 @@ export class AgentJobHandler {
         tasksFeature: this.tasksFeature,
         agentsFeature: this.agentsFeature,
         skillsFeature: this.skillsFeature,
+        slashCommandsFeature: this.slashCommandsFeature,
         eventStreamManager: this.eventStreamManager,
         pubsub: this.pubsub,
         agentSpawner: this.agentSpawner,

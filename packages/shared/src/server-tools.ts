@@ -32,7 +32,8 @@ export type ToolCategory =
   | 'task'
   | 'navigation'
   | 'agent'
-  | 'skillManagement';
+  | 'skillManagement'
+  | 'slashCommand';
 
 // =============================================================================
 // Tool Definition Type
@@ -442,6 +443,76 @@ export const deleteSkillSchema = z.object({
   skillKey: z.string().min(1).describe('The skill key to delete'),
 });
 
+// --- Slash Command Tools ---
+export const listSlashCommandsSchema = z.object({
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(50)
+    .describe('Maximum number of commands to return'),
+  offset: z
+    .number()
+    .int()
+    .min(0)
+    .default(0)
+    .describe('Number of commands to skip for pagination'),
+});
+
+export const getSlashCommandSchema = z.object({
+  id: z.string().uuid().describe('The slash command ID to retrieve'),
+});
+
+export const createSlashCommandSchema = z.object({
+  key: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(
+      /^[a-z0-9-]+$/,
+      'Key must be lowercase alphanumeric with hyphens only'
+    )
+    .describe('Unique command key (e.g., "code-review", "summarize")'),
+  name: z.string().min(1).max(255).describe('Display name for the command'),
+  description: z
+    .string()
+    .max(500)
+    .optional()
+    .describe('Brief description for autocomplete'),
+  prompt: z
+    .string()
+    .min(1)
+    .max(10000)
+    .describe('The prompt template to insert when command is used'),
+});
+
+export const updateSlashCommandSchema = z.object({
+  id: z.string().uuid().describe('The slash command ID to update'),
+  key: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(
+      /^[a-z0-9-]+$/,
+      'Key must be lowercase alphanumeric with hyphens only'
+    )
+    .optional()
+    .describe('New command key'),
+  name: z.string().min(1).max(255).optional().describe('New display name'),
+  description: z.string().max(500).optional().describe('New description'),
+  prompt: z
+    .string()
+    .min(1)
+    .max(10000)
+    .optional()
+    .describe('New prompt template'),
+});
+
+export const deleteSlashCommandSchema = z.object({
+  id: z.string().uuid().describe('The slash command ID to delete'),
+});
+
 // =============================================================================
 // Server Tool Definitions
 // =============================================================================
@@ -762,6 +833,43 @@ Notes:
     description: 'Delete a skill. This action cannot be undone.',
     schema: deleteSkillSchema,
     category: 'skillManagement' as const,
+  },
+
+  // --- Slash Command Tools ---
+  listSlashCommands: {
+    name: 'listSlashCommands',
+    description:
+      'List all slash commands for the user. Returns command keys, names, descriptions, and prompts.',
+    schema: listSlashCommandsSchema,
+    category: 'slashCommand' as const,
+  },
+  getSlashCommand: {
+    name: 'getSlashCommand',
+    description:
+      'Get a specific slash command by ID. Returns full command details including the prompt template.',
+    schema: getSlashCommandSchema,
+    category: 'slashCommand' as const,
+  },
+  createSlashCommand: {
+    name: 'createSlashCommand',
+    description:
+      'Create a new slash command. Slash commands are reusable prompt templates that users can quickly insert in chat.',
+    schema: createSlashCommandSchema,
+    category: 'slashCommand' as const,
+  },
+  updateSlashCommand: {
+    name: 'updateSlashCommand',
+    description:
+      'Update an existing slash command. Can update key, name, description, or prompt template.',
+    schema: updateSlashCommandSchema,
+    category: 'slashCommand' as const,
+  },
+  deleteSlashCommand: {
+    name: 'deleteSlashCommand',
+    description:
+      'Delete a slash command permanently. This action cannot be undone.',
+    schema: deleteSlashCommandSchema,
+    category: 'slashCommand' as const,
   },
 } as const;
 

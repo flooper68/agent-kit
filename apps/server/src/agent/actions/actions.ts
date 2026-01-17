@@ -157,6 +157,28 @@ import {
 import { createListSkillsTool, listSkillsMetadata } from './skills/list-skills';
 import { createGetSkillTool, getSkillMetadata } from './skills/get-skill';
 
+// Slash command actions
+import {
+  createListSlashCommandsTool,
+  listSlashCommandsMetadata,
+} from './slash-commands/list-slash-commands';
+import {
+  createGetSlashCommandTool,
+  getSlashCommandMetadata,
+} from './slash-commands/get-slash-command';
+import {
+  createCreateSlashCommandTool,
+  createSlashCommandMetadata,
+} from './slash-commands/create-slash-command';
+import {
+  createUpdateSlashCommandTool,
+  updateSlashCommandMetadata,
+} from './slash-commands/update-slash-command';
+import {
+  createDeleteSlashCommandTool,
+  deleteSlashCommandMetadata,
+} from './slash-commands/delete-slash-command';
+
 /**
  * Collected metadata from all actions with scope requirements.
  * Used by permission system to check required scopes for actions.
@@ -217,6 +239,13 @@ export const ACTION_METADATA: Record<string, ActionMetadata> = {
   [createSkillMetadata.id]: createSkillMetadata,
   [updateSkillMetadata.id]: updateSkillMetadata,
   [deleteSkillMetadata.id]: deleteSkillMetadata,
+
+  // Slash command actions
+  [listSlashCommandsMetadata.id]: listSlashCommandsMetadata,
+  [getSlashCommandMetadata.id]: getSlashCommandMetadata,
+  [createSlashCommandMetadata.id]: createSlashCommandMetadata,
+  [updateSlashCommandMetadata.id]: updateSlashCommandMetadata,
+  [deleteSlashCommandMetadata.id]: deleteSlashCommandMetadata,
 };
 
 /**
@@ -302,6 +331,12 @@ export const ACTION_IDS = [
   'createSkill',
   'updateSkill',
   'deleteSkill',
+  // Slash command actions
+  'listSlashCommands',
+  'getSlashCommand',
+  'createSlashCommand',
+  'updateSlashCommand',
+  'deleteSlashCommand',
 ] as const;
 
 export type StaticActionId = keyof typeof STATIC_ACTIONS;
@@ -693,6 +728,77 @@ export function getActionsById(
             orgId: context.orgId,
             skillsFeature: context.skillsFeature,
           });
+          break;
+        // Slash command actions
+        case 'listSlashCommands':
+          if (context.slashCommandsFeature) {
+            result[id] = createListSlashCommandsTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              slashCommandsFeature: context.slashCommandsFeature,
+            });
+          } else {
+            logger.debug(
+              'Skipping action due to missing slashCommandsFeature',
+              { action: id }
+            );
+          }
+          break;
+        case 'getSlashCommand':
+          if (context.slashCommandsFeature) {
+            result[id] = createGetSlashCommandTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              slashCommandsFeature: context.slashCommandsFeature,
+            });
+          } else {
+            logger.debug(
+              'Skipping action due to missing slashCommandsFeature',
+              { action: id }
+            );
+          }
+          break;
+        case 'createSlashCommand':
+          if (context.slashCommandsFeature) {
+            result[id] = createCreateSlashCommandTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              slashCommandsFeature: context.slashCommandsFeature,
+            });
+          } else {
+            logger.debug(
+              'Skipping action due to missing slashCommandsFeature',
+              { action: id }
+            );
+          }
+          break;
+        case 'updateSlashCommand':
+          if (context.slashCommandsFeature) {
+            result[id] = createUpdateSlashCommandTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              slashCommandsFeature: context.slashCommandsFeature,
+            });
+          } else {
+            logger.debug(
+              'Skipping action due to missing slashCommandsFeature',
+              { action: id }
+            );
+          }
+          break;
+        case 'deleteSlashCommand':
+          if (context.slashCommandsFeature) {
+            result[id] = createDeleteSlashCommandTool({
+              userId: context.userId,
+              orgId: context.orgId,
+              slashCommandsFeature: context.slashCommandsFeature,
+            });
+          } else {
+            logger.debug(
+              'Skipping action due to missing slashCommandsFeature',
+              { action: id }
+            );
+          }
           break;
         default:
           unknownIds.push(id);

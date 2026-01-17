@@ -3,6 +3,7 @@ import type { ProjectsFeature } from '../../features/projects';
 import type { TasksFeature } from '../../features/tasks';
 import type { AgentsFeature } from '../../features/agents';
 import type { SkillsFeature } from '../../features/skills';
+import type { SlashCommandsFeature } from '../../features/slash-commands';
 import type { EventStreamManager } from '../../streams/event-stream-manager';
 import type { PubSubManager } from '../../real-time';
 import type { AgentScope } from '../permissions/scopes';
@@ -44,6 +45,8 @@ export interface ActionsContext {
   // Feature-flagged - remain optional
   projectsFeature?: ProjectsFeature;
   tasksFeature?: TasksFeature;
+  /** Slash commands feature for slash command management actions */
+  slashCommandsFeature?: SlashCommandsFeature;
 
   /** Allowed skill IDs for this agent (empty array = no skills allowed) */
   allowedSkillIds: string[];

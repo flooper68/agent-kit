@@ -128,4 +128,21 @@ export const SCOPE_METADATA: Record<AgentScope, ScopeMetadata> = {
     description: 'Allow deleting skills permanently',
     category: 'Skills',
   },
+
+  // Slash Commands
+  [AgentScope.SLASH_COMMANDS_READ]: {
+    label: 'Read Slash Commands',
+    description: 'Allow listing and viewing slash commands',
+    category: 'Slash Commands',
+  },
+  [AgentScope.SLASH_COMMANDS_WRITE]: {
+    label: 'Write Slash Commands',
+    description: 'Allow creating and updating slash commands',
+    category: 'Slash Commands',
+  },
+  [AgentScope.SLASH_COMMANDS_DELETE]: {
+    label: 'Delete Slash Commands',
+    description: 'Allow deleting slash commands permanently',
+    category: 'Slash Commands',
+  },
 };

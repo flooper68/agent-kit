@@ -27,6 +27,7 @@ import type { ArtifactsFeature } from '../../features/artifacts';
 import type { ProjectsFeature } from '../../features/projects';
 import type { TasksFeature } from '../../features/tasks';
 import type { SkillsFeature } from '../../features/skills';
+import type { SlashCommandsFeature } from '../../features/slash-commands';
 import type { PubSubManager } from '../../real-time';
 import { getToolsById, getActionsById, TOOL_IDS } from '../tools';
 import type { AgentSpawner } from '../agent-spawner';
@@ -153,7 +154,8 @@ export class ExternalAgentWebSocketService {
     private skillsFeature: SkillsFeature,
     private pubsub: PubSubManager,
     private projectsFeature?: ProjectsFeature,
-    private tasksFeature?: TasksFeature
+    private tasksFeature?: TasksFeature,
+    private slashCommandsFeature?: SlashCommandsFeature
   ) {
     this.wss = new WebSocketServer({ noServer: true });
     this.setupConnectionHandler();
@@ -1035,6 +1037,7 @@ export class ExternalAgentWebSocketService {
         projectsFeature: this.projectsFeature,
         tasksFeature: this.tasksFeature,
         skillsFeature: this.skillsFeature,
+        slashCommandsFeature: this.slashCommandsFeature,
         agentsFeature: this.agentsFeature,
         eventStreamManager: this.eventStreamManager,
         pubsub: this.pubsub,

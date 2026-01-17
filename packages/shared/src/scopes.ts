@@ -38,6 +38,11 @@ export enum AgentScope {
   SKILLS_READ = 'skills:read',
   SKILLS_WRITE = 'skills:write',
   SKILLS_DELETE = 'skills:delete',
+
+  // Slash Commands
+  SLASH_COMMANDS_READ = 'slashCommands:read',
+  SLASH_COMMANDS_WRITE = 'slashCommands:write',
+  SLASH_COMMANDS_DELETE = 'slashCommands:delete',
 }
 
 /** Array of all scopes for iteration and validation */

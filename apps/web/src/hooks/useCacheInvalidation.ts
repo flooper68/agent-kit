@@ -132,6 +132,15 @@ export function useCacheInvalidation() {
             utils.skills.get.invalidate({ id: event.entityId });
           }
           break;
+
+        case 'slashCommands':
+          // Invalidate slash command list queries
+          utils.slashCommands.list.invalidate();
+          // Invalidate specific command if we have the ID
+          if (event.entityId) {
+            utils.slashCommands.get.invalidate({ id: event.entityId });
+          }
+          break;
       }
     },
     onError: (error) => {
