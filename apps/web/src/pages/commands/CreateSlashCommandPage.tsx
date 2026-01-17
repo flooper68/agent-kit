@@ -59,10 +59,10 @@ export function CreateSlashCommandPage() {
 
   // Mutation for creating command
   const createMutation = trpc.slashCommands.create.useMutation({
-    onSuccess: (data) => {
+    onSuccess: () => {
       addToast({ message: 'Command created successfully', variant: 'success' });
       utils.slashCommands.list.invalidate();
-      navigate(`/app/commands/${data.id}/edit`);
+      navigate('/app/commands');
     },
     onError: (err) => {
       if (err.message.includes('unique')) {
