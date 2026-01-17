@@ -91,12 +91,14 @@ export function createListArtifactsTool(context: ListArtifactsContext): Tool {
           hasMore,
         };
       } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unknown error';
         console.error('Failed to list artifacts:', error);
         return {
           artifacts: [],
           total: 0,
           hasMore: false,
-          message: 'Failed to list artifacts. Please try again.',
+          error: `Failed to list artifacts: ${message}`,
         };
       }
     },

@@ -198,7 +198,8 @@ export function createCreateAgentTool(context: CreateAgentContext): Tool {
           // The secret key is only available when creating via TRPC/UI
           return {
             success: true,
-            message: 'External agent created successfully',
+            message:
+              'External agent created successfully. Important: The secret key required for this agent to connect is only available via the UI. Go to Agent Settings to retrieve the connection credentials.',
             agent: {
               id: result.agent.id,
               key: result.agent.key,

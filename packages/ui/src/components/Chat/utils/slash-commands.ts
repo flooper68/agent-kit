@@ -181,8 +181,13 @@ export function expandChipsInMessage(
   let result = text;
   for (const chip of sortedChips) {
     const pos = chip.position ?? 0;
-    // Bounds check
-    if (pos < 0 || pos > result.length) continue;
+    // Bounds check - skip chips with invalid positions (can happen if text was modified)
+    if (pos < 0 || pos > result.length) {
+      console.warn(
+        `Chip position ${pos} out of bounds for text length ${result.length}, skipping chip: ${chip.key}`
+      );
+      continue;
+    }
 
     const wrappedPrompt = wrapChipPrompt(chip);
     // Replace placeholder character at position with wrapped prompt
