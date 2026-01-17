@@ -26,29 +26,17 @@ All research results are saved as artifacts with:
 
 ## Environment Variables
 
-| Variable              | Required | Default               | Description                              |
-| --------------------- | -------- | --------------------- | ---------------------------------------- |
-| `SERVER_URL`          | No       | `ws://localhost:3001` | WebSocket server URL                     |
-| `AGENT_API_KEY`       | **Yes**  | -                     | Secret API key from local agent creation |
-| `AGENT_ID`            | No       | -                     | Optional identifier for logging          |
-| `MODEL`               | No       | `claude-sonnet-4-5`   | Claude model to use                      |
-| `MAX_THINKING_TOKENS` | No       | `5000`                | Thinking tokens for better synthesis     |
-| `HTTP_PROXY`          | No       | -                     | HTTP proxy for web requests              |
-| `HTTPS_PROXY`         | No       | -                     | HTTPS proxy for web requests             |
+| Variable                      | Required | Default               | Description              |
+| ----------------------------- | -------- | --------------------- | ------------------------ |
+| `WEB_RESEARCHER_AGENT_API_KEY`| **Yes**  | -                     | Secret API key           |
+| `SERVER_URL`                  | No       | `ws://localhost:3001` | WebSocket server URL     |
+| `WEB_RESEARCHER_AGENT_ID`     | No       | -                     | Agent ID for logging     |
 
 ## Running Locally
 
 ```bash
-# From the local-agent directory
 cd apps/local-agent
-
-# Set required environment variables
-export AGENT_API_KEY=your_api_key_here
-
-# Optional: Set proxy for web requests
-export HTTPS_PROXY=http://proxy.example.com:8080
-
-# Run in development mode
+export WEB_RESEARCHER_AGENT_API_KEY=your_key
 bun run dev:web-researcher
 ```
 
@@ -61,6 +49,7 @@ cd apps/local-agent
 
 # Configure environment
 cat >> .env << EOF
+SERVER_URL=ws://host.docker.internal:3001
 WEB_RESEARCHER_AGENT_API_KEY=your_key
 EOF
 
@@ -77,7 +66,7 @@ docker build -f apps/local-agent/src/agents/web-researcher/Dockerfile -t web-res
 
 # Run with required mounts
 docker run -it \
-  -e AGENT_API_KEY=your_api_key_here \
+  -e WEB_RESEARCHER_AGENT_API_KEY=your_key \
   -e SERVER_URL=ws://host.docker.internal:3001 \
   -v ~/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro \
   web-researcher

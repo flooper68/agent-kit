@@ -1,12 +1,6 @@
 import { useEffect } from 'react';
 import { Heading, Text, Tabs } from '@agent-kit/ui';
-import {
-  BarChart3,
-  Users,
-  Bot,
-  ListTodo,
-  ClipboardList,
-} from 'lucide-react';
+import { BarChart3, Users, Bot, ListTodo, ClipboardList } from 'lucide-react';
 import {
   TimeRangeSelector,
   UserSelector,
@@ -19,12 +13,7 @@ import {
 import type { TimeRange } from '../../components/analytics';
 import { useUrlState } from '../../hooks/useUrlState';
 
-type AnalyticsTabValue =
-  | 'overview'
-  | 'users'
-  | 'agents'
-  | 'tasks'
-  | 'audit';
+type AnalyticsTabValue = 'overview' | 'users' | 'agents' | 'tasks' | 'audit';
 
 const validTabs: AnalyticsTabValue[] = [
   'overview',
@@ -47,7 +36,10 @@ const tabLabels: Record<
   },
   agents: { label: 'Agents', icon: <Bot className="h-4 w-4" /> },
   tasks: { label: 'Tasks', icon: <ListTodo className="h-4 w-4" /> },
-  audit: { label: 'Session Audit', icon: <ClipboardList className="h-4 w-4" /> },
+  audit: {
+    label: 'Session Audit',
+    icon: <ClipboardList className="h-4 w-4" />,
+  },
 };
 
 export function AnalyticsPage() {

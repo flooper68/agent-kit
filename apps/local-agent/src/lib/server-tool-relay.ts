@@ -4,7 +4,7 @@ import { createLogger } from './logger';
 
 const log = createLogger('ServerToolRelay');
 
-const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds
+const DEFAULT_TIMEOUT_MS = 3600000;
 
 /**
  * Tool-specific timeout overrides in milliseconds.
@@ -12,7 +12,7 @@ const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds
  */
 const TOOL_TIMEOUTS: Partial<Record<ServerToolName, number>> = {
   // executeCommand can run slow tools like webSearch
-  executeCommand: 60000, // 60 seconds
+  executeCommand: 3600000, // 1 hour
   // spawnAgent timeout synced with server's SPAWN_CONFIG.DEFAULT_TIMEOUT_MS
   spawnAgent: SPAWN_DEFAULTS.DEFAULT_TIMEOUT_MS,
 };

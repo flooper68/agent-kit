@@ -5,6 +5,7 @@ import type { ActionMetadata } from '../types';
 import { AgentScope } from '../../permissions/scopes';
 import type { AgentsFeature } from '../../../features/agents';
 import type { ThinkingConfig } from '../../../db/schema/agents';
+import { ThinkingConfigSchema } from './schemas';
 
 export const updateAgentMetadata: ActionMetadata = {
   id: 'updateAgent',
@@ -18,16 +19,6 @@ export interface UpdateAgentContext {
   agentsFeature: AgentsFeature;
 }
 
-const ThinkingConfigSchema = z
-  .object({
-    enabled: z.boolean(),
-    budgetTokens: z.number().min(1024).max(32768).optional(),
-    reasoningEffort: z.enum(['low', 'medium', 'high']).optional(),
-    thinkingLevel: z.enum(['minimal', 'low', 'medium', 'high']).optional(),
-    thinkingBudget: z.number().min(-1).max(32768).optional(),
-  })
-  .nullable();
-
 export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
   return tool({
     description:
@@ -37,9 +28,7 @@ export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
         .string()
         .min(1)
         .max(64)
-        .describe(
-          'The unique key/slug of the agent (e.g., "main-assistant")'
-        ),
+        .describe('The unique key/slug of the agent (e.g., "main-assistant")'),
       agentType: z
         .enum(['server', 'external'])
         .describe('The type of agent being updated'),

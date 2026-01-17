@@ -9,23 +9,21 @@ const envSchema = z.object({
     .transform((url) => url.replace(/^http/, 'ws')),
 
   /** Agent ID for logging/identification */
-  CODEBASE_RESEARCHER_AGENT_ID: z.string().optional(),
+  CODER_AGENT_ID: z.string().optional(),
 
   /** Secret API key from local agent creation */
-  CODEBASE_RESEARCHER_AGENT_API_KEY: z
-    .string()
-    .min(1, 'CODEBASE_RESEARCHER_AGENT_API_KEY is required'),
+  CODER_AGENT_API_KEY: z.string().min(1, 'CODER_AGENT_API_KEY is required'),
 
   /** Git repository URL to clone */
-  CODEBASE_RESEARCHER_GIT_REPOSITORY_URL: z
+  CODER_GIT_REPOSITORY_URL: z
     .string()
-    .min(1, 'CODEBASE_RESEARCHER_GIT_REPOSITORY_URL is required'),
+    .min(1, 'CODER_GIT_REPOSITORY_URL is required'),
 
   /** Git branch to checkout (optional, defaults to default branch) */
-  CODEBASE_RESEARCHER_GIT_BRANCH: z.string().optional(),
+  CODER_GIT_BRANCH: z.string().optional(),
 
   /** Working directory for file operations (defaults to current directory) */
-  CODEBASE_RESEARCHER_WORKING_DIRECTORY: z.string().optional(),
+  CODER_WORKING_DIRECTORY: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

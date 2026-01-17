@@ -36,13 +36,16 @@ A local agent specialized for exploring and analyzing codebases. Provides struct
 - **WebSearch**: Search for documentation, libraries, best practices
 - **WebFetch**: Fetch content from specific URLs
 
-### Output
+### Server Tools (via MCP)
 
-- **writeArtifact**: Save findings to server
+- **spawnAgent**: Spawn other agents for specialized tasks
+- **listSkillFiles**: List files in a skill for learning tool usage
+- **readSkillFile**: Read skill documentation
+- **executeCommand**: Execute tools via CLI-style syntax
 
 ## Output Format
 
-All tasks produce a **concise** structured artifact. Artifacts consume context, so brevity is critical.
+All tasks produce a **concise** structured artifact. Before writing artifacts, the agent reads the "document-management" skill to learn proper formatting.
 
 ### Required Sections
 
@@ -65,15 +68,14 @@ All tasks produce a **concise** structured artifact. Artifacts consume context, 
 
 ## Environment Variables
 
-| Variable              | Required | Default               | Description                      |
-| --------------------- | -------- | --------------------- | -------------------------------- |
-| `AGENT_API_KEY`       | **Yes**  | -                     | Secret API key                   |
-| `GIT_REPOSITORY_URL`  | **Yes**  | -                     | Git repository URL to clone      |
-| `GIT_BRANCH`          | No       | default branch        | Branch to checkout after cloning |
-| `SERVER_URL`          | No       | `ws://localhost:3001` | WebSocket server URL             |
-| `WORKING_DIRECTORY`   | No       | `/workspace`          | Base directory for file ops      |
-| `MODEL`               | No       | -                     | Claude model                     |
-| `MAX_THINKING_TOKENS` | No       | 10000                 | Extended thinking budget         |
+| Variable                                | Required | Default               | Description                      |
+| --------------------------------------- | -------- | --------------------- | -------------------------------- |
+| `CODEBASE_RESEARCHER_AGENT_API_KEY`     | **Yes**  | -                     | Secret API key                   |
+| `CODEBASE_RESEARCHER_GIT_REPOSITORY_URL`| **Yes**  | -                     | Git repository URL to clone      |
+| `CODEBASE_RESEARCHER_GIT_BRANCH`        | No       | default branch        | Branch to checkout after cloning |
+| `SERVER_URL`                            | No       | `ws://localhost:3001` | WebSocket server URL             |
+| `CODEBASE_RESEARCHER_WORKING_DIRECTORY` | No       | `/workspace`          | Base directory for file ops      |
+| `CODEBASE_RESEARCHER_AGENT_ID`          | No       | -                     | Agent ID for logging             |
 
 ## Running
 
@@ -81,9 +83,9 @@ All tasks produce a **concise** structured artifact. Artifacts consume context, 
 
 ```bash
 cd apps/local-agent
-export AGENT_API_KEY=your_key
-export GIT_REPOSITORY_URL=https://github.com/user/repo.git
-export WORKING_DIRECTORY=/path/to/codebase
+export CODEBASE_RESEARCHER_AGENT_API_KEY=your_key
+export CODEBASE_RESEARCHER_GIT_REPOSITORY_URL=https://github.com/user/repo.git
+export CODEBASE_RESEARCHER_WORKING_DIRECTORY=/path/to/codebase
 bun run dev:codebase-researcher
 ```
 
@@ -112,8 +114,8 @@ docker build -f apps/local-agent/src/agents/codebase-researcher/Dockerfile -t co
 
 # Run with required mounts
 docker run -it \
-  -e AGENT_API_KEY=your_key \
-  -e GIT_REPOSITORY_URL=https://github.com/user/repo.git \
+  -e CODEBASE_RESEARCHER_AGENT_API_KEY=your_key \
+  -e CODEBASE_RESEARCHER_GIT_REPOSITORY_URL=https://github.com/user/repo.git \
   -e SERVER_URL=ws://host.docker.internal:3001 \
   -v ~/.claude/.credentials.json:/home/agent/.claude/.credentials.json:ro \
   -v ~/.gitconfig:/home/agent/.gitconfig:ro \

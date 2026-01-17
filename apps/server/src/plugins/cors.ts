@@ -4,7 +4,7 @@ import type { FastifyPluginAsync } from 'fastify';
 
 function isAllowedOrigin(origin: string): boolean {
   // Allow localhost for development
-  if (origin === 'http://localhost:5173') {
+  if (origin === 'http://localhost:5173' || origin === 'http://localhost:4173') {
     return true;
   }
 

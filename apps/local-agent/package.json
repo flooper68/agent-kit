@@ -5,22 +5,28 @@
   "scripts": {
     "dev:codebase-researcher": "bun run --watch src/agents/codebase-researcher/index.ts",
     "dev:web-researcher": "bun run --watch src/agents/web-researcher/index.ts",
-    "dev:mock-agent": "bun run --watch src/agents/mock-agent/index.ts",
+    "dev:coder": "bun run --watch src/agents/coder/index.ts",
     "dev:claude-cli": "bun run --watch src/agents/claude-cli/index.ts",
     "dev:claude-assistant-opus": "bun run --watch src/agents/claude-assistant-opus/index.ts",
     "dev:claude-assistant-sonnet": "bun run --watch src/agents/claude-assistant-sonnet/index.ts",
+    "start:codebase-researcher": "bun run src/agents/codebase-researcher/index.ts",
+    "start:web-researcher": "bun run src/agents/web-researcher/index.ts",
+    "start:coder": "bun run src/agents/coder/index.ts",
+    "start:claude-cli": "bun run src/agents/claude-cli/index.ts",
+    "start:claude-assistant-opus": "bun run src/agents/claude-assistant-opus/index.ts",
+    "start:claude-assistant-sonnet": "bun run src/agents/claude-assistant-sonnet/index.ts",
     "build:codebase-researcher": "bun build src/agents/codebase-researcher/index.ts --compile --outfile dist/codebase-researcher --minify",
     "build:web-researcher": "bun build src/agents/web-researcher/index.ts --compile --outfile dist/web-researcher --minify",
-    "build:mock-agent": "bun build src/agents/mock-agent/index.ts --compile --outfile dist/mock-agent --minify",
+    "build:coder": "bun build src/agents/coder/index.ts --compile --outfile dist/coder --minify",
     "build:claude-cli": "bun build src/agents/claude-cli/index.ts --compile --outfile dist/claude-cli --minify",
     "build:claude-assistant-opus": "bun build src/agents/claude-assistant-opus/index.ts --compile --outfile dist/claude-assistant-opus --minify",
     "build:claude-assistant-sonnet": "bun build src/agents/claude-assistant-sonnet/index.ts --compile --outfile dist/claude-assistant-sonnet --minify",
-    "build": "bun run build:codebase-researcher && bun run build:web-researcher && bun run build:mock-agent && bun run build:claude-cli && bun run build:claude-assistant-opus && bun run build:claude-assistant-sonnet"
+    "build": "bun run build:codebase-researcher && bun run build:web-researcher && bun run build:coder && bun run build:claude-cli && bun run build:claude-assistant-opus && bun run build:claude-assistant-sonnet"
   },
   "dependencies": {
     "@agent-kit/auth": "workspace:*",
     "@agent-kit/shared": "workspace:*",
-    "@anthropic-ai/claude-code": "^1.0.0",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.11",
     "ws": "8.18.3",
     "zod": "^3.23.8"
   },

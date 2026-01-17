@@ -22,6 +22,8 @@ export interface SlashCommandOption {
 export interface CommandAutocompleteProps {
   /** Current input value to extract search query from */
   value: string;
+  /** Current cursor position in the input */
+  cursorPosition?: number;
   /** Anchor element to position dropdown relative to */
   anchorRef: React.RefObject<HTMLElement | null>;
   /** Available slash commands */
@@ -39,7 +41,7 @@ export interface CommandAutocompleteProps {
 export const CommandAutocomplete = memo(
   forwardRef<HTMLDivElement, CommandAutocompleteProps>(
     (
-      { value, anchorRef, commands, isLoading, onSelect, onClose, open },
+      { value, cursorPosition, anchorRef, commands, isLoading, onSelect, onClose, open },
       ref
     ) => {
       const [selectedIndex, setSelectedIndex] = useState(0);
@@ -50,12 +52,15 @@ export const CommandAutocomplete = memo(
         width: number;
       } | null>(null);
 
-      // Extract search query from input (text after last "/")
+      // Extract search query from input (text after last "/" up to cursor)
       const searchQuery = useMemo(() => {
-        const lastSlashIndex = value.lastIndexOf('/');
+        const textUpToCursor = cursorPosition !== undefined
+          ? value.slice(0, cursorPosition)
+          : value;
+        const lastSlashIndex = textUpToCursor.lastIndexOf('/');
         if (lastSlashIndex === -1) return '';
-        return value.slice(lastSlashIndex + 1).toLowerCase();
-      }, [value]);
+        return textUpToCursor.slice(lastSlashIndex + 1).toLowerCase();
+      }, [value, cursorPosition]);
 
       // Filter commands based on search query
       const filteredCommands = useMemo(() => {
@@ -130,11 +135,41 @@ export const CommandAutocomplete = memo(
       // Calculate dropdown position when opening
       useLayoutEffect(() => {
         if (open && anchorRef.current) {
-          const rect = anchorRef.current.getBoundingClientRect();
+          const anchorRect = anchorRef.current.getBoundingClientRect();
+
+          // Try to get cursor position from selection
+          const selection = window.getSelection();
+          let cursorTop = anchorRect.top;
+          let cursorLeft = anchorRect.left;
+
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const rangeRect = range.getBoundingClientRect();
+
+            // Check if the range rect is valid (non-zero dimensions for collapsed cursor)
+            // When selection is collapsed, some browsers return empty rect
+            if (rangeRect.height > 0 || rangeRect.width > 0) {
+              cursorTop = rangeRect.top;
+              cursorLeft = rangeRect.left;
+            } else if (range.collapsed) {
+              // Fallback: insert temporary marker to get position
+              const marker = document.createElement('span');
+              marker.textContent = '\u200B'; // zero-width space
+              range.insertNode(marker);
+              const markerRect = marker.getBoundingClientRect();
+              cursorTop = markerRect.top;
+              cursorLeft = markerRect.left;
+              marker.remove();
+              // Restore selection
+              selection.removeAllRanges();
+              selection.addRange(range);
+            }
+          }
+
           setDropdownPosition({
-            top: rect.top - 4,
-            left: rect.left,
-            width: Math.min(rect.width, 400),
+            top: cursorTop - 4,
+            left: cursorLeft,
+            width: Math.min(anchorRect.width, 400),
           });
         }
       }, [open, anchorRef]);

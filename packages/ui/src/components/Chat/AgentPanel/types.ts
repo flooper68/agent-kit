@@ -244,6 +244,9 @@ export interface AgentPanelProps extends AgentPanelCallbacks {
   /** Callback when input value changes (for rich text input) */
   onValueChange?: (value: string) => void;
 
+  /** Callback when cursor position changes (for rich text input) */
+  onCursorPositionChange?: (position: number) => void;
+
   /** Whether the input is disabled (read-only mode for sub-agent views) */
   inputDisabled?: boolean;
 

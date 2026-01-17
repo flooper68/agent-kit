@@ -532,6 +532,7 @@ export function AppAgentPanel({
         onValueChange={slashCommands.handleInputValueChange}
         chips={slashCommands.chips}
         onChipsChange={slashCommands.handleChipsChange}
+        onCursorPositionChange={slashCommands.handleCursorPositionChange}
         messages={messages}
         status={status}
         avatars={avatars}
@@ -600,6 +601,7 @@ export function AppAgentPanel({
       {/* Slash command autocomplete - anchored to the rich text input element */}
       <CommandAutocomplete
         value={slashCommands.inputValue}
+        cursorPosition={slashCommands.cursorPosition}
         anchorRef={slashCommands.autocompleteAnchorRef}
         commands={slashCommands.slashCommands}
         isLoading={slashCommands.isLoadingCommands}

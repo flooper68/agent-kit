@@ -24,6 +24,8 @@ export interface RichTextInputProps {
   onChange: (value: string, chips: SlashCommandChip[]) => void;
   /** Called when form should be submitted */
   onSubmit: (text: string, chips: SlashCommandChip[]) => void;
+  /** Called when cursor position changes */
+  onCursorPositionChange?: (position: number) => void;
   /** Placeholder text */
   placeholder?: string;
   /** Whether input is disabled */
@@ -64,6 +66,7 @@ export const RichTextInput = memo(
         chips,
         onChange,
         onSubmit,
+        onCursorPositionChange,
         placeholder = '',
         disabled = false,
         className,
@@ -131,13 +134,72 @@ export const RichTextInput = memo(
         return { text: text.trim(), chips: foundChips, chipPositions };
       }, [chips]);
 
+      // Calculate cursor position in terms of text content (including chip placeholders)
+      const getCursorPosition = useCallback((): number => {
+        const editor = editorRef.current;
+        if (!editor) return 0;
+
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return 0;
+
+        const range = selection.getRangeAt(0);
+        if (!editor.contains(range.startContainer)) return 0;
+
+        // Create a range from the start of editor to cursor position
+        const preCaretRange = document.createRange();
+        preCaretRange.selectNodeContents(editor);
+        preCaretRange.setEnd(range.startContainer, range.startOffset);
+
+        // Walk through nodes to calculate text position
+        let position = 0;
+        const processNode = (node: Node): boolean => {
+          if (node === range.startContainer) {
+            if (node.nodeType === Node.TEXT_NODE) {
+              position += range.startOffset;
+            }
+            return true; // Found cursor, stop
+          }
+
+          if (node.nodeType === Node.TEXT_NODE) {
+            position += node.textContent?.length ?? 0;
+          } else if (node.nodeType === Node.ELEMENT_NODE) {
+            const element = node as HTMLElement;
+            if (element.hasAttribute(CHIP_DATA_ATTR)) {
+              // Chip counts as 1 character (zero-width space placeholder)
+              position += 1;
+            } else if (element.tagName === 'BR') {
+              position += 1; // Newline
+            } else {
+              for (const child of element.childNodes) {
+                if (processNode(child)) return true;
+              }
+            }
+          }
+          return false;
+        };
+
+        for (const child of editor.childNodes) {
+          if (processNode(child)) break;
+        }
+
+        return position;
+      }, []);
+
+      // Notify parent of cursor position changes
+      const notifyCursorPosition = useCallback(() => {
+        if (onCursorPositionChange) {
+          onCursorPositionChange(getCursorPosition());
+        }
+      }, [onCursorPositionChange, getCursorPosition]);
+
       // Handle input changes - defined first so other callbacks can use it
       const handleInput = useCallback(() => {
         if (isComposingRef.current) return;
 
         const { text, chips: foundChips } = parseContent();
         onChange(text, foundChips);
-      }, [onChange, parseContent]);
+        notifyCursorPosition();
+      }, [onChange, parseContent, notifyCursorPosition]);
 
       // Create a chip element
       const createChipElement = useCallback(
@@ -392,6 +454,11 @@ export const RichTextInput = memo(
         handleInput();
       }, [handleInput]);
 
+      // Handle selection changes (clicks, arrow keys)
+      const handleSelect = useCallback(() => {
+        notifyCursorPosition();
+      }, [notifyCursorPosition]);
+
       // Auto-resize based on content
       useEffect(() => {
         const editor = editorRef.current;
@@ -491,6 +558,8 @@ export const RichTextInput = memo(
             suppressContentEditableWarning
             onInput={handleInput}
             onKeyDown={handleKeyDown}
+            onKeyUp={handleSelect}
+            onClick={handleSelect}
             onPaste={handlePaste}
             onCompositionStart={handleCompositionStart}
             onCompositionEnd={handleCompositionEnd}
