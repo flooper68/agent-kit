@@ -116,10 +116,12 @@ export const searchArtifactsSchema = z.object({
     .min(1, 'Search query is required')
     .max(500, 'Search query is too long')
     .refine(
-      (val) => val.trim().length > 0,
+      (val) => val === '*' || val.trim().length > 0,
       'Search query cannot be only whitespace'
     )
-    .describe('Search query to find artifacts by title or content'),
+    .describe(
+      'Search query to find artifacts by title or content. Use "*" to list all documents.'
+    ),
   limit: z
     .number()
     .int('Limit must be an integer')
@@ -486,7 +488,7 @@ export const SERVER_TOOL_DEFINITIONS = {
   searchArtifacts: {
     name: 'searchArtifacts',
     description:
-      'Search for saved documents/artifacts by title or content. Use to find existing notes or documents.',
+      'Search for saved documents/artifacts by title or content. Use "*" to list all documents.',
     schema: searchArtifactsSchema,
     category: 'artifact' as const,
   },

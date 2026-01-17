@@ -128,6 +128,14 @@ writeArtifact --title "Meeting Notes" --content "# Meeting Notes\n\n..." --summa
 searchArtifacts --query "meeting notes"
 ```
 
+### List All Documents
+
+Use `"*"` as a wildcard to list all documents:
+
+```
+searchArtifacts --query "*"
+```
+
 ### Read a Document
 
 ```

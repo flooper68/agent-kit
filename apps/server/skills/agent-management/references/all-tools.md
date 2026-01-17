@@ -11,14 +11,15 @@ Complete reference of all 41 tools organized by category.
 | `extractContent` | Extract readable text content from a URL.                  |
 | `fetch`          | Make HTTP requests (GET, POST, PUT, DELETE).               |
 
-## Artifact Tools (4)
+## Artifact Tools (5)
 
-| Tool              | Description                                         |
-| ----------------- | --------------------------------------------------- |
-| `writeArtifact`   | Create a new document with title, content, summary. |
-| `readArtifact`    | Read a document by ID.                              |
-| `searchArtifacts` | Search documents by title or content.               |
-| `updateArtifact`  | Update document title, content, or summary.         |
+| Tool              | Description                                                   |
+| ----------------- | ------------------------------------------------------------- |
+| `writeArtifact`   | Create a new document with title, content, summary.           |
+| `getArtifact`     | Read a document by ID.                                        |
+| `searchArtifacts` | Search documents by title or content. Use "\*" to list all.   |
+| `updateArtifact`  | Update document title, content, or summary.                   |
+| `patchArtifact`   | Patch specific lines of a document (replace, insert, delete). |
 
 ## Project Tools (6)
 
@@ -87,7 +88,7 @@ Complete reference of all 41 tools organized by category.
 | Category         | Count  | Purpose                         |
 | ---------------- | ------ | ------------------------------- |
 | Utility          | 4      | Time, web search, HTTP requests |
-| Artifact         | 4      | Document management             |
+| Artifact         | 5      | Document management             |
 | Project          | 6      | Project CRUD                    |
 | Task             | 10     | Task management and Kanban      |
 | Navigation       | 2      | UI navigation                   |
