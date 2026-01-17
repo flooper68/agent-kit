@@ -4,8 +4,6 @@ import { cn } from '../../../../lib/utils';
 export interface ChipInlineDisplayProps {
   /** The slash command key (e.g., "summarize") */
   commandKey: string;
-  /** Display name (e.g., "Summarize") */
-  name: string;
   /** Optional: show the full prompt on hover */
   prompt?: string;
   /** Additional class names */
@@ -18,11 +16,10 @@ export interface ChipInlineDisplayProps {
  * Used to display chips that were part of the original user message,
  * parsed from chip markers in the message content.
  *
- * Displays: /command-key  Name
+ * Displays: /command-key
  */
 export const ChipInlineDisplay = memo(function ChipInlineDisplay({
   commandKey,
-  name,
   prompt,
   className,
 }: ChipInlineDisplayProps) {
@@ -35,7 +32,6 @@ export const ChipInlineDisplay = memo(function ChipInlineDisplay({
       title={prompt}
     >
       <span className="font-mono text-xs text-primary">/{commandKey}</span>
-      <span className="text-xs text-muted-foreground">{name}</span>
     </span>
   );
 });

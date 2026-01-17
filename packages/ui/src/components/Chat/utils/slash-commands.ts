@@ -119,6 +119,9 @@ export function wrapChipPrompt(chip: SlashCommandChip): string {
  * Takes the text content and embedded chips, and produces a final message
  * with chip prompts expanded and wrapped with markers for parsing.
  *
+ * If chips have position information, they are inserted at their positions.
+ * Otherwise, falls back to legacy behavior of prepending all prompts.
+ *
  * @param text - The text content (may contain chip placeholder characters)
  * @param chips - Array of slash command chips to expand
  * @returns The expanded message with chip prompts wrapped in markers
@@ -127,18 +130,42 @@ export function expandChipsInMessage(
   text: string,
   chips: SlashCommandChip[]
 ): string {
-  // Clean the text by removing chip placeholders
+  // Clean text by removing chip placeholders
   const cleanText = text.replace(new RegExp(CHIP_PLACEHOLDER, 'g'), '').trim();
 
   if (chips.length === 0) {
     return cleanText;
   }
 
-  // Collect all chip prompts wrapped with markers
-  const chipPrompts = chips.map((chip) => wrapChipPrompt(chip)).join('\n\n');
+  // Check if any chip has position info
+  const hasPositions = chips.some((chip) => chip.position !== undefined);
 
-  // Combine chip prompts with any additional text
-  return cleanText ? `${chipPrompts}\n\n${cleanText}` : chipPrompts;
+  if (!hasPositions) {
+    // Legacy behavior: prepend all prompts (for backward compatibility)
+    const chipPrompts = chips.map((chip) => wrapChipPrompt(chip)).join('\n\n');
+    return cleanText ? `${chipPrompts}\n\n${cleanText}` : chipPrompts;
+  }
+
+  // Position-aware expansion: insert prompts at their positions
+  // Sort chips by position DESCENDING to insert from end to start
+  // (prevents position shifts during insertion)
+  const sortedChips = [...chips].sort(
+    (a, b) => (b.position ?? 0) - (a.position ?? 0)
+  );
+
+  let result = text;
+  for (const chip of sortedChips) {
+    const pos = chip.position ?? 0;
+    // Bounds check
+    if (pos < 0 || pos > result.length) continue;
+
+    const wrappedPrompt = wrapChipPrompt(chip);
+    // Replace placeholder character at position with wrapped prompt
+    result = result.slice(0, pos) + wrappedPrompt + result.slice(pos + 1);
+  }
+
+  // Remove any remaining placeholders and trim
+  return result.replace(new RegExp(CHIP_PLACEHOLDER, 'g'), '').trim();
 }
 
 /**

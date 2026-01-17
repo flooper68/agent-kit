@@ -13,6 +13,7 @@ export interface SlashCommandChip {
   key: string;
   name: string;
   prompt: string;
+  position?: number; // Position in text where chip is located
 }
 
 export interface RichTextInputProps {
@@ -131,7 +132,20 @@ export const RichTextInput = memo(
 
         editor.childNodes.forEach(processNode);
 
-        return { text: text.trim(), chips: foundChips, chipPositions };
+        // Calculate how much leading content will be trimmed
+        const leadingTrimmed = text.length - text.trimStart().length;
+
+        // Create new chip objects with adjusted positions (don't mutate original objects)
+        const chipsWithPositions = foundChips.map((chip) => {
+          const pos = chipPositions.get(chip.id);
+          if (pos !== undefined) {
+            // Adjust position for leading trim, ensuring it doesn't go negative
+            return { ...chip, position: Math.max(0, pos - leadingTrimmed) };
+          }
+          return { ...chip };
+        });
+
+        return { text: text.trim(), chips: chipsWithPositions, chipPositions };
       }, [chips]);
 
       // Calculate cursor position in terms of text content (including chip placeholders)

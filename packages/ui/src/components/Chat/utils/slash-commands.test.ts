@@ -287,6 +287,89 @@ describe('expandChipsInMessage', () => {
       expect(stripped).toBe('Please summarize:\n\nthis document');
     });
   });
+
+  describe('with chip positions', () => {
+    const createChipWithPosition = (
+      id: string,
+      key: string,
+      prompt: string,
+      position: number
+    ): SlashCommandChip => ({
+      id,
+      key,
+      name: key.charAt(0).toUpperCase() + key.slice(1),
+      prompt,
+      position,
+    });
+
+    it('inserts prompt at chip position in middle of text', () => {
+      const chips = [
+        createChipWithPosition('1', 'summarize', 'Please summarize:', 6),
+      ];
+      const text = `Hello ${CHIP_PLACEHOLDER}world`;
+      const result = expandChipsInMessage(text, chips);
+      expect(result).toBe(
+        'Hello ««CHIP:summarize:Summarize»»Please summarize:««/CHIP»»world'
+      );
+    });
+
+    it('inserts prompt at start when position is 0', () => {
+      const chips = [
+        createChipWithPosition('1', 'summarize', 'Please summarize:', 0),
+      ];
+      const text = `${CHIP_PLACEHOLDER}Hello world`;
+      const result = expandChipsInMessage(text, chips);
+      expect(result.startsWith('««CHIP:')).toBe(true);
+      expect(result).toContain('Hello world');
+    });
+
+    it('inserts prompt at end when position is at end', () => {
+      const chips = [
+        createChipWithPosition('1', 'summarize', 'Please summarize:', 12),
+      ];
+      const text = `Hello world ${CHIP_PLACEHOLDER}`;
+      const result = expandChipsInMessage(text, chips);
+      expect(result).toContain('Hello world');
+      expect(result.endsWith('««/CHIP»»')).toBe(true);
+    });
+
+    it('inserts multiple prompts at their respective positions', () => {
+      const chips = [
+        createChipWithPosition('1', 'a', 'prompt-a', 6),
+        createChipWithPosition('2', 'b', 'prompt-b', 14),
+      ];
+      const text = `Hello ${CHIP_PLACEHOLDER}world ${CHIP_PLACEHOLDER}end`;
+      const result = expandChipsInMessage(text, chips);
+      const aIndex = result.indexOf('prompt-a');
+      const bIndex = result.indexOf('prompt-b');
+      const helloIndex = result.indexOf('Hello');
+      const worldIndex = result.indexOf('world');
+      expect(helloIndex).toBeLessThan(aIndex);
+      expect(aIndex).toBeLessThan(worldIndex);
+      expect(worldIndex).toBeLessThan(bIndex);
+    });
+
+    it('handles out of bounds position gracefully', () => {
+      const chips = [
+        createChipWithPosition('1', 'test', 'test prompt', 1000),
+      ];
+      const text = `Hello${CHIP_PLACEHOLDER}`;
+      const result = expandChipsInMessage(text, chips);
+      expect(result).toBe('Hello'); // Chip skipped due to invalid position
+    });
+
+    it('handles chip positions correctly when text has leading newlines', () => {
+      // Simulates what happens when parseContent returns trimmed text
+      // but positions were calculated on untrimmed text, then adjusted
+      const chips = [
+        createChipWithPosition('1', 'test', 'test prompt', 0), // After adjustment
+      ];
+      const text = `${CHIP_PLACEHOLDER}Hello world`; // Trimmed text
+      const result = expandChipsInMessage(text, chips);
+      expect(result).toContain('test prompt');
+      expect(result).toContain('Hello world');
+    });
+  });
 });
 
 describe('cleanTextFromPlaceholders', () => {

@@ -16,14 +16,12 @@ type Story = StoryObj<typeof ChipInlineDisplay>;
 export const Default: Story = {
   args: {
     commandKey: 'summarize',
-    name: 'Quick Summary',
   },
 };
 
 export const WithPrompt: Story = {
   args: {
     commandKey: 'summarize',
-    name: 'Detailed Summary',
     prompt: 'Please summarize the following content in a concise manner:',
   },
 };
@@ -31,7 +29,6 @@ export const WithPrompt: Story = {
 export const ReviewCommand: Story = {
   args: {
     commandKey: 'review-current',
-    name: 'Team',
     prompt: 'Review the current changes with the team:',
   },
 };
@@ -39,7 +36,6 @@ export const ReviewCommand: Story = {
 export const PhoenixCommand: Story = {
   args: {
     commandKey: 'phoenix',
-    name: 'Phoenix Agent',
     prompt: 'Use the Phoenix agent to process this:',
   },
 };
@@ -47,7 +43,6 @@ export const PhoenixCommand: Story = {
 export const PrepareCommitCommand: Story = {
   args: {
     commandKey: 'prepare-commit-message',
-    name: 'Git Commit',
     prompt: 'Prepare a commit message for these changes:',
   },
 };
@@ -55,7 +50,6 @@ export const PrepareCommitCommand: Story = {
 export const CodeReviewCommand: Story = {
   args: {
     commandKey: 'code-review',
-    name: 'Code Review',
     prompt:
       'Please review this code for best practices, bugs, and improvements:',
   },
@@ -67,7 +61,6 @@ export const InlineWithText: Story = {
       Can you{' '}
       <ChipInlineDisplay
         commandKey="summarize"
-        name="Quick Summary"
         prompt="Please summarize the following:"
       />{' '}
       this article for me?
@@ -81,13 +74,11 @@ export const MultipleChipsInText: Story = {
       Please{' '}
       <ChipInlineDisplay
         commandKey="summarize"
-        name="Quick Summary"
         prompt="Summarize this content:"
       />{' '}
       and then{' '}
       <ChipInlineDisplay
         commandKey="translate"
-        name="To Spanish"
         prompt="Translate to Spanish:"
       />{' '}
       the result.
@@ -98,6 +89,5 @@ export const MultipleChipsInText: Story = {
 export const LongCommandKey: Story = {
   args: {
     commandKey: 'prepare-commit-message',
-    name: 'Git Helper',
   },
 };
