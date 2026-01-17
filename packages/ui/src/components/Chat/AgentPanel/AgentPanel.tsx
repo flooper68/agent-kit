@@ -79,6 +79,7 @@ export const AgentPanel = memo(
         onChipsChange,
         value,
         onValueChange,
+        onCursorPositionChange,
         onOpenSubAgentDialog,
         inputDisabled = false,
         renderSubAgentCard,
@@ -253,6 +254,7 @@ export const AgentPanel = memo(
                       ref={setRichInputRef}
                       placeholder={inputPlaceholder}
                       autoFocus
+                      onCursorPositionChange={onCursorPositionChange}
                     />
                   ) : (
                     <ChatInput.Textarea
@@ -362,6 +364,7 @@ export const AgentPanel = memo(
                     }
                     autoFocus={!inputDisabled}
                     disabled={inputDisabled}
+                    onCursorPositionChange={onCursorPositionChange}
                   />
                 ) : (
                   <ChatInput.Textarea

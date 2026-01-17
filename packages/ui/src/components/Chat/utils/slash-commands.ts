@@ -28,15 +28,23 @@ export interface SlashCommandContext {
  * - "/" appears after whitespace or chip placeholder
  *
  * The context ends when:
- * - There's a space after the slash command text
+ * - There's a space after the slash command text (before cursor)
  * - The slash is removed
  *
  * @param inputValue - The current input value
+ * @param cursorPosition - Optional cursor position (defaults to end of input)
  * @returns Context about the slash command detection
  */
-export function detectSlashCommand(inputValue: string): SlashCommandContext {
-  // Find the last "/" in the input
-  const lastSlashIndex = inputValue.lastIndexOf('/');
+export function detectSlashCommand(
+  inputValue: string,
+  cursorPosition?: number
+): SlashCommandContext {
+  // Use cursor position if provided, otherwise use end of string
+  const effectiveEnd = cursorPosition ?? inputValue.length;
+  const textUpToCursor = inputValue.slice(0, effectiveEnd);
+
+  // Find the last "/" in text up to cursor (not entire input)
+  const lastSlashIndex = textUpToCursor.lastIndexOf('/');
 
   if (lastSlashIndex === -1) {
     return {
@@ -47,7 +55,7 @@ export function detectSlashCommand(inputValue: string): SlashCommandContext {
   }
 
   // Check if "/" is at start or after whitespace/chip placeholder
-  const charBefore = inputValue[lastSlashIndex - 1];
+  const charBefore = textUpToCursor[lastSlashIndex - 1];
   const isValidPosition =
     lastSlashIndex === 0 ||
     charBefore === undefined ||
@@ -62,8 +70,8 @@ export function detectSlashCommand(inputValue: string): SlashCommandContext {
     };
   }
 
-  // Get the text after the slash (the search query)
-  const textAfterSlash = inputValue.slice(lastSlashIndex + 1);
+  // Get the text after the slash up to cursor (the search query)
+  const textAfterSlash = textUpToCursor.slice(lastSlashIndex + 1);
 
   // If there's a space after the command text, they've moved on
   // (ignore zero-width spaces as they may be adjacent to chips)

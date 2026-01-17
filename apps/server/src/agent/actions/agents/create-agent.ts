@@ -2,9 +2,10 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Tool } from '../../types';
 import type { ActionMetadata } from '../types';
-import { AgentScope } from '../../permissions/scopes';
+import { AgentScope, ALL_SCOPES } from '../../permissions/scopes';
 import type { AgentsFeature } from '../../../features/agents';
 import type { ThinkingConfig } from '../../../db/schema/agents';
+import { ThinkingConfigSchema } from './schemas';
 
 export const createAgentMetadata: ActionMetadata = {
   id: 'createAgent',
@@ -17,16 +18,6 @@ export interface CreateAgentContext {
   orgId: string;
   agentsFeature: AgentsFeature;
 }
-
-const ThinkingConfigSchema = z
-  .object({
-    enabled: z.boolean(),
-    budgetTokens: z.number().min(1024).max(32768).optional(),
-    reasoningEffort: z.enum(['low', 'medium', 'high']).optional(),
-    thinkingLevel: z.enum(['minimal', 'low', 'medium', 'high']).optional(),
-    thinkingBudget: z.number().min(-1).max(32768).optional(),
-  })
-  .nullable();
 
 const AllowedSubagentsSchema = z
   .object({
@@ -114,7 +105,7 @@ export function createCreateAgentTool(context: CreateAgentContext): Tool {
         .optional()
         .describe('IDs of skills this agent can use'),
       scopes: z
-        .array(z.string())
+        .array(z.enum(ALL_SCOPES as [string, ...string[]]))
         .optional()
         .describe('Permission scopes for the agent'),
     }),

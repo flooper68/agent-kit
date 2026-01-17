@@ -40,21 +40,15 @@ const ALLOWED_TOOLS = [
   'Bash(git add:*)',
   'Bash(git commit:*)',
   'Bash(git stash:*)',
-  'Bash(git merge:*)',
-  'Bash(git rebase:*)',
-  'Bash(git reset:*)',
-  'Bash(git clean:*)',
   'Bash(git ls-files:*)',
   'Bash(git ls-tree:*)',
   'Bash(git rev-parse:*)',
   'Bash(git describe:*)',
   'Bash(git tag:*)',
 
-  // GitHub CLI for PR operations
+  // GitHub CLI for PR and issue operations
   'Bash(gh pr:*)',
   'Bash(gh issue:*)',
-  'Bash(gh repo:*)',
-  'Bash(gh auth:*)',
 ];
 
 // Disallowed tools - coder focuses on code, not web research

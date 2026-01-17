@@ -17,11 +17,18 @@ export type { SlashCommandContext };
  * - "/" appears after whitespace or chip placeholder
  *
  * The context ends when:
- * - There's a space after the slash command text
+ * - There's a space after the slash command text (before cursor)
  * - The slash is removed
+ *
+ * @param inputValue - The current input value
+ * @param cursorPosition - Optional cursor position (defaults to end of input)
  */
 export function useSlashCommandDetection(
-  inputValue: string
+  inputValue: string,
+  cursorPosition?: number
 ): SlashCommandContext {
-  return useMemo(() => detectSlashCommand(inputValue), [inputValue]);
+  return useMemo(
+    () => detectSlashCommand(inputValue, cursorPosition),
+    [inputValue, cursorPosition]
+  );
 }

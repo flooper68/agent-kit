@@ -27,6 +27,10 @@ export interface UseSlashCommandsReturn {
   setChips: (chips: SlashCommandChip[]) => void;
   /** Handle chips change (for onChipsChange callback) */
   handleChipsChange: (chips: SlashCommandChip[]) => void;
+  /** Current cursor position */
+  cursorPosition: number;
+  /** Handle cursor position change (for RichTextInput callback) */
+  handleCursorPositionChange: (position: number) => void;
   /** Slash command context from detection */
   slashCommandContext: ReturnType<typeof useSlashCommandDetection>;
   /** Available slash commands for autocomplete */
@@ -71,10 +75,24 @@ export function useSlashCommands(
   // Input state
   const [inputValue, setInputValue] = useState(initialValue);
   const [chips, setChips] = useState<SlashCommandChip[]>(initialChips);
+  const [cursorPosition, setCursorPosition] = useState(0);
   const [autocompleteHidden, setAutocompleteHidden] = useState(false);
 
-  // Slash command detection
-  const slashCommandContext = useSlashCommandDetection(inputValue);
+  // Debounce cursor position updates to reduce flickering
+  const cursorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingCursorRef = useRef(0);
+
+  // Slash command detection (now cursor-aware)
+  const slashCommandContext = useSlashCommandDetection(inputValue, cursorPosition);
+
+  // Cleanup debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (cursorDebounceRef.current) {
+        clearTimeout(cursorDebounceRef.current);
+      }
+    };
+  }, []);
 
   // Reset autocomplete hidden state when input changes (user starts typing again)
   useEffect(() => {
@@ -124,6 +142,22 @@ export function useSlashCommands(
     setChips(newChips);
   }, []);
 
+  // Handle cursor position change (from RichTextInput) - debounced to reduce flickering
+  const handleCursorPositionChange = useCallback((position: number) => {
+    pendingCursorRef.current = position;
+
+    // Clear any pending debounce
+    if (cursorDebounceRef.current) {
+      clearTimeout(cursorDebounceRef.current);
+    }
+
+    // Debounce the state update (50ms is fast enough to feel responsive but reduces flicker)
+    cursorDebounceRef.current = setTimeout(() => {
+      setCursorPosition(pendingCursorRef.current);
+      cursorDebounceRef.current = null;
+    }, 50);
+  }, []);
+
   // Handle closing autocomplete (Escape key) - hide without clearing input
   const handleAutocompleteClose = useCallback(() => {
     setAutocompleteHidden(true);
@@ -161,6 +195,7 @@ export function useSlashCommands(
   const clearInput = useCallback(() => {
     setInputValue('');
     setChips([]);
+    setCursorPosition(0);
   }, []);
 
   // Computed value for whether autocomplete should show
@@ -174,6 +209,8 @@ export function useSlashCommands(
     chips,
     setChips,
     handleChipsChange,
+    cursorPosition,
+    handleCursorPositionChange,
     slashCommandContext,
     slashCommands,
     isLoadingCommands: slashCommandsQuery.isLoading,

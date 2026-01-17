@@ -236,11 +236,12 @@ export interface ChatInputRichTextareaProps {
   autoFocus?: boolean;
   disabled?: boolean;
   className?: string;
+  onCursorPositionChange?: (position: number) => void;
 }
 
 const ChatInputRichTextarea = memo(
   forwardRef<RichTextInputRef, ChatInputRichTextareaProps>(
-    ({ placeholder, autoFocus, disabled, className }, ref) => {
+    ({ placeholder, autoFocus, disabled, className, onCursorPositionChange }, ref) => {
       const {
         value,
         setValue,
@@ -273,6 +274,7 @@ const ChatInputRichTextarea = memo(
           chips={chips}
           onChange={handleChange}
           onSubmit={handleSubmit}
+          onCursorPositionChange={onCursorPositionChange}
           placeholder={placeholder}
           disabled={disabled || isSubmitting}
           autoFocus={autoFocus}

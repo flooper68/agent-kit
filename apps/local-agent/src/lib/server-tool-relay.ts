@@ -12,7 +12,7 @@ const DEFAULT_TIMEOUT_MS = 3600000;
  */
 const TOOL_TIMEOUTS: Partial<Record<ServerToolName, number>> = {
   // executeCommand can run slow tools like webSearch
-  executeCommand: 3600000, // 60 seconds
+  executeCommand: 3600000, // 1 hour
   // spawnAgent timeout synced with server's SPAWN_CONFIG.DEFAULT_TIMEOUT_MS
   spawnAgent: SPAWN_DEFAULTS.DEFAULT_TIMEOUT_MS,
 };

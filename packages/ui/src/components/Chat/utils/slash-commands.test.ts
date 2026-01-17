@@ -108,6 +108,78 @@ describe('detectSlashCommand', () => {
       expect(result.slashIndex).toBe(7);
     });
   });
+
+  describe('with cursor position parameter', () => {
+    it('detects slash when cursor is at end (default behavior)', () => {
+      const result = detectSlashCommand('/sum');
+      expect(result.shouldShowAutocomplete).toBe(true);
+      expect(result.searchQuery).toBe('sum');
+    });
+
+    it('detects slash when cursor is at end of command', () => {
+      // User typed "hello /sum world" with cursor after "sum" (position 10)
+      const result = detectSlashCommand('hello /sum world', 10);
+      expect(result.shouldShowAutocomplete).toBe(true);
+      expect(result.searchQuery).toBe('sum');
+      expect(result.slashIndex).toBe(6);
+    });
+
+    it('does not detect slash when cursor is at end with space after command', () => {
+      // User typed "hello /sum world" with cursor at end (position 16)
+      const result = detectSlashCommand('hello /sum world', 16);
+      expect(result.shouldShowAutocomplete).toBe(false);
+    });
+
+    it('detects partial command with cursor in middle', () => {
+      // User typed "hello /su world" with cursor after "su" (position 9)
+      const result = detectSlashCommand('hello /su world', 9);
+      expect(result.shouldShowAutocomplete).toBe(true);
+      expect(result.searchQuery).toBe('su');
+      expect(result.slashIndex).toBe(6);
+    });
+
+    it('detects just slash with cursor after it', () => {
+      // User typed "text / more" with cursor right after slash (position 6)
+      const result = detectSlashCommand('text / more', 6);
+      expect(result.shouldShowAutocomplete).toBe(true);
+      expect(result.searchQuery).toBe('');
+      expect(result.slashIndex).toBe(5);
+    });
+
+    it('works with cursor at position 0', () => {
+      const result = detectSlashCommand('/sum', 0);
+      expect(result.shouldShowAutocomplete).toBe(false);
+    });
+
+    it('works with cursor at position 1 (just after slash)', () => {
+      const result = detectSlashCommand('/sum', 1);
+      expect(result.shouldShowAutocomplete).toBe(true);
+      expect(result.searchQuery).toBe('');
+      expect(result.slashIndex).toBe(0);
+    });
+
+    it('finds slash before cursor, not after', () => {
+      // User typed "/first /second" with cursor at position 7 (after "/first ")
+      // Should NOT detect "/second" because cursor is before it
+      const result = detectSlashCommand('/first /second', 7);
+      expect(result.shouldShowAutocomplete).toBe(false); // Space after /first means detection ends
+    });
+
+    it('detects slash in middle of input with cursor right after command', () => {
+      // User typed "start /cmd end" with cursor at position 10 (after "cmd")
+      const result = detectSlashCommand('start /cmd end', 10);
+      expect(result.shouldShowAutocomplete).toBe(true);
+      expect(result.searchQuery).toBe('cmd');
+      expect(result.slashIndex).toBe(6);
+    });
+
+    it('maintains backward compatibility when cursor position is undefined', () => {
+      // Without cursor position, should analyze entire string (original behavior)
+      const result = detectSlashCommand('hello /sum');
+      expect(result.shouldShowAutocomplete).toBe(true);
+      expect(result.searchQuery).toBe('sum');
+    });
+  });
 });
 
 describe('expandChipsInMessage', () => {

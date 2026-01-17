@@ -51,63 +51,71 @@ export function createGetArtifactTool(context: GetArtifactContext): Tool {
       startLine?: number;
       limit?: number;
     }) => {
-      const artifact = await context.artifactsFeature.getById({
-        id: artifactId,
-        userId: context.userId,
-        orgId: context.orgId,
-      });
+      try {
+        const artifact = await context.artifactsFeature.getById({
+          id: artifactId,
+          userId: context.userId,
+          orgId: context.orgId,
+        });
 
-      if (!artifact) {
-        return {
-          found: false,
-          message: 'Document not found or you do not have access to it.',
-        };
-      }
-
-      let content = artifact.content;
-      const lines = content.split('\n');
-      const totalLines = lines.length;
-      let truncated = false;
-
-      // Apply startLine and limit if specified (startLine is 1-indexed)
-      if (startLine !== undefined || limit !== undefined) {
-        // Convert 1-indexed startLine to 0-indexed for slice
-        const startIndex = startLine !== undefined ? startLine - 1 : 0;
-
-        // Validate startLine is within document bounds
-        if (startIndex >= lines.length) {
+        if (!artifact) {
           return {
-            found: true,
-            id: artifact.id,
-            title: artifact.title,
-            error: `startLine ${startLine} exceeds document length (${lines.length} lines)`,
-            totalLines,
-            content: '',
-            summary: artifact.summary,
+            found: false,
+            message: 'Document not found or you do not have access to it.',
           };
         }
 
-        const endIndex =
-          limit !== undefined ? startIndex + limit : lines.length;
-        content = lines.slice(startIndex, endIndex).join('\n');
-        truncated = endIndex < lines.length || startIndex > 0;
-      }
+        let content = artifact.content;
+        const lines = content.split('\n');
+        const totalLines = lines.length;
+        let truncated = false;
 
-      return {
-        found: true,
-        id: artifact.id,
-        title: artifact.title,
-        content,
-        totalLines,
-        truncated,
-        startLine: startLine ?? 1,
-        linesReturned: content.split('\n').length,
-        summary: artifact.summary,
-        projects: artifact.projects,
-        tasks: artifact.tasks,
-        createdAt: artifact.createdAt,
-        updatedAt: artifact.updatedAt,
-      };
+        // Apply startLine and limit if specified (startLine is 1-indexed)
+        if (startLine !== undefined || limit !== undefined) {
+          // Convert 1-indexed startLine to 0-indexed for slice
+          const startIndex = startLine !== undefined ? startLine - 1 : 0;
+
+          // Validate startLine is within document bounds
+          if (startIndex >= lines.length) {
+            return {
+              found: true,
+              id: artifact.id,
+              title: artifact.title,
+              error: `startLine ${startLine} exceeds document length (${lines.length} lines)`,
+              totalLines,
+              content: '',
+              summary: artifact.summary,
+            };
+          }
+
+          const endIndex =
+            limit !== undefined ? startIndex + limit : lines.length;
+          content = lines.slice(startIndex, endIndex).join('\n');
+          truncated = endIndex < lines.length || startIndex > 0;
+        }
+
+        return {
+          found: true,
+          id: artifact.id,
+          title: artifact.title,
+          content,
+          totalLines,
+          truncated,
+          startLine: startLine ?? 1,
+          linesReturned: content.split('\n').length,
+          summary: artifact.summary,
+          projects: artifact.projects,
+          tasks: artifact.tasks,
+          createdAt: artifact.createdAt,
+          updatedAt: artifact.updatedAt,
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          found: false,
+          error: `Failed to retrieve artifact: ${message}`,
+        };
+      }
     },
   });
 }
