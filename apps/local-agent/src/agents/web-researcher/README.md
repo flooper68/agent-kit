@@ -26,11 +26,11 @@ All research results are saved as artifacts with:
 
 ## Environment Variables
 
-| Variable                      | Required | Default               | Description              |
-| ----------------------------- | -------- | --------------------- | ------------------------ |
-| `WEB_RESEARCHER_AGENT_API_KEY`| **Yes**  | -                     | Secret API key           |
-| `SERVER_URL`                  | No       | `ws://localhost:3001` | WebSocket server URL     |
-| `WEB_RESEARCHER_AGENT_ID`     | No       | -                     | Agent ID for logging     |
+| Variable                       | Required | Default               | Description          |
+| ------------------------------ | -------- | --------------------- | -------------------- |
+| `WEB_RESEARCHER_AGENT_API_KEY` | **Yes**  | -                     | Secret API key       |
+| `SERVER_URL`                   | No       | `ws://localhost:3001` | WebSocket server URL |
+| `WEB_RESEARCHER_AGENT_ID`      | No       | -                     | Agent ID for logging |
 
 ## Running Locally
 

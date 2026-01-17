@@ -118,6 +118,16 @@ const SlashCommandsPage = lazy(() =>
     default: m.SlashCommandsPage,
   }))
 );
+const CreateSlashCommandPage = lazy(() =>
+  import('../pages/commands/CreateSlashCommandPage').then((m) => ({
+    default: m.CreateSlashCommandPage,
+  }))
+);
+const EditSlashCommandPage = lazy(() =>
+  import('../pages/commands/EditSlashCommandPage').then((m) => ({
+    default: m.EditSlashCommandPage,
+  }))
+);
 const NotFoundPage = lazy(() =>
   import('../pages/NotFoundPage').then((m) => ({
     default: m.NotFoundPage,
@@ -329,6 +339,22 @@ const router = createBrowserRouter([
                     element: (
                       <Suspense fallback={<ArtifactsPageSkeleton />}>
                         <SlashCommandsPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'commands/new',
+                    element: (
+                      <Suspense fallback={<AgentFormPageSkeleton />}>
+                        <CreateSlashCommandPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'commands/:id/edit',
+                    element: (
+                      <Suspense fallback={<AgentFormPageSkeleton />}>
+                        <EditSlashCommandPage />
                       </Suspense>
                     ),
                   },
