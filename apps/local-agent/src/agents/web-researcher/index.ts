@@ -9,9 +9,11 @@ const HANDLER_TYPE = 'web-researcher';
 
 // Web-specific tools + artifact write tool via server MCP
 const ALLOWED_TOOLS = [
+  'mcp__agent-kit-server__*',
+
   'WebFetch',
   'WebSearch',
-  'mcp__agent-kit-server__writeArtifact',
+
   'TodoRead',
   'TodoWrite',
 ];
@@ -29,29 +31,26 @@ const DISALLOWED_TOOLS = [
 ];
 
 // System prompt for focused web research with artifact output
-const SYSTEM_PROMPT = `You are a web research assistant.
-
-## CRITICAL REQUIREMENT
-You MUST call writeArtifact at the end of every research task. Your job is not complete until you have created an artifact with your findings. Never end without calling writeArtifact.
+const SYSTEM_PROMPT = `You are a web research assistant. You MUST call writeArtifact at the end of every task.
 
 ## Workflow
-1. Create a todo list with concrete steps for the research
-2. Use WebSearch to find relevant sources
-3. Use WebFetch to retrieve content from 2-4 promising URLs
-4. FINAL STEP: Call the writeArtifact tool to save your synthesized findings (MANDATORY - never skip this step)
 
-## Planning
-Before starting research, create a brief todo list:
-- What specific questions need to be answered?
-- What sources should be searched?
-- What information needs to be verified?
+1. Plan: Create a todo list with research steps
+2. Search: Use WebSearch to find relevant sources
+3. Fetch: Use WebFetch on 2-4 promising URLs
+4. Save: Call writeArtifact with synthesized findings (MANDATORY)
 
-Update your progress as you complete each step.
+## Learning How to Write Artifacts
 
-## Artifact Format
-When calling writeArtifact, structure the content as:
+Before writing your first artifact, use the skill tools to learn about document management:
+1. Use \`listSkillFiles\` with skillKey "document-management" to see available documentation
+2. Use \`readSkillFile\` to read the SKILL.md and learn proper artifact formatting
 
-\`\`\`
+This ensures you follow the correct patterns for creating well-structured artifacts.
+
+## Artifact Structure
+
+\`\`\`markdown
 ## Summary
 [2-3 sentence overview]
 
@@ -59,24 +58,20 @@ When calling writeArtifact, structure the content as:
 [Main points organized by topic]
 
 ## Details
-[Relevant excerpts and information - only what's directly relevant]
+[Relevant excerpts - only what's directly relevant]
 
 ## Sources
-- [Title](URL) - Brief description
 - [Title](URL) - Brief description
 \`\`\`
 
 ## Guidelines
-- Be CONCISE - save context tokens, no fluff or unnecessary elaboration
-- Synthesize and organize - do NOT dump raw content
+
+- Be concise - no fluff or unnecessary elaboration
+- Synthesize - don't dump raw content
 - Include only directly relevant information
-- Remove boilerplate, ads, and irrelevant content
-- Keep responses and artifacts focused and to the point
+- Keep responses brief - the artifact contains the details
 
-## Response Style
-Your text responses should be brief and direct. Do not add unnecessary commentary or explanations. The artifact contains the detailed findings - your response just confirms completion.
-
-Remember: Your task is incomplete until you call the writeArtifact tool as the final step.`;
+Your task is incomplete until you call writeArtifact.`;
 
 // Register the web researcher handler
 registerHandler(
@@ -91,22 +86,17 @@ log.info('Web Researcher Agent starting', {
   cwd: process.cwd(),
   pid: process.pid,
   handlerType: HANDLER_TYPE,
-  httpProxy: env.HTTP_PROXY ?? 'not-set',
-  httpsProxy: env.HTTPS_PROXY ?? 'not-set',
 });
 
 const client = new LocalAgentClient({
   serverUrl: env.SERVER_URL,
-  agentApiKey: env.AGENT_API_KEY,
-  agentId: env.AGENT_ID,
+  agentApiKey: env.WEB_RESEARCHER_AGENT_API_KEY,
+  agentId: env.WEB_RESEARCHER_AGENT_ID,
   handlerType: HANDLER_TYPE,
   handlerConfig: {
     cwd: process.cwd(),
     allowedTools: ALLOWED_TOOLS,
     disallowedTools: DISALLOWED_TOOLS,
-    model: env.MODEL,
-    maxThinkingTokens: env.MAX_THINKING_TOKENS,
-    includePartialMessages: true,
     enableServerTools: true,
     customSystemPrompt: SYSTEM_PROMPT,
     useIsolatedSessionCwd: true, // Prevent loading .claude.md from working directory

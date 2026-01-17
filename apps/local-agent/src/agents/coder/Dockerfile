@@ -25,9 +25,9 @@ COPY packages/auth/ ./packages/auth/
 COPY packages/shared/ ./packages/shared/
 COPY packages/ui/ ./packages/ui/
 
-# Build the codebase researcher agent
+# Build the coder agent
 WORKDIR /app/apps/local-agent
-RUN bun build src/agents/codebase-researcher/index.ts --compile --outfile dist/codebase-researcher --minify
+RUN bun build src/agents/coder/index.ts --compile --outfile dist/coder --minify
 
 # Runtime image
 FROM debian:bookworm-slim
@@ -56,8 +56,8 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 
 USER root
 
-COPY --from=builder /app/apps/local-agent/dist/codebase-researcher /usr/local/bin/
-COPY --chmod=755 apps/local-agent/src/agents/codebase-researcher/entrypoint.sh /usr/local/bin/
+COPY --from=builder /app/apps/local-agent/dist/coder /usr/local/bin/
+COPY --chmod=755 apps/local-agent/src/agents/coder/entrypoint.sh /usr/local/bin/
 
 # Default working directory for file operations
 WORKDIR /workspace
@@ -66,7 +66,7 @@ RUN chown agent:agent /workspace
 USER agent
 
 ENV SERVER_URL=ws://host.docker.internal:3001
-ENV CODEBASE_RESEARCHER_WORKING_DIRECTORY=/workspace
+ENV CODER_WORKING_DIRECTORY=/workspace
 ENV CLAUDE_CODE_PATH=/home/agent/.local/bin/claude
 
 ENTRYPOINT ["entrypoint.sh"]

@@ -27,9 +27,7 @@ export function createToggleAgentFavoriteTool(
         .string()
         .min(1)
         .max(64)
-        .describe(
-          'The unique key/slug of the agent (e.g., "main-assistant")'
-        ),
+        .describe('The unique key/slug of the agent (e.g., "main-assistant")'),
       agentType: z
         .enum(['external', 'server'])
         .describe(

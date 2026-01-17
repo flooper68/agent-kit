@@ -73,6 +73,20 @@ export function createGetArtifactTool(context: GetArtifactContext): Tool {
       if (startLine !== undefined || limit !== undefined) {
         // Convert 1-indexed startLine to 0-indexed for slice
         const startIndex = startLine !== undefined ? startLine - 1 : 0;
+
+        // Validate startLine is within document bounds
+        if (startIndex >= lines.length) {
+          return {
+            found: true,
+            id: artifact.id,
+            title: artifact.title,
+            error: `startLine ${startLine} exceeds document length (${lines.length} lines)`,
+            totalLines,
+            content: '',
+            summary: artifact.summary,
+          };
+        }
+
         const endIndex =
           limit !== undefined ? startIndex + limit : lines.length;
         content = lines.slice(startIndex, endIndex).join('\n');

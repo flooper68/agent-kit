@@ -5,46 +5,37 @@ import type { ActionMetadata } from '../types';
 import { AgentScope } from '../../permissions/scopes';
 import type { AgentsFeature } from '../../../features/agents';
 
-export const setAgentEnabledMetadata: ActionMetadata = {
-  id: 'setAgentEnabled',
+export const deleteAgentMetadata: ActionMetadata = {
+  id: 'deleteAgent',
   requiredScopes: [AgentScope.AGENTS_MANAGE],
   needsApproval: true,
 };
 
-export interface SetAgentEnabledContext {
+export interface DeleteAgentContext {
   userId: string;
   agentsFeature: AgentsFeature;
 }
 
-export function createSetAgentEnabledTool(
-  context: SetAgentEnabledContext
-): Tool {
+export function createDeleteAgentTool(context: DeleteAgentContext): Tool {
   return tool({
     description:
-      'Enable or disable an agent. Disabled agents will not appear in the agent selector and cannot be used for new sessions.',
+      'Delete an agent by its key. This performs a soft delete - the agent is hidden from lists but data is preserved.',
     inputSchema: z.object({
       agentKey: z
         .string()
         .min(1)
         .max(64)
-        .describe('The unique key/slug of the agent (e.g., "main-assistant")'),
+        .describe('The unique key/slug of the agent to delete'),
       agentType: z
-        .enum(['external', 'server'])
-        .describe(
-          'The type of agent: external (WebSocket-based) or server (LLM-based)'
-        ),
-      enabled: z
-        .boolean()
-        .describe('Set to true to enable the agent, false to disable'),
+        .enum(['server', 'external'])
+        .describe('The type of agent being deleted'),
     }),
     execute: async ({
       agentKey,
       agentType,
-      enabled,
     }: {
       agentKey: string;
-      agentType: 'external' | 'server';
-      enabled: boolean;
+      agentType: 'server' | 'external';
     }) => {
       try {
         // Look up agent by key to get the ID
@@ -61,30 +52,31 @@ export function createSetAgentEnabledTool(
         }
 
         const agentId = agentResult.agent.id;
+        const agentName = agentResult.agent.name;
 
-        const agent = await context.agentsFeature.customAgents.setDisabled(
+        // Delete the agent (soft delete)
+        const deletedAgent = await context.agentsFeature.customAgents.delete(
           agentId,
           context.userId,
-          !enabled, // setDisabled expects disabled flag, we expose enabled
           agentType
         );
 
-        if (!agent) {
+        if (!deletedAgent) {
           return {
             success: false,
-            error: `Agent not found: ${agentKey}`,
+            error: `Failed to delete ${agentType} agent: ${agentKey}`,
           };
         }
 
         return {
           success: true,
-          message: enabled
-            ? 'Agent enabled successfully'
-            : 'Agent disabled successfully',
-          agent: {
-            id: agent.id,
-            name: 'name' in agent ? agent.name : undefined,
-            disabled: agent.disabled,
+          message: `Agent "${agentName}" (${agentKey}) deleted successfully`,
+          deletedAgent: {
+            id: deletedAgent.id,
+            key: 'key' in deletedAgent ? deletedAgent.key : agentKey,
+            name: deletedAgent.name,
+            type: agentType,
+            deletedAt: deletedAgent.deletedAt?.toISOString(),
           },
         };
       } catch (error) {
@@ -92,7 +84,7 @@ export function createSetAgentEnabledTool(
           error instanceof Error ? error.message : 'Unknown error';
         return {
           success: false,
-          error: `Failed to update agent status: ${message}`,
+          error: `Failed to delete agent: ${message}`,
         };
       }
     },

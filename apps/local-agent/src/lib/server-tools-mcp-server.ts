@@ -1,4 +1,4 @@
-import { createSdkMcpServer, tool } from '@anthropic-ai/claude-code';
+import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import type { ServerToolRelay } from './server-tool-relay';
 import { createLogger } from './logger';
 import {

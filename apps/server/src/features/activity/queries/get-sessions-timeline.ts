@@ -126,9 +126,7 @@ export class GetSessionsTimelineQuery {
     const rangeStart =
       startDate ??
       (allSessions.length > 0
-        ? new Date(
-            Math.min(...allSessions.map((s) => s.startedAt.getTime()))
-          )
+        ? new Date(Math.min(...allSessions.map((s) => s.startedAt.getTime())))
         : now);
     const rangeEnd = now;
 

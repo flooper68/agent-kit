@@ -1,5 +1,9 @@
 import { trpc } from '../../../lib/trpc';
-import { TasksByStatusChart, TasksByPriorityChart, ChartErrorBoundary } from '..';
+import {
+  TasksByStatusChart,
+  TasksByPriorityChart,
+  ChartErrorBoundary,
+} from '..';
 import { ArtifactsCreationChart } from '../ArtifactsCreationChart';
 import type { TimeRange } from '..';
 

@@ -7,7 +7,7 @@
  * - Project: listProjects, searchProjects, getProject, createProject, updateProject, deleteProject, attachArtifactToProject, detachArtifactFromProject, listProjectArtifacts
  * - Task: listTasks, searchTasks, getTask, createTask, updateTask, deleteTask, moveTask, reorderTask, attachArtifactToTask, detachArtifactFromTask
  * - Client: navigateTo, getCurrentUIState
- * - Agent: listAgents, getAgent, updateAgent, setAgentEnabled, toggleAgentFavorite
+ * - Agent: listAgents, getAgent, createAgent, updateAgent, deleteAgent, setAgentEnabled, toggleAgentFavorite
  * - Skill Management: listSkills, getSkill, createSkill, updateSkill, deleteSkill
  */
 
@@ -132,6 +132,14 @@ import {
   createToggleAgentFavoriteTool,
   toggleAgentFavoriteMetadata,
 } from './agents/toggle-agent-favorite';
+import {
+  createCreateAgentTool,
+  createAgentMetadata,
+} from './agents/create-agent';
+import {
+  createDeleteAgentTool,
+  deleteAgentMetadata,
+} from './agents/delete-agent';
 
 // Skill management actions
 import {
@@ -197,7 +205,9 @@ export const ACTION_METADATA: Record<string, ActionMetadata> = {
   // Agent actions
   [listAgentsMetadata.id]: listAgentsMetadata,
   [getAgentMetadata.id]: getAgentMetadata,
+  [createAgentMetadata.id]: createAgentMetadata,
   [updateAgentMetadata.id]: updateAgentMetadata,
+  [deleteAgentMetadata.id]: deleteAgentMetadata,
   [setAgentEnabledMetadata.id]: setAgentEnabledMetadata,
   [toggleAgentFavoriteMetadata.id]: toggleAgentFavoriteMetadata,
 
@@ -274,7 +284,9 @@ export const ACTION_IDS = [
   // Agent actions
   'listAgents',
   'getAgent',
+  'createAgent',
   'updateAgent',
+  'deleteAgent',
   'setAgentEnabled',
   'toggleAgentFavorite',
   // Skill management actions
@@ -605,10 +617,23 @@ export function getActionsById(
             agentsFeature: context.agentsFeature,
           });
           break;
+        case 'createAgent':
+          result[id] = createCreateAgentTool({
+            userId: context.userId,
+            orgId: context.orgId,
+            agentsFeature: context.agentsFeature,
+          });
+          break;
         case 'updateAgent':
           result[id] = createUpdateAgentTool({
             userId: context.userId,
             orgId: context.orgId,
+            agentsFeature: context.agentsFeature,
+          });
+          break;
+        case 'deleteAgent':
+          result[id] = createDeleteAgentTool({
+            userId: context.userId,
             agentsFeature: context.agentsFeature,
           });
           break;

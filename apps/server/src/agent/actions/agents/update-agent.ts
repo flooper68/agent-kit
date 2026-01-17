@@ -37,9 +37,7 @@ export function createUpdateAgentTool(context: UpdateAgentContext): Tool {
         .string()
         .min(1)
         .max(64)
-        .describe(
-          'The unique key/slug of the agent (e.g., "main-assistant")'
-        ),
+        .describe('The unique key/slug of the agent (e.g., "main-assistant")'),
       agentType: z
         .enum(['server', 'external'])
         .describe('The type of agent being updated'),

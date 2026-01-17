@@ -4,11 +4,13 @@ Multi-agent system for connecting specialized agents to the Agent Kit server. Ea
 
 ## Available Agents
 
-| Agent                                                             | Purpose                       | Tools                          |
-| ----------------------------------------------------------------- | ----------------------------- | ------------------------------ |
-| [codebase-researcher](./src/agents/codebase-researcher/README.md) | Explore and analyze codebases | Read, Glob, Grep               |
-| [web-researcher](./src/agents/web-researcher/README.md)           | Research topics from the web  | WebFetch, WebSearch            |
-| [mock-agent](./src/agents/mock-agent/README.md)                   | Testing and demos             | MockRead, MockSearch, MockGrep |
+| Agent                                                                   | Purpose                        | Tools                       |
+| ----------------------------------------------------------------------- | ------------------------------ | --------------------------- |
+| [codebase-researcher](./src/agents/codebase-researcher/README.md)       | Explore and analyze codebases  | Read, Glob, Grep, Git       |
+| [coder](./src/agents/coder/README.md)                                   | Implement features, create PRs | Read, Write, Edit, Git, gh  |
+| [web-researcher](./src/agents/web-researcher/README.md)                 | Research topics from the web   | WebFetch, WebSearch         |
+| [claude-assistant-opus](./src/agents/claude-assistant-opus/README.md)   | Planning and brainstorming     | MCP server tools, Web       |
+| [claude-assistant-sonnet](./src/agents/claude-assistant-sonnet/README.md) | Planning and brainstorming   | MCP server tools, Web       |
 
 ## Architecture
 
@@ -24,41 +26,46 @@ apps/local-agent/
     │
     └── agents/                       # Individual agent implementations
         ├── codebase-researcher/
+        ├── coder/
         ├── web-researcher/
-        └── mock-agent/
+        ├── claude-assistant-opus/
+        └── claude-assistant-sonnet/
 ```
 
 ## Quick Start
 
 ```bash
-# Set required environment variable
-export AGENT_API_KEY=your_api_key_here
-
-# Run an agent in development mode
+# Run an agent in development mode (set env vars first - see each agent's README)
 bun run dev:codebase-researcher
+bun run dev:coder
 bun run dev:web-researcher
-bun run dev:mock-agent
+bun run dev:claude-assistant-opus
+bun run dev:claude-assistant-sonnet
 ```
 
 ## Environment Variables
 
-All agents share these common environment variables:
+Each agent uses prefixed environment variables. See each agent's README for specific configuration:
 
-| Variable        | Required | Default               | Description                              |
-| --------------- | -------- | --------------------- | ---------------------------------------- |
-| `SERVER_URL`    | No       | `ws://localhost:3001` | WebSocket server URL                     |
-| `AGENT_API_KEY` | **Yes**  | -                     | Secret API key from local agent creation |
-| `AGENT_ID`      | No       | -                     | Optional identifier for logging          |
+| Agent                  | API Key Variable                        | Agent ID Variable                   |
+| ---------------------- | --------------------------------------- | ----------------------------------- |
+| codebase-researcher    | `CODEBASE_RESEARCHER_AGENT_API_KEY`     | `CODEBASE_RESEARCHER_AGENT_ID`      |
+| coder                  | `CODER_AGENT_API_KEY`                   | `CODER_AGENT_ID`                    |
+| web-researcher         | `WEB_RESEARCHER_AGENT_API_KEY`          | `WEB_RESEARCHER_AGENT_ID`           |
+| claude-assistant-opus  | `CLAUDE_ASSISTANT_OPUS_AGENT_API_KEY`   | `CLAUDE_ASSISTANT_OPUS_AGENT_ID`    |
+| claude-assistant-sonnet| `CLAUDE_ASSISTANT_SONNET_AGENT_API_KEY` | `CLAUDE_ASSISTANT_SONNET_AGENT_ID`  |
 
-See each agent's README for agent-specific configuration options.
+Common variable: `SERVER_URL` (default: `ws://localhost:3001`)
 
 ## Development
 
 ```bash
 # Run specific agent with auto-reload
 bun run dev:codebase-researcher
+bun run dev:coder
 bun run dev:web-researcher
-bun run dev:mock-agent
+bun run dev:claude-assistant-opus
+bun run dev:claude-assistant-sonnet
 ```
 
 ## Build
@@ -69,8 +76,10 @@ bun run build
 
 # Build specific agent
 bun run build:codebase-researcher
+bun run build:coder
 bun run build:web-researcher
-bun run build:mock-agent
+bun run build:claude-assistant-opus
+bun run build:claude-assistant-sonnet
 ```
 
 Compiled binaries are output to `dist/`.
@@ -97,11 +106,11 @@ docker compose up
 
 The Docker setup requires these files on your host machine:
 
-| File                          | Purpose                                              |
-| ----------------------------- | ---------------------------------------------------- |
-| `~/.claude/.credentials.json` | Claude OAuth authentication                          |
-| `~/.gitconfig`                | Git configuration (codebase-researcher only)         |
-| `~/.config/gh/`               | GitHub CLI authentication (codebase-researcher only) |
+| File                          | Purpose                                                   |
+| ----------------------------- | --------------------------------------------------------- |
+| `~/.claude/.credentials.json` | Claude OAuth authentication                               |
+| `~/.gitconfig`                | Git configuration (codebase-researcher, coder)            |
+| `~/.config/gh/`               | GitHub CLI authentication (codebase-researcher, coder)    |
 
 To set up Claude credentials, run `claude` locally and complete OAuth login.
 
@@ -125,7 +134,15 @@ CODEBASE_RESEARCHER_AGENT_API_KEY=your_key
 CODEBASE_RESEARCHER_AGENT_ID=codebase-researcher
 CODEBASE_RESEARCHER_GIT_REPOSITORY_URL=https://github.com/user/repo.git
 CODEBASE_RESEARCHER_GIT_BRANCH=main  # optional
-CODEBASE_RESEARCHER_MODEL=claude-sonnet-4-5
+```
+
+**Coder:**
+
+```bash
+CODER_AGENT_API_KEY=your_key
+CODER_AGENT_ID=coder
+CODER_GIT_REPOSITORY_URL=https://github.com/user/repo.git
+CODER_GIT_BRANCH=main  # optional
 ```
 
 **Web Researcher:**
@@ -133,27 +150,24 @@ CODEBASE_RESEARCHER_MODEL=claude-sonnet-4-5
 ```bash
 WEB_RESEARCHER_AGENT_API_KEY=your_key
 WEB_RESEARCHER_AGENT_ID=web-researcher
-WEB_RESEARCHER_MODEL=claude-sonnet-4-5
-WEB_RESEARCHER_HTTP_PROXY=http://proxy:8080  # optional
 ```
 
-**Claude CLI:**
+**Claude Assistant (Opus/Sonnet):**
 
 ```bash
-CLAUDE_CLI_AGENT_API_KEY=your_key
-CLAUDE_CLI_AGENT_ID=claude-cli
-CLAUDE_CLI_WORKSPACE=./workspace
-ANTHROPIC_API_KEY=your_anthropic_key  # or use OAuth
+CLAUDE_ASSISTANT_OPUS_AGENT_API_KEY=your_key
+CLAUDE_ASSISTANT_OPUS_AGENT_ID=claude-assistant-opus
+CLAUDE_ASSISTANT_SONNET_AGENT_API_KEY=your_key
+CLAUDE_ASSISTANT_SONNET_AGENT_ID=claude-assistant-sonnet
 ```
 
 ### Volume Mounts
 
-| Container           | Mount                         | Purpose           |
-| ------------------- | ----------------------------- | ----------------- |
-| All agents          | `~/.claude/.credentials.json` | Claude OAuth      |
-| codebase-researcher | `~/.gitconfig`                | Git config        |
-| codebase-researcher | `~/.config/gh/`               | GitHub CLI auth   |
-| claude-cli          | `./workspace:/workspace`      | Working directory |
+| Container                    | Mount                         | Purpose           |
+| ---------------------------- | ----------------------------- | ----------------- |
+| All agents                   | `~/.claude/.credentials.json` | Claude OAuth      |
+| codebase-researcher, coder   | `~/.gitconfig`                | Git config        |
+| codebase-researcher, coder   | `~/.config/gh/`               | GitHub CLI auth   |
 
 ### Resource Limits
 
@@ -168,9 +182,10 @@ The `claude-cli` container has resource limits:
 ```bash
 # Build from monorepo root with correct context
 docker build -f apps/local-agent/src/agents/codebase-researcher/Dockerfile -t codebase-researcher .
+docker build -f apps/local-agent/src/agents/coder/Dockerfile -t coder .
 docker build -f apps/local-agent/src/agents/web-researcher/Dockerfile -t web-researcher .
-docker build -f apps/local-agent/src/agents/claude-cli/Dockerfile -t claude-cli .
-docker build -f apps/local-agent/src/agents/mock-agent/Dockerfile -t mock-agent .
+docker build -f apps/local-agent/src/agents/claude-assistant-opus/Dockerfile -t claude-assistant-opus .
+docker build -f apps/local-agent/src/agents/claude-assistant-sonnet/Dockerfile -t claude-assistant-sonnet .
 ```
 
 ## Creating New Agents

@@ -5,13 +5,28 @@ services:
       dockerfile: apps/local-agent/src/agents/codebase-researcher/Dockerfile
     environment:
       - SERVER_URL=${SERVER_URL}
-      - AGENT_API_KEY=${CODEBASE_RESEARCHER_AGENT_API_KEY}
-      - AGENT_ID=${CODEBASE_RESEARCHER_AGENT_ID:-codebase-researcher}
-      - GIT_REPOSITORY_URL=${CODEBASE_RESEARCHER_GIT_REPOSITORY_URL}
-      - GIT_BRANCH=${CODEBASE_RESEARCHER_GIT_BRANCH:-}
-      - WORKING_DIRECTORY=${CODEBASE_RESEARCHER_WORKING_DIRECTORY:-/workspace}
-      - MODEL=${CODEBASE_RESEARCHER_MODEL:-}
-      - MAX_THINKING_TOKENS=${CODEBASE_RESEARCHER_MAX_THINKING_TOKENS:-}
+      - CODEBASE_RESEARCHER_AGENT_API_KEY=${CODEBASE_RESEARCHER_AGENT_API_KEY}
+      - CODEBASE_RESEARCHER_AGENT_ID=${CODEBASE_RESEARCHER_AGENT_ID:-codebase-researcher}
+      - CODEBASE_RESEARCHER_GIT_REPOSITORY_URL=${CODEBASE_RESEARCHER_GIT_REPOSITORY_URL}
+      - CODEBASE_RESEARCHER_GIT_BRANCH=${CODEBASE_RESEARCHER_GIT_BRANCH:-}
+      - CODEBASE_RESEARCHER_WORKING_DIRECTORY=${CODEBASE_RESEARCHER_WORKING_DIRECTORY:-/workspace}
+    volumes:
+      - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json
+      - ${HOME}/.gitconfig:/home/agent/.gitconfig:ro
+      - ${HOME}/.config/gh:/home/agent/.config/gh:ro
+    restart: unless-stopped
+
+  coder:
+    build:
+      context: ../..
+      dockerfile: apps/local-agent/src/agents/coder/Dockerfile
+    environment:
+      - SERVER_URL=${SERVER_URL}
+      - CODER_AGENT_API_KEY=${CODER_AGENT_API_KEY}
+      - CODER_AGENT_ID=${CODER_AGENT_ID:-coder}
+      - CODER_GIT_REPOSITORY_URL=${CODER_GIT_REPOSITORY_URL}
+      - CODER_GIT_BRANCH=${CODER_GIT_BRANCH:-}
+      - CODER_WORKING_DIRECTORY=${CODER_WORKING_DIRECTORY:-/workspace}
     volumes:
       - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json
       - ${HOME}/.gitconfig:/home/agent/.gitconfig:ro
@@ -24,12 +39,8 @@ services:
       dockerfile: apps/local-agent/src/agents/web-researcher/Dockerfile
     environment:
       - SERVER_URL=${SERVER_URL}
-      - AGENT_API_KEY=${WEB_RESEARCHER_AGENT_API_KEY}
-      - AGENT_ID=${WEB_RESEARCHER_AGENT_ID:-web-researcher}
-      - MODEL=${WEB_RESEARCHER_MODEL:-}
-      - MAX_THINKING_TOKENS=${WEB_RESEARCHER_MAX_THINKING_TOKENS:-}
-      - HTTP_PROXY=${WEB_RESEARCHER_HTTP_PROXY:-}
-      - HTTPS_PROXY=${WEB_RESEARCHER_HTTPS_PROXY:-}
+      - WEB_RESEARCHER_AGENT_API_KEY=${WEB_RESEARCHER_AGENT_API_KEY}
+      - WEB_RESEARCHER_AGENT_ID=${WEB_RESEARCHER_AGENT_ID:-web-researcher}
     volumes:
       - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json
     restart: unless-stopped
@@ -40,11 +51,8 @@ services:
       dockerfile: apps/local-agent/src/agents/claude-assistant-opus/Dockerfile
     environment:
       - SERVER_URL=${SERVER_URL}
-      - AGENT_API_KEY=${CLAUDE_ASSISTANT_OPUS_AGENT_API_KEY}
-      - AGENT_ID=${CLAUDE_ASSISTANT_OPUS_AGENT_ID:-claude-assistant-opus}
-      - MODEL=${CLAUDE_ASSISTANT_OPUS_MODEL:-}
-      - MAX_THINKING_TOKENS=${CLAUDE_ASSISTANT_OPUS_MAX_THINKING_TOKENS:-}
-      - ALLOWED_SPAWN_AGENTS=${CLAUDE_ASSISTANT_OPUS_ALLOWED_SPAWN_AGENTS:-}
+      - CLAUDE_ASSISTANT_OPUS_AGENT_API_KEY=${CLAUDE_ASSISTANT_OPUS_AGENT_API_KEY}
+      - CLAUDE_ASSISTANT_OPUS_AGENT_ID=${CLAUDE_ASSISTANT_OPUS_AGENT_ID:-claude-assistant-opus}
     volumes:
       - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json
     restart: unless-stopped
@@ -55,11 +63,8 @@ services:
       dockerfile: apps/local-agent/src/agents/claude-assistant-sonnet/Dockerfile
     environment:
       - SERVER_URL=${SERVER_URL}
-      - AGENT_API_KEY=${CLAUDE_ASSISTANT_SONNET_AGENT_API_KEY}
-      - AGENT_ID=${CLAUDE_ASSISTANT_SONNET_AGENT_ID:-claude-assistant-sonnet}
-      - MODEL=${CLAUDE_ASSISTANT_SONNET_MODEL:-}
-      - MAX_THINKING_TOKENS=${CLAUDE_ASSISTANT_SONNET_MAX_THINKING_TOKENS:-}
-      - ALLOWED_SPAWN_AGENTS=${CLAUDE_ASSISTANT_SONNET_ALLOWED_SPAWN_AGENTS:-}
+      - CLAUDE_ASSISTANT_SONNET_AGENT_API_KEY=${CLAUDE_ASSISTANT_SONNET_AGENT_API_KEY}
+      - CLAUDE_ASSISTANT_SONNET_AGENT_ID=${CLAUDE_ASSISTANT_SONNET_AGENT_ID:-claude-assistant-sonnet}
     volumes:
       - ${HOME}/.claude/.credentials.json:/home/agent/.claude/.credentials.json
     restart: unless-stopped

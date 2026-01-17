@@ -263,11 +263,7 @@ export function SessionsTimelineChart({
             {/* Transparent offset bar */}
             <Bar dataKey="offset" stackId="session" fill="transparent" />
             {/* Colored session duration bar */}
-            <Bar
-              dataKey="length"
-              stackId="session"
-              radius={[0, 4, 4, 0]}
-            >
+            <Bar dataKey="length" stackId="session" radius={[0, 4, 4, 0]}>
               {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}

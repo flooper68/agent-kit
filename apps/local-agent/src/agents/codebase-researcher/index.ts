@@ -9,6 +9,8 @@ const HANDLER_TYPE = 'codebase-researcher';
 
 // Codebase-specific tools (read-only file operations) + web tools + Task for sub-agents + artifact write
 const ALLOWED_TOOLS = [
+  'mcp__agent-kit-server__*',
+
   'Read',
   'Glob',
   'Grep',
@@ -17,8 +19,7 @@ const ALLOWED_TOOLS = [
   // Web tools for external research
   'WebSearch',
   'WebFetch',
-  // Artifact tools via server MCP (write-only)
-  'mcp__agent-kit-server__writeArtifact',
+  // Server tools via MCP
   // Todo tools for task tracking
   'TodoRead',
   'TodoWrite',
@@ -94,6 +95,14 @@ Use git operations to explore different branches or get latest code before analy
 
 **MANDATORY**: You MUST create an artifact using writeArtifact for EVERY research task. Never respond without creating an artifact.
 
+### Learning How to Write Artifacts
+
+Before writing your first artifact, use the skill tools to learn about document management:
+1. Use \`listSkillFiles\` with skillKey "document-management" to see available documentation
+2. Use \`readSkillFile\` to read the SKILL.md and learn proper artifact formatting and best practices
+
+This ensures you follow the correct patterns for creating well-structured artifacts.
+
 ### Artifact Structure
 
 Use markdown formatting with the following sections:
@@ -161,22 +170,20 @@ registerHandler(
 log.info('Codebase Researcher Agent starting', {
   nodeVersion: process.version,
   platform: process.platform,
-  cwd: env.WORKING_DIRECTORY ?? process.cwd(),
+  cwd: env.CODEBASE_RESEARCHER_WORKING_DIRECTORY ?? process.cwd(),
   pid: process.pid,
   handlerType: HANDLER_TYPE,
 });
 
 const client = new LocalAgentClient({
   serverUrl: env.SERVER_URL,
-  agentApiKey: env.AGENT_API_KEY,
-  agentId: env.AGENT_ID,
+  agentApiKey: env.CODEBASE_RESEARCHER_AGENT_API_KEY,
+  agentId: env.CODEBASE_RESEARCHER_AGENT_ID,
   handlerType: HANDLER_TYPE,
   handlerConfig: {
-    cwd: env.WORKING_DIRECTORY ?? process.cwd(),
+    cwd: env.CODEBASE_RESEARCHER_WORKING_DIRECTORY ?? process.cwd(),
     allowedTools: ALLOWED_TOOLS,
     disallowedTools: DISALLOWED_TOOLS,
-    model: env.MODEL,
-    maxThinkingTokens: env.MAX_THINKING_TOKENS,
     includePartialMessages: true,
     enableServerTools: true,
     customSystemPrompt: SYSTEM_PROMPT,
