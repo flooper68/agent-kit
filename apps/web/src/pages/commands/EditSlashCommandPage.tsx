@@ -70,6 +70,7 @@ export function EditSlashCommandPage() {
       utils.slashCommands.list.invalidate();
     },
     onError: (err) => {
+      // Check for unique constraint violation from database error message
       if (err.message.includes('unique')) {
         addToast({
           message: 'A command with this key already exists',
@@ -122,6 +123,7 @@ export function EditSlashCommandPage() {
           }
         );
       },
+      // autosave.lastSavedDataRef is a stable ref that doesn't need to be in deps
       // eslint-disable-next-line react-hooks/exhaustive-deps
       [id, updateMutation, addToast]
     ),
