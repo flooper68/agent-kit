@@ -16,7 +16,6 @@ import {
   Search,
   Plus,
   MoreHorizontal,
-  Pencil,
   Trash2,
 } from 'lucide-react';
 import { trpc } from '../lib/trpc';
@@ -200,14 +199,6 @@ export function SlashCommandsPage() {
                             />
                           </DropdownMenu.Trigger>
                           <DropdownMenu.Content align="end">
-                            <DropdownMenu.Item
-                              onSelect={() =>
-                                navigate(`/app/commands/${command.id}/edit`)
-                              }
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenu.Item>
                             <DropdownMenu.Item
                               onSelect={() =>
                                 setDeleteTarget({
