@@ -30,11 +30,16 @@ export function createSearchArtifactsTool(
         ),
       limit: z
         .number()
+        .int()
+        .min(1, 'Number must be greater than or equal to 1')
+        .max(50, 'Number must be less than or equal to 50')
         .optional()
         .default(10)
         .describe('Maximum number of results to return'),
       offset: z
         .number()
+        .int()
+        .min(0, 'Number must be greater than or equal to 0')
         .optional()
         .default(0)
         .describe('Number of results to skip for pagination'),
@@ -48,37 +53,47 @@ export function createSearchArtifactsTool(
       limit?: number;
       offset?: number;
     }) => {
-      const { results, totalCount } = await context.artifactsFeature.search({
-        userId: context.userId,
-        orgId: context.orgId,
-        query,
-        limit: limit ?? 10,
-        offset: offset ?? 0,
-      });
+      try {
+        const { results, totalCount } = await context.artifactsFeature.search({
+          userId: context.userId,
+          orgId: context.orgId,
+          query,
+          limit: limit ?? 10,
+          offset: offset ?? 0,
+        });
 
-      if (results.length === 0) {
+        if (results.length === 0) {
+          return {
+            found: false,
+            message:
+              query.trim() === ''
+                ? 'No documents found.'
+                : 'No documents found matching your search.',
+            results: [],
+            totalCount: 0,
+          };
+        }
+
+        return {
+          found: true,
+          count: results.length,
+          totalCount,
+          results: results.map((r) => ({
+            id: r.id,
+            title: r.title,
+            summary: r.summary,
+            createdAt: r.createdAt,
+          })),
+        };
+      } catch (error) {
+        console.error('Failed to search artifacts:', error);
         return {
           found: false,
-          message:
-            query.trim() === ''
-              ? 'No documents found.'
-              : 'No documents found matching your search.',
+          message: 'Failed to search. Please try again.',
           results: [],
           totalCount: 0,
         };
       }
-
-      return {
-        found: true,
-        count: results.length,
-        totalCount,
-        results: results.map((r) => ({
-          id: r.id,
-          title: r.title,
-          summary: r.summary,
-          createdAt: r.createdAt,
-        })),
-      };
     },
   });
 }

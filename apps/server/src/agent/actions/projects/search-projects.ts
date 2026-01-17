@@ -27,28 +27,40 @@ export function createSearchProjectsTool(context: SearchProjectsContext): Tool {
         .describe('Search query to match against project titles and summaries'),
       limit: z
         .number()
-        .min(1)
-        .max(20)
+        .int()
+        .min(1, 'Number must be greater than or equal to 1')
+        .max(20, 'Number must be less than or equal to 20')
+        .optional()
         .default(10)
         .describe('Maximum number of results'),
     }),
     execute: async ({ query, limit }: { query: string; limit?: number }) => {
-      const results = await context.projectsFeature.search({
-        userId: context.userId,
-        orgId: context.orgId,
-        query,
-        limit: limit ?? 10,
-      });
+      try {
+        const results = await context.projectsFeature.search({
+          userId: context.userId,
+          orgId: context.orgId,
+          query,
+          limit: limit ?? 10,
+        });
 
-      return {
-        projects: results.map((p) => ({
-          id: p.id,
-          title: p.title,
-          summary: p.summary,
-          taskCounts: p.taskCounts,
-        })),
-        total: results.length,
-      };
+        return {
+          projects: results.map((p) => ({
+            id: p.id,
+            title: p.title,
+            summary: p.summary,
+            taskCounts: p.taskCounts,
+          })),
+          total: results.length,
+        };
+      } catch (error) {
+        console.error('Failed to search projects:', error);
+        return {
+          found: false,
+          message: 'Failed to search. Please try again.',
+          projects: [],
+          total: 0,
+        };
+      }
     },
   });
 }
