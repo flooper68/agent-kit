@@ -141,13 +141,15 @@ System skills cannot be modified - only user-created skills can be updated.`,
         ) {
           return {
             success: false,
-            error: `A skill with key "${key}" already exists. Choose a different key.`,
+            error: key
+              ? `A skill with key "${key}" already exists. Choose a different key.`
+              : 'A skill with this key already exists. Choose a different key.',
           };
         }
 
         return {
           success: false,
-          error: 'Failed to update skill',
+          error: `Failed to update skill: ${errorMessage}`,
         };
       }
     },

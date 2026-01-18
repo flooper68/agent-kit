@@ -52,21 +52,23 @@ export function createListSkillsTool(context: ListSkillsContext): Tool {
       const skillFilter = filter ?? 'all';
       const skillLimit = limit ?? 20;
 
+      // Fetch skills with a high limit - we need to filter by permissions first
       const result = await context.skillsFeature.list({
         userId: context.userId,
         orgId: context.orgId,
         filter: skillFilter,
         search,
-        limit: skillLimit,
+        limit: 1000, // High limit to get all skills for permission filtering
       });
 
-      // Filter to only allowed skills for this agent
+      // Filter to only allowed skills for this agent, then apply limit
       const allowedSkills = result.items.filter((skill) =>
         context.allowedSkillIds.includes(skill.id)
       );
+      const paginatedSkills = allowedSkills.slice(0, skillLimit);
 
       return {
-        skills: allowedSkills.map((skill) => ({
+        skills: paginatedSkills.map((skill) => ({
           id: skill.id,
           key: skill.key,
           name: skill.name,
@@ -76,8 +78,8 @@ export function createListSkillsTool(context: ListSkillsContext): Tool {
           createdAt: skill.createdAt.toISOString(),
           updatedAt: skill.updatedAt.toISOString(),
         })),
-        total: allowedSkills.length,
-        hasMore: false, // Filtering may affect pagination, so we can't reliably report hasMore
+        total: paginatedSkills.length,
+        hasMore: allowedSkills.length > skillLimit,
       };
     },
   });

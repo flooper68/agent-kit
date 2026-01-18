@@ -87,6 +87,14 @@ Note: Only user skills can be created. System skills are read-only.`,
       description: string;
       files: Array<{ path: string; content: string }>;
     }) => {
+      // Defensive check in case validation is bypassed
+      if (!files || !Array.isArray(files) || files.length === 0) {
+        return {
+          success: false,
+          error: 'Files array is required and must contain at least one file',
+        };
+      }
+
       log.info('Creating skill', { key, name, fileCount: files.length });
 
       try {
@@ -130,9 +138,20 @@ Note: Only user skills can be created. System skills are read-only.`,
       } catch (error) {
         log.error('Error creating skill', { error, key });
 
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+
+        // Provide specific error context
+        if (errorMessage.includes('unique constraint')) {
+          return {
+            success: false,
+            error: `Skill with key "${key}" already exists`,
+          };
+        }
+
         return {
           success: false,
-          error: 'Failed to create skill',
+          error: `Failed to create skill: ${errorMessage}`,
         };
       }
     },

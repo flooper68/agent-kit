@@ -372,12 +372,21 @@ export const toggleAgentFavoriteSchema = z.object({
 
 // --- Skill Tools ---
 export const listSkillsSchema = z.object({
+  filter: z
+    .enum(['all', 'system', 'user'])
+    .default('all')
+    .describe('Filter by skill type: system (built-in), user (custom), or all'),
+  search: z
+    .string()
+    .optional()
+    .describe('Search skills by name, description, or key'),
   limit: z
     .number()
+    .int()
     .min(1)
-    .max(100)
-    .default(50)
-    .describe('Maximum number of skills to return'),
+    .max(50)
+    .default(20)
+    .describe('Maximum number of skills to return (1-50)'),
 });
 
 export const getSkillSchema = z.object({
@@ -416,31 +425,112 @@ export const executeCommandSchema = z.object({
     ),
 });
 
+/**
+ * Allowed directory prefixes for skill files.
+ * Files must be in root (''), 'assets/', or 'references/' directories.
+ */
+const ALLOWED_SKILL_FILE_PREFIXES = ['', 'assets/', 'references/'];
+
+/**
+ * Validate a skill file path.
+ * - Must not contain path traversal sequences (..)
+ * - Must not be an absolute path (start with /)
+ * - Must be in an allowed directory (root, assets/, or references/)
+ */
+function isValidSkillFilePath(filePath: string): boolean {
+  // Reject absolute paths immediately
+  if (filePath.startsWith('/')) {
+    return false;
+  }
+
+  // Reject paths with traversal sequences before normalization
+  if (filePath.includes('..')) {
+    return false;
+  }
+
+  // Reject empty paths
+  if (filePath === '' || filePath === '.') {
+    return false;
+  }
+
+  // Get the directory part (empty string for root files)
+  const lastSlashIndex = filePath.lastIndexOf('/');
+  const dir = lastSlashIndex >= 0 ? filePath.slice(0, lastSlashIndex + 1) : '';
+
+  return ALLOWED_SKILL_FILE_PREFIXES.includes(dir);
+}
+
+/**
+ * Schema for skill file path validation
+ */
+const SkillFilePathSchema = z
+  .string()
+  .min(1)
+  .max(255)
+  .refine(isValidSkillFilePath, {
+    message: 'Path must be in root, assets/, or references/ directory',
+  });
+
+/**
+ * Schema for a single skill file
+ */
+const SkillFileSchema = z.object({
+  path: SkillFilePathSchema.describe(
+    'File path within the skill (e.g., "SKILL.md" or "references/tips.md")'
+  ),
+  content: z.string().min(1).max(500_000).describe('File content (max 500KB)'),
+});
+
 export const createSkillSchema = z.object({
   key: z
     .string()
     .min(1)
     .max(64)
-    .regex(/^[a-z0-9-]+$/, 'Key must be lowercase alphanumeric with hyphens')
+    .regex(/^[a-z0-9-]+$/, {
+      message: 'Key must be lowercase alphanumeric with hyphens',
+    })
     .describe('Unique skill key (e.g., "my-skill")'),
   name: z.string().min(1).max(255).describe('Display name for the skill'),
-  description: z.string().max(2000).optional().describe('Skill description'),
-  content: z
+  description: z
     .string()
     .min(1)
-    .max(500_000)
-    .describe('The SKILL.md content or main documentation'),
+    .max(1000)
+    .describe('Short description for skill discovery'),
+  files: z
+    .array(SkillFileSchema)
+    .min(1)
+    .max(20)
+    .describe('Documentation files (at least one, typically SKILL.md)'),
 });
 
 export const updateSkillSchema = z.object({
-  skillKey: z.string().min(1).describe('The skill key to update'),
+  id: z.string().uuid().describe('The ID of the skill to update'),
+  key: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(/^[a-z0-9-]+$/, {
+      message: 'Key must be lowercase alphanumeric with hyphens',
+    })
+    .optional()
+    .describe('New skill key'),
   name: z.string().min(1).max(255).optional().describe('New display name'),
-  description: z.string().max(2000).optional().describe('New description'),
-  content: z.string().max(500_000).optional().describe('New content'),
+  description: z
+    .string()
+    .min(1)
+    .max(1000)
+    .optional()
+    .describe('New description'),
+  files: z
+    .array(SkillFileSchema)
+    .min(1)
+    .max(20)
+    .optional()
+    .describe('New documentation files (replaces all existing files)'),
 });
 
 export const deleteSkillSchema = z.object({
-  skillKey: z.string().min(1).describe('The skill key to delete'),
+  id: z.string().uuid().describe('The UUID of the skill to delete'),
 });
 
 // --- Slash Command Tools ---

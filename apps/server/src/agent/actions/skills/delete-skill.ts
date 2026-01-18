@@ -75,9 +75,11 @@ This action cannot be undone. System skills cannot be deleted - only user-create
         };
       } catch (error) {
         log.error('Error deleting skill', { error, id });
+        const message =
+          error instanceof Error ? error.message : 'Unknown error';
         return {
           success: false,
-          error: 'Failed to delete skill',
+          error: `Failed to delete skill: ${message}`,
         };
       }
     },
