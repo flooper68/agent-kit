@@ -12,7 +12,7 @@ import type { ActionMetadata } from '../types';
 import { AgentScope } from '../../permissions/scopes';
 import type { SkillsFeature } from '../../../features/skills';
 import { logger } from '../../../logger/logger';
-import { SkillFilePathSchema } from '../../skills/types';
+import { SkillFilePathSchema, normalizeSkillFiles } from '../../skills/types';
 
 export const createSkillMetadata: ActionMetadata = {
   id: 'createSkill',
@@ -33,13 +33,32 @@ export interface CreateSkillContext {
 
 /**
  * Schema for skill file input with path validation
+ * Accepts either content or contentBase64 to avoid escaping issues
  */
-const SkillFileSchema = z.object({
-  path: SkillFilePathSchema.describe(
-    'File path within the skill (e.g., "SKILL.md" or "references/tips.md")'
-  ),
-  content: z.string().min(1).max(500_000).describe('File content (max 500KB)'),
-});
+const SkillFileSchema = z
+  .object({
+    path: SkillFilePathSchema.describe(
+      'File path within the skill (e.g., "SKILL.md" or "references/tips.md")'
+    ),
+    content: z
+      .string()
+      .min(1)
+      .max(500_000)
+      .optional()
+      .describe('File content (max 500KB)'),
+    contentBase64: z
+      .string()
+      .optional()
+      .describe(
+        'File content as base64 encoded string (alternative to content)'
+      ),
+  })
+  .refine((data) => data.content || data.contentBase64, {
+    message: 'Either content or contentBase64 must be provided',
+  })
+  .refine((data) => !(data.content && data.contentBase64), {
+    message: 'Cannot provide both content and contentBase64',
+  });
 
 /**
  * Create the createSkill action
@@ -85,7 +104,7 @@ Note: Only user skills can be created. System skills are read-only.`,
       key: string;
       name: string;
       description: string;
-      files: Array<{ path: string; content: string }>;
+      files: Array<{ path: string; content?: string; contentBase64?: string }>;
     }) => {
       // Defensive check in case validation is bypassed
       if (!files || !Array.isArray(files) || files.length === 0) {
@@ -95,7 +114,14 @@ Note: Only user skills can be created. System skills are read-only.`,
         };
       }
 
-      log.info('Creating skill', { key, name, fileCount: files.length });
+      // Normalize files (decode base64 if present)
+      const normalizedFiles = normalizeSkillFiles(files);
+
+      log.info('Creating skill', {
+        key,
+        name,
+        fileCount: normalizedFiles.length,
+      });
 
       try {
         // Check if skill with this key already exists before attempting insert
@@ -119,7 +145,7 @@ Note: Only user skills can be created. System skills are read-only.`,
           key,
           name,
           description,
-          files,
+          files: normalizedFiles,
         });
 
         log.info('Skill created', { skillId: skill.id, key });
@@ -131,7 +157,7 @@ Note: Only user skills can be created. System skills are read-only.`,
             key: skill.key,
             name: skill.name,
             description: skill.description,
-            fileCount: files.length,
+            fileCount: normalizedFiles.length,
           },
           message: `Skill "${name}" created successfully.`,
         };

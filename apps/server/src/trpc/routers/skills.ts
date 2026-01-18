@@ -1,12 +1,26 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, orgProcedure } from '../trpc';
-import { SkillFilePathSchema } from '../../agent/skills/types';
+import {
+  SkillFilePathSchema,
+  normalizeSkillFiles,
+} from '../../agent/skills/types';
 
-const SkillFileSchema = z.object({
-  path: SkillFilePathSchema,
-  content: z.string().min(1).max(500_000), // 500KB per file
-});
+/**
+ * Schema for skill file input - accepts content or contentBase64
+ */
+const SkillFileSchema = z
+  .object({
+    path: SkillFilePathSchema,
+    content: z.string().min(1).max(500_000).optional(), // 500KB per file
+    contentBase64: z.string().optional(),
+  })
+  .refine((data) => data.content || data.contentBase64, {
+    message: 'Either content or contentBase64 must be provided',
+  })
+  .refine((data) => !(data.content && data.contentBase64), {
+    message: 'Cannot provide both content and contentBase64',
+  });
 
 const SkillFilterSchema = z.enum(['all', 'system', 'user']);
 
@@ -68,13 +82,16 @@ export const skillsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Normalize files (decode base64 if present)
+      const normalizedFiles = normalizeSkillFiles(input.files);
+
       return ctx.skillsFeature.create({
         userId: ctx.auth.userId,
         orgId: ctx.auth.orgId,
         key: input.key,
         name: input.name,
         description: input.description,
-        files: input.files,
+        files: normalizedFiles,
       });
     }),
 
@@ -98,6 +115,11 @@ export const skillsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Normalize files (decode base64 if present)
+      const normalizedFiles = input.files
+        ? normalizeSkillFiles(input.files)
+        : undefined;
+
       const updated = await ctx.skillsFeature.update({
         id: input.id,
         userId: ctx.auth.userId,
@@ -105,7 +127,7 @@ export const skillsRouter = router({
         key: input.key,
         name: input.name,
         description: input.description,
-        files: input.files,
+        files: normalizedFiles,
       });
       if (!updated) {
         throw new TRPCError({

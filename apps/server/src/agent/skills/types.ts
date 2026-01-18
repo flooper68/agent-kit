@@ -72,6 +72,50 @@ export const SkillFileSchema = z.object({
 export const SkillFilesSchema = z.array(SkillFileSchema);
 
 /**
+ * Input schema for skill files - accepts content or contentBase64
+ * This allows agents to pass file content as base64 to avoid escaping issues
+ */
+export const SkillFileInputSchema = z
+  .object({
+    path: SkillFilePathSchema,
+    content: z.string().min(1).max(500_000).optional(),
+    contentBase64: z.string().optional(),
+  })
+  .refine((data) => data.content || data.contentBase64, {
+    message: 'Either content or contentBase64 must be provided',
+  })
+  .refine((data) => !(data.content && data.contentBase64), {
+    message: 'Cannot provide both content and contentBase64',
+  });
+
+/**
+ * Normalize a skill file input by decoding base64 if present
+ */
+export function normalizeSkillFile(file: {
+  path: string;
+  content?: string;
+  contentBase64?: string;
+}): { path: string; content: string } {
+  if (file.content) {
+    return { path: file.path, content: file.content };
+  }
+  if (file.contentBase64) {
+    const decoded = Buffer.from(file.contentBase64, 'base64').toString('utf-8');
+    return { path: file.path, content: decoded };
+  }
+  throw new Error('Either content or contentBase64 must be provided');
+}
+
+/**
+ * Normalize an array of skill file inputs
+ */
+export function normalizeSkillFiles(
+  files: Array<{ path: string; content?: string; contentBase64?: string }>
+): Array<{ path: string; content: string }> {
+  return files.map(normalizeSkillFile);
+}
+
+/**
  * Parse and validate skill files from unknown data (e.g., from JSONB)
  * Returns null if validation fails
  */

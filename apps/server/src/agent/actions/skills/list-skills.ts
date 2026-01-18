@@ -52,14 +52,14 @@ export function createListSkillsTool(context: ListSkillsContext): Tool {
       const skillFilter = filter ?? 'all';
       const skillLimit = limit ?? 20;
 
-      // Filter by allowed skill IDs at the database level
+      // Filter by userId/orgId ownership - no need to restrict by allowedSkillIds
+      // since users should be able to manage all their own skills
       const result = await context.skillsFeature.list({
         userId: context.userId,
         orgId: context.orgId,
         filter: skillFilter,
         search,
         limit: skillLimit,
-        skillIds: context.allowedSkillIds,
       });
 
       return {
