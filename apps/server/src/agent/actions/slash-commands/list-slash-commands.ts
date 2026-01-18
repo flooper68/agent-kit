@@ -10,6 +10,9 @@ import type { Tool } from '../../types';
 import type { ActionMetadata } from '../types';
 import { AgentScope } from '../../permissions/scopes';
 import type { SlashCommandsFeature } from '../../../features/slash-commands';
+import { logger } from '../../../logger/logger';
+
+const log = logger.child({ module: 'list-slash-commands-action' });
 
 export const listSlashCommandsMetadata: ActionMetadata = {
   id: 'listSlashCommands',
@@ -66,29 +69,45 @@ Returns command keys, names, descriptions, and prompts with pagination support.`
       search?: string;
     }) => {
       const commandLimit = limit ?? 50;
-
-      const result = await context.slashCommandsFeature.list({
-        userId: context.userId,
-        orgId: context.orgId,
+      log.info('Listing slash commands', {
         limit: commandLimit,
         cursor,
         search,
       });
 
-      return {
-        found: result.items.length > 0,
-        count: result.items.length,
-        nextCursor: result.nextCursor,
-        results: result.items.map((command) => ({
-          id: command.id,
-          key: command.key,
-          name: command.name,
-          description: command.description,
-          prompt: command.prompt,
-          createdAt: command.createdAt.toISOString(),
-          updatedAt: command.updatedAt.toISOString(),
-        })),
-      };
+      try {
+        const result = await context.slashCommandsFeature.list({
+          userId: context.userId,
+          orgId: context.orgId,
+          limit: commandLimit,
+          cursor,
+          search,
+        });
+
+        log.info('Slash commands listed', { count: result.items.length });
+
+        return {
+          success: true,
+          found: result.items.length > 0,
+          count: result.items.length,
+          nextCursor: result.nextCursor,
+          results: result.items.map((command) => ({
+            id: command.id,
+            key: command.key,
+            name: command.name,
+            description: command.description,
+            prompt: command.prompt,
+            createdAt: command.createdAt.toISOString(),
+            updatedAt: command.updatedAt.toISOString(),
+          })),
+        };
+      } catch (error) {
+        log.error('Error listing slash commands', { error });
+        return {
+          success: false,
+          error: 'Failed to list slash commands',
+        };
+      }
     },
   });
 }

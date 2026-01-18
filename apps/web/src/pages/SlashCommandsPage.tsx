@@ -62,9 +62,10 @@ export function SlashCommandsPage() {
   });
 
   const deleteMutation = trpc.slashCommands.delete.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queueMicrotask(() => setDeleteTarget(null));
       utils.slashCommands.list.invalidate();
+      utils.slashCommands.get.invalidate({ id: variables.id });
     },
   });
 

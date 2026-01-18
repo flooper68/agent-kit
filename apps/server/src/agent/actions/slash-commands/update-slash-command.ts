@@ -97,9 +97,13 @@ Note: Changing the key will change how users invoke the command.`,
       log.info('Updating slash command', { id });
 
       // Check that at least one field is being updated
-      // Note: empty string for description is treated as "not providing an update"
-      // Use null to explicitly clear a description (if supported by schema)
-      if (!key && !name && !description && !prompt) {
+      // Using explicit undefined checks so empty strings can be used to clear fields
+      if (
+        key === undefined &&
+        name === undefined &&
+        description === undefined &&
+        prompt === undefined
+      ) {
         return {
           success: false,
           error:
