@@ -52,6 +52,8 @@ export function createListSkillsTool(context: ListSkillsContext): Tool {
       const skillFilter = filter ?? 'all';
       const skillLimit = limit ?? 20;
 
+      // Filter by userId/orgId ownership - no need to restrict by allowedSkillIds
+      // since users should be able to manage all their own skills
       const result = await context.skillsFeature.list({
         userId: context.userId,
         orgId: context.orgId,
@@ -60,13 +62,8 @@ export function createListSkillsTool(context: ListSkillsContext): Tool {
         limit: skillLimit,
       });
 
-      // Filter to only allowed skills for this agent
-      const allowedSkills = result.items.filter((skill) =>
-        context.allowedSkillIds.includes(skill.id)
-      );
-
       return {
-        skills: allowedSkills.map((skill) => ({
+        skills: result.items.map((skill) => ({
           id: skill.id,
           key: skill.key,
           name: skill.name,
@@ -76,8 +73,8 @@ export function createListSkillsTool(context: ListSkillsContext): Tool {
           createdAt: skill.createdAt.toISOString(),
           updatedAt: skill.updatedAt.toISOString(),
         })),
-        total: allowedSkills.length,
-        hasMore: false, // Filtering may affect pagination, so we can't reliably report hasMore
+        total: result.items.length,
+        hasMore: result.nextCursor !== undefined,
       };
     },
   });

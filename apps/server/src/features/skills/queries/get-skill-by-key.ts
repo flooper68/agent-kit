@@ -20,6 +20,7 @@ export class GetSkillByKeyQuery {
 
   async execute(input: GetSkillByKeyInput): Promise<GetSkillByKeyResult> {
     const { key, userId, orgId } = input;
+    const normalizedKey = key.toLowerCase();
 
     // First try to find user's skill with this key
     const userSkill = await this.db
@@ -27,7 +28,7 @@ export class GetSkillByKeyQuery {
       .from(skills)
       .where(
         and(
-          eq(skills.key, key),
+          eq(skills.key, normalizedKey),
           eq(skills.isSystem, false),
           eq(skills.userId, userId),
           eq(skills.orgId, orgId)
@@ -43,7 +44,7 @@ export class GetSkillByKeyQuery {
     const systemSkill = await this.db
       .select()
       .from(skills)
-      .where(and(eq(skills.key, key), eq(skills.isSystem, true)))
+      .where(and(eq(skills.key, normalizedKey), eq(skills.isSystem, true)))
       .limit(1);
 
     return systemSkill[0];

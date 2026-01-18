@@ -39,22 +39,52 @@ export function createDeleteSkillTool(context: DeleteSkillContext): Tool {
 
 This action cannot be undone. System skills cannot be deleted - only user-created skills.`,
 
-    inputSchema: z.object({
-      id: z.string().uuid().describe('The ID of the skill to delete'),
-    }),
+    inputSchema: z
+      .object({
+        id: z
+          .string()
+          .uuid()
+          .optional()
+          .describe('The ID of the skill to delete'),
+        skillKey: z
+          .string()
+          .optional()
+          .describe('The key of the skill to delete (alternative to id)'),
+      })
+      .refine((data) => data.id || data.skillKey, {
+        message: 'Either id or skillKey must be provided',
+      }),
 
-    execute: async ({ id }: { id: string }) => {
-      log.info('Deleting skill', { id });
+    execute: async ({ id, skillKey }: { id?: string; skillKey?: string }) => {
+      // Resolve skillKey to id if needed
+      let resolvedId = id;
+      if (!resolvedId && skillKey) {
+        const skill = await context.skillsFeature.getByKey({
+          key: skillKey,
+          userId: context.userId,
+          orgId: context.orgId,
+        });
+        if (!skill) {
+          log.warn('Skill not found by key', { skillKey });
+          return {
+            success: false,
+            error: `Skill with key "${skillKey}" not found`,
+          };
+        }
+        resolvedId = skill.id;
+      }
+
+      log.info('Deleting skill', { id: resolvedId, skillKey });
 
       try {
         const skill = await context.skillsFeature.delete({
-          id,
+          id: resolvedId!,
           userId: context.userId,
           orgId: context.orgId,
         });
 
         if (!skill) {
-          log.warn('Skill not found or not deletable', { id });
+          log.warn('Skill not found or not deletable', { id: resolvedId });
           return {
             success: false,
             error:
@@ -74,10 +104,12 @@ This action cannot be undone. System skills cannot be deleted - only user-create
           message: `Skill "${skill.name}" has been permanently deleted.`,
         };
       } catch (error) {
-        log.error('Error deleting skill', { error, id });
+        log.error('Error deleting skill', { error, id: resolvedId });
+        const message =
+          error instanceof Error ? error.message : 'Unknown error';
         return {
           success: false,
-          error: 'Failed to delete skill',
+          error: `Failed to delete skill: ${message}`,
         };
       }
     },

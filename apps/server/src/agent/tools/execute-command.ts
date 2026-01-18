@@ -114,11 +114,32 @@ function tokenize(command: string): string[] {
       } else if (char === '\\' && i + 1 < command.length) {
         // Escape sequence
         const nextChar = command[i + 1];
-        if (nextChar === inQuote || nextChar === '\\') {
-          current += nextChar;
-          i++;
-        } else {
-          current += char;
+        // Handle standard escape sequences
+        switch (nextChar) {
+          case 'n':
+            current += '\n';
+            i++;
+            break;
+          case 't':
+            current += '\t';
+            i++;
+            break;
+          case 'r':
+            current += '\r';
+            i++;
+            break;
+          case '\\':
+            current += '\\';
+            i++;
+            break;
+          default:
+            // Handle quote escapes or keep literal backslash
+            if (nextChar === inQuote) {
+              current += nextChar;
+              i++;
+            } else {
+              current += char;
+            }
         }
       } else {
         current += char;

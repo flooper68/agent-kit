@@ -64,7 +64,17 @@ function readLines(
   const allLines = content.split('\n');
   const totalLines = allLines.length;
 
-  const startLine = Math.min(offset, totalLines);
+  // If offset is beyond file, return consistent empty result
+  if (offset >= totalLines) {
+    return {
+      content: '',
+      startLine: totalLines,
+      endLine: totalLines,
+      hasMore: false,
+    };
+  }
+
+  const startLine = offset;
   const endLine =
     lines !== undefined ? Math.min(startLine + lines, totalLines) : totalLines;
 
