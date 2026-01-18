@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, or, ilike, lt } from 'drizzle-orm';
+import { eq, desc, asc, and, or, ilike, lt, inArray } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import { skills, type Skill } from '../../../db/schema';
 
@@ -11,6 +11,8 @@ export interface ListSkillsInput {
   cursor?: string;
   filter?: SkillFilter;
   search?: string;
+  /** Optional list of skill IDs to filter by (for permission filtering) */
+  skillIds?: string[];
 }
 
 export interface ListSkillsResult {
@@ -26,10 +28,23 @@ export class ListSkillsQuery {
   constructor(private db: typeof DbType) {}
 
   async execute(input: ListSkillsInput): Promise<ListSkillsResult> {
-    const { userId, orgId, limit, cursor, filter = 'all', search } = input;
+    const {
+      userId,
+      orgId,
+      limit,
+      cursor,
+      filter = 'all',
+      search,
+      skillIds,
+    } = input;
 
     // Build base conditions
     const conditions = [];
+
+    // Filter by skill IDs if provided (for permission filtering)
+    if (skillIds && skillIds.length > 0) {
+      conditions.push(inArray(skills.id, skillIds));
+    }
 
     // Filter by ownership: system skills OR user's skills
     if (filter === 'system') {

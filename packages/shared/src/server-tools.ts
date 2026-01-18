@@ -432,6 +432,28 @@ export const executeCommandSchema = z.object({
 const ALLOWED_SKILL_FILE_PREFIXES = ['', 'assets/', 'references/'];
 
 /**
+ * Normalize a file path without using Node's path module.
+ * Handles: multiple slashes, `.` segments, and validates no `..` segments.
+ * Returns null if the path is invalid.
+ */
+function normalizeFilePath(filePath: string): string | null {
+  // Split by slash and filter out empty strings and '.' segments
+  const segments = filePath.split('/').filter((s) => s !== '' && s !== '.');
+
+  // Reject if any segment is '..' (path traversal)
+  if (segments.some((s) => s === '..')) {
+    return null;
+  }
+
+  // Reject if no segments remain (was empty or just '.' or '/')
+  if (segments.length === 0) {
+    return null;
+  }
+
+  return segments.join('/');
+}
+
+/**
  * Validate a skill file path.
  * - Must not contain path traversal sequences (..)
  * - Must not be an absolute path (start with /)
@@ -443,19 +465,16 @@ function isValidSkillFilePath(filePath: string): boolean {
     return false;
   }
 
-  // Reject paths with traversal sequences before normalization
-  if (filePath.includes('..')) {
-    return false;
-  }
-
-  // Reject empty paths
-  if (filePath === '' || filePath === '.') {
+  // Normalize the path to handle ./file.md and multiple slashes
+  const normalized = normalizeFilePath(filePath);
+  if (normalized === null) {
     return false;
   }
 
   // Get the directory part (empty string for root files)
-  const lastSlashIndex = filePath.lastIndexOf('/');
-  const dir = lastSlashIndex >= 0 ? filePath.slice(0, lastSlashIndex + 1) : '';
+  const dir = normalized.includes('/')
+    ? normalized.slice(0, normalized.lastIndexOf('/') + 1)
+    : '';
 
   return ALLOWED_SKILL_FILE_PREFIXES.includes(dir);
 }

@@ -44,7 +44,7 @@ export type SkillAccessResult = SkillAccessSuccess | SkillAccessError;
  * Get line count for a string
  */
 export function getLineCount(content: string): number {
-  if (!content || content === '') return 0;
+  if (!content) return 0;
   return content.split('\n').length;
 }
 
