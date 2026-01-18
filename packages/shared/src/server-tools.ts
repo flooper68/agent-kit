@@ -389,9 +389,21 @@ export const listSkillsSchema = z.object({
     .describe('Maximum number of skills to return (1-50)'),
 });
 
-export const getSkillSchema = z.object({
-  skillKey: z.string().min(1).describe('The skill key to retrieve'),
-});
+export const getSkillSchema = z
+  .object({
+    skillId: z
+      .string()
+      .uuid()
+      .optional()
+      .describe('The unique ID of the skill'),
+    skillKey: z
+      .string()
+      .optional()
+      .describe('The key of the skill (e.g., "web-research")'),
+  })
+  .refine((data) => data.skillId || data.skillKey, {
+    message: 'Either skillId or skillKey must be provided',
+  });
 
 export const listSkillFilesSchema = z.object({
   skillKey: z
