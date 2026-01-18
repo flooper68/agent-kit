@@ -10,6 +10,7 @@ import type { Tool } from '../../types';
 import type { ActionMetadata } from '../types';
 import { AgentScope } from '../../permissions/scopes';
 import type { SlashCommandsFeature } from '../../../features/slash-commands';
+import { DuplicateKeyError } from '../../../features/slash-commands/commands/create-slash-command.js';
 import { logger } from '../../../logger/logger';
 
 export const updateSlashCommandMetadata: ActionMetadata = {
@@ -43,30 +44,42 @@ Use listSlashCommands or getSlashCommand first to find the command ID.
 
 Note: Changing the key will change how users invoke the command.`,
 
-    inputSchema: z.object({
-      id: z.string().uuid().describe('The slash command ID to update'),
-      key: z
-        .string()
-        .min(1)
-        .max(64)
-        .regex(/^[a-z0-9-]+$/, {
-          message: 'Key must be lowercase alphanumeric with hyphens only',
-        })
-        .optional()
-        .describe('New command key (changes how the command is invoked)'),
-      name: z.string().min(1).max(255).optional().describe('New display name'),
-      description: z
-        .string()
-        .max(500)
-        .optional()
-        .describe('New description for autocomplete'),
-      prompt: z
-        .string()
-        .min(1)
-        .max(10000)
-        .optional()
-        .describe('New prompt template'),
-    }),
+    inputSchema: z
+      .object({
+        id: z
+          .string()
+          .trim()
+          .uuid()
+          .transform((id) => id.toLowerCase())
+          .describe('The slash command ID to update'),
+        key: z
+          .string()
+          .min(1)
+          .max(64)
+          .regex(/^[a-z0-9-]+$/, {
+            message: 'Key must be lowercase alphanumeric with hyphens only',
+          })
+          .optional()
+          .describe('New command key (changes how the command is invoked)'),
+        name: z
+          .string()
+          .min(1)
+          .max(255)
+          .optional()
+          .describe('New display name'),
+        description: z
+          .string()
+          .max(500)
+          .optional()
+          .describe('New description for autocomplete'),
+        prompt: z
+          .string()
+          .min(1)
+          .max(10000)
+          .optional()
+          .describe('New prompt template'),
+      })
+      .strict(),
 
     execute: async ({
       id,
@@ -84,7 +97,9 @@ Note: Changing the key will change how users invoke the command.`,
       log.info('Updating slash command', { id });
 
       // Check that at least one field is being updated
-      if (!key && !name && description === undefined && !prompt) {
+      // Note: empty string for description is treated as "not providing an update"
+      // Use null to explicitly clear a description (if supported by schema)
+      if (!key && !name && !description && !prompt) {
         return {
           success: false,
           error:
@@ -130,19 +145,15 @@ Note: Changing the key will change how users invoke the command.`,
           message: `Slash command "/${command.key}" updated successfully.`,
         };
       } catch (error) {
-        // Check for unique constraint violation
-        if (
-          error instanceof Error &&
-          error.message.includes('unique constraint')
-        ) {
+        // Check for duplicate key error
+        if (error instanceof DuplicateKeyError) {
           log.warn('Slash command key already exists', { key });
           return {
             success: false,
             error: `A slash command with key "${key}" already exists. Choose a different key.`,
           };
         }
-
-        log.error('Error updating slash command', { error, id });
+        log.error('Failed to update slash command', { error });
         return {
           success: false,
           error: 'Failed to update slash command',

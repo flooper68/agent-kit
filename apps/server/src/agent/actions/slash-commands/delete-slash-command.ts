@@ -41,9 +41,16 @@ export function createDeleteSlashCommandTool(
 This action cannot be undone. The command will no longer be available for use.
 Use listSlashCommands or getSlashCommand first to find the command ID.`,
 
-    inputSchema: z.object({
-      id: z.string().uuid().describe('The slash command ID to delete'),
-    }),
+    inputSchema: z
+      .object({
+        id: z
+          .string()
+          .trim()
+          .uuid()
+          .transform((id) => id.toLowerCase())
+          .describe('The slash command ID to delete'),
+      })
+      .strict(),
 
     execute: async ({ id }: { id: string }) => {
       log.info('Deleting slash command', { id });

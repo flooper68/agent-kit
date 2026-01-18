@@ -15,13 +15,23 @@ Create, update, and manage slash commands that provide reusable prompt templates
 
 ## Permission Scopes
 
-| Tool               | Required Scope         |
-| ------------------ | ---------------------- |
-| listSlashCommands  | `slashCommands:read`   |
-| getSlashCommand    | `slashCommands:read`   |
-| createSlashCommand | `slashCommands:write`  |
-| updateSlashCommand | `slashCommands:write`  |
-| deleteSlashCommand | `slashCommands:delete` |
+| Tool               | Required Scope         | Needs Approval |
+| ------------------ | ---------------------- | -------------- |
+| listSlashCommands  | `slashCommands:read`   | No             |
+| getSlashCommand    | `slashCommands:read`   | No             |
+| createSlashCommand | `slashCommands:write`  | Yes            |
+| updateSlashCommand | `slashCommands:write`  | Yes            |
+| deleteSlashCommand | `slashCommands:delete` | Yes            |
+
+## Validation Rules
+
+| Parameter     | Constraints                                                       |
+| ------------- | ----------------------------------------------------------------- |
+| `id`          | UUID format, auto-lowercased, whitespace trimmed                  |
+| `key`         | 1-64 chars, regex: `/^[a-z0-9-]+$/` (lowercase, numbers, hyphens) |
+| `name`        | 1-255 chars                                                       |
+| `description` | 0-500 chars (empty string clears the description)                 |
+| `prompt`      | 1-10000 chars                                                     |
 
 ## Available Tools
 
@@ -32,17 +42,19 @@ List all slash commands for the user with pagination.
 **Parameters:**
 
 - `--limit` (optional): 1-100 (default: 50)
-- `--offset` (optional): Number to skip for pagination (default: 0)
+- `--cursor` (optional): UUID of last item for pagination
+- `--search` (optional): Filter by key, name, or description
 
 **Examples:**
 
 ```
 listSlashCommands
 listSlashCommands --limit 20
-listSlashCommands --limit 10 --offset 10
+listSlashCommands --cursor "uuid-of-last-item"
+listSlashCommands --search "review"
 ```
 
-**Returns:** id, key, name, description, prompt, createdAt, updatedAt
+**Returns:** id, key, name, description, prompt, createdAt, updatedAt, nextCursor
 
 ### getSlashCommand
 
@@ -102,7 +114,10 @@ updateSlashCommand --id "uuid" --description "Better description"
 updateSlashCommand --id "uuid" --prompt "Updated prompt template..."
 ```
 
-**Note:** Changing the key will change how users invoke the command.
+**Notes:**
+
+- At least one optional field (key, name, description, or prompt) must be provided
+- Changing the key will change how users invoke the command
 
 ### deleteSlashCommand
 
@@ -169,3 +184,61 @@ deleteSlashCommand --id "uuid-here"
 4. **Include formatting**: Use newlines and structure in prompts to make them easy to read and use
 
 5. **Keep prompts focused**: Each command should do one thing well rather than trying to handle multiple use cases
+
+## Response Structures
+
+### Success Response (get/create/update)
+
+```json
+{
+  "success": true,
+  "command": {
+    "id": "uuid",
+    "key": "command-key",
+    "name": "Command Name",
+    "description": "Description or null",
+    "prompt": "Prompt template",
+    "createdAt": "ISO timestamp",
+    "updatedAt": "ISO timestamp"
+  },
+  "message": "Slash command \"/command-key\" created/updated successfully."
+}
+```
+
+### Success Response (delete)
+
+```json
+{
+  "success": true,
+  "deletedCommand": {
+    "id": "uuid",
+    "key": "command-key",
+    "name": "Command Name"
+  },
+  "message": "Slash command \"/command-key\" has been permanently deleted."
+}
+```
+
+### Error Response
+
+```json
+{
+  "success": false,
+  "error": "Error message here"
+}
+```
+
+## Error Messages
+
+| Condition          | Error Message                                                                       |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| Command not found  | `Slash command with ID ${id} not found`                                             |
+| Duplicate key      | `A slash command with key "${key}" already exists. Choose a different key.`         |
+| No update fields   | `At least one field (key, name, description, or prompt) must be provided to update` |
+| Invalid key format | `Key must be lowercase alphanumeric with hyphens only`                              |
+
+## Behavior Notes
+
+- **User/Org isolation**: Commands are only accessible by the user/org that created them
+- **Automatic timestamps**: `updatedAt` is automatically updated on any modification
+- **Cache invalidation**: Updates publish a `slashCommandUpdated` event for real-time sync

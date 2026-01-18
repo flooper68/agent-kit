@@ -451,18 +451,28 @@ export const listSlashCommandsSchema = z.object({
     .min(1)
     .max(100)
     .default(50)
-    .describe('Maximum number of commands to return'),
-  offset: z
-    .number()
-    .int()
-    .min(0)
-    .default(0)
-    .describe('Number of commands to skip for pagination'),
+    .describe('Maximum number of commands to return (1-100)'),
+  cursor: z
+    .string()
+    .uuid()
+    .optional()
+    .describe('Cursor for pagination (ID of last item from previous page)'),
+  search: z
+    .string()
+    .optional()
+    .describe('Search filter for key, name, or description'),
 });
 
-export const getSlashCommandSchema = z.object({
-  id: z.string().uuid().describe('The slash command ID to retrieve'),
-});
+export const getSlashCommandSchema = z
+  .object({
+    id: z
+      .string()
+      .trim()
+      .uuid()
+      .transform((id) => id.toLowerCase())
+      .describe('The slash command ID to retrieve'),
+  })
+  .strict();
 
 export const createSlashCommandSchema = z.object({
   key: z
@@ -487,31 +497,45 @@ export const createSlashCommandSchema = z.object({
     .describe('The prompt template to insert when command is used'),
 });
 
-export const updateSlashCommandSchema = z.object({
-  id: z.string().uuid().describe('The slash command ID to update'),
-  key: z
-    .string()
-    .min(1)
-    .max(64)
-    .regex(
-      /^[a-z0-9-]+$/,
-      'Key must be lowercase alphanumeric with hyphens only'
-    )
-    .optional()
-    .describe('New command key'),
-  name: z.string().min(1).max(255).optional().describe('New display name'),
-  description: z.string().max(500).optional().describe('New description'),
-  prompt: z
-    .string()
-    .min(1)
-    .max(10000)
-    .optional()
-    .describe('New prompt template'),
-});
+export const updateSlashCommandSchema = z
+  .object({
+    id: z
+      .string()
+      .trim()
+      .uuid()
+      .transform((id) => id.toLowerCase())
+      .describe('The slash command ID to update'),
+    key: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(
+        /^[a-z0-9-]+$/,
+        'Key must be lowercase alphanumeric with hyphens only'
+      )
+      .optional()
+      .describe('New command key'),
+    name: z.string().min(1).max(255).optional().describe('New display name'),
+    description: z.string().max(500).optional().describe('New description'),
+    prompt: z
+      .string()
+      .min(1)
+      .max(10000)
+      .optional()
+      .describe('New prompt template'),
+  })
+  .strict();
 
-export const deleteSlashCommandSchema = z.object({
-  id: z.string().uuid().describe('The slash command ID to delete'),
-});
+export const deleteSlashCommandSchema = z
+  .object({
+    id: z
+      .string()
+      .trim()
+      .uuid()
+      .transform((id) => id.toLowerCase())
+      .describe('The slash command ID to delete'),
+  })
+  .strict();
 
 // =============================================================================
 // Server Tool Definitions

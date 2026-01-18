@@ -10,6 +10,7 @@ import type { Tool } from '../../types';
 import type { ActionMetadata } from '../types';
 import { AgentScope } from '../../permissions/scopes';
 import type { SlashCommandsFeature } from '../../../features/slash-commands';
+import { DuplicateKeyError } from '../../../features/slash-commands/commands/create-slash-command.js';
 import { logger } from '../../../logger/logger';
 
 export const createSlashCommandMetadata: ActionMetadata = {
@@ -109,19 +110,15 @@ Best practices:
           message: `Slash command "/${key}" created successfully. Users can now use it in chat.`,
         };
       } catch (error) {
-        // Check for unique constraint violation
-        if (
-          error instanceof Error &&
-          error.message.includes('unique constraint')
-        ) {
+        // Check for duplicate key error
+        if (error instanceof DuplicateKeyError) {
           log.warn('Slash command key already exists', { key });
           return {
             success: false,
             error: `A slash command with key "${key}" already exists. Choose a different key.`,
           };
         }
-
-        log.error('Error creating slash command', { error, key });
+        log.error('Failed to create slash command', { error });
         return {
           success: false,
           error: 'Failed to create slash command',
