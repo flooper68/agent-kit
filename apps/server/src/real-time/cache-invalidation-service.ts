@@ -316,6 +316,46 @@ export class CacheInvalidationService {
     });
   }
 
+  // Slash command events (user-scoped)
+  async publishSlashCommandCreated(
+    userId: string,
+    commandId: string
+  ): Promise<void> {
+    await this.publishToUser({
+      type: 'slashCommands',
+      action: 'created',
+      entityId: commandId,
+      userId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  async publishSlashCommandUpdated(
+    userId: string,
+    commandId: string
+  ): Promise<void> {
+    await this.publishToUser({
+      type: 'slashCommands',
+      action: 'updated',
+      entityId: commandId,
+      userId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  async publishSlashCommandDeleted(
+    userId: string,
+    commandId: string
+  ): Promise<void> {
+    await this.publishToUser({
+      type: 'slashCommands',
+      action: 'deleted',
+      entityId: commandId,
+      userId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   private async publish(event: CacheInvalidationEvent): Promise<void> {
     try {
       const channel = getCacheInvalidationChannel(event.orgId!);

@@ -3,12 +3,16 @@ import { TRPCError } from '@trpc/server';
 import { router, orgProcedure } from '../trpc';
 import { DuplicateKeyError } from '../../features/slash-commands';
 
+// NOTE: Schema validation rules should stay consistent with:
+// - packages/shared/src/server-tools.ts (canonical schema definitions)
+// - apps/server/src/agent/actions/slash-commands/*.ts (action schemas)
+
 export const slashCommandsRouter = router({
   // List user's slash commands (paginated with optional search)
   list: orgProcedure
     .input(
       z.object({
-        limit: z.number().min(1).max(100).default(25),
+        limit: z.number().min(1).max(100).default(50),
         cursor: z.string().uuid().optional(),
         search: z.string().optional(),
       })
@@ -42,7 +46,15 @@ export const slashCommandsRouter = router({
 
   // Get single slash command by ID
   get: orgProcedure
-    .input(z.object({ id: z.string().uuid() }))
+    .input(
+      z.object({
+        id: z
+          .string()
+          .trim()
+          .uuid()
+          .transform((id) => id.toLowerCase()),
+      })
+    )
     .query(async ({ ctx, input }) => {
       const command = await ctx.slashCommandsFeature.getById({
         id: input.id,
@@ -100,7 +112,11 @@ export const slashCommandsRouter = router({
   update: orgProcedure
     .input(
       z.object({
-        id: z.string().uuid(),
+        id: z
+          .string()
+          .trim()
+          .uuid()
+          .transform((id) => id.toLowerCase()),
         key: z
           .string()
           .min(1)
@@ -143,7 +159,15 @@ export const slashCommandsRouter = router({
 
   // Delete slash command
   delete: orgProcedure
-    .input(z.object({ id: z.string().uuid() }))
+    .input(
+      z.object({
+        id: z
+          .string()
+          .trim()
+          .uuid()
+          .transform((id) => id.toLowerCase()),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const deleted = await ctx.slashCommandsFeature.delete({
         id: input.id,

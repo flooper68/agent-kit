@@ -8,6 +8,7 @@ export const CacheInvalidationEventSchema = z.object({
     'agents',
     'artifacts',
     'skills',
+    'slashCommands',
   ]),
   action: z.enum([
     'created',

@@ -38,6 +38,9 @@ export function EditSlashCommandPage() {
   // Track whether form has been initialized from server data
   const isFormInitializedRef = useRef(false);
 
+  // Track the last known updatedAt timestamp to detect external changes
+  const lastKnownUpdatedAtRef = useRef<string | null>(null);
+
   const utils = trpc.useUtils();
 
   // Clear header actions on mount
@@ -45,9 +48,10 @@ export function EditSlashCommandPage() {
     clearActions();
   }, [clearActions]);
 
-  // Reset initialization ref when ID changes
+  // Reset initialization refs when ID changes
   useEffect(() => {
     isFormInitializedRef.current = false;
+    lastKnownUpdatedAtRef.current = null;
   }, [id]);
 
   // Fetch the slash command
@@ -68,6 +72,9 @@ export function EditSlashCommandPage() {
     onSuccess: () => {
       addToast({ message: 'Changes saved', variant: 'success' });
       utils.slashCommands.list.invalidate();
+      if (id) {
+        utils.slashCommands.get.invalidate({ id });
+      }
     },
     onError: (err) => {
       // Check for unique constraint violation from database error message
@@ -116,8 +123,10 @@ export function EditSlashCommandPage() {
             prompt: data.prompt,
           },
           {
-            onSuccess: () => {
+            onSuccess: (updatedCommand) => {
               autosave.lastSavedDataRef.current = dataToSave;
+              // Update the timestamp ref so we don't treat our own save as an external change
+              lastKnownUpdatedAtRef.current = updatedCommand.updatedAt;
             },
             onSettled: done,
           }
@@ -129,9 +138,17 @@ export function EditSlashCommandPage() {
     ),
   });
 
-  // Initialize form data when command loads (only on initial load)
+  // Initialize form data when command loads, and auto-update on external changes
   useEffect(() => {
-    if (commandQuery.data && !isFormInitializedRef.current) {
+    if (!commandQuery.data) return;
+
+    const serverUpdatedAt = commandQuery.data.updatedAt;
+    const isInitialLoad = !isFormInitializedRef.current;
+    const isExternalUpdate =
+      lastKnownUpdatedAtRef.current !== null &&
+      lastKnownUpdatedAtRef.current !== serverUpdatedAt;
+
+    if (isInitialLoad || isExternalUpdate) {
       const data: SlashCommandFormData = {
         key: commandQuery.data.key,
         name: commandQuery.data.name,
@@ -141,6 +158,7 @@ export function EditSlashCommandPage() {
       setFormData(data);
       autosave.lastSavedDataRef.current = data;
       isFormInitializedRef.current = true;
+      lastKnownUpdatedAtRef.current = serverUpdatedAt;
     }
   }, [commandQuery.data, autosave.lastSavedDataRef]);
 
@@ -198,8 +216,8 @@ export function EditSlashCommandPage() {
 
   return (
     <div className="h-full overflow-auto p-6">
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-6">
+      <div className="mx-auto max-w-2xl h-full flex flex-col">
+        <div className="mb-6 flex-shrink-0">
           {/* Breadcrumb navigation */}
           <nav className="flex items-center gap-1.5 mb-3">
             <Link
@@ -223,8 +241,8 @@ export function EditSlashCommandPage() {
           </Text>
         </div>
 
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="flex-1 flex flex-col space-y-6 min-h-0">
+          <div className="grid grid-cols-2 gap-4 flex-shrink-0">
             <Input
               label="Key"
               placeholder="e.g., review"
@@ -249,7 +267,7 @@ export function EditSlashCommandPage() {
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 flex-shrink-0">
             <label className="text-sm font-medium text-foreground">
               Description (optional)
             </label>
@@ -270,20 +288,20 @@ export function EditSlashCommandPage() {
             </Text>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">
+          <div className="flex-1 flex flex-col space-y-1.5 min-h-0">
+            <label className="text-sm font-medium text-foreground flex-shrink-0">
               Prompt
             </label>
             <Textarea
+              className="flex-1 min-h-[200px] resize-none"
               placeholder="The prompt that will be inserted when using this command..."
               value={formData.prompt}
               onChange={(e) => {
                 setFormData((prev) => ({ ...prev, prompt: e.target.value }));
               }}
               onBlur={autosave.trigger}
-              rows={8}
             />
-            <Text className="text-xs text-muted-foreground">
+            <Text className="text-xs text-muted-foreground flex-shrink-0">
               This prompt will be expanded when you use /
               {formData.key || 'command'} in the chat input
             </Text>

@@ -135,6 +135,7 @@ fastify.addHook('onReady', async () => {
   agentsFeature.setAgentCacheInvalidation(cacheInvalidation);
   artifactsFeature.setCacheInvalidation(cacheInvalidation);
   skillsFeature.setSkillsCacheInvalidation(cacheInvalidation);
+  slashCommandsFeature.setCacheInvalidation(cacheInvalidation);
 
   // Create infrastructure managers (split from AgentSessionManager)
   jobQueueManager = new JobQueueManager(redisPublisher, redisWorker);
@@ -173,7 +174,8 @@ fastify.addHook('onReady', async () => {
     skillsFeature,
     pubsub,
     projectsFeature,
-    tasksFeature
+    tasksFeature,
+    slashCommandsFeature
   );
 
   // Create the agent spawner for spawning sub-agents
@@ -203,7 +205,8 @@ fastify.addHook('onReady', async () => {
     pubsub,
     cacheInvalidation,
     projectsFeature,
-    tasksFeature
+    tasksFeature,
+    slashCommandsFeature
   );
 
   fastify.log.info('Starting agent worker...');

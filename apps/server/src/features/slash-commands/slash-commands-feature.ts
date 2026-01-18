@@ -1,5 +1,6 @@
 import type { db as DbType } from '../../db';
 import type { SlashCommand } from '../../db/schema';
+import type { CacheInvalidationService } from '../../real-time';
 import {
   CreateSlashCommandCommand,
   UpdateSlashCommandCommand,
@@ -33,6 +34,7 @@ export class SlashCommandsFeature {
   private getSlashCommandByIdQuery: GetSlashCommandByIdQuery;
   private listSlashCommandsQuery: ListSlashCommandsQuery;
   private searchSlashCommandsQuery: SearchSlashCommandsQuery;
+  private cacheInvalidation?: CacheInvalidationService;
 
   constructor(db: typeof DbType) {
     this.createSlashCommandCommand = new CreateSlashCommandCommand(db);
@@ -43,21 +45,49 @@ export class SlashCommandsFeature {
     this.searchSlashCommandsQuery = new SearchSlashCommandsQuery(db);
   }
 
+  /**
+   * Set the cache invalidation service for real-time updates
+   */
+  setCacheInvalidation(cacheInvalidation: CacheInvalidationService): void {
+    this.cacheInvalidation = cacheInvalidation;
+  }
+
   // Commands
   async create(input: CreateSlashCommandInput): Promise<SlashCommand> {
-    return this.createSlashCommandCommand.execute(input);
+    const command = await this.createSlashCommandCommand.execute(input);
+    if (this.cacheInvalidation) {
+      await this.cacheInvalidation.publishSlashCommandCreated(
+        input.userId,
+        command.id
+      );
+    }
+    return command;
   }
 
   async update(
     input: UpdateSlashCommandInput
   ): Promise<SlashCommand | undefined> {
-    return this.updateSlashCommandCommand.execute(input);
+    const command = await this.updateSlashCommandCommand.execute(input);
+    if (command && this.cacheInvalidation) {
+      await this.cacheInvalidation.publishSlashCommandUpdated(
+        input.userId,
+        command.id
+      );
+    }
+    return command;
   }
 
   async delete(
     input: DeleteSlashCommandInput
   ): Promise<SlashCommand | undefined> {
-    return this.deleteSlashCommandCommand.execute(input);
+    const command = await this.deleteSlashCommandCommand.execute(input);
+    if (command && this.cacheInvalidation) {
+      await this.cacheInvalidation.publishSlashCommandDeleted(
+        input.userId,
+        command.id
+      );
+    }
+    return command;
   }
 
   // Queries

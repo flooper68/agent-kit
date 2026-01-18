@@ -11,13 +11,7 @@ import {
   IconButton,
   DropdownMenu,
 } from '@agent-kit/ui';
-import {
-  Slash,
-  Search,
-  Plus,
-  MoreHorizontal,
-  Trash2,
-} from 'lucide-react';
+import { Slash, Search, Plus, MoreHorizontal, Trash2 } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { useHeaderActions } from '../contexts/HeaderActionsContext';
 import { useUrlState } from '../hooks/useUrlState';
@@ -68,9 +62,10 @@ export function SlashCommandsPage() {
   });
 
   const deleteMutation = trpc.slashCommands.delete.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queueMicrotask(() => setDeleteTarget(null));
       utils.slashCommands.list.invalidate();
+      utils.slashCommands.get.invalidate({ id: variables.id });
     },
   });
 
