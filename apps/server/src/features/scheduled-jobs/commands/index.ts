@@ -13,3 +13,8 @@ export {
   type DeleteScheduledJobInput,
   type DeleteScheduledJobResult,
 } from './delete-scheduled-job';
+export {
+  ScheduleTestRunCommand,
+  type ScheduleTestRunInput,
+  type ScheduleTestRunResult,
+} from './schedule-test-run';

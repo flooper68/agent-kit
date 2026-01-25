@@ -5,11 +5,13 @@ import {
   CreateScheduledJobCommand,
   UpdateScheduledJobCommand,
   DeleteScheduledJobCommand,
+  ScheduleTestRunCommand,
 } from './commands';
 import type {
   CreateScheduledJobInput,
   UpdateScheduledJobInput,
   DeleteScheduledJobInput,
+  ScheduleTestRunInput,
 } from './commands';
 import { ListScheduledJobsQuery, GetScheduledJobByIdQuery } from './queries';
 import type {
@@ -32,6 +34,7 @@ export class ScheduledJobsFeature {
   private createScheduledJobCommand: CreateScheduledJobCommand;
   private updateScheduledJobCommand: UpdateScheduledJobCommand;
   private deleteScheduledJobCommand: DeleteScheduledJobCommand;
+  private scheduleTestRunCommand: ScheduleTestRunCommand;
 
   // Queries
   private listScheduledJobsQuery: ListScheduledJobsQuery;
@@ -52,6 +55,9 @@ export class ScheduledJobsFeature {
       this.contextManager
     );
     this.deleteScheduledJobCommand = new DeleteScheduledJobCommand(
+      this.contextManager
+    );
+    this.scheduleTestRunCommand = new ScheduleTestRunCommand(
       this.contextManager
     );
 
@@ -101,5 +107,12 @@ export class ScheduledJobsFeature {
    */
   getById(input: GetScheduledJobByIdInput) {
     return this.getScheduledJobByIdQuery.execute(input);
+  }
+
+  /**
+   * Schedule a job to run in 10 seconds for testing
+   */
+  scheduleTestRun(input: ScheduleTestRunInput) {
+    return this.scheduleTestRunCommand.execute(input);
   }
 }

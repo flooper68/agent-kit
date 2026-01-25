@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ChevronRight, X, Plus, Save, Trash2 } from 'lucide-react';
+import { ChevronRight, X, Plus, Trash2, Play } from 'lucide-react';
 import {
   Heading,
   Text,
@@ -19,14 +19,26 @@ import { trpc } from '../../lib/trpc';
 import {
   useHeaderActions,
   type HeaderAction,
+  type HeaderMenuItem,
 } from '../../contexts/HeaderActionsContext';
+import { useAutosave } from '../../hooks/useAutosave';
+
+type ScheduledJobFormData = {
+  name: string;
+  description: string;
+  cronExpression: string;
+  timezone: string;
+  agentId: string;
+  message: string;
+  enabled: boolean;
+};
 
 export function ScheduledJobEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const utils = trpc.useUtils();
   const { addToast } = useToast();
-  const { setActions, clearActions } = useHeaderActions();
+  const { setActions, setMenuItems, clearActions } = useHeaderActions();
   const formRef = useRef<HTMLFormElement>(null);
   const isEditing = !!id;
 
@@ -90,18 +102,95 @@ export function ScheduledJobEditPage() {
     },
   });
 
+  const testRunMutation = trpc.scheduledJobs.scheduleTestRun.useMutation({
+    onSuccess: () => {
+      addToast({
+        message: 'Job scheduled to run in 1 second',
+        variant: 'success',
+      });
+      if (id) {
+        utils.scheduledJobs.get.invalidate({ id });
+      }
+    },
+    onError: (error) => {
+      addToast({
+        message: `Failed to schedule test: ${error.message}`,
+        variant: 'error',
+      });
+    },
+  });
+
+  // Memoized form data for autosave
+  const formData = useMemo(
+    (): ScheduledJobFormData => ({
+      name,
+      description,
+      cronExpression,
+      timezone,
+      agentId,
+      message,
+      enabled,
+    }),
+    [name, description, cronExpression, timezone, agentId, message, enabled]
+  );
+
+  // Autosave hook
+  const autosave = useAutosave({
+    data: formData,
+    enabled: isEditing && !!id,
+    onSave: useCallback(
+      (data: ScheduledJobFormData, done: () => void) => {
+        if (!id) {
+          done();
+          return;
+        }
+        const dataToSave = { ...data };
+        updateMutation.mutate(
+          {
+            id,
+            name: data.name.trim(),
+            description: data.description.trim() || undefined,
+            cronExpression: data.cronExpression.trim(),
+            timezone: data.timezone,
+            agentId: data.agentId,
+            message: data.message.trim(),
+            enabled: data.enabled,
+          },
+          {
+            onSuccess: () => {
+              autosave.lastSavedDataRef.current = dataToSave;
+            },
+            onSettled: done,
+          }
+        );
+      },
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [id, updateMutation]
+    ),
+  });
+
   // Load existing job data when editing
   useEffect(() => {
     if (jobQuery.data) {
-      setName(jobQuery.data.name);
-      setDescription(jobQuery.data.description || '');
-      setCronExpression(jobQuery.data.cronExpression);
-      setTimezone(jobQuery.data.timezone);
-      setAgentId(jobQuery.data.agentId);
-      setMessage(jobQuery.data.message);
-      setEnabled(jobQuery.data.enabled);
+      const loadedData: ScheduledJobFormData = {
+        name: jobQuery.data.name,
+        description: jobQuery.data.description || '',
+        cronExpression: jobQuery.data.cronExpression,
+        timezone: jobQuery.data.timezone,
+        agentId: jobQuery.data.agentId,
+        message: jobQuery.data.message,
+        enabled: jobQuery.data.enabled,
+      };
+      setName(loadedData.name);
+      setDescription(loadedData.description);
+      setCronExpression(loadedData.cronExpression);
+      setTimezone(loadedData.timezone);
+      setAgentId(loadedData.agentId);
+      setMessage(loadedData.message);
+      setEnabled(loadedData.enabled);
+      autosave.lastSavedDataRef.current = loadedData;
     }
-  }, [jobQuery.data]);
+  }, [jobQuery.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.title = isEditing
@@ -112,7 +201,11 @@ export function ScheduledJobEditPage() {
     };
   }, [isEditing]);
 
-  // Set header actions
+  // Store mutation functions in refs to avoid dependency issues
+  const testRunMutateRef = useRef(testRunMutation.mutate);
+  testRunMutateRef.current = testRunMutation.mutate;
+
+  // Set header actions and menu items
   useEffect(() => {
     const actions: HeaderAction[] = [
       {
@@ -125,20 +218,24 @@ export function ScheduledJobEditPage() {
     ];
 
     if (isEditing) {
-      actions.push({
-        id: 'delete',
-        label: 'Delete',
-        icon: <Trash2 className="h-4 w-4" />,
-        onClick: () => setShowDeleteDialog(true),
-        variant: 'outline',
-      });
-      actions.push({
-        id: 'save',
-        label: updateMutation.isPending ? 'Saving...' : 'Save Changes',
-        icon: <Save className="h-4 w-4" />,
-        onClick: () => formRef.current?.requestSubmit(),
-        variant: 'primary',
-      });
+      // Set menu items for Test and Delete
+      const menuItems: HeaderMenuItem[] = [
+        {
+          id: 'test',
+          label: testRunMutation.isPending ? 'Scheduling...' : 'Test Now',
+          icon: <Play className="h-4 w-4" />,
+          onClick: () => id && testRunMutateRef.current({ id }),
+          disabled: testRunMutation.isPending,
+        },
+        {
+          id: 'delete',
+          label: 'Delete',
+          icon: <Trash2 className="h-4 w-4" />,
+          onClick: () => setShowDeleteDialog(true),
+          danger: true,
+        },
+      ];
+      setMenuItems(menuItems);
     } else {
       actions.push({
         id: 'create',
@@ -147,17 +244,20 @@ export function ScheduledJobEditPage() {
         onClick: () => formRef.current?.requestSubmit(),
         variant: 'primary',
       });
+      setMenuItems([]);
     }
 
     setActions(actions);
     return () => clearActions();
   }, [
     setActions,
+    setMenuItems,
     clearActions,
     navigate,
     createMutation.isPending,
-    updateMutation.isPending,
+    testRunMutation.isPending,
     isEditing,
+    id,
   ]);
 
   const validateForm = (): boolean => {
@@ -288,6 +388,7 @@ export function ScheduledJobEditPage() {
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onBlur={autosave.trigger}
                 placeholder="Daily Report Generator"
                 disabled={isPending}
               />
@@ -302,6 +403,7 @@ export function ScheduledJobEditPage() {
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                onBlur={autosave.trigger}
                 placeholder="Generates daily sales report every weekday"
                 rows={2}
                 disabled={isPending}
@@ -319,7 +421,10 @@ export function ScheduledJobEditPage() {
               <Label>Frequency</Label>
               <CronExpressionInput
                 value={cronExpression}
-                onChange={setCronExpression}
+                onChange={(value) => {
+                  setCronExpression(value);
+                  autosave.trigger();
+                }}
                 disabled={isPending}
                 showPreview
               />
@@ -334,7 +439,10 @@ export function ScheduledJobEditPage() {
               <Label>Timezone</Label>
               <TimezoneSelect
                 value={timezone}
-                onChange={setTimezone}
+                onChange={(value) => {
+                  setTimezone(value);
+                  autosave.trigger();
+                }}
                 disabled={isPending}
               />
             </div>
@@ -351,7 +459,10 @@ export function ScheduledJobEditPage() {
               <Select
                 options={agentOptions}
                 value={agentId}
-                onValueChange={setAgentId}
+                onValueChange={(value) => {
+                  setAgentId(value);
+                  autosave.trigger();
+                }}
                 placeholder="Select an agent..."
                 disabled={isPending}
                 isLoading={agentsQuery.isLoading}
@@ -369,8 +480,9 @@ export function ScheduledJobEditPage() {
                 id="message"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
+                onBlur={autosave.trigger}
                 placeholder="Generate the daily sales report for yesterday and send it to the #reports channel."
-                rows={4}
+                rows={8}
                 disabled={isPending}
               />
               {errors.message && (
@@ -394,7 +506,10 @@ export function ScheduledJobEditPage() {
               <Checkbox
                 id="enabled"
                 checked={enabled}
-                onChange={(checked) => setEnabled(checked)}
+                onChange={(checked) => {
+                  setEnabled(checked);
+                  autosave.trigger();
+                }}
                 disabled={isPending}
               />
               <Label htmlFor="enabled" className="cursor-pointer">
