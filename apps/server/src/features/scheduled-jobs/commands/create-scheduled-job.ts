@@ -12,7 +12,7 @@ export interface CreateScheduledJobInput {
   message: string;
   timeout?: number;
   enabled?: boolean;
-  nextRunAt?: Date;
+  nextRunAt?: Date | null;
 }
 
 export type CreateScheduledJobResult = ScheduledJob;

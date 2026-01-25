@@ -14,7 +14,7 @@ export interface UpdateScheduledJobInput {
   message?: string;
   timeout?: number | null;
   enabled?: boolean;
-  nextRunAt?: Date;
+  nextRunAt?: Date | null;
   lastRunAt?: Date;
   lastRunStatus?: 'success' | 'failed' | 'running';
   lastSessionId?: string;

@@ -1,14 +1,35 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
+import { CronExpressionParser } from 'cron-parser';
 import { router, orgProcedure } from '../trpc';
+
+/**
+ * Calculate the next run time for a cron expression in the given timezone
+ */
+function calculateNextRunAt(cronExpression: string, timezone: string): Date {
+  const cron = CronExpressionParser.parse(cronExpression, {
+    tz: timezone,
+  });
+  return cron.next().toDate();
+}
 
 const CronExpressionSchema = z
   .string()
   .min(9)
   .max(100)
-  .regex(/^[\d\s*,\-/]+$/, {
-    message: 'Invalid cron expression format',
-  });
+  .refine(
+    (value) => {
+      try {
+        CronExpressionParser.parse(value);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    {
+      message: 'Invalid cron expression format',
+    }
+  );
 
 export const scheduledJobsRouter = router({
   // List scheduled jobs (paginated with filter and search)
@@ -65,9 +86,9 @@ export const scheduledJobsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // Calculate next run time based on cron expression
-      // This will be handled by the scheduler service later
-      // For now, we store the job without nextRunAt
+      const nextRunAt = input.enabled
+        ? calculateNextRunAt(input.cronExpression, input.timezone)
+        : null;
 
       return ctx.scheduledJobsFeature.create({
         userId: ctx.auth.userId,
@@ -80,6 +101,7 @@ export const scheduledJobsRouter = router({
         message: input.message,
         timeout: input.timeout,
         enabled: input.enabled,
+        nextRunAt,
       });
     }),
 
@@ -99,6 +121,38 @@ export const scheduledJobsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // If cron, timezone, or enabled status changes, we need to recalculate nextRunAt
+      let nextRunAt: Date | null | undefined = undefined;
+
+      if (
+        input.cronExpression !== undefined ||
+        input.timezone !== undefined ||
+        input.enabled !== undefined
+      ) {
+        // Fetch current job to get existing values for fields not being updated
+        const currentJob = await ctx.scheduledJobsFeature.getById({
+          id: input.id,
+          userId: ctx.auth.userId,
+          orgId: ctx.auth.orgId,
+        });
+
+        if (!currentJob) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message:
+              'Scheduled job not found or you do not have permission to update it',
+          });
+        }
+
+        const cronExpression = input.cronExpression ?? currentJob.cronExpression;
+        const timezone = input.timezone ?? currentJob.timezone;
+        const enabled = input.enabled ?? currentJob.enabled;
+
+        nextRunAt = enabled
+          ? calculateNextRunAt(cronExpression, timezone)
+          : null;
+      }
+
       const updated = await ctx.scheduledJobsFeature.update({
         id: input.id,
         userId: ctx.auth.userId,
@@ -111,6 +165,7 @@ export const scheduledJobsRouter = router({
         message: input.message,
         timeout: input.timeout,
         enabled: input.enabled,
+        nextRunAt,
       });
       if (!updated) {
         throw new TRPCError({

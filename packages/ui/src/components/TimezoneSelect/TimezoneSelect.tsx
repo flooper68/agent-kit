@@ -3,61 +3,73 @@ import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-// Common timezones grouped by region
-const TIMEZONE_GROUPS = {
+/**
+ * Get the current UTC offset for a timezone using Intl.DateTimeFormat
+ * Returns a formatted string like "+05:30" or "-08:00"
+ */
+function getTimezoneOffset(timezone: string): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'longOffset',
+    });
+    const parts = formatter.formatToParts(new Date());
+    const tzPart = parts.find((p) => p.type === 'timeZoneName');
+    // Extract offset from "GMT+05:30" or "GMT-08:00" format
+    const match = tzPart?.value.match(/GMT([+-]\d{2}:\d{2})/);
+    if (match?.[1]) {
+      return match[1];
+    }
+    // Handle UTC case (GMT with no offset)
+    if (tzPart?.value === 'GMT') {
+      return '+00:00';
+    }
+    return '+00:00';
+  } catch {
+    return '+00:00';
+  }
+}
+
+// Common timezones grouped by region (IANA identifiers only)
+const TIMEZONE_DATA = {
   Americas: [
-    { value: 'America/New_York', label: 'New York (ET)', offset: '-05:00' },
-    { value: 'America/Chicago', label: 'Chicago (CT)', offset: '-06:00' },
-    { value: 'America/Denver', label: 'Denver (MT)', offset: '-07:00' },
-    {
-      value: 'America/Los_Angeles',
-      label: 'Los Angeles (PT)',
-      offset: '-08:00',
-    },
-    { value: 'America/Anchorage', label: 'Anchorage (AKT)', offset: '-09:00' },
-    { value: 'America/Toronto', label: 'Toronto (ET)', offset: '-05:00' },
-    { value: 'America/Vancouver', label: 'Vancouver (PT)', offset: '-08:00' },
-    { value: 'America/Sao_Paulo', label: 'Sao Paulo', offset: '-03:00' },
-    {
-      value: 'America/Mexico_City',
-      label: 'Mexico City (CT)',
-      offset: '-06:00',
-    },
+    { value: 'America/New_York', label: 'New York (ET)' },
+    { value: 'America/Chicago', label: 'Chicago (CT)' },
+    { value: 'America/Denver', label: 'Denver (MT)' },
+    { value: 'America/Los_Angeles', label: 'Los Angeles (PT)' },
+    { value: 'America/Anchorage', label: 'Anchorage (AKT)' },
+    { value: 'America/Toronto', label: 'Toronto (ET)' },
+    { value: 'America/Vancouver', label: 'Vancouver (PT)' },
+    { value: 'America/Sao_Paulo', label: 'Sao Paulo' },
+    { value: 'America/Mexico_City', label: 'Mexico City (CT)' },
   ],
   Europe: [
-    { value: 'Europe/London', label: 'London (GMT)', offset: '+00:00' },
-    { value: 'Europe/Paris', label: 'Paris (CET)', offset: '+01:00' },
-    { value: 'Europe/Berlin', label: 'Berlin (CET)', offset: '+01:00' },
-    { value: 'Europe/Amsterdam', label: 'Amsterdam (CET)', offset: '+01:00' },
-    { value: 'Europe/Madrid', label: 'Madrid (CET)', offset: '+01:00' },
-    { value: 'Europe/Rome', label: 'Rome (CET)', offset: '+01:00' },
-    { value: 'Europe/Moscow', label: 'Moscow (MSK)', offset: '+03:00' },
-    { value: 'Europe/Istanbul', label: 'Istanbul (TRT)', offset: '+03:00' },
+    { value: 'Europe/London', label: 'London (GMT)' },
+    { value: 'Europe/Paris', label: 'Paris (CET)' },
+    { value: 'Europe/Berlin', label: 'Berlin (CET)' },
+    { value: 'Europe/Amsterdam', label: 'Amsterdam (CET)' },
+    { value: 'Europe/Madrid', label: 'Madrid (CET)' },
+    { value: 'Europe/Rome', label: 'Rome (CET)' },
+    { value: 'Europe/Moscow', label: 'Moscow (MSK)' },
+    { value: 'Europe/Istanbul', label: 'Istanbul (TRT)' },
   ],
   'Asia & Pacific': [
-    { value: 'Asia/Dubai', label: 'Dubai (GST)', offset: '+04:00' },
-    { value: 'Asia/Kolkata', label: 'Mumbai/Delhi (IST)', offset: '+05:30' },
-    { value: 'Asia/Singapore', label: 'Singapore (SGT)', offset: '+08:00' },
-    { value: 'Asia/Hong_Kong', label: 'Hong Kong (HKT)', offset: '+08:00' },
-    { value: 'Asia/Shanghai', label: 'Shanghai (CST)', offset: '+08:00' },
-    { value: 'Asia/Tokyo', label: 'Tokyo (JST)', offset: '+09:00' },
-    { value: 'Asia/Seoul', label: 'Seoul (KST)', offset: '+09:00' },
-    { value: 'Australia/Sydney', label: 'Sydney (AEST)', offset: '+10:00' },
-    {
-      value: 'Australia/Melbourne',
-      label: 'Melbourne (AEST)',
-      offset: '+10:00',
-    },
-    { value: 'Pacific/Auckland', label: 'Auckland (NZST)', offset: '+12:00' },
+    { value: 'Asia/Dubai', label: 'Dubai (GST)' },
+    { value: 'Asia/Kolkata', label: 'Mumbai/Delhi (IST)' },
+    { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
+    { value: 'Asia/Hong_Kong', label: 'Hong Kong (HKT)' },
+    { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
+    { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
+    { value: 'Asia/Seoul', label: 'Seoul (KST)' },
+    { value: 'Australia/Sydney', label: 'Sydney (AEST)' },
+    { value: 'Australia/Melbourne', label: 'Melbourne (AEST)' },
+    { value: 'Pacific/Auckland', label: 'Auckland (NZST)' },
   ],
-  Universal: [
-    {
-      value: 'UTC',
-      label: 'UTC (Coordinated Universal Time)',
-      offset: '+00:00',
-    },
-  ],
-};
+  Universal: [{ value: 'UTC', label: 'UTC (Coordinated Universal Time)' }],
+} as const;
+
+type TimezoneEntry = { value: string; label: string; offset: string };
+type TimezoneGroups = Record<string, TimezoneEntry[]>;
 
 export interface TimezoneSelectProps {
   value: string;
@@ -76,12 +88,25 @@ export function TimezoneSelect({
 }: TimezoneSelectProps) {
   const [search, setSearch] = useState('');
 
+  // Build timezone groups with dynamic offsets
+  const timezoneGroups = useMemo((): TimezoneGroups => {
+    const result: TimezoneGroups = {};
+    for (const [group, timezones] of Object.entries(TIMEZONE_DATA)) {
+      result[group] = timezones.map((tz) => ({
+        value: tz.value,
+        label: tz.label,
+        offset: getTimezoneOffset(tz.value),
+      }));
+    }
+    return result;
+  }, []);
+
   // Flatten and filter timezones based on search
   const filteredGroups = useMemo(() => {
     const searchLower = search.toLowerCase();
-    const result: Record<string, typeof TIMEZONE_GROUPS.Americas> = {};
+    const result: TimezoneGroups = {};
 
-    for (const [group, timezones] of Object.entries(TIMEZONE_GROUPS)) {
+    for (const [group, timezones] of Object.entries(timezoneGroups)) {
       const filtered = timezones.filter(
         (tz) =>
           tz.label.toLowerCase().includes(searchLower) ||
@@ -93,16 +118,16 @@ export function TimezoneSelect({
     }
 
     return result;
-  }, [search]);
+  }, [search, timezoneGroups]);
 
   // Get the label for the selected value
   const selectedLabel = useMemo(() => {
-    for (const timezones of Object.values(TIMEZONE_GROUPS)) {
+    for (const timezones of Object.values(timezoneGroups)) {
       const found = timezones.find((tz) => tz.value === value);
       if (found) return found.label;
     }
     return value || placeholder;
-  }, [value, placeholder]);
+  }, [value, placeholder, timezoneGroups]);
 
   return (
     <SelectPrimitive.Root
