@@ -11,4 +11,6 @@ export * from './skills';
 export * from './user-activity-sessions';
 export * from './slash-commands';
 export * from './scheduled-jobs';
+export * from './google-drive-connections';
+export * from './artifact-drive-sync';
 export * from './relations';

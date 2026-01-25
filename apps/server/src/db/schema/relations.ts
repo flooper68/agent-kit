@@ -13,6 +13,8 @@ import {
   serverAgentAllowedSubagents,
   externalAgentAllowedSubagents,
 } from './agents';
+import { googleDriveConnections } from './google-drive-connections';
+import { artifactDriveSync } from './artifact-drive-sync';
 
 export const agentSessionMessagesRelations = relations(
   agentSessionMessages,
@@ -86,6 +88,7 @@ export const artifactsRelations = relations(artifacts, ({ many }) => ({
   taskArtifacts: many(taskArtifacts),
   projectArtifacts: many(projectArtifacts),
   artifactTags: many(artifactTags),
+  artifactDriveSync: many(artifactDriveSync),
 }));
 
 export const artifactTagsRelations = relations(artifactTags, ({ one }) => ({
@@ -142,6 +145,29 @@ export const externalAgentAllowedSubagentsRelations = relations(
     allowedExternalAgent: one(externalAgents, {
       fields: [externalAgentAllowedSubagents.allowedExternalAgentId],
       references: [externalAgents.id],
+    }),
+  })
+);
+
+// Google Drive connections relations
+export const googleDriveConnectionsRelations = relations(
+  googleDriveConnections,
+  ({ many }) => ({
+    artifactDriveSync: many(artifactDriveSync),
+  })
+);
+
+// Artifact Drive sync relations
+export const artifactDriveSyncRelations = relations(
+  artifactDriveSync,
+  ({ one }) => ({
+    artifact: one(artifacts, {
+      fields: [artifactDriveSync.artifactId],
+      references: [artifacts.id],
+    }),
+    connection: one(googleDriveConnections, {
+      fields: [artifactDriveSync.connectionId],
+      references: [googleDriveConnections.id],
     }),
   })
 );
