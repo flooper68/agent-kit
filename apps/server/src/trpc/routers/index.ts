@@ -12,6 +12,7 @@ import { clientToolsRouter } from './client-tools';
 import { skillsRouter } from './skills';
 import { activityRouter } from './activity';
 import { slashCommandsRouter } from './slash-commands';
+import { scheduledJobsRouter } from './scheduled-jobs';
 
 export const appRouter = router({
   members: membersRouter,
@@ -27,6 +28,7 @@ export const appRouter = router({
   skills: skillsRouter,
   activity: activityRouter,
   slashCommands: slashCommandsRouter,
+  scheduledJobs: scheduledJobsRouter,
 });
 
 export type AppRouter = typeof appRouter;

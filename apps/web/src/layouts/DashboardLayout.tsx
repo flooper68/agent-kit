@@ -35,6 +35,7 @@ import {
   Home,
   BookOpen,
   Terminal,
+  Clock,
 } from 'lucide-react';
 import { checkIsAdmin } from '../lib/auth';
 import { useChatHistory } from '../hooks/useChatHistory';
@@ -352,6 +353,13 @@ function DashboardLayoutInner() {
                   active: currentPath.startsWith('/app/commands'),
                 },
                 {
+                  id: 'scheduled-jobs',
+                  label: 'Scheduled Jobs',
+                  icon: <Clock className="h-4 w-4" />,
+                  onClick: () => navigate('/app/scheduled-jobs'),
+                  active: currentPath.startsWith('/app/scheduled-jobs'),
+                },
+                {
                   id: 'artifacts',
                   label: 'Artifacts',
                   icon: <FileText className="h-4 w-4" />,
@@ -479,6 +487,20 @@ function DashboardLayoutInner() {
                   size="sm"
                   className={
                     currentPath.startsWith('/app/commands')
+                      ? 'bg-accent text-accent-foreground'
+                      : undefined
+                  }
+                />
+              </Tooltip>
+              <Tooltip content="Scheduled Jobs">
+                <IconButton
+                  icon={<Clock className="h-4 w-4" />}
+                  label="Scheduled Jobs"
+                  onClick={() => navigate('/app/scheduled-jobs')}
+                  variant="ghost"
+                  size="sm"
+                  className={
+                    currentPath.startsWith('/app/scheduled-jobs')
                       ? 'bg-accent text-accent-foreground'
                       : undefined
                   }
