@@ -26,6 +26,7 @@ import {
   ExternalAgentWebSocketService,
   AgentSpawner,
 } from './agent';
+import { SchedulerService } from './scheduler';
 import { AgentsFeature } from './features/agents';
 import { AnalyticsFeature } from './features/analytics';
 import { ArtifactsFeature } from './features/artifacts';
@@ -120,6 +121,7 @@ let externalAgentsConnectionManager!: ExternalAgentsConnectionManager;
 let cacheInvalidation!: CacheInvalidationService;
 let externalAgentWSService!: ExternalAgentWebSocketService;
 let agentSpawner!: AgentSpawner;
+let schedulerService!: SchedulerService;
 
 // Hook to initialize services that depend on Redis
 fastify.addHook('onReady', async () => {
@@ -195,6 +197,19 @@ fastify.addHook('onReady', async () => {
 
   // Wire up agent spawner to external agent WebSocket service for sub-agent delegation
   externalAgentWSService.setAgentSpawner(agentSpawner);
+
+  // Create and start the scheduler service for cron-based job execution
+  schedulerService = new SchedulerService(
+    { instanceId: `${env.HOST}:${env.PORT}` },
+    redisPublisher,
+    db,
+    agentSpawner,
+    scheduledJobsFeature
+  );
+
+  schedulerService.start().catch((err) => {
+    fastify.log.error(err, 'Scheduler service error');
+  });
 
   // Create the agent worker with new architecture
   const agentWorker = new AgentWorker(
@@ -397,6 +412,7 @@ const start = async () => {
       console.log('SIGTERM signal received: closing servers');
       handler.broadcastReconnectNotification();
       wss.close();
+      await schedulerService.stop();
       await fastify.close();
       // Close Redis connections
       await pubsub.close();
