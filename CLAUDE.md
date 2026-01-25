@@ -68,39 +68,48 @@ bun run --cwd packages/ui build
 
 ## Git Workflow
 
-**IMPORTANT**: Always follow this workflow when making code changes.
+**IMPORTANT**: Use Graphite for stacked PRs. Work in small, incremental steps. Don't create Drafts, but PRs
 
-### Branch Naming
-
-- **Branch**: `feat/<description>` (e.g., `feat/add-login`)
-
-### Development
-
-### Before Pushing
-
-Run all quality checks:
+### Starting Work
 
 ```bash
-bun run lint && bun run format:check && bun run typecheck && bun run build
+gt create feat/<description>    # Create new branch in stack
 ```
 
-All checks must pass before pushing.
+### Development Loop
 
-### Commit, Push, and PR
+1. Make small, focused changes
+2. Run quality checks before committing:
+   ```bash
+   bun run lint && bun run format:check && bun run typecheck && bun run build
+   ```
+3. Commit and submit:
+   ```bash
+   gt commit -m "feat: description"
+   gt submit                     # Create/update PR
+   ```
+4. Continue stacking if needed:
+   ```bash
+   gt create feat/<next-step>    # Stack another branch
+   ```
+
+### Amending Changes
 
 ```bash
-git add .
-git commit -m "feat: description of changes"
-git push -u origin feat/<description>
-gh pr create --fill
+gt modify                        # Amend current commit
+gt submit                        # Update the PR
 ```
 
-### Merging PRs
-
-Always use **squash merge** for PRs:
+### During Reviews
 
 ```bash
-gh pr merge --squash
+gt sync                          # Sync stack with trunk and update PRs
+```
+
+### After Approval
+
+```bash
+gt merge                         # Merge the stack
 ```
 
 ### Commit Messages

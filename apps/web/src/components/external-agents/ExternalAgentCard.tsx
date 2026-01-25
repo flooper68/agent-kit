@@ -26,6 +26,8 @@ export interface ExternalAgentCardProps {
   name: string;
   description: string | null;
   secretKeyPrefix: string;
+  /** Agent key/slug - unique identifier for the agent */
+  agentKey?: string;
   /** Provider - only shown for server agents */
   provider?: string;
   /** Model - only shown for server agents */
@@ -52,6 +54,7 @@ export function ExternalAgentCard({
   name,
   description,
   secretKeyPrefix,
+  agentKey,
   provider,
   model,
   isFavorite,
@@ -68,12 +71,24 @@ export function ExternalAgentCard({
   onDelete,
 }: ExternalAgentCardProps) {
   const [copiedId, setCopiedId] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
 
   const handleCopyId = async () => {
     try {
       await navigator.clipboard.writeText(id);
       setCopiedId(true);
       setTimeout(() => setCopiedId(false), 2000);
+    } catch {
+      // Clipboard access failed
+    }
+  };
+
+  const handleCopyKey = async () => {
+    if (!agentKey) return;
+    try {
+      await navigator.clipboard.writeText(agentKey);
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 2000);
     } catch {
       // Clipboard access failed
     }
@@ -162,6 +177,28 @@ export function ExternalAgentCard({
             <Text className="text-xs text-muted-foreground truncate">
               {shortModelName}
             </Text>
+          </div>
+        )}
+        {/* Agent key display */}
+        {agentKey && (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs text-muted-foreground">Key:</span>
+            <code className="text-xs font-mono text-muted-foreground flex-1 truncate">
+              {agentKey}
+            </code>
+            <IconButton
+              icon={
+                copiedKey ? (
+                  <Check className="h-3 w-3" />
+                ) : (
+                  <Copy className="h-3 w-3" />
+                )
+              }
+              onClick={handleCopyKey}
+              label="Copy key"
+              size="sm"
+              variant="ghost"
+            />
           </div>
         )}
         <p className="text-sm text-muted-foreground line-clamp-2 mb-2">

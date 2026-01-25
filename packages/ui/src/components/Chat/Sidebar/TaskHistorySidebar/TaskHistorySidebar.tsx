@@ -1,4 +1,4 @@
-import { X, User, Globe, Bot } from 'lucide-react';
+import { X, User, Globe, Bot, Clock } from 'lucide-react';
 import { Dialog } from '../../../Dialog';
 import { ToggleGroup } from '../../../ToggleGroup';
 import { Pagination } from '../../../Pagination';
@@ -106,6 +106,11 @@ export function TaskHistorySidebar({
                     aria-label="Sub-agents Only"
                   >
                     <Bot className="h-4 w-4" />
+                  </ToggleGroup.Item>
+                </Tooltip>
+                <Tooltip content="Scheduled">
+                  <ToggleGroup.Item value="scheduled" aria-label="Scheduled">
+                    <Clock className="h-4 w-4" />
                   </ToggleGroup.Item>
                 </Tooltip>
               </ToggleGroup>

@@ -62,6 +62,7 @@ function ServerAgentCard({
       name={agent.name}
       description={agent.description}
       secretKeyPrefix=""
+      agentKey={agent.key}
       provider={agent.provider}
       model={agent.model}
       isFavorite={agent.isFavorite}
@@ -701,6 +702,7 @@ export function AgentsPage() {
                     name={agent.name}
                     description={agent.description}
                     secretKeyPrefix={agent.secretKeyPrefix}
+                    agentKey={agent.key}
                     isFavorite={agent.isFavorite}
                     disabled={agent.disabled}
                     isConnected={connectionStatus.get(agent.key)}

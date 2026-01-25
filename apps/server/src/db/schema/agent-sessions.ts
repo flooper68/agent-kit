@@ -9,6 +9,7 @@ import {
   boolean,
   index,
 } from 'drizzle-orm/pg-core';
+import { scheduledJobs } from './scheduled-jobs';
 
 export type AgentSessionStatus = 'active' | 'completed' | 'cancelled';
 
@@ -80,6 +81,11 @@ export const agentSessions = pgTable(
     parentSessionId: uuid('parent_session_id'),
     spawnDepth: integer('spawn_depth').notNull().default(0),
 
+    // Scheduled job tracking (for cron-triggered sessions)
+    scheduledJobId: uuid('scheduled_job_id').references(() => scheduledJobs.id, {
+      onDelete: 'set null',
+    }),
+
     // Usage metrics
     usage: jsonb('usage').$type<AgentSessionUsage>(),
 
@@ -98,6 +104,8 @@ export const agentSessions = pgTable(
     index('idx_agent_sessions_parent_session_id').on(table.parentSessionId),
     // Index for user-scoped session queries
     index('agent_sessions_user_id_idx').on(table.userId),
+    // Index for filtering scheduled job sessions
+    index('idx_agent_sessions_scheduled_job_id').on(table.scheduledJobId),
   ]
 );
 
