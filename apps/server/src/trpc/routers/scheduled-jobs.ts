@@ -179,4 +179,23 @@ export const scheduledJobsRouter = router({
       }
       return { success: true };
     }),
+
+  // Schedule a job to run in 10 seconds for testing
+  scheduleTestRun: orgProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const updated = await ctx.scheduledJobsFeature.scheduleTestRun({
+        id: input.id,
+        userId: ctx.auth.userId,
+        orgId: ctx.auth.orgId,
+      });
+      if (!updated) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message:
+            'Scheduled job not found or you do not have permission to test it',
+        });
+      }
+      return updated;
+    }),
 });
