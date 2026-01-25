@@ -10,9 +10,10 @@ import {
   Select,
   Input,
 } from '@agent-kit/ui';
-import { Users, Mail, UserPlus } from 'lucide-react';
+import { Users, Mail, UserPlus, Plug } from 'lucide-react';
 import { MembersList } from '../../components/settings/MembersList';
 import { InvitationsList } from '../../components/settings/InvitationsList';
+import { GoogleDriveIntegration } from '../../components/settings/integrations';
 import { trpc } from '../../lib/trpc';
 import { checkIsAdmin } from '../../lib/auth';
 
@@ -22,7 +23,7 @@ export function SettingsPage() {
   const isAdmin = checkIsAdmin(membership?.role);
 
   useEffect(() => {
-    document.title = 'Users | Agent Kit';
+    document.title = 'Settings | Agent Kit';
   }, []);
 
   return (
@@ -31,10 +32,10 @@ export function SettingsPage() {
         {/* Header */}
         <div className="mb-6">
           <Heading as="h1" size="24">
-            Users
+            Settings
           </Heading>
           <Text className="text-muted-foreground">
-            Manage your organization members and invitations
+            Manage your organization members, invitations, and integrations
           </Text>
         </div>
 
@@ -50,8 +51,12 @@ export function SettingsPage() {
                 <Mail className="h-4 w-4" />
                 Invitations
               </Tabs.Trigger>
+              <Tabs.Trigger value="integrations">
+                <Plug className="h-4 w-4" />
+                Integrations
+              </Tabs.Trigger>
             </Tabs.List>
-            {isAdmin && <InviteMemberButton />}
+            {isAdmin && tab !== 'integrations' && <InviteMemberButton />}
           </div>
 
           <Tabs.Content value="members" className="flex-1 overflow-y-auto">
@@ -60,6 +65,12 @@ export function SettingsPage() {
 
           <Tabs.Content value="invitations" className="flex-1 overflow-y-auto">
             <InvitationsList />
+          </Tabs.Content>
+
+          <Tabs.Content value="integrations" className="flex-1 overflow-y-auto">
+            <div className="space-y-4">
+              <GoogleDriveIntegration />
+            </div>
           </Tabs.Content>
         </Tabs>
       </div>
