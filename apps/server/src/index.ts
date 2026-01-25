@@ -149,6 +149,12 @@ fastify.addHook('onReady', async () => {
   skillsFeature.setSkillsCacheInvalidation(cacheInvalidation);
   slashCommandsFeature.setCacheInvalidation(cacheInvalidation);
 
+  // Wire up Google Drive sync to artifacts (if configured)
+  if (googleDriveFeature) {
+    artifactsFeature.setGoogleDriveFeature(googleDriveFeature);
+    googleDriveFeature.setCacheInvalidation(cacheInvalidation);
+  }
+
   // Create infrastructure managers (split from AgentSessionManager)
   jobQueueManager = new JobQueueManager(redisPublisher, redisWorker);
   eventStreamManager = new EventStreamManager(

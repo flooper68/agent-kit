@@ -1,6 +1,7 @@
 import type { db as DbType } from '../../db';
 import type { Artifact } from '../../db/schema';
 import type { CacheInvalidationService } from '../../real-time';
+import type { GoogleDriveFeature } from '../google-drive';
 import {
   CreateArtifactCommand,
   DeleteArtifactCommand,
@@ -55,6 +56,7 @@ export class ArtifactsFeature {
   private getArtifactsByAgentQuery: GetArtifactsByAgentQuery;
   private getTagsQuery: GetTagsQuery;
   private cacheInvalidation?: CacheInvalidationService;
+  private googleDriveFeature?: GoogleDriveFeature;
 
   constructor(db: typeof DbType, agentNames: Map<string, string>) {
     this.createArtifactCommand = new CreateArtifactCommand(db);
@@ -77,6 +79,10 @@ export class ArtifactsFeature {
     this.cacheInvalidation = service;
   }
 
+  setGoogleDriveFeature(feature: GoogleDriveFeature): void {
+    this.googleDriveFeature = feature;
+  }
+
   // Commands
   async create(input: CreateArtifactInput): Promise<Artifact> {
     const artifact = await this.createArtifactCommand.execute(input);
@@ -85,6 +91,15 @@ export class ArtifactsFeature {
       artifact.id,
       input.agentId
     );
+
+    // Queue for Google Drive sync if connected
+    await this.googleDriveFeature?.queueSyncIfConnected({
+      artifactId: artifact.id,
+      userId: input.userId,
+      orgId: input.orgId,
+      action: 'create',
+    });
+
     return artifact;
   }
 
@@ -106,6 +121,14 @@ export class ArtifactsFeature {
         input.userId,
         artifact.id
       );
+
+      // Queue for Google Drive sync if connected
+      await this.googleDriveFeature?.queueSyncIfConnected({
+        artifactId: artifact.id,
+        userId: input.userId,
+        orgId: input.orgId,
+        action: 'update',
+      });
     }
     return artifact;
   }
@@ -117,6 +140,14 @@ export class ArtifactsFeature {
         input.userId,
         artifact.id
       );
+
+      // Queue for Google Drive sync if connected
+      await this.googleDriveFeature?.queueSyncIfConnected({
+        artifactId: artifact.id,
+        userId: input.userId,
+        orgId: input.orgId,
+        action: 'update',
+      });
     }
     return artifact;
   }
