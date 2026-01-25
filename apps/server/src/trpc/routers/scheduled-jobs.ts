@@ -1,35 +1,18 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { CronExpressionParser } from 'cron-parser';
 import { router, orgProcedure } from '../trpc';
-
-/**
- * Calculate the next run time for a cron expression in the given timezone
- */
-function calculateNextRunAt(cronExpression: string, timezone: string): Date {
-  const cron = CronExpressionParser.parse(cronExpression, {
-    tz: timezone,
-  });
-  return cron.next().toDate();
-}
+import {
+  calculateNextRunAt,
+  validateCronExpression,
+} from '../../scheduler/cron-utils';
 
 const CronExpressionSchema = z
   .string()
   .min(9)
   .max(100)
-  .refine(
-    (value) => {
-      try {
-        CronExpressionParser.parse(value);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    {
-      message: 'Invalid cron expression format',
-    }
-  );
+  .refine((value) => validateCronExpression(value), {
+    message: 'Invalid cron expression format',
+  });
 
 export const scheduledJobsRouter = router({
   // List scheduled jobs (paginated with filter and search)
@@ -144,7 +127,8 @@ export const scheduledJobsRouter = router({
           });
         }
 
-        const cronExpression = input.cronExpression ?? currentJob.cronExpression;
+        const cronExpression =
+          input.cronExpression ?? currentJob.cronExpression;
         const timezone = input.timezone ?? currentJob.timezone;
         const enabled = input.enabled ?? currentJob.enabled;
 
