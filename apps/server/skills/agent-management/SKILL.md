@@ -4,7 +4,9 @@ description: Manage agents and understand the platform. List, configure, spawn a
 allowed-tools:
   - listAgents
   - getAgent
+  - createAgent
   - updateAgent
+  - deleteAgent
   - setAgentEnabled
   - toggleAgentFavorite
   - spawnAgent
@@ -29,7 +31,9 @@ See `references/agent-types.md` for details.
 | ------------------- | --------------- |
 | listAgents          | `agents:read`   |
 | getAgent            | `agents:read`   |
+| createAgent         | `agents:manage` |
 | updateAgent         | `agents:manage` |
+| deleteAgent         | `agents:manage` |
 | setAgentEnabled     | `agents:manage` |
 | toggleAgentFavorite | `agents:manage` |
 
@@ -75,6 +79,71 @@ getAgent --agentId "uuid-here" --agentType "external"
 **Returns for server agents:** All basic fields plus systemPrompt, tools, temperature, maxOutputTokens, thinkingConfig
 
 **Returns for external agents:** Basic fields plus secretKeyPrefix
+
+### createAgent
+
+Create a new agent. Requires `agents:manage` scope and approval.
+
+**Parameters:**
+
+- `--agentType` (required): `"server"` | `"external"`
+- `--key` (required): Unique key (1-64 chars, alphanumeric/hyphens/underscores only)
+- `--name` (required): Display name (1-255 chars)
+- `--description` (optional): Agent description (max 1000 chars)
+
+**Server agent specific:**
+
+- `--provider` (optional): `"anthropic"` | `"openai"` | `"gemini"` (default: anthropic)
+- `--model` (optional): Model ID matching the provider
+- `--systemPrompt` (optional): System instructions
+- `--tools` (optional): Array of tool IDs (JSON format)
+- `--temperature` (optional): 0-2 (null for default)
+- `--maxOutputTokens` (optional): Positive integer
+- `--thinkingConfig` (optional): Reasoning config (JSON format)
+
+**External agent specific:**
+
+- `--allowedTools` (optional): Server-side tools this agent can use (JSON format)
+
+**Common optional:**
+
+- `--isFavorite` (optional): `true` | `false`
+- `--allowedSubagents` (optional): IDs of agents this agent can spawn (JSON format)
+- `--allowedSkillIds` (optional): IDs of skills this agent can use (JSON format)
+- `--scopes` (optional): Permission scopes (JSON format)
+
+**Examples:**
+
+```
+createAgent --agentType "server" --key "my-assistant" --name "My Assistant"
+createAgent --agentType "server" --key "researcher" --name "Research Agent" --provider "anthropic" --model "claude-sonnet-4-20250514" --temperature 0.7
+createAgent --agentType "external" --key "my-bot" --name "External Bot" --allowedTools '["webSearch","extractContent"]'
+```
+
+**Validation rules:**
+
+- `key`: Must match `/^[a-zA-Z0-9_-]+$/`, 1-64 chars
+- `name`: 1-255 chars
+- `description`: Max 1000 chars
+- `provider`: Must be `anthropic`, `openai`, or `gemini`
+- `temperature`: 0-2 range
+- `maxOutputTokens`: Must be positive integer
+- `thinkingConfig.budgetTokens`: 1024-32768 range
+
+### deleteAgent
+
+Delete an agent by its key. Performs a soft delete (hidden but data preserved). Requires `agents:manage` scope and approval.
+
+**Parameters:**
+
+- `--agentKey` (required): The unique key/slug of the agent
+- `--agentType` (required): `"server"` | `"external"`
+
+**Example:**
+
+```
+deleteAgent --agentKey "my-assistant" --agentType "server"
+```
 
 ### updateAgent
 
@@ -189,7 +258,7 @@ setAgentEnabled --agentId "uuid" --agentType "external" --enabled false
 
 - `references/agent-types.md` - Server vs External agents
 - `references/thinking-config.md` - Provider-specific thinking configuration
-- `references/all-tools.md` - Complete list of all 41 tools
+- `references/all-tools.md` - Complete list of all 43 tools
 - `references/permission-scopes.md` - All 20 permission scopes
 - `references/system-skills.md` - Overview of 6 system skills
 - `references/custom-skills.md` - How to create custom skills

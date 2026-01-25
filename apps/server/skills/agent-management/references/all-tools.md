@@ -1,6 +1,6 @@
 # All Available Tools
 
-Complete reference of all 41 tools organized by category.
+Complete reference of all 43 tools organized by category.
 
 ## Utility Tools (4)
 
@@ -54,16 +54,18 @@ Complete reference of all 41 tools organized by category.
 | `navigateTo`        | Navigate the user's browser to a path. |
 | `getCurrentUIState` | Get current page path and context.     |
 
-## Agent Tools (6)
+## Agent Tools (8)
 
-| Tool                  | Description                        |
-| --------------------- | ---------------------------------- |
-| `spawnAgent`          | Spawn another agent for a subtask. |
-| `listAgents`          | List all available agents.         |
-| `getAgent`            | Get detailed agent configuration.  |
-| `updateAgent`         | Update server agent settings.      |
-| `setAgentEnabled`     | Enable or disable an agent.        |
-| `toggleAgentFavorite` | Mark agent as favorite.            |
+| Tool                  | Description                            |
+| --------------------- | -------------------------------------- |
+| `spawnAgent`          | Spawn another agent for a subtask.     |
+| `listAgents`          | List all available agents.             |
+| `getAgent`            | Get detailed agent configuration.      |
+| `createAgent`         | Create a new server or external agent. |
+| `updateAgent`         | Update server agent settings.          |
+| `deleteAgent`         | Delete an agent (soft delete).         |
+| `setAgentEnabled`     | Enable or disable an agent.            |
+| `toggleAgentFavorite` | Mark agent as favorite.                |
 
 ## Skill Usage Tools (3)
 
@@ -92,7 +94,7 @@ Complete reference of all 41 tools organized by category.
 | Project          | 6      | Project CRUD                    |
 | Task             | 10     | Task management and Kanban      |
 | Navigation       | 2      | UI navigation                   |
-| Agent            | 6      | Agent management and spawning   |
+| Agent            | 8      | Agent management and spawning   |
 | Skill Usage      | 3      | Reading and executing skills    |
 | Skill Management | 5      | Creating and managing skills    |
-| **Total**        | **41** |                                 |
+| **Total**        | **43** |                                 |

@@ -370,6 +370,122 @@ export const toggleAgentFavoriteSchema = z.object({
   isFavorite: z.boolean().describe('Whether to mark as favorite'),
 });
 
+export const AgentThinkingConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    budgetTokens: z.number().int().min(1024).max(32768).optional(),
+    reasoningEffort: z.enum(['low', 'medium', 'high']).optional(),
+    thinkingLevel: z.enum(['minimal', 'low', 'medium', 'high']).optional(),
+    thinkingBudget: z.number().int().min(-1).max(32768).optional(),
+  })
+  .nullable();
+
+const AllowedSubagentsSchema = z
+  .object({
+    serverAgentIds: z.array(z.string()).optional(),
+    externalAgentIds: z.array(z.string()).optional(),
+  })
+  .optional();
+
+export const createAgentSchema = z.object({
+  agentType: z
+    .enum(['server', 'external'])
+    .describe(
+      'The type of agent: server (LLM-based, runs on server) or external (connects via WebSocket)'
+    ),
+  key: z
+    .string()
+    .min(1, 'Key is required')
+    .max(64, 'Key must be 64 characters or less')
+    .regex(
+      /^[a-zA-Z0-9_-]+$/,
+      'Key must contain only alphanumeric characters, hyphens, and underscores'
+    )
+    .describe(
+      'Unique agent key/slug (alphanumeric, hyphens, underscores only)'
+    ),
+  name: z
+    .string()
+    .min(1, 'Name is required')
+    .max(255, 'Name must be 255 characters or less')
+    .describe('Display name for the agent'),
+  description: z
+    .string()
+    .max(1000, 'Description must be 1000 characters or less')
+    .optional()
+    .describe('Description of the agent'),
+  // Server agent specific fields
+  provider: z
+    .enum(['anthropic', 'openai', 'gemini'])
+    .optional()
+    .describe('LLM provider (server agents only, defaults to anthropic)'),
+  model: z
+    .string()
+    .optional()
+    .describe('Model ID (server agents only, must match provider)'),
+  systemPrompt: z
+    .string()
+    .optional()
+    .describe(
+      'System prompt for the agent (server agents only, defaults to helpful assistant)'
+    ),
+  tools: z
+    .array(z.string())
+    .optional()
+    .describe('Array of tool IDs the agent can use (server agents only)'),
+  temperature: z
+    .number()
+    .min(0, 'Temperature must be at least 0')
+    .max(2, 'Temperature must be at most 2')
+    .nullable()
+    .optional()
+    .describe('Temperature setting 0-2 (server agents only)'),
+  maxOutputTokens: z
+    .number()
+    .int('Max output tokens must be an integer')
+    .positive('Max output tokens must be positive')
+    .nullable()
+    .optional()
+    .describe('Maximum output tokens (server agents only)'),
+  thinkingConfig: AgentThinkingConfigSchema.optional().describe(
+    'Thinking/reasoning configuration (server agents only)'
+  ),
+  // External agent specific fields
+  allowedTools: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Server-side tools this external agent can use (external agents only)'
+    ),
+  // Common optional fields
+  isFavorite: z
+    .boolean()
+    .optional()
+    .describe('Whether to mark as favorite (defaults to false)'),
+  allowedSubagents: AllowedSubagentsSchema.describe(
+    'IDs of agents this agent can spawn as subagents'
+  ),
+  allowedSkillIds: z
+    .array(z.string())
+    .optional()
+    .describe('IDs of skills this agent can use'),
+  scopes: z
+    .array(z.string())
+    .optional()
+    .describe('Permission scopes for the agent'),
+});
+
+export const deleteAgentSchema = z.object({
+  agentKey: z
+    .string()
+    .min(1, 'Agent key is required')
+    .max(64, 'Agent key must be 64 characters or less')
+    .describe('The unique key/slug of the agent to delete'),
+  agentType: z
+    .enum(['server', 'external'])
+    .describe('The type of agent being deleted'),
+});
+
 // --- Skill Tools ---
 export const listSkillsSchema = z.object({
   filter: z
@@ -899,6 +1015,20 @@ The tool will wait for the spawned agent to complete and return its full respons
     name: 'toggleAgentFavorite',
     description: 'Mark or unmark an agent as a favorite for quick access.',
     schema: toggleAgentFavoriteSchema,
+    category: 'agent' as const,
+  },
+  createAgent: {
+    name: 'createAgent',
+    description:
+      'Create a new agent. For server agents, specify LLM configuration (provider, model, systemPrompt, tools). For external agents, specify allowedTools for server-side tools the external agent can use.',
+    schema: createAgentSchema,
+    category: 'agent' as const,
+  },
+  deleteAgent: {
+    name: 'deleteAgent',
+    description:
+      'Delete an agent by its key. This performs a soft delete - the agent is hidden from lists but data is preserved.',
+    schema: deleteAgentSchema,
     category: 'agent' as const,
   },
 
