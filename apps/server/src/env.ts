@@ -27,6 +27,14 @@ const envSchema = z.object({
 
   // Tavily (web search)
   TAVILY_API_KEY: z.string(),
+
+  // Google Drive OAuth
+  GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_OAUTH_REDIRECT_URI: z.string().url().optional(),
+
+  // Token encryption (for storing OAuth tokens)
+  ENCRYPTION_KEY: z.string().length(32).optional(),
 });
 
 export const env = envSchema.parse(process.env);
