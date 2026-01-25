@@ -1,0 +1,1 @@
+export { ArtifactSyncBadge } from './ArtifactSyncBadge';

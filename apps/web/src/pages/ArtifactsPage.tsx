@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { useUrlState } from '../hooks/useUrlState';
+import { ArtifactSyncBadge } from '../components/artifacts';
 
 export function ArtifactsPage() {
   const navigate = useNavigate();
@@ -349,6 +350,11 @@ export function ArtifactsPage() {
                       <Text className="text-sm text-muted-foreground">
                         {formatDate(artifact.createdAt)}
                       </Text>
+                    </DataList.Cell>
+                    <DataList.Cell shrink>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <ArtifactSyncBadge artifactId={artifact.id} />
+                      </div>
                     </DataList.Cell>
                     <DataList.Cell shrink>
                       <div onClick={(e) => e.stopPropagation()}>

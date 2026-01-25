@@ -22,6 +22,7 @@ import {
 } from '@agent-kit/ui';
 import { trpc } from '../../lib/trpc';
 import { ArtifactDetailPageSkeleton } from '../../components/skeletons';
+import { ArtifactSyncBadge } from '../../components/artifacts';
 import { useHeaderActions } from '../../contexts/HeaderActionsContext';
 import { useAutosave } from '../../hooks/useAutosave';
 
@@ -452,12 +453,13 @@ export function ArtifactDetailPage() {
         </div>
 
         {/* Metadata */}
-        <div className="mb-6 flex shrink-0 flex-wrap gap-4 text-sm text-muted-foreground">
+        <div className="mb-6 flex shrink-0 flex-wrap items-center gap-4 text-sm text-muted-foreground">
           <span>Created: {formatDate(artifactQuery.data.createdAt)}</span>
           {new Date(artifactQuery.data.updatedAt).getTime() !==
             new Date(artifactQuery.data.createdAt).getTime() && (
             <span>Updated: {formatDate(artifactQuery.data.updatedAt)}</span>
           )}
+          <ArtifactSyncBadge artifactId={effectiveArtifactId!} showSyncButton />
         </div>
 
         {/* Content */}
