@@ -36,6 +36,7 @@ import { SkillsFeature } from './features/skills';
 import { ActivityFeature } from './features/activity';
 import { SlashCommandsFeature } from './features/slash-commands';
 import { ScheduledJobsFeature } from './features/scheduled-jobs';
+import { GoogleDriveFeature } from './features/google-drive';
 import { CacheInvalidationService, PubSubManager } from './real-time';
 import { createRedisClient, createPubSubClients } from './lib/redis/client';
 
@@ -111,6 +112,11 @@ const slashCommandsFeature = new SlashCommandsFeature(db);
 
 // Create scheduled jobs feature
 const scheduledJobsFeature = new ScheduledJobsFeature(db);
+
+// Create Google Drive feature (only if configured)
+const googleDriveFeature = GoogleDriveFeature.isConfigured()
+  ? new GoogleDriveFeature(db)
+  : null;
 
 // Will be initialized in onReady hook
 let jobQueueManager!: JobQueueManager;
@@ -256,6 +262,7 @@ fastify.register(fastifyTRPCPlugin, {
         activityFeature,
         slashCommandsFeature,
         scheduledJobsFeature,
+        googleDriveFeature,
         jobQueueManager,
         eventStreamManager,
         jobRegistryManager,
@@ -367,6 +374,7 @@ const start = async () => {
           activityFeature,
           slashCommandsFeature,
           scheduledJobsFeature,
+          googleDriveFeature,
           jobQueueManager,
           eventStreamManager,
           jobRegistryManager,

@@ -13,6 +13,7 @@ import { skillsRouter } from './skills';
 import { activityRouter } from './activity';
 import { slashCommandsRouter } from './slash-commands';
 import { scheduledJobsRouter } from './scheduled-jobs';
+import { googleDriveRouter } from './google-drive';
 
 export const appRouter = router({
   members: membersRouter,
@@ -29,6 +30,7 @@ export const appRouter = router({
   activity: activityRouter,
   slashCommands: slashCommandsRouter,
   scheduledJobs: scheduledJobsRouter,
+  googleDrive: googleDriveRouter,
 });
 
 export type AppRouter = typeof appRouter;

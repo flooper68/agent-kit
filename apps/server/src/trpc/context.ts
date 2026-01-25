@@ -19,6 +19,7 @@ import type { SkillsFeature } from '../features/skills';
 import type { ActivityFeature } from '../features/activity';
 import type { SlashCommandsFeature } from '../features/slash-commands';
 import type { ScheduledJobsFeature } from '../features/scheduled-jobs';
+import type { GoogleDriveFeature } from '../features/google-drive';
 import type { PubSubManager, CacheInvalidationService } from '../real-time';
 
 export type ClerkClient = ReturnType<typeof createClerkClient>;
@@ -34,6 +35,7 @@ export interface ContextDeps {
   activityFeature: ActivityFeature;
   slashCommandsFeature: SlashCommandsFeature;
   scheduledJobsFeature: ScheduledJobsFeature;
+  googleDriveFeature: GoogleDriveFeature | null;
   jobQueueManager: JobQueueManager;
   eventStreamManager: EventStreamManager;
   jobRegistryManager: JobRegistryManager;
@@ -68,6 +70,7 @@ export function createContext(deps: ContextDeps) {
       activityFeature: deps.activityFeature,
       slashCommandsFeature: deps.slashCommandsFeature,
       scheduledJobsFeature: deps.scheduledJobsFeature,
+      googleDriveFeature: deps.googleDriveFeature,
       jobQueueManager: deps.jobQueueManager,
       eventStreamManager: deps.eventStreamManager,
       jobRegistryManager: deps.jobRegistryManager,
