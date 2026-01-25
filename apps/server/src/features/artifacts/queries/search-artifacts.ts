@@ -1,7 +1,12 @@
 import { eq, or, ilike, and, desc, sql } from 'drizzle-orm';
 import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
-import { artifacts, projectArtifacts, taskArtifacts } from '../../../db/schema';
+import {
+  artifacts,
+  artifactTags,
+  projectArtifacts,
+  taskArtifacts,
+} from '../../../db/schema';
 import type { ArtifactListItem } from './list-artifacts';
 
 export interface SearchArtifactsInput {
@@ -62,6 +67,12 @@ export class SearchArtifactsQuery {
             SELECT count(*)::int
             FROM ${taskArtifacts}
             WHERE ${taskArtifacts.artifactId} = ${artifacts.id}
+          )`,
+          tags: sql<string[]>`COALESCE(
+            (SELECT array_agg(${artifactTags.tag} ORDER BY ${artifactTags.tag})
+             FROM ${artifactTags}
+             WHERE ${artifactTags.artifactId} = ${artifacts.id}),
+            ARRAY[]::varchar[]
           )`,
         })
         .from(artifacts)

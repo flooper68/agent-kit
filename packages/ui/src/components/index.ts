@@ -234,3 +234,10 @@ export type { EditableFileTreeProps } from './EditableFileTree';
 // File Editor
 export { FileEditor } from './FileEditor';
 export type { FileEditorProps } from './FileEditor';
+
+// Tag components
+export { TagBadge } from './TagBadge';
+export type { TagBadgeProps, TagColorPreset } from './TagBadge';
+
+export { TagInput } from './TagInput';
+export type { TagInputProps, Tag } from './TagInput';

@@ -39,3 +39,6 @@ export type {
   ArtifactsByAgent,
   GetArtifactsByAgentResult,
 } from './get-artifacts-by-agent';
+
+export { GetTagsQuery } from './get-tags';
+export type { GetTagsInput, TagWithCount, GetTagsResult } from './get-tags';

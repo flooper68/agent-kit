@@ -20,6 +20,7 @@ import {
   GetArtifactsStatsQuery,
   GetArtifactsOverTimeQuery,
   GetArtifactsByAgentQuery,
+  GetTagsQuery,
 } from './queries';
 import type {
   GetArtifactByIdInput,
@@ -34,6 +35,8 @@ import type {
   GetArtifactsOverTimeResult,
   GetArtifactsByAgentInput,
   GetArtifactsByAgentResult,
+  GetTagsInput,
+  GetTagsResult,
 } from './queries';
 
 /**
@@ -50,6 +53,7 @@ export class ArtifactsFeature {
   private getArtifactsStatsQuery: GetArtifactsStatsQuery;
   private getArtifactsOverTimeQuery: GetArtifactsOverTimeQuery;
   private getArtifactsByAgentQuery: GetArtifactsByAgentQuery;
+  private getTagsQuery: GetTagsQuery;
   private cacheInvalidation?: CacheInvalidationService;
 
   constructor(db: typeof DbType, agentNames: Map<string, string>) {
@@ -66,6 +70,7 @@ export class ArtifactsFeature {
       db,
       agentNames
     );
+    this.getTagsQuery = new GetTagsQuery(db);
   }
 
   setCacheInvalidation(service: CacheInvalidationService): void {
@@ -144,5 +149,9 @@ export class ArtifactsFeature {
     input: GetArtifactsByAgentInput
   ): Promise<GetArtifactsByAgentResult> {
     return this.getArtifactsByAgentQuery.execute(input);
+  }
+
+  getTags(input: GetTagsInput): Promise<GetTagsResult> {
+    return this.getTagsQuery.execute(input);
   }
 }

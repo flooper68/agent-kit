@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, orgProcedure, adminProcedure } from '../trpc';
+import { tagsSchema } from '../../features/shared/schemas';
 
 export const projectsRouter = router({
   // List user's projects (paginated with optional search)
@@ -109,6 +110,7 @@ export const projectsRouter = router({
         limit: z.number().min(1).max(100).default(25),
         cursor: z.string().uuid().optional(),
         search: z.string().optional(),
+        tags: tagsSchema,
       })
     )
     .query(async ({ ctx, input }) => {
@@ -119,6 +121,7 @@ export const projectsRouter = router({
         limit: input.limit,
         cursor: input.cursor,
         search: input.search,
+        tags: input.tags,
       });
     }),
 

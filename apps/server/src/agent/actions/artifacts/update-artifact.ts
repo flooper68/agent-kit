@@ -4,6 +4,7 @@ import type { Tool } from '../../types';
 import type { ArtifactsFeature } from '../../../features/artifacts';
 import type { ActionMetadata } from '../types';
 import { AgentScope } from '../../permissions/scopes';
+import { tagsSchema } from '../../../features/shared/schemas';
 
 const MAX_CONTENT_SIZE = 1_000_000; // 1MB
 
@@ -48,24 +49,27 @@ export function createUpdateArtifactTool(context: UpdateArtifactContext): Tool {
         .max(500, 'Summary must be 500 characters or less')
         .optional()
         .describe('New summary for search purposes'),
+      tags: tagsSchema.describe('Tags for organizing the document'),
     }),
     execute: async ({
       artifactId,
       title,
       content,
       summary,
+      tags,
     }: {
       artifactId: string;
       title?: string;
       content?: string;
       summary?: string;
+      tags?: string[];
     }) => {
       // Require at least one field to update
-      if (!title && !content && !summary) {
+      if (!title && !content && !summary && !tags) {
         return {
           success: false,
           message:
-            'At least one field (title, content, or summary) must be provided.',
+            'At least one field (title, content, summary, or tags) must be provided.',
         };
       }
 
@@ -77,6 +81,7 @@ export function createUpdateArtifactTool(context: UpdateArtifactContext): Tool {
           title,
           content,
           summary,
+          tags,
         });
 
         if (!updated) {
