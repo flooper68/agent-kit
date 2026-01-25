@@ -407,6 +407,20 @@
       "when": 1767900000041,
       "tag": "0057_add_slash_command_management_skill",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1767900000042,
+      "tag": "0058_add_artifact_tags",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1767900000043,
+      "tag": "0059_normalize_artifact_tags",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import type { db as DbType } from '../../../db';
-import { artifacts, type Artifact } from '../../../db/schema';
+import { artifacts, artifactTags, type Artifact } from '../../../db/schema';
+import { deduplicateTags } from '../../shared/schemas';
 
 export interface CreateArtifactInput {
   userId: string;
@@ -10,9 +11,14 @@ export interface CreateArtifactInput {
   sessionId?: string;
   agentId?: string;
   summary?: string;
+  tags?: string[];
 }
 
-export type CreateArtifactResult = Artifact;
+export interface ArtifactWithTags extends Artifact {
+  tags: string[];
+}
+
+export type CreateArtifactResult = ArtifactWithTags;
 
 export class CreateArtifactCommand {
   private db: typeof DbType;
@@ -23,26 +29,42 @@ export class CreateArtifactCommand {
 
   async execute(input: CreateArtifactInput): Promise<CreateArtifactResult> {
     const sizeBytes = Buffer.byteLength(input.content, 'utf8');
+    const tags = input.tags ? deduplicateTags(input.tags) : [];
 
-    const [artifact] = await this.db
-      .insert(artifacts)
-      .values({
-        userId: input.userId,
-        orgId: input.orgId,
-        title: input.title,
-        content: input.content,
-        format: input.format ?? 'markdown',
-        sessionId: input.sessionId,
-        agentId: input.agentId,
-        summary: input.summary ?? `Document titled "${input.title}"`,
-        sizeBytes,
-      })
-      .returning();
+    return this.db.transaction(async (tx) => {
+      const [artifact] = await tx
+        .insert(artifacts)
+        .values({
+          userId: input.userId,
+          orgId: input.orgId,
+          title: input.title,
+          content: input.content,
+          format: input.format ?? 'markdown',
+          sessionId: input.sessionId,
+          agentId: input.agentId,
+          summary: input.summary ?? `Document titled "${input.title}"`,
+          sizeBytes,
+        })
+        .returning();
 
-    if (!artifact) {
-      throw new Error('Failed to create artifact');
-    }
+      if (!artifact) {
+        throw new Error('Failed to create artifact');
+      }
 
-    return artifact;
+      // Insert tags into junction table
+      if (tags.length > 0) {
+        await tx.insert(artifactTags).values(
+          tags.map((tag) => ({
+            artifactId: artifact.id,
+            tag,
+          }))
+        );
+      }
+
+      return {
+        ...artifact,
+        tags,
+      };
+    });
   }
 }

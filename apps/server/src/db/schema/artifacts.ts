@@ -6,6 +6,7 @@ import {
   timestamp,
   integer,
   index,
+  primaryKey,
 } from 'drizzle-orm/pg-core';
 
 export type ArtifactFormat = 'markdown';
@@ -54,3 +55,24 @@ export const artifacts = pgTable(
 
 export type Artifact = typeof artifacts.$inferSelect;
 export type NewArtifact = typeof artifacts.$inferInsert;
+
+// Artifact tags junction table - enforces uniqueness at DB level
+export const artifactTags = pgTable(
+  'artifact_tags',
+  {
+    artifactId: uuid('artifact_id')
+      .notNull()
+      .references(() => artifacts.id, { onDelete: 'cascade' }),
+    tag: varchar('tag', { length: 50 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.artifactId, table.tag] }),
+    index('artifact_tags_tag_idx').on(table.tag),
+  ]
+);
+
+export type ArtifactTag = typeof artifactTags.$inferSelect;
+export type NewArtifactTag = typeof artifactTags.$inferInsert;

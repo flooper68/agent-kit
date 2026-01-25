@@ -4,6 +4,7 @@ import type { Tool } from '../../types';
 import type { ArtifactsFeature } from '../../../features/artifacts';
 import type { ActionMetadata } from '../types';
 import { AgentScope } from '../../permissions/scopes';
+import { tagsSchema } from '../../../features/shared/schemas';
 
 const MAX_CONTENT_SIZE = 1_000_000; // 1MB
 
@@ -50,15 +51,20 @@ export function createWriteArtifactTool(context: WriteArtifactContext): Tool {
         .describe(
           'A brief 1-2 sentence summary of the content for search purposes'
         ),
+      tags: tagsSchema.describe(
+        'Tags for organizing and categorizing the document'
+      ),
     }),
     execute: async ({
       title,
       content,
       summary,
+      tags,
     }: {
       title: string;
       content: string;
       summary?: string;
+      tags?: string[];
     }) => {
       try {
         const artifact = await context.artifactsFeature.create({
@@ -69,6 +75,7 @@ export function createWriteArtifactTool(context: WriteArtifactContext): Tool {
           title,
           content,
           summary,
+          tags,
         });
 
         return {
