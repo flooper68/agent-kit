@@ -34,6 +34,7 @@ import { TasksFeature } from './features/tasks';
 import { SkillsFeature } from './features/skills';
 import { ActivityFeature } from './features/activity';
 import { SlashCommandsFeature } from './features/slash-commands';
+import { ScheduledJobsFeature } from './features/scheduled-jobs';
 import { CacheInvalidationService, PubSubManager } from './real-time';
 import { createRedisClient, createPubSubClients } from './lib/redis/client';
 
@@ -106,6 +107,9 @@ const activityFeature = new ActivityFeature(db, clerk);
 
 // Create slash commands feature
 const slashCommandsFeature = new SlashCommandsFeature(db);
+
+// Create scheduled jobs feature
+const scheduledJobsFeature = new ScheduledJobsFeature(db);
 
 // Will be initialized in onReady hook
 let jobQueueManager!: JobQueueManager;
@@ -236,6 +240,7 @@ fastify.register(fastifyTRPCPlugin, {
         skillsFeature,
         activityFeature,
         slashCommandsFeature,
+        scheduledJobsFeature,
         jobQueueManager,
         eventStreamManager,
         jobRegistryManager,
@@ -346,6 +351,7 @@ const start = async () => {
           skillsFeature,
           activityFeature,
           slashCommandsFeature,
+          scheduledJobsFeature,
           jobQueueManager,
           eventStreamManager,
           jobRegistryManager,

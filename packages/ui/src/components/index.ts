@@ -241,3 +241,10 @@ export type { TagBadgeProps, TagColorPreset } from './TagBadge';
 
 export { TagInput } from './TagInput';
 export type { TagInputProps, Tag } from './TagInput';
+
+// Scheduling components
+export { CronExpressionInput } from './CronExpressionInput';
+export type { CronExpressionInputProps } from './CronExpressionInput';
+
+export { TimezoneSelect } from './TimezoneSelect';
+export type { TimezoneSelectProps } from './TimezoneSelect';

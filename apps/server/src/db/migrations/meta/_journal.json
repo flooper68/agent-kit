@@ -428,6 +428,13 @@
       "when": 1767900000044,
       "tag": "0060_add_create_delete_agent_to_skill",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1767900000045,
+      "tag": "0061_add_scheduled_jobs",
+      "breakpoints": true
     }
   ]
 }

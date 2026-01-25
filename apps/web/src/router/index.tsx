@@ -128,6 +128,16 @@ const EditSlashCommandPage = lazy(() =>
     default: m.EditSlashCommandPage,
   }))
 );
+const ScheduledJobsPage = lazy(() =>
+  import('../pages/ScheduledJobsPage').then((m) => ({
+    default: m.ScheduledJobsPage,
+  }))
+);
+const ScheduledJobEditPage = lazy(() =>
+  import('../pages/scheduled-jobs/ScheduledJobEditPage').then((m) => ({
+    default: m.ScheduledJobEditPage,
+  }))
+);
 const NotFoundPage = lazy(() =>
   import('../pages/NotFoundPage').then((m) => ({
     default: m.NotFoundPage,
@@ -355,6 +365,30 @@ const router = createBrowserRouter([
                     element: (
                       <Suspense fallback={<AgentFormPageSkeleton />}>
                         <EditSlashCommandPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'scheduled-jobs',
+                    element: (
+                      <Suspense fallback={<ArtifactsPageSkeleton />}>
+                        <ScheduledJobsPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'scheduled-jobs/new',
+                    element: (
+                      <Suspense fallback={<AgentFormPageSkeleton />}>
+                        <ScheduledJobEditPage />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    path: 'scheduled-jobs/:id/edit',
+                    element: (
+                      <Suspense fallback={<AgentFormPageSkeleton />}>
+                        <ScheduledJobEditPage />
                       </Suspense>
                     ),
                   },
