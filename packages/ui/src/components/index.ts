@@ -248,3 +248,19 @@ export type { CronExpressionInputProps } from './CronExpressionInput';
 
 export { TimezoneSelect } from './TimezoneSelect';
 export type { TimezoneSelectProps } from './TimezoneSelect';
+
+// Integration components
+export { SyncStatusBadge } from './SyncStatusBadge';
+export type { SyncStatusBadgeProps, SyncStatus } from './SyncStatusBadge';
+
+export { IntegrationCard } from './IntegrationCard';
+export type {
+  IntegrationCardProps,
+  IntegrationStatus,
+} from './IntegrationCard';
+
+export { FolderPickerButton } from './FolderPickerButton';
+export type { FolderPickerButtonProps } from './FolderPickerButton';
+
+export { OAuthConnectButton } from './OAuthConnectButton';
+export type { OAuthConnectButtonProps } from './OAuthConnectButton';

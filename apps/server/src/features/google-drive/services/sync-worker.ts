@@ -89,7 +89,11 @@ export class SyncWorkerService {
         .limit(1);
 
       if (!connection || !connection.isActive || !connection.folderId) {
-        await this.updateSyncStatus(syncId, 'error', 'Connection not configured');
+        await this.updateSyncStatus(
+          syncId,
+          'error',
+          'Connection not configured'
+        );
         return;
       }
 
@@ -126,9 +130,13 @@ export class SyncWorkerService {
 
         // Update file name if changed
         if (file.name !== fileName) {
-          await this.driveApiService.updateFileMetadata(accessToken, driveFileId, {
-            name: fileName,
-          });
+          await this.driveApiService.updateFileMetadata(
+            accessToken,
+            driveFileId,
+            {
+              name: fileName,
+            }
+          );
         }
       } else {
         // Create new file
@@ -163,7 +171,7 @@ export class SyncWorkerService {
    * Get a valid access token, refreshing if necessary
    */
   private async getValidAccessToken(
-    connection: (typeof googleDriveConnections.$inferSelect)
+    connection: typeof googleDriveConnections.$inferSelect
   ): Promise<string> {
     // Check if token is expired or about to expire
     if (this.oauthService.isTokenExpired(connection.tokenExpiresAt)) {
@@ -196,7 +204,8 @@ export class SyncWorkerService {
    * Handle sync errors with retry logic
    */
   private async handleSyncError(syncId: string, error: unknown): Promise<void> {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
     const isRetryable =
       error instanceof DriveApiError ? error.isRetryable : true;
 
@@ -285,9 +294,7 @@ export class SyncWorkerService {
     const userArtifacts = await this.db
       .select({ id: artifacts.id })
       .from(artifacts)
-      .where(
-        and(eq(artifacts.userId, userId), eq(artifacts.orgId, orgId))
-      );
+      .where(and(eq(artifacts.userId, userId), eq(artifacts.orgId, orgId)));
 
     if (userArtifacts.length === 0) {
       return 0;
@@ -304,7 +311,9 @@ export class SyncWorkerService {
     const existingArtifactIds = new Set(existingSyncs.map((s) => s.artifactId));
 
     // Create sync records for new artifacts
-    const newArtifactIds = artifactIds.filter((id) => !existingArtifactIds.has(id));
+    const newArtifactIds = artifactIds.filter(
+      (id) => !existingArtifactIds.has(id)
+    );
 
     if (newArtifactIds.length > 0) {
       await this.db.insert(artifactDriveSync).values(

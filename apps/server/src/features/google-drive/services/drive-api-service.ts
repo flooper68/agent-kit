@@ -176,7 +176,10 @@ export class DriveApiService {
   /**
    * Get file metadata
    */
-  async getFile(accessToken: string, fileId: string): Promise<DriveFile | null> {
+  async getFile(
+    accessToken: string,
+    fileId: string
+  ): Promise<DriveFile | null> {
     const response = await fetch(
       `${DRIVE_API_BASE}/files/${fileId}?fields=id,name,mimeType,webViewLink`,
       {

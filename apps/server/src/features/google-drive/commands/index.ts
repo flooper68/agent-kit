@@ -1,5 +1,8 @@
 export { ConnectGoogleDriveCommand } from './connect';
-export type { ConnectGoogleDriveInput, ConnectGoogleDriveResult } from './connect';
+export type {
+  ConnectGoogleDriveInput,
+  ConnectGoogleDriveResult,
+} from './connect';
 
 export { DisconnectGoogleDriveCommand } from './disconnect';
 export type {

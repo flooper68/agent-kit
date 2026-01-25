@@ -26,18 +26,25 @@ export class ConnectGoogleDriveCommand {
     this.oauthService = oauthService;
   }
 
-  async execute(input: ConnectGoogleDriveInput): Promise<ConnectGoogleDriveResult> {
+  async execute(
+    input: ConnectGoogleDriveInput
+  ): Promise<ConnectGoogleDriveResult> {
     const { userId, orgId, code } = input;
 
     // Exchange code for tokens
-    const tokens: OAuthTokens = await this.oauthService.exchangeCodeForTokens(code);
+    const tokens: OAuthTokens =
+      await this.oauthService.exchangeCodeForTokens(code);
 
     // Get user email
     const userInfo = await this.oauthService.getUserInfo(tokens.accessToken);
 
     // Encrypt tokens for storage
-    const accessTokenEncrypted = this.oauthService.encryptToken(tokens.accessToken);
-    const refreshTokenEncrypted = this.oauthService.encryptToken(tokens.refreshToken);
+    const accessTokenEncrypted = this.oauthService.encryptToken(
+      tokens.accessToken
+    );
+    const refreshTokenEncrypted = this.oauthService.encryptToken(
+      tokens.refreshToken
+    );
 
     // Check if connection already exists
     const [existing] = await this.db

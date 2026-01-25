@@ -75,7 +75,9 @@ export class GoogleDriveFeature {
 
   // Commands
 
-  async connect(input: ConnectGoogleDriveInput): Promise<GoogleDriveConnection> {
+  async connect(
+    input: ConnectGoogleDriveInput
+  ): Promise<GoogleDriveConnection> {
     const connection = await this.connectCommand.execute(input);
     // TODO: Publish cache invalidation
     return connection;
@@ -124,7 +126,9 @@ export class GoogleDriveFeature {
     return this.getConnectionQuery.execute(input);
   }
 
-  getSyncStatus(input: GetSyncStatusInput): Promise<ArtifactDriveSync | undefined> {
+  getSyncStatus(
+    input: GetSyncStatusInput
+  ): Promise<ArtifactDriveSync | undefined> {
     return this.getSyncStatusQuery.execute(input);
   }
 
