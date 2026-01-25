@@ -1,7 +1,8 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import type { db as DbType } from '../../../db';
 import {
   artifacts,
+  artifactTags,
   projectArtifacts,
   projects,
   taskArtifacts,
@@ -28,6 +29,7 @@ export interface AttachedTask {
 }
 
 export interface ArtifactWithRelations extends Artifact {
+  tags: string[];
   projects: AttachedProject[];
   tasks: AttachedTask[];
 }
@@ -59,31 +61,39 @@ export class GetArtifactByIdQuery {
       return undefined;
     }
 
-    // Fetch attached projects
-    const attachedProjects = await this.db
-      .select({
-        id: projects.id,
-        title: projects.title,
-      })
-      .from(projectArtifacts)
-      .innerJoin(projects, eq(projectArtifacts.projectId, projects.id))
-      .where(eq(projectArtifacts.artifactId, id));
+    // Fetch attached projects, tasks, and tags in parallel
+    const [attachedProjects, attachedTasks, tags] = await Promise.all([
+      this.db
+        .select({
+          id: projects.id,
+          title: projects.title,
+        })
+        .from(projectArtifacts)
+        .innerJoin(projects, eq(projectArtifacts.projectId, projects.id))
+        .where(eq(projectArtifacts.artifactId, id)),
 
-    // Fetch attached tasks with their project info
-    const attachedTasks = await this.db
-      .select({
-        id: tasks.id,
-        title: tasks.title,
-        projectId: tasks.projectId,
-        projectTitle: projects.title,
-      })
-      .from(taskArtifacts)
-      .innerJoin(tasks, eq(taskArtifacts.taskId, tasks.id))
-      .innerJoin(projects, eq(tasks.projectId, projects.id))
-      .where(eq(taskArtifacts.artifactId, id));
+      this.db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          projectId: tasks.projectId,
+          projectTitle: projects.title,
+        })
+        .from(taskArtifacts)
+        .innerJoin(tasks, eq(taskArtifacts.taskId, tasks.id))
+        .innerJoin(projects, eq(tasks.projectId, projects.id))
+        .where(eq(taskArtifacts.artifactId, id)),
+
+      this.db
+        .select({ tag: artifactTags.tag })
+        .from(artifactTags)
+        .where(eq(artifactTags.artifactId, id))
+        .orderBy(asc(artifactTags.tag)),
+    ]);
 
     return {
       ...artifact,
+      tags: tags.map((t) => t.tag),
       projects: attachedProjects,
       tasks: attachedTasks,
     };

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, orgProcedure, adminProcedure } from '../trpc';
+import { tagsSchema } from '../../features/shared/schemas';
 
 const TimeRangeSchema = z.enum(['today', 'week', 'month', 'all']);
 
@@ -14,6 +15,7 @@ export const artifactsRouter = router({
         search: z.string().optional(),
         excludeProjectId: z.string().uuid().optional(),
         uncategorized: z.boolean().optional(),
+        tags: tagsSchema,
       })
     )
     .query(async ({ ctx, input }) => {
@@ -25,6 +27,7 @@ export const artifactsRouter = router({
         search: input.search,
         excludeProjectId: input.excludeProjectId,
         uncategorized: input.uncategorized,
+        tags: input.tags,
       });
     }),
 
@@ -54,6 +57,7 @@ export const artifactsRouter = router({
         content: z.string().min(1).max(1_000_000),
         summary: z.string().max(500).optional(),
         format: z.enum(['markdown']).default('markdown'),
+        tags: tagsSchema,
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -64,6 +68,7 @@ export const artifactsRouter = router({
         content: input.content,
         summary: input.summary,
         format: input.format,
+        tags: input.tags,
       });
     }),
 
@@ -94,6 +99,7 @@ export const artifactsRouter = router({
         content: z.string().min(1).max(1_000_000).optional(),
         summary: z.string().max(500).optional(),
         format: z.enum(['markdown']).optional(),
+        tags: tagsSchema,
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -105,6 +111,7 @@ export const artifactsRouter = router({
         content: input.content,
         summary: input.summary,
         format: input.format,
+        tags: input.tags,
       });
       if (!updated) {
         throw new TRPCError({
@@ -113,6 +120,22 @@ export const artifactsRouter = router({
         });
       }
       return updated;
+    }),
+
+  // Get unique tags for suggestions
+  getTags: orgProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+        limit: z.number().min(1).max(100).default(50),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      return ctx.artifactsFeature.getTags({
+        orgId: ctx.auth.orgId,
+        search: input.search,
+        limit: input.limit,
+      });
     }),
 
   // Analytics: Overview stats (admin only)

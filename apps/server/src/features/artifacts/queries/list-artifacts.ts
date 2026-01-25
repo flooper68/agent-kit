@@ -11,7 +11,12 @@ import {
 } from 'drizzle-orm';
 import { escapeLikePattern } from '../../../lib/db/escape-like';
 import type { db as DbType } from '../../../db';
-import { artifacts, projectArtifacts, taskArtifacts } from '../../../db/schema';
+import {
+  artifacts,
+  artifactTags,
+  projectArtifacts,
+  taskArtifacts,
+} from '../../../db/schema';
 
 export interface ListArtifactsInput {
   userId: string;
@@ -21,6 +26,7 @@ export interface ListArtifactsInput {
   search?: string;
   excludeProjectId?: string;
   uncategorized?: boolean;
+  tags?: string[];
 }
 
 export interface ArtifactListItem {
@@ -29,6 +35,7 @@ export interface ArtifactListItem {
   summary: string | null;
   format: string;
   sizeBytes: number;
+  tags: string[];
   projectCount: number;
   taskCount: number;
   createdAt: Date;
@@ -56,6 +63,7 @@ export class ListArtifactsQuery {
       search,
       excludeProjectId,
       uncategorized,
+      tags,
     } = input;
 
     // If cursor is provided, get the cursor artifact's createdAt for filtering
@@ -125,6 +133,20 @@ export class ListArtifactsQuery {
       );
     }
 
+    // Filter by tags using EXISTS subquery
+    if (tags && tags.length > 0) {
+      // Artifact must have ALL specified tags
+      for (const tag of tags) {
+        conditions.push(
+          sql`EXISTS (
+            SELECT 1 FROM ${artifactTags}
+            WHERE ${artifactTags.artifactId} = ${artifacts.id}
+            AND ${artifactTags.tag} = ${tag}
+          )`
+        );
+      }
+    }
+
     // Execute query
     const results = await this.db
       .select({
@@ -144,6 +166,12 @@ export class ListArtifactsQuery {
           SELECT count(*)::int
           FROM ${taskArtifacts}
           WHERE ${taskArtifacts.artifactId} = ${artifacts.id}
+        )`,
+        tags: sql<string[]>`COALESCE(
+          (SELECT array_agg(${artifactTags.tag} ORDER BY ${artifactTags.tag})
+           FROM ${artifactTags}
+           WHERE ${artifactTags.artifactId} = ${artifacts.id}),
+          ARRAY[]::varchar[]
         )`,
       })
       .from(artifacts)

@@ -11,6 +11,9 @@ import {
   Input,
   DropdownMenu,
   Select,
+  TagBadge,
+  TagInput,
+  type Tag as TagType,
   cn,
   useToast,
 } from '@agent-kit/ui';
@@ -21,6 +24,7 @@ import {
   MoreHorizontal,
   FolderPlus,
   ListPlus,
+  Tag,
 } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { useUrlState } from '../hooks/useUrlState';
@@ -41,6 +45,11 @@ export function ArtifactsPage() {
     id: string;
     title: string;
   } | null>(null);
+  const [editTagsTarget, setEditTagsTarget] = useState<{
+    id: string;
+    title: string;
+    tags: string[];
+  } | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null
   );
@@ -52,6 +61,9 @@ export function ArtifactsPage() {
   const [projectFilter, setProjectFilter] = useUrlState('project', {
     defaultValue: 'all',
   });
+  const [tagFilter, setTagFilter] = useUrlState('tag', {
+    defaultValue: 'all',
+  });
   const currentCursor = cursors[cursors.length - 1];
   const utils = trpc.useUtils();
 
@@ -59,13 +71,16 @@ export function ArtifactsPage() {
     document.title = 'Artifacts | Agent Kit';
   }, []);
 
-  // Reset pagination when search or project filter changes
+  // Reset pagination when search, project filter, or tag filter changes
   useEffect(() => {
     setCursors([]);
-  }, [debouncedSearch, projectFilter]);
+  }, [debouncedSearch, projectFilter, tagFilter]);
 
   // Projects query (used for filter dropdown and attachment dialogs)
   const projectsQuery = trpc.projects.list.useQuery({ limit: 50 });
+
+  // Tags query (for filter dropdown)
+  const tagsQuery = trpc.artifacts.getTags.useQuery({ limit: 50 });
 
   // Filtered projects for dialogs (client-side search for better UX with many projects)
   const filteredProjects = useMemo(() => {
@@ -86,6 +101,7 @@ export function ArtifactsPage() {
       cursor: currentCursor,
       search: debouncedSearch || undefined,
       uncategorized: isUncategorized || undefined,
+      tags: tagFilter && tagFilter !== 'all' ? [tagFilter] : undefined,
     },
     { enabled: !isProjectFiltered }
   );
@@ -96,6 +112,7 @@ export function ArtifactsPage() {
       limit: 25,
       cursor: currentCursor,
       search: debouncedSearch || undefined,
+      tags: tagFilter && tagFilter !== 'all' ? [tagFilter] : undefined,
     },
     { enabled: isProjectFiltered }
   );
@@ -152,6 +169,29 @@ export function ArtifactsPage() {
       addToast({
         message: 'Artifact attached to task',
         variant: 'success',
+      });
+    },
+  });
+
+  const updateTagsMutation = trpc.artifacts.update.useMutation({
+    onSuccess: () => {
+      queueMicrotask(() => {
+        setEditTagsTarget(null);
+      });
+      utils.artifacts.list.invalidate();
+      if (isProjectFiltered) {
+        utils.projects.listArtifacts.invalidate({ projectId: projectFilter });
+      }
+      utils.artifacts.getTags.invalidate();
+      addToast({
+        message: 'Tags updated successfully',
+        variant: 'success',
+      });
+    },
+    onError: (error) => {
+      addToast({
+        message: error.message || 'Failed to update tags',
+        variant: 'error',
       });
     },
   });
@@ -217,6 +257,18 @@ export function ArtifactsPage() {
             ]}
             className="w-48"
           />
+          <Select
+            value={tagFilter}
+            onValueChange={setTagFilter}
+            options={[
+              { value: 'all', label: 'All Tags' },
+              ...(tagsQuery.data ?? []).map((t) => ({
+                value: t.tag,
+                label: `${t.tag} (${t.count})`,
+              })),
+            ]}
+            className="w-48"
+          />
         </div>
 
         {/* Loading State */}
@@ -264,9 +316,23 @@ export function ArtifactsPage() {
                     </DataList.Cell>
                     <DataList.Cell grow>
                       <div className="min-w-0">
-                        <Text className="truncate font-medium">
-                          {artifact.title}
-                        </Text>
+                        <div className="flex items-center gap-2">
+                          <Text className="truncate font-medium">
+                            {artifact.title}
+                          </Text>
+                          {artifact.tags && artifact.tags.length > 0 && (
+                            <div className="flex shrink-0 gap-1">
+                              {artifact.tags.slice(0, 3).map((tag) => (
+                                <TagBadge key={tag} label={tag} size="sm" />
+                              ))}
+                              {artifact.tags.length > 3 && (
+                                <span className="text-xs text-muted-foreground">
+                                  +{artifact.tags.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                         {artifact.summary && (
                           <Text className="truncate text-sm text-muted-foreground">
                             {artifact.summary}
@@ -317,6 +383,18 @@ export function ArtifactsPage() {
                             >
                               <ListPlus className="h-4 w-4" />
                               Attach to task
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item
+                              onClick={() =>
+                                setEditTagsTarget({
+                                  id: artifact.id,
+                                  title: artifact.title,
+                                  tags: artifact.tags ?? [],
+                                })
+                              }
+                            >
+                              <Tag className="h-4 w-4" />
+                              Edit tags
                             </DropdownMenu.Item>
                             <DropdownMenu.Separator />
                             <DropdownMenu.Item
@@ -585,6 +663,61 @@ export function ArtifactsPage() {
               }}
             >
               Attach
+            </Button>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog>
+
+      {/* Edit Tags Dialog */}
+      <Dialog
+        open={!!editTagsTarget}
+        onOpenChange={(open: boolean) => !open && setEditTagsTarget(null)}
+      >
+        <Dialog.Content size="sm">
+          <Dialog.Header>
+            <Dialog.Title>Edit Tags</Dialog.Title>
+            <Dialog.Description>
+              Add or remove tags for &ldquo;{editTagsTarget?.title}&rdquo;.
+            </Dialog.Description>
+          </Dialog.Header>
+          <div className="py-4">
+            <TagInput
+              value={(editTagsTarget?.tags ?? []).map((tag) => ({
+                id: tag,
+                label: tag,
+              }))}
+              onChange={(newTags: TagType[]) => {
+                if (editTagsTarget) {
+                  setEditTagsTarget({
+                    ...editTagsTarget,
+                    tags: newTags.map((t) => t.label),
+                  });
+                }
+              }}
+              suggestions={(tagsQuery.data ?? []).map((t) => ({
+                id: t.tag,
+                label: t.tag,
+              }))}
+              placeholder="Add a tag..."
+              maxTags={20}
+            />
+          </div>
+          <Dialog.Footer>
+            <Dialog.Close asChild>
+              <Button variant="outline">Cancel</Button>
+            </Dialog.Close>
+            <Button
+              disabled={updateTagsMutation.isPending}
+              onClick={() => {
+                if (editTagsTarget) {
+                  updateTagsMutation.mutate({
+                    id: editTagsTarget.id,
+                    tags: editTagsTarget.tags,
+                  });
+                }
+              }}
+            >
+              Save
             </Button>
           </Dialog.Footer>
         </Dialog.Content>

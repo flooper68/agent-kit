@@ -6,7 +6,7 @@ import { projects } from './projects';
 import { tasks } from './tasks';
 import { taskArtifacts } from './task-artifacts';
 import { projectArtifacts } from './project-artifacts';
-import { artifacts } from './artifacts';
+import { artifacts, artifactTags } from './artifacts';
 import {
   serverAgents,
   externalAgents,
@@ -85,6 +85,14 @@ export const projectArtifactsRelations = relations(
 export const artifactsRelations = relations(artifacts, ({ many }) => ({
   taskArtifacts: many(taskArtifacts),
   projectArtifacts: many(projectArtifacts),
+  artifactTags: many(artifactTags),
+}));
+
+export const artifactTagsRelations = relations(artifactTags, ({ one }) => ({
+  artifact: one(artifacts, {
+    fields: [artifactTags.artifactId],
+    references: [artifacts.id],
+  }),
 }));
 
 // Server agent relations

@@ -16,6 +16,9 @@ import {
   Input,
   Textarea,
   useToast,
+  TagBadge,
+  TagInput,
+  type Tag,
 } from '@agent-kit/ui';
 import { trpc } from '../../lib/trpc';
 import { ArtifactDetailPageSkeleton } from '../../components/skeletons';
@@ -26,6 +29,7 @@ type ArtifactFormData = {
   title: string;
   content: string;
   summary: string;
+  tags: string[];
 };
 
 interface FromProjectState {
@@ -59,12 +63,19 @@ export function ArtifactDetailPage() {
   const [editedTitle, setEditedTitle] = useState('');
   const [editedContent, setEditedContent] = useState('');
   const [editedSummary, setEditedSummary] = useState('');
+  const [editedTags, setEditedTags] = useState<Tag[]>([]);
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const artifactQuery = trpc.artifacts.get.useQuery(
     { id: effectiveArtifactId! },
     { enabled: !!effectiveArtifactId }
+  );
+
+  // Fetch tag suggestions for autocomplete
+  const tagsQuery = trpc.artifacts.getTags.useQuery(
+    { limit: 50 },
+    { enabled: isEditing }
   );
 
   // Fetch project name if in project context
@@ -93,8 +104,9 @@ export function ArtifactDetailPage() {
       title: editedTitle,
       content: editedContent,
       summary: editedSummary,
+      tags: editedTags.map((t) => t.label),
     }),
-    [editedTitle, editedContent, editedSummary]
+    [editedTitle, editedContent, editedSummary, editedTags]
   );
 
   // Autosave hook
@@ -114,6 +126,7 @@ export function ArtifactDetailPage() {
             title: data.title.trim() || undefined,
             content: data.content.trim() || undefined,
             summary: data.summary.trim() || undefined,
+            tags: data.tags,
           },
           {
             onSuccess: () => {
@@ -160,11 +173,18 @@ export function ArtifactDetailPage() {
     setEditedTitle(artifactQuery.data.title);
     setEditedContent(artifactQuery.data.content);
     setEditedSummary(artifactQuery.data.summary ?? '');
+    // Convert string tags to Tag objects
+    const tagObjects: Tag[] = (artifactQuery.data.tags ?? []).map((tag) => ({
+      id: tag,
+      label: tag,
+    }));
+    setEditedTags(tagObjects);
     // Initialize autosave ref with current data
     autosave.lastSavedDataRef.current = {
       title: artifactQuery.data.title,
       content: artifactQuery.data.content,
       summary: artifactQuery.data.summary ?? '',
+      tags: artifactQuery.data.tags ?? [],
     };
     setIsEditing(true);
   }, [artifactQuery.data, autosave.lastSavedDataRef]);
@@ -174,6 +194,7 @@ export function ArtifactDetailPage() {
     setEditedTitle('');
     setEditedContent('');
     setEditedSummary('');
+    setEditedTags([]);
   }, []);
 
   // Cleanup timeout on unmount
@@ -383,6 +404,27 @@ export function ArtifactDetailPage() {
                 rows={2}
                 className="text-muted-foreground"
               />
+              <div>
+                <Text className="mb-2 text-sm font-medium">Tags</Text>
+                <TagInput
+                  value={editedTags}
+                  onChange={(tags) => {
+                    setEditedTags(tags);
+                    // Trigger autosave on tag change
+                    setTimeout(() => autosave.trigger(), 0);
+                  }}
+                  suggestions={
+                    tagsQuery.data?.map((t) => ({
+                      id: t.tag,
+                      label: t.tag,
+                    })) ?? []
+                  }
+                  placeholder="Add tags..."
+                  allowCreate
+                  maxTags={20}
+                  isLoading={tagsQuery.isLoading}
+                />
+              </div>
             </div>
           ) : (
             <>
@@ -397,6 +439,14 @@ export function ArtifactDetailPage() {
                   {artifactQuery.data.summary}
                 </Text>
               )}
+              {artifactQuery.data.tags &&
+                artifactQuery.data.tags.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {artifactQuery.data.tags.map((tag) => (
+                      <TagBadge key={tag} label={tag} size="sm" />
+                    ))}
+                  </div>
+                )}
             </>
           )}
         </div>
