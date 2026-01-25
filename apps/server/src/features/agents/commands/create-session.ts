@@ -11,6 +11,8 @@ export interface CreateSessionInput {
   parentSessionId?: string;
   /** Spawn depth for tracking recursion (0 for root sessions) */
   spawnDepth?: number;
+  /** Scheduled job ID for cron-triggered sessions */
+  scheduledJobId?: string;
 }
 
 export type CreateSessionResult = AgentSession;
@@ -60,6 +62,7 @@ export class CreateSessionCommand {
         isLocalAgent,
         parentSessionId: input.parentSessionId,
         spawnDepth: input.spawnDepth ?? 0,
+        scheduledJobId: input.scheduledJobId,
       })
       .returning();
 

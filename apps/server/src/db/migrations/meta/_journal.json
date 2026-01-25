@@ -435,6 +435,13 @@
       "when": 1767900000045,
       "tag": "0061_add_scheduled_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1767900000046,
+      "tag": "0062_add_scheduled_job_id_to_sessions",
+      "breakpoints": true
     }
   ]
 }

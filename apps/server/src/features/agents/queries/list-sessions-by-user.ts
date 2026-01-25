@@ -11,7 +11,7 @@ import {
 import type { db as DbType } from '../../../db';
 import { agentSessions, type AgentSession } from '../../../db/schema';
 
-export type SessionFilter = 'my_chats' | 'all' | 'sub_agents';
+export type SessionFilter = 'my_chats' | 'all' | 'sub_agents' | 'scheduled';
 
 export interface ListSessionsByUserInput {
   userId: string;
@@ -43,12 +43,17 @@ export class ListSessionsByUserQuery {
 
     switch (filter) {
       case 'my_chats':
-        // Root sessions only (no parent)
+        // Root sessions only (no parent) and not scheduled
         baseConditions.push(isNull(agentSessions.parentSessionId));
+        baseConditions.push(isNull(agentSessions.scheduledJobId));
         break;
       case 'sub_agents':
         // Only sessions with a parent (spawned sub-agents)
         baseConditions.push(isNotNull(agentSessions.parentSessionId));
+        break;
+      case 'scheduled':
+        // Only sessions created by scheduled jobs
+        baseConditions.push(isNotNull(agentSessions.scheduledJobId));
         break;
       case 'all':
         // No additional filter - show all sessions

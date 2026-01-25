@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Select, type SelectOption } from '../../../Select';
 
-export type SessionFilter = 'my_chats' | 'all' | 'sub_agents';
+export type SessionFilter = 'my_chats' | 'all' | 'sub_agents' | 'scheduled';
 
 export interface SessionFilterDropdownProps {
   /** Current filter value */
@@ -16,6 +16,7 @@ const filterOptions: SelectOption[] = [
   { value: 'my_chats', label: 'My Chats' },
   { value: 'all', label: 'All Sessions' },
   { value: 'sub_agents', label: 'Sub-agents Only' },
+  { value: 'scheduled', label: 'Scheduled' },
 ];
 
 /**

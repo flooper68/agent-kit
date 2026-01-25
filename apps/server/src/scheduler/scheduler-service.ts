@@ -300,6 +300,7 @@ export class SchedulerService {
         userId: job.userId,
         orgId: job.orgId,
         timeout: job.timeout ?? undefined,
+        scheduledJobId: job.id,
       });
 
       if (result.dispatched) {

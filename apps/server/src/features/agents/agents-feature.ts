@@ -80,6 +80,7 @@ import {
   CheckSpawnPermissionQuery,
   GetAllowedSubagentsQuery,
   GetAllowedSkillsQuery,
+  type SessionFilter,
 } from './queries';
 import type {
   CheckSpawnPermissionInput,
@@ -357,7 +358,7 @@ export class AgentsFeature {
       listByUser: (
         userId: string,
         limit: number,
-        filter?: 'my_chats' | 'all' | 'sub_agents',
+        filter?: SessionFilter,
         cursor?: string
       ) =>
         this.listSessionsByUserQuery.execute({ userId, limit, filter, cursor }),

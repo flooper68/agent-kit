@@ -31,7 +31,9 @@ export const sessionsRouter = router({
       z.object({
         limit: z.number().min(1).max(100).default(20),
         cursor: z.string().uuid().optional(),
-        filter: z.enum(['my_chats', 'all', 'sub_agents']).default('my_chats'),
+        filter: z
+          .enum(['my_chats', 'all', 'sub_agents', 'scheduled'])
+          .default('my_chats'),
       })
     )
     .query(async ({ ctx, input }) => {

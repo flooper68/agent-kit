@@ -42,6 +42,8 @@ export interface SpawnInput {
   messageId?: string;
   /** Key of the parent agent making the spawn request (for allowlist validation) */
   parentAgentKey?: string;
+  /** Scheduled job ID for cron-triggered sessions */
+  scheduledJobId?: string;
 }
 
 /**
@@ -547,6 +549,7 @@ export class AgentSpawner {
       parentSessionId: input.parentSessionId,
       spawnDepth: newSpawnDepth,
       title: `Spawned from ${input.parentSessionId ?? 'root'}`,
+      scheduledJobId: input.scheduledJobId,
     });
 
     return { sessionId: session.id, isNewSession: true };
